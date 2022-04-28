@@ -214,8 +214,7 @@ impl DeserializeCompactV2 for Endorsement {
         tuple((
             context("sender_public_key", PublicKey::from_bytes_compact_v2),
             context("slot", Slot::from_bytes_compact_v2),
-            // use varint bounded here
-            context("index", u32::from_varint_bytes_v2),
+            context("index", |buffer: &[u8]| u32::from_varint_bytes_v2(buffer, None, Some(max_block_endorsements))),
             context("endorsed_block", BlockId::from_bytes_compact_v2),
         ))(buffer)
         .map(|(rest, (sender_public_key, slot, index, endorsed_block))| {

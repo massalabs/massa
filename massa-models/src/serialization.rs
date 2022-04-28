@@ -49,14 +49,13 @@ pub trait DeserializeVarInt: Sized {
     ) -> Result<(Self, usize), ModelsError>;
 }
 
+// HERE
 pub trait DeserializeVarIntV2: Sized {
-    /// Deserialize variable size integer to Self from the provided buffer.
-    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
-    /// In case of success, return the deserialized data and the number of bytes read
-    fn from_varint_bytes_v2(buffer: &[u8]) -> IResult<&[u8], Self>;
-
-    // HERE
-    // fn from_varint_bytes_bounded(buffer: &[u8], max_value: Self) -> IResult<&[u8], Self>;
+    fn from_varint_bytes_v2(
+        buffer: &[u8],
+        min: Option<Self>,
+        max: Option<Self>,
+    ) -> IResult<&[u8], Self>;
 }
 
 impl DeserializeVarInt for u16 {
@@ -101,26 +100,48 @@ impl DeserializeVarInt for u32 {
 
 // HERE
 impl DeserializeVarIntV2 for u32 {
-    fn from_varint_bytes_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
+    fn from_varint_bytes_v2(
+        buffer: &[u8],
+        min: Option<Self>,
+        max: Option<Self>,
+    ) -> IResult<&[u8], Self> {
+        let error = Err(nom::Err::Failure(nom::error::Error::new(
+            buffer,
+            nom::error::ErrorKind::Fail,
+        )));
         match unsigned_varint::decode::u32(buffer) {
-            Ok((v, rest)) => Ok((rest, v)),
-            Err(_) => Err(nom::Err::Failure(nom::error::Error::new(
-                buffer,
-                nom::error::ErrorKind::Fail,
-            ))),
+            Ok((v, rest)) => match (min, max) {
+                (Some(min), Some(max)) if v >= min && v < max => Ok((rest, v)),
+                (Some(min), None) if v >= min => Ok((rest, v)),
+                (None, Some(max)) if v < max => Ok((rest, v)),
+                (None, None) => Ok((rest, v)),
+                _ => error,
+            },
+            Err(_) => error,
         }
     }
 }
 
 // HERE
 impl DeserializeVarIntV2 for u64 {
-    fn from_varint_bytes_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
+    fn from_varint_bytes_v2(
+        buffer: &[u8],
+        min: Option<Self>,
+        max: Option<Self>,
+    ) -> IResult<&[u8], Self> {
+        let error = Err(nom::Err::Failure(nom::error::Error::new(
+            buffer,
+            nom::error::ErrorKind::Fail,
+        )));
         match unsigned_varint::decode::u64(buffer) {
-            Ok((v, rest)) => Ok((rest, v)),
-            Err(_) => Err(nom::Err::Failure(nom::error::Error::new(
-                buffer,
-                nom::error::ErrorKind::Fail,
-            ))),
+            Ok((v, rest)) => match (min, max) {
+                (Some(min), Some(max)) if v >= min && v < max => Ok((rest, v)),
+                (Some(min), None) if v >= min => Ok((rest, v)),
+                (None, Some(max)) if v < max => Ok((rest, v)),
+                (None, None) => Ok((rest, v)),
+                _ => error,
+            },
+            Err(_) => error,
         }
     }
 }
