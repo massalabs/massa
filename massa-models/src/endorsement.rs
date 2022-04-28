@@ -215,7 +215,11 @@ impl DeserializeCompactV2 for Endorsement {
             context("index", |buffer: &'a [u8]| {
                 let max_block_endorsements =
                     with_serialization_context(|context| context.endorsement_count);
-                u32::from_varint_bytes_v2(buffer, None, Some(max_block_endorsements))
+                u32::from_varint_bytes_v2(
+                    buffer,
+                    None,
+                    Some(max_block_endorsements.saturating_sub(1)),
+                )
             }),
             context("endorsed_block", BlockId::from_bytes_compact_v2),
         ))(buffer)
