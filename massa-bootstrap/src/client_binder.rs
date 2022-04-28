@@ -96,7 +96,7 @@ impl BootstrapClientBinder {
                     self.duplex.read_exact(&mut sig_bytes).await?;
                     Signature::from_bytes(&sig_bytes)?
                 };
-                // Check if old signature match
+                // Check if old signature matches
                 {
                     let old_message = &sended_message.to_bytes_compact()?;
                     let mut old_sig_msg_bytes =

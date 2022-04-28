@@ -120,7 +120,7 @@ impl BootstrapServerBinder {
         if let Some(prev_sig) = self.prev_sig {
             if sig != prev_sig || self.received_client_message_sig.is_some() {
                 return Err(BootstrapError::GeneralError(
-                    "The prev signature sent by the client doesn't match our.".to_string(),
+                    "The prev signature sent by the client doesn't match ours.".to_string(),
                 ));
             }
         }
