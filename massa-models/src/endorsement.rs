@@ -233,6 +233,15 @@ impl DeserializeCompactV2 for Endorsement {
     }
 }
 
+#[bench]
+fn test(b: &mut test::Bencher) {
+    b.iter(|| {
+        let n = test::black_box(1000);
+    
+        (0..n).fold(0, |a, b| a ^ b)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use crate::signed::Signed;

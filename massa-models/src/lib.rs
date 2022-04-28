@@ -2,6 +2,11 @@
 //! All the structures that are used everywhere
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+
+// for Deserialization benchmarks
+#![feature(test)]
+extern crate test;
+
 #[macro_use]
 extern crate lazy_static;
 
