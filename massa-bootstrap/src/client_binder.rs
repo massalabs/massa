@@ -103,7 +103,7 @@ impl BootstrapClientBinder {
                         vec![0u8; SIGNATURE_SIZE_BYTES + (old_message.len())];
                     old_sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
                         .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
-                    old_sig_msg_bytes[SIGNATURE_SIZE_BYTES..].clone_from_slice(&old_message);
+                    old_sig_msg_bytes[SIGNATURE_SIZE_BYTES..].clone_from_slice(old_message);
                     let old_msg_hash = Hash::compute_from(&old_sig_msg_bytes);
                     verify_signature(
                         &old_msg_hash,
