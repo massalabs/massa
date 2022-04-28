@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
 /// Messages used during bootstrap
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum BootstrapMessage {
     /// Sync clocks
     BootstrapTime {

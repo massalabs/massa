@@ -4,9 +4,10 @@ use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
 use massa_hash::Hash;
+use massa_models::SerializeCompact;
 use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
-    DeserializeMinBEInt,
+    DeserializeMinBEInt, SerializeMinBEInt,
 };
 use massa_signature::{verify_signature, PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -103,5 +104,26 @@ impl BootstrapClientBinder {
         self.prev_sig = Some(sig);
 
         Ok(message)
+    }
+
+    /// Send a message to the bootstrap server
+    pub async fn send(&mut self, msg: BootstrapMessage) -> Result<(), BootstrapError> {
+        let msg_bytes = msg.to_bytes_compact()?;
+        let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
+            BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
+        })?;
+        if let Some(prev_sig) = self.prev_sig {
+            self.duplex.write_all(&prev_sig.to_bytes()).await?;
+        }
+        // send message length
+        {
+            let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
+            self.duplex.write_all(&msg_len_bytes).await?;
+        }
+
+        // send message
+        self.duplex.write_all(&msg_bytes).await?;
+
+        Ok(())
     }
 }
