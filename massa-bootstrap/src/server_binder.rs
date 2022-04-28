@@ -19,6 +19,7 @@ pub struct BootstrapServerBinder {
     local_privkey: PrivateKey,
     duplex: Duplex,
     prev_sig: Option<Signature>,
+    received_client_message: bool,
 }
 
 impl BootstrapServerBinder {
@@ -34,6 +35,7 @@ impl BootstrapServerBinder {
             local_privkey,
             duplex,
             prev_sig: None,
+            received_client_message: false,
         }
     }
 
@@ -94,6 +96,7 @@ impl BootstrapServerBinder {
 
         // save prev sig
         self.prev_sig = Some(sig);
+        self.received_client_message = false;
 
         Ok(())
     }
@@ -108,7 +111,7 @@ impl BootstrapServerBinder {
         };
 
         if let Some(prev_sig) = self.prev_sig {
-            if sig != prev_sig {
+            if sig != prev_sig || self.received_client_message {
                 return Err(BootstrapError::GeneralError(
                     "The prev signature sent by the client doesn't match our.".to_string(),
                 ));
@@ -124,11 +127,14 @@ impl BootstrapServerBinder {
         };
         // read message and deserialize
         let message = {
-            let mut sig_msg_bytes = vec![0u8; msg_len as usize];
-            self.duplex.read_exact(&mut sig_msg_bytes).await?;
-            let (msg, _len) = BootstrapMessage::from_bytes_compact(&sig_msg_bytes)?;
+            let mut msg_bytes = vec![0u8; msg_len as usize];
+            self.duplex.read_exact(&mut msg_bytes).await?;
+            self.received_client_message = true;
+            let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
             msg
         };
+
+        println!("received value: {}", self.received_client_message);
 
         Ok(message)
     }
