@@ -19,7 +19,7 @@ pub struct BootstrapServerBinder {
     local_privkey: PrivateKey,
     duplex: Duplex,
     prev_sig: Option<Signature>,
-    received_client_message: bool,
+    received_client_message_sig: Option<Signature>,
 }
 
 impl BootstrapServerBinder {
@@ -35,7 +35,7 @@ impl BootstrapServerBinder {
             local_privkey,
             duplex,
             prev_sig: None,
-            received_client_message: false,
+            received_client_message_sig: None,
         }
     }
 
@@ -91,12 +91,18 @@ impl BootstrapServerBinder {
             self.duplex.write_all(&msg_len_bytes).await?;
         }
 
+        if let Some(received_client_message_sig) = self.received_client_message_sig {
+            self.duplex
+                .write_all(&received_client_message_sig.to_bytes())
+                .await?;
+            self.received_client_message_sig = None;
+        }
+
         // send message
         self.duplex.write_all(&msg_bytes).await?;
 
         // save prev sig
         self.prev_sig = Some(sig);
-        self.received_client_message = false;
 
         Ok(())
     }
@@ -111,7 +117,7 @@ impl BootstrapServerBinder {
         };
 
         if let Some(prev_sig) = self.prev_sig {
-            if sig != prev_sig || self.received_client_message {
+            if sig != prev_sig || self.received_client_message_sig.is_some() {
                 return Err(BootstrapError::GeneralError(
                     "The prev signature sent by the client doesn't match our.".to_string(),
                 ));
@@ -129,13 +135,19 @@ impl BootstrapServerBinder {
         let message = {
             let mut msg_bytes = vec![0u8; msg_len as usize];
             self.duplex.read_exact(&mut msg_bytes).await?;
-            self.received_client_message = true;
+            // compute signature
+            let sig = {
+                let mut signed_data = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
+                signed_data[..SIGNATURE_SIZE_BYTES]
+                    .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
+                signed_data[SIGNATURE_SIZE_BYTES..].clone_from_slice(&msg_bytes);
+                sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+            };
+            self.received_client_message_sig = Some(sig);
+            self.prev_sig = Some(sig);
             let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
             msg
         };
-
-        println!("received value: {}", self.received_client_message);
-
         Ok(message)
     }
 }

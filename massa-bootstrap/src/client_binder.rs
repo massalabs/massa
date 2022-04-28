@@ -21,6 +21,7 @@ pub struct BootstrapClientBinder {
     remote_pubkey: PublicKey,
     duplex: Duplex,
     prev_sig: Option<Signature>,
+    sended_message: Option<BootstrapMessage>,
 }
 
 impl BootstrapClientBinder {
@@ -38,6 +39,7 @@ impl BootstrapClientBinder {
             remote_pubkey,
             duplex,
             prev_sig: None,
+            sended_message: None,
         }
     }
 
@@ -85,11 +87,36 @@ impl BootstrapClientBinder {
             u32::from_be_bytes_min(&meg_len_bytes, self.max_bootstrap_message_size)?.0
         };
 
-        // read message, check signature and deserialize
+        // read message, check signature and, optionally, signature of the message we sent just before and deserialize
         let message = {
             let mut sig_msg_bytes = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
-            sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
-                .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
+            if let Some(sended_message) = &self.sended_message {
+                let old_message_sig_from_server = {
+                    let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
+                    self.duplex.read_exact(&mut sig_bytes).await?;
+                    Signature::from_bytes(&sig_bytes)?
+                };
+                // Check if old signature match
+                {
+                    let old_message = &sended_message.to_bytes_compact()?;
+                    let mut old_sig_msg_bytes =
+                        vec![0u8; SIGNATURE_SIZE_BYTES + (old_message.len())];
+                    old_sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
+                        .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
+                    old_sig_msg_bytes[SIGNATURE_SIZE_BYTES..].clone_from_slice(&old_message);
+                    let old_msg_hash = Hash::compute_from(&old_sig_msg_bytes);
+                    verify_signature(
+                        &old_msg_hash,
+                        &old_message_sig_from_server,
+                        &self.remote_pubkey,
+                    )?;
+                };
+                sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
+                    .clone_from_slice(&old_message_sig_from_server.to_bytes());
+            } else {
+                sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
+                    .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
+            }
             self.duplex
                 .read_exact(&mut sig_msg_bytes[SIGNATURE_SIZE_BYTES..])
                 .await?;
@@ -102,6 +129,7 @@ impl BootstrapClientBinder {
 
         // save prev sig
         self.prev_sig = Some(sig);
+        self.sended_message = None;
 
         Ok(message)
     }
@@ -123,7 +151,7 @@ impl BootstrapClientBinder {
 
         // send message
         self.duplex.write_all(&msg_bytes).await?;
-
+        self.sended_message = Some(msg);
         Ok(())
     }
 }
