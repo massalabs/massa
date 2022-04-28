@@ -4,8 +4,8 @@ use massa_final_state::FinalStateBootstrap;
 use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
 use massa_ledger::ExecutionLedgerSubset;
 use massa_models::{
-    Address, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
-    Version, array_from_slice, constants::ADDRESS_SIZE_BYTES,
+    array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, DeserializeCompact,
+    DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
 use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -34,6 +34,11 @@ pub enum BootstrapMessage {
         /// block graph
         graph: BootstrapableGraph,
     },
+    /// Final execution state
+    FinalState {
+        /// final execution state bootstrap
+        final_state: FinalStateBootstrap,
+    },
     /// Ask for a part of the ledger of consensus
     AskConsensusLedgerPart {
         /// Last address sent
@@ -43,11 +48,6 @@ pub enum BootstrapMessage {
     ResponseConsensusLedgerPart {
         /// Part of the consensus ledger sent
         ledger: ConsensusLedgerSubset,
-    },
-    /// Final execution state
-    FinalState {
-        /// final execution state bootstrap
-        final_state: FinalStateBootstrap,
     },
     /// Ask for a part of the ledger of execution
     AskExecutionLedgerPart {
@@ -67,9 +67,9 @@ enum MessageTypeId {
     BootstrapTime = 0u32,
     Peers = 1u32,
     ConsensusState = 2u32,
-    AskConsensusLedgerPart = 3u32,
-    ResponseConsensusLedgerPart = 4u32,
-    FinalState = 5u32,
+    FinalState = 3u32,
+    AskConsensusLedgerPart = 4u32,
+    ResponseConsensusLedgerPart = 5u32,
     AskExecutionLedgerPart = 6u32,
     ResponseExecutionLedgerPart = 7u32,
 }
@@ -152,19 +152,7 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += delta;
 
                 BootstrapMessage::ConsensusState { pos, graph }
-            },
-            MessageTypeId::AskConsensusLedgerPart => {
-                let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += ADDRESS_SIZE_BYTES;
-                
-                BootstrapMessage::AskConsensusLedgerPart { address }
-            },
-            MessageTypeId::ResponseConsensusLedgerPart => {
-                let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                BootstrapMessage::ResponseConsensusLedgerPart { ledger }
-            },
+            }
             MessageTypeId::FinalState => {
                 let (final_state, delta) =
                     FinalStateBootstrap::from_bytes_compact(&buffer[cursor..])?;
@@ -172,18 +160,30 @@ impl DeserializeCompact for BootstrapMessage {
 
                 BootstrapMessage::FinalState { final_state }
             }
+            MessageTypeId::AskConsensusLedgerPart => {
+                let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += ADDRESS_SIZE_BYTES;
+
+                BootstrapMessage::AskConsensusLedgerPart { address }
+            }
+            MessageTypeId::ResponseConsensusLedgerPart => {
+                let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+
+                BootstrapMessage::ResponseConsensusLedgerPart { ledger }
+            }
             MessageTypeId::AskExecutionLedgerPart => {
                 let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += ADDRESS_SIZE_BYTES;
-                
+
                 BootstrapMessage::AskExecutionLedgerPart { address }
-            },
+            }
             MessageTypeId::ResponseExecutionLedgerPart => {
                 let (ledger, delta) = ExecutionLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
                 BootstrapMessage::ResponseExecutionLedgerPart { ledger }
-            },
+            }
         };
         Ok((res, cursor))
     }
