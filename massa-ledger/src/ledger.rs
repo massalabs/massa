@@ -190,7 +190,7 @@ impl FinalLedger {
 }
 
 /// Part of the ledger of execution
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExecutionLedgerSubset(pub BTreeMap<Address, LedgerEntry>);
 
 impl SerializeCompact for ExecutionLedgerSubset {

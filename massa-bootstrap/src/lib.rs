@@ -22,7 +22,7 @@ use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::{FinalState, FinalStateBootstrap};
 use massa_graph::BootstrapableGraph;
 use massa_logging::massa_trace;
-use massa_models::Version;
+use massa_models::{Address, Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::{PrivateKey, PublicKey};
@@ -212,34 +212,24 @@ async fn get_state_internal(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
-    info!("Start bootstrap consensus ledger");
+    info!("Start bootstrap ledger");
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
-    let mut server = BootstrapServerBinder::new(socket, private_key);
-
-    let last_address = graph
-        .ledger
-        .0
-        .last_key_value()
-        .ok_or(BootstrapError::GeneralError(
-            "First part of the ledger sent be peer is empty".to_string(),
-        ))?
-        .0;
+    let last_address: Option<Address> = None;
+    // Fifth, ask for the first parts of the ledger
     loop {
-        info!("Asking for a new batch of addresses in the ledger");
         send_timeout(
             write_timeout,
-            server.send(messages::BootstrapMessage::AskConsensusLedgerPart {
-                address: *last_address,
+            client.send(messages::BootstrapMessage::AskConsensusLedgerPart {
+                address: last_address,
             }),
-            "bootstrap clock send timed out",
+            "bootstrap ask ledger part send timed out",
         )
         .await?;
         break;
     }
 
-    info!("End bootstrap consensus ledger");
-
+    info!("End bootstrap ledger");
     info!("Successful state bootstrap");
 
     Ok(GlobalBootstrapState {
@@ -555,7 +545,28 @@ async fn manage_bootstrap(
         server.send(messages::BootstrapMessage::FinalState { final_state }),
         "bootstrap ledger state send timed out",
     )
-    .await
+    .await?;
+
+    loop {
+        // Fifth, send ledger parts
+        // server.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
+        let start_address =
+            match tokio::time::timeout(bootstrap_settings.read_timeout.into(), server.next()).await
+            {
+                Err(_) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "bootstrap peer read timed out",
+                    )
+                    .into())
+                }
+                Ok(Err(e)) => return Err(e),
+                Ok(Ok(BootstrapMessage::AskConsensusLedgerPart { address })) => address,
+                Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
+            };
+        break;
+    }
+    Ok(())
 }
 
 /// Tooling, Send a future with a timeout, print error if timeout reached

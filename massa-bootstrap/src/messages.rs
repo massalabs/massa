@@ -42,7 +42,7 @@ pub enum BootstrapMessage {
     /// Ask for a part of the ledger of consensus
     AskConsensusLedgerPart {
         /// Last address sent
-        address: Address,
+        address: Option<Address>,
     },
     /// Part of the ledger of consensus
     ResponseConsensusLedgerPart {
@@ -100,7 +100,9 @@ impl SerializeCompact for BootstrapMessage {
                 res.extend(&final_state.to_bytes_compact()?);
             }
             BootstrapMessage::AskConsensusLedgerPart { address } => {
-                res.extend(address.to_bytes());
+                if let Some(address) = address {
+                    res.extend(address.to_bytes());
+                }
             }
             BootstrapMessage::AskExecutionLedgerPart { address } => {
                 res.extend(address.to_bytes());
@@ -161,10 +163,16 @@ impl DeserializeCompact for BootstrapMessage {
                 BootstrapMessage::FinalState { final_state }
             }
             MessageTypeId::AskConsensusLedgerPart => {
-                let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += ADDRESS_SIZE_BYTES;
+                if buffer.len() == cursor {
+                    BootstrapMessage::AskConsensusLedgerPart { address: None }
+                } else {
+                    let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                    cursor += ADDRESS_SIZE_BYTES;
 
-                BootstrapMessage::AskConsensusLedgerPart { address }
+                    BootstrapMessage::AskConsensusLedgerPart {
+                        address: Some(address),
+                    }
+                }
             }
             MessageTypeId::ResponseConsensusLedgerPart => {
                 let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(&buffer[cursor..])?;

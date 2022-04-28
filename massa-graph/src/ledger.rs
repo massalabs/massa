@@ -471,6 +471,44 @@ impl Ledger {
         })?;
         Ok(res)
     }
+
+    /// Get a part of the ledger
+    /// Used for bootstrap
+    /// Parameters:
+    /// * address: Address to start fetching
+    /// * batch_size: Size of the batch of address to return
+    ///
+    /// Returns:
+    /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
+    fn get_ledger_part(
+        &self,
+        start_address: Option<Address>,
+        subset_size: usize,
+    ) -> Result<ConsensusLedgerSubset> {
+        let mut res = ConsensusLedgerSubset::default();
+        let mut start: bool = false;
+        let mut count: usize = 0;
+        for tree in self.ledger_per_thread.iter() {
+            for element in tree.iter() {
+                let (addr, data) = element?;
+                let address = Address::from_bytes(addr.as_ref().try_into()?)?;
+                if !start && let Some(inner_start_address) = start_address && inner_start_address == address {
+                    start = true;
+                }
+                if start && count <= subset_size {
+                    let (ledger_data, _) = LedgerData::from_bytes_compact(&data)?;
+                    if let Some(val) = res.0.insert(address, ledger_data) {
+                        return Err(LedgerError::LedgerInconsistency(format!(
+                            "address {:?} twice in ledger",
+                            val
+                        )));
+                    }
+                    count += 1;
+                }
+            }
+        }
+        Ok(res)
+    }
 }
 
 /// address to ledger data map
