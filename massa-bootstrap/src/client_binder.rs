@@ -21,7 +21,7 @@ pub struct BootstrapClientBinder {
     remote_pubkey: PublicKey,
     duplex: Duplex,
     prev_sig: Option<Signature>,
-    sended_message: Option<BootstrapMessage>,
+    sent_message: Option<BootstrapMessage>,
 }
 
 impl BootstrapClientBinder {
@@ -39,7 +39,7 @@ impl BootstrapClientBinder {
             remote_pubkey,
             duplex,
             prev_sig: None,
-            sended_message: None,
+            sent_message: None,
         }
     }
 
@@ -87,10 +87,10 @@ impl BootstrapClientBinder {
             u32::from_be_bytes_min(&meg_len_bytes, self.max_bootstrap_message_size)?.0
         };
 
-        // read message, check signature and, optionally, signature of the message we sent just before and deserialize
+        // read message, check signature and optionally check signature of the message sent just before then deserialize it
         let message = {
             let mut sig_msg_bytes = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
-            if let Some(sended_message) = &self.sended_message {
+            if let Some(sent_message) = &self.sent_message {
                 let old_message_sig_from_server = {
                     let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
                     self.duplex.read_exact(&mut sig_bytes).await?;
@@ -98,7 +98,7 @@ impl BootstrapClientBinder {
                 };
                 // Check if old signature matches
                 {
-                    let old_message = &sended_message.to_bytes_compact()?;
+                    let old_message = &sent_message.to_bytes_compact()?;
                     let mut old_sig_msg_bytes =
                         vec![0u8; SIGNATURE_SIZE_BYTES + (old_message.len())];
                     old_sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
@@ -129,7 +129,7 @@ impl BootstrapClientBinder {
 
         // save prev sig
         self.prev_sig = Some(sig);
-        self.sended_message = None;
+        self.sent_message = None;
 
         Ok(message)
     }
@@ -152,7 +152,7 @@ impl BootstrapClientBinder {
 
         // send message
         self.duplex.write_all(&msg_bytes).await?;
-        self.sended_message = Some(msg);
+        self.sent_message = Some(msg);
         Ok(())
     }
 }
