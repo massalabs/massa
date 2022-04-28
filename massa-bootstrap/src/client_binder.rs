@@ -4,9 +4,10 @@ use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
 use massa_hash::Hash;
+use massa_models::SerializeCompact;
 use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
-    DeserializeMinBEInt,
+    DeserializeMinBEInt, SerializeMinBEInt,
 };
 use massa_signature::{verify_signature, PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -20,6 +21,7 @@ pub struct BootstrapClientBinder {
     remote_pubkey: PublicKey,
     duplex: Duplex,
     prev_sig: Option<Signature>,
+    sent_message: Option<BootstrapMessage>,
 }
 
 impl BootstrapClientBinder {
@@ -37,6 +39,7 @@ impl BootstrapClientBinder {
             remote_pubkey,
             duplex,
             prev_sig: None,
+            sent_message: None,
         }
     }
 
@@ -84,11 +87,36 @@ impl BootstrapClientBinder {
             u32::from_be_bytes_min(&meg_len_bytes, self.max_bootstrap_message_size)?.0
         };
 
-        // read message, check signature and deserialize
+        // read message, check signature and optionally check signature of the message sent just before then deserialize it
         let message = {
             let mut sig_msg_bytes = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
-            sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
-                .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
+            if let Some(sent_message) = &self.sent_message {
+                let old_message_sig_from_server = {
+                    let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
+                    self.duplex.read_exact(&mut sig_bytes).await?;
+                    Signature::from_bytes(&sig_bytes)?
+                };
+                // Check if old signature matches
+                {
+                    let old_message = &sent_message.to_bytes_compact()?;
+                    let mut old_sig_msg_bytes =
+                        vec![0u8; SIGNATURE_SIZE_BYTES + (old_message.len())];
+                    old_sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
+                        .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
+                    old_sig_msg_bytes[SIGNATURE_SIZE_BYTES..].clone_from_slice(old_message);
+                    let old_msg_hash = Hash::compute_from(&old_sig_msg_bytes);
+                    verify_signature(
+                        &old_msg_hash,
+                        &old_message_sig_from_server,
+                        &self.remote_pubkey,
+                    )?;
+                };
+                sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
+                    .clone_from_slice(&old_message_sig_from_server.to_bytes());
+            } else {
+                sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
+                    .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
+            }
             self.duplex
                 .read_exact(&mut sig_msg_bytes[SIGNATURE_SIZE_BYTES..])
                 .await?;
@@ -101,7 +129,30 @@ impl BootstrapClientBinder {
 
         // save prev sig
         self.prev_sig = Some(sig);
+        self.sent_message = None;
 
         Ok(message)
+    }
+
+    #[allow(dead_code)]
+    /// Send a message to the bootstrap server
+    pub async fn send(&mut self, msg: BootstrapMessage) -> Result<(), BootstrapError> {
+        let msg_bytes = msg.to_bytes_compact()?;
+        let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
+            BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
+        })?;
+        if let Some(prev_sig) = self.prev_sig {
+            self.duplex.write_all(&prev_sig.to_bytes()).await?;
+        }
+        // send message length
+        {
+            let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
+            self.duplex.write_all(&msg_len_bytes).await?;
+        }
+
+        // send message
+        self.duplex.write_all(&msg_bytes).await?;
+        self.sent_message = Some(msg);
+        Ok(())
     }
 }

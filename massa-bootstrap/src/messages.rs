@@ -14,7 +14,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
 
 /// Messages used during bootstrap
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BootstrapMessage {
     /// Sync clocks
     BootstrapTime {

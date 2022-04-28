@@ -42,3 +42,4 @@ lazy_static = "1.4.0"
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 instrument = ["tokio/tracing", "massa_consensus_exports/instrument", "massa_graph/instrument", "massa_models/instrument", "massa_network_exports/instrument", "massa_proof_of_stake_exports/instrument", "massa_time/instrument"]
+testing = ["massa_final_state/testing", "massa_ledger/testing"]
