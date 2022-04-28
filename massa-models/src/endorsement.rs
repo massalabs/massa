@@ -233,15 +233,6 @@ impl DeserializeCompactV2 for Endorsement {
     }
 }
 
-#[bench]
-fn test(b: &mut test::Bencher) {
-    b.iter(|| {
-        let n = test::black_box(1000);
-    
-        (0..n).fold(0, |a, b| a ^ b)
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use crate::signed::Signed;
@@ -250,28 +241,29 @@ mod tests {
     use massa_signature::{derive_public_key, generate_random_private_key};
     use serial_test::serial;
 
+    const TEST_CTX: crate::SerializationContext = crate::SerializationContext {
+        max_block_size: 1024 * 1024,
+        max_operations_per_block: 1024,
+        thread_count: 3,
+        max_advertise_length: 128,
+        max_message_size: 3 * 1024 * 1024,
+        max_bootstrap_blocks: 100,
+        max_bootstrap_cliques: 100,
+        max_bootstrap_deps: 100,
+        max_bootstrap_children: 100,
+        max_bootstrap_pos_cycles: 1000,
+        max_bootstrap_pos_entries: 1000,
+        max_ask_blocks_per_message: 10,
+        max_operations_per_message: 1024,
+        max_endorsements_per_message: 1024,
+        max_bootstrap_message_size: 100000000,
+        endorsement_count: 8,
+    };
+
     #[test]
     #[serial]
     fn test_endorsement_serialization() {
-        let ctx = crate::SerializationContext {
-            max_block_size: 1024 * 1024,
-            max_operations_per_block: 1024,
-            thread_count: 3,
-            max_advertise_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_bootstrap_pos_cycles: 1000,
-            max_bootstrap_pos_entries: 1000,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_endorsements_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-            endorsement_count: 8,
-        };
-        crate::init_serialization_context(ctx);
+        crate::init_serialization_context(TEST_CTX);
 
         let sender_priv = generate_random_private_key();
         let sender_public_key = derive_public_key(&sender_priv);
@@ -294,5 +286,37 @@ mod tests {
             format!("{:?}", res_endorsement),
             format!("{:?}", endorsement)
         );
+    }
+
+    #[bench]
+    fn deserialization(b: &mut test::Bencher) {
+        crate::init_serialization_context(TEST_CTX);
+        let content = Endorsement {
+            sender_public_key: derive_public_key(&generate_random_private_key()),
+            slot: Slot::new(10, 1),
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
+        };
+        let ser_content = content.to_bytes_compact().unwrap();
+
+        b.iter(|| {
+            Endorsement::from_bytes_compact(&ser_content).unwrap();
+        })
+    }
+
+    #[bench]
+    fn deserialization_v2(b: &mut test::Bencher) {
+        crate::init_serialization_context(TEST_CTX);
+        let content = Endorsement {
+            sender_public_key: derive_public_key(&generate_random_private_key()),
+            slot: Slot::new(10, 1),
+            index: 0,
+            endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
+        };
+        let ser_content = content.to_bytes_compact().unwrap();
+
+        b.iter(|| {
+            Endorsement::from_bytes_compact_v2(&ser_content).unwrap();
+        })
     }
 }
