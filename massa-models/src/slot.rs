@@ -177,7 +177,7 @@ fn take_thread_number(s: &[u8]) -> IResult<&[u8], u8> {
 impl DeserializeCompactV2 for Slot {
     fn from_bytes_compact_v2<'a>(buffer: &'a [u8]) -> IResult<&[u8], Self> {
         tuple((
-            context("period", |buffer: &'a[u8]| {
+            context("period", |buffer: &'a [u8]| {
                 u64::from_varint_bytes_v2(buffer, None, None)
             }),
             context("thread", take_thread_number),
