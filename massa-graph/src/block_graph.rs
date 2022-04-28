@@ -629,6 +629,24 @@ impl BlockGraph {
         })
     }
 
+    /// Get a part of the ledger
+    /// Used for bootstrap
+    /// Parameters:
+    /// * address: Address to start fetching
+    /// * batch_size: Size of the batch of address to return
+    ///
+    /// Returns:
+    /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
+    pub fn get_ledger_part(
+        &self,
+        start_address: Option<Address>,
+        batch_size: usize,
+    ) -> Result<ConsensusLedgerSubset> {
+        self.ledger
+            .get_ledger_part(start_address, batch_size)
+            .map_err(|e| e.into())
+    }
+
     /// Try to apply an operation in the context of the block
     ///
     /// # Arguments

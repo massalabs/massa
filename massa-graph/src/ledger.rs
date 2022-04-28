@@ -1,6 +1,5 @@
 use massa_models::Operation;
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-use massa_ledger::BootstrapableLedger;
 use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
 use massa_models::prehash::Set;
 use massa_models::{
@@ -480,7 +479,7 @@ impl Ledger {
     ///
     /// Returns:
     /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
-    fn get_ledger_part(
+    pub fn get_ledger_part(
         &self,
         start_address: Option<Address>,
         subset_size: usize,
@@ -676,27 +675,6 @@ impl DeserializeCompact for ConsensusLedgerSubset {
         }
 
         Ok((ledger_subset, cursor))
-    }
-}
-
-impl BootstrapableLedger<ConsensusLedgerSubset> for Ledger {
-    fn get_ledger_part(
-        &self,
-        start_address: Address,
-        address_batch_size: usize,
-    ) -> ConsensusLedgerSubset {
-        // Need to dereference because Prehashed trait is not implemented for &Address
-        match self.read_whole() {
-            Ok(ledger) => ConsensusLedgerSubset(
-                ledger
-                    .0
-                    .range(start_address..)
-                    .take(address_batch_size)
-                    .map(|(k, v)| (*k, v.clone()))
-                    .collect(),
-            ),
-            Err(_) => ConsensusLedgerSubset(BTreeMap::new()),
-        }
     }
 }
 

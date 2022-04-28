@@ -69,10 +69,3 @@ impl DeserializeCompact for FinalLedgerBootstrapState {
         Ok((FinalLedgerBootstrapState { sorted_ledger }, cursor))
     }
 }
-
-/// TODO: Doc
-pub trait BootstrapableLedger<T> {
-    /// TODO: DOC
-    /// It's better is the vec here is sorted but not mandatory.
-    fn get_ledger_part(&self, start_address: Address, address_batch_size: usize) -> T;
-}

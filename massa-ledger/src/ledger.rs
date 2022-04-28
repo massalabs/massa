@@ -2,7 +2,6 @@
 
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
-use crate::bootstrap::BootstrapableLedger;
 use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
@@ -236,20 +235,32 @@ impl DeserializeCompact for ExecutionLedgerSubset {
     }
 }
 
-impl BootstrapableLedger<ExecutionLedgerSubset> for FinalLedger {
-    fn get_ledger_part(
+impl FinalLedger {
+    /// Get a part of the ledger
+    /// Used for bootstrap
+    /// Parameters:
+    /// * address: Address to start fetching
+    /// * batch_size: Size of the batch of address to return
+    ///
+    /// Returns:
+    /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
+    pub fn get_ledger_part(
         &self,
-        start_address: Address,
+        start_address: Option<Address>,
         address_batch_size: usize,
-    ) -> ExecutionLedgerSubset {
+    ) -> Result<ExecutionLedgerSubset, LedgerError> {
         // Need to dereference because Prehashed trait is not implemented for &Address
         // TODO: Try to remove a clone
-        ExecutionLedgerSubset(
-            self.sorted_ledger
-                .range(start_address..)
+        let ledger_range = if let Some(start_address) = start_address {
+            self.sorted_ledger.range(start_address..)
+        } else {
+            self.sorted_ledger.range(..)
+        };
+        Ok(ExecutionLedgerSubset(
+            ledger_range
                 .take(address_batch_size)
                 .map(|(k, v)| (*k, v.clone()))
                 .collect(),
-        )
+        ))
     }
 }

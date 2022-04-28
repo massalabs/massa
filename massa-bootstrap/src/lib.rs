@@ -22,6 +22,7 @@ use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::{FinalState, FinalStateBootstrap};
 use massa_graph::BootstrapableGraph;
 use massa_logging::massa_trace;
+use massa_models::constants::default::BOOTSTRAP_LEDGER_ENTRY_SIZE;
 use massa_models::{Address, Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -226,6 +227,19 @@ async fn get_state_internal(
             "bootstrap ask ledger part send timed out",
         )
         .await?;
+        let _ledger_part = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await
+        {
+            Err(_) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "final state bootstrap read timed out",
+                )
+                .into())
+            }
+            Ok(Err(e)) => return Err(e),
+            Ok(Ok(BootstrapMessage::ResponseConsensusLedgerPart { ledger })) => ledger,
+            Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
+        };
         break;
     }
 
@@ -462,8 +476,9 @@ impl BootstrapServer {
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
                     let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
+                    let command_sender = self.consensus_command_sender.clone();
                     bootstrap_sessions.push(async move {
-                        match manage_bootstrap(self.bootstrap_settings, dplx, data_pos, data_graph, data_peers, data_execution, private_key, compensation_millis, version).await {
+                        match manage_bootstrap(self.bootstrap_settings, command_sender, dplx, data_pos, data_graph, data_peers, data_execution, private_key, compensation_millis, version).await {
                             Ok(_) => info!("bootstrapped peer {}", remote_addr),
                             Err(err) => debug!("bootstrap serving error for peer {}: {}", remote_addr, err),
                         }
@@ -485,6 +500,7 @@ impl BootstrapServer {
 #[allow(clippy::too_many_arguments)]
 async fn manage_bootstrap(
     bootstrap_settings: &'static BootstrapSettings,
+    consensus_command_sender: ConsensusCommandSender,
     duplex: Duplex,
     data_pos: ExportProofOfStake,
     data_graph: BootstrapableGraph,
@@ -564,6 +580,17 @@ async fn manage_bootstrap(
                 Ok(Ok(BootstrapMessage::AskConsensusLedgerPart { address })) => address,
                 Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
             };
+        let ledger_part = consensus_command_sender
+            .get_ledger_part(start_address, BOOTSTRAP_LEDGER_ENTRY_SIZE as usize)
+            .await?;
+        send_timeout(
+            write_timeout,
+            server.send(messages::BootstrapMessage::ResponseConsensusLedgerPart {
+                ledger: ledger_part,
+            }),
+            "bootstrap ledger part send timed out",
+        )
+        .await?;
         break;
     }
     Ok(())
