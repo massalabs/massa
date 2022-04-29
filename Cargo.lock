@@ -1550,7 +1550,6 @@ dependencies = [
  "displaydoc",
  "massa_execution_exports",
  "massa_hash",
- "massa_ledger",
  "massa_logging",
  "massa_models",
  "massa_proof_of_stake_exports",
