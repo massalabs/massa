@@ -515,8 +515,8 @@ impl NetworkWorker {
     async fn manage_network_command(&mut self, cmd: NetworkCommand) -> Result<(), NetworkError> {
         use crate::network_cmd_impl::*;
         match cmd {
-            NetworkCommand::BanIp(ips) => on_ban_ip_cmd(self, ips).await?,
-            NetworkCommand::Ban(node) => on_ban_cmd(self, node).await?,
+            NetworkCommand::NodeBanByIps(ips) => on_node_ban_by_ips_cmd(self, ips).await?,
+            NetworkCommand::NodeBanByIds(ids) => on_node_ban_by_ids_cmd(self, ids).await?,
             NetworkCommand::SendBlockHeader { node, block_id } => {
                 on_send_block_header_cmd(self, node, block_id).await?
             }
@@ -546,7 +546,8 @@ impl NetworkWorker {
             NetworkCommand::NodeSignMessage { msg, response_tx } => {
                 on_node_sign_message_cmd(self, msg, response_tx).await?
             }
-            NetworkCommand::Unban(ip) => on_unban_cmd(self, ip).await?,
+            NetworkCommand::NodeUnbanByIds(ids) => on_node_unban_by_ids_cmd(self, ids).await?,
+            NetworkCommand::NodeUnbanByIps(ips) => on_node_unban_by_ips_cmd(self, ips).await?,
             NetworkCommand::GetStats { response_tx } => on_get_stats_cmd(self, response_tx).await,
             NetworkCommand::Whitelist(ips) => on_whitelist_cmd(self, ips).await?,
             NetworkCommand::RemoveFromWhitelist(ips) => {

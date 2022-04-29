@@ -5,6 +5,7 @@ use anyhow::{anyhow, bail, Result};
 use console::style;
 use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
+use massa_models::node::NodeId;
 use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
@@ -37,17 +38,31 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "unban given IP addresses"
+        props(args = "IpAddr1 IpAddr2 ..."),
+        message = "unban given IP address(es)"
     )]
-    unban,
+    node_unban_by_ip,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "ban given IP addresses"
+        props(args = "Id1 Id2 ..."),
+        message = "unban given id(s)"
     )]
-    ban,
+    node_unban_by_id,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "IpAddr1 IpAddr2 ..."),
+        message = "ban given IP address(es)"
+    )]
+    node_ban_by_ip,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "Id1 Id2 ..."),
+        message = "ban given id(s)"
+    )]
+    node_ban_by_id,
 
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
@@ -365,9 +380,9 @@ impl Command {
                 Ok(Box::new(()))
             }
 
-            Command::unban => {
+            Command::node_unban_by_ip => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.unban(ips).await {
+                match client.private.node_unban_by_ip(ips).await {
                     Ok(()) => {
                         if !json {
                             println!("Request of unbanning successfully sent!")
@@ -378,9 +393,35 @@ impl Command {
                 Ok(Box::new(()))
             }
 
-            Command::ban => {
+            Command::node_unban_by_id => {
+                let ids = parse_vec::<NodeId>(parameters)?;
+                match client.private.node_unban_by_id(ids).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of unbanning successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                };
+                Ok(Box::new(()))
+            }
+
+            Command::node_ban_by_ip => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.ban(ips).await {
+                match client.private.node_ban_by_ip(ips).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of banning successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                }
+                Ok(Box::new(()))
+            }
+
+            Command::node_ban_by_id => {
+                let ids = parse_vec::<NodeId>(parameters)?;
+                match client.private.node_ban_by_id(ids).await {
                     Ok(()) => {
                         if !json {
                             println!("Request of banning successfully sent!")

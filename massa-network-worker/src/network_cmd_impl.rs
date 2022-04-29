@@ -10,10 +10,10 @@
 //! async fn manage_network_command(&mut self, cmd: NetworkCommand) -> Result<(), NetworkError> {
 //!     use crate::network_cmd_impl::*;
 //!     match cmd {
-//!         NetworkCommand::BanIp(ips) => on_ban_ip_cmd(self, ips).await?,
-//!         NetworkCommand::Ban(node) => on_ban_cmd(self, node).await?,
+//!         NetworkCommand::NodeBanByIps(ips) => on_node_ban_by_ips_cmd(self, ips).await?,
+//!         NetworkCommand::NodeBanByIds(ids) => on_node_ban_by_ids_cmd(self, ids).await?,
 //!         NetworkCommand::SendBlockHeader { node, header } => on_send_block_header_cmd(self, node, header).await?,
-//!         NetworkCommand::AskForBlocks { list } => on_ask_bfor_block_cmd(self, list).await,
+//!         NetworkCommand::AskForBlocks { list } => on_ask_for_block_cmd(self, list).await,
 //!         NetworkCommand::SendBlock { node, block } => on_send_block_cmd(self, node, block).await?,
 //!         NetworkCommand::GetPeers(response_tx) => on_get_peers_cmd(self, response_tx).await,
 //!         NetworkCommand::GetBootstrapPeers(response_tx) => on_get_bootstrap_peers_cmd(self, response_tx).await,
@@ -37,7 +37,7 @@ use std::{
     net::IpAddr,
 };
 use tokio::sync::oneshot;
-use tracing::{info, warn};
+use tracing::warn;
 
 /// Remove the `ids` from the `worker`
 /// - clean `worker.running_handshakes`
@@ -64,12 +64,12 @@ async fn ban_connection_ids(worker: &mut NetworkWorker, ids: HashSet<ConnectionI
 }
 
 /// Ban the connections corresponding to `ips` from the `worker`
-/// See also `[ban_connection_ids]`
-async fn ban_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+/// See also [ban_connection_ids]
+async fn node_ban_by_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
     for ip in ips.iter() {
         worker.peer_info_db.peer_banned(ip)?;
     }
-    let ids = worker
+    let connexion_ids = worker
         .active_connections
         .iter()
         .filter_map(|(conn_id, (ip, _))| {
@@ -81,30 +81,22 @@ async fn ban_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), Net
         })
         .copied()
         .collect::<HashSet<_>>();
-    ban_connection_ids(worker, ids).await;
+    ban_connection_ids(worker, connexion_ids).await;
     Ok(())
 }
 
-/// Ban the `node` corresponding to the `NodeId` from the `worker`
-/// See also `[ban_connection_ids]`
-async fn ban_node(worker: &mut NetworkWorker, node: NodeId) -> Result<(), NetworkError> {
+/// Ban the connections corresponding to node `ids` from the `worker`
+/// See also [ban_connection_ids]
+async fn node_ban_by_ids(worker: &mut NetworkWorker, ids: Vec<NodeId>) -> Result<(), NetworkError> {
     // get all connection IDs to ban
-    let mut ids: HashSet<ConnectionId> = HashSet::new();
+    let connection_ids_to_ban = ids
+        .iter()
+        .map(|id| get_connection_ids(worker, id))
+        .filter(|res| res.is_ok())
+        .flat_map(|res| res.unwrap())
+        .collect::<HashSet<_>>();
 
-    // Note: if we can't find the node, there is no need to resend the close event,
-    // since protocol will have already removed the node from it's list of active ones.
-    if let Some((orig_conn_id, _)) = worker.active_nodes.get(&node) {
-        if let Some((orig_ip, _)) = worker.active_connections.get(orig_conn_id) {
-            worker.peer_info_db.peer_banned(orig_ip)?;
-            for (target_conn_id, (target_ip, _)) in worker.active_connections.iter() {
-                if target_ip == orig_ip {
-                    ids.insert(*target_conn_id);
-                }
-            }
-        }
-    }
-    ban_connection_ids(worker, ids).await;
-    info!("Banned node (node_id: {})", node);
+    ban_connection_ids(worker, connection_ids_to_ban).await;
     Ok(())
 }
 
@@ -155,23 +147,26 @@ async fn get_peers(worker: &mut NetworkWorker, response_tx: oneshot::Sender<Peer
     }
 }
 
-pub async fn on_ban_ip_cmd(
+pub async fn on_node_ban_by_ips_cmd(
     worker: &mut NetworkWorker,
     ips: Vec<IpAddr>,
 ) -> Result<(), NetworkError> {
     massa_trace!(
-        "network_worker.manage_network_command receive NetworkCommand::BanIp",
+        "network_worker.manage_network_command receive NetworkCommand::NodeBanByIps",
         { "ips": ips }
     );
-    ban_ips(worker, ips).await
+    node_ban_by_ips(worker, ips).await
 }
 
-pub async fn on_ban_cmd(worker: &mut NetworkWorker, node: NodeId) -> Result<(), NetworkError> {
+pub async fn on_node_ban_by_ids_cmd(
+    worker: &mut NetworkWorker,
+    ids: Vec<NodeId>,
+) -> Result<(), NetworkError> {
     massa_trace!(
-        "network_worker.manage_network_command receive NetworkCommand::Ban",
-        { "node": node }
+        "network_worker.manage_network_command receive NetworkCommand::NodeBanByIds",
+        { "ids": ids }
     );
-    ban_node(worker, node).await
+    node_ban_by_ids(worker, ids).await
 }
 
 pub async fn on_send_block_header_cmd(
@@ -307,7 +302,18 @@ pub async fn on_node_sign_message_cmd(
     Ok(())
 }
 
-pub async fn on_unban_cmd(
+pub async fn on_node_unban_by_ids_cmd(
+    worker: &mut NetworkWorker,
+    ids: Vec<NodeId>,
+) -> Result<(), NetworkError> {
+    let ips_to_unban = ids
+        .iter()
+        .flat_map(|id| get_ip(worker, id))
+        .collect::<Vec<_>>();
+    worker.peer_info_db.unban(ips_to_unban)
+}
+
+pub async fn on_node_unban_by_ips_cmd(
     worker: &mut NetworkWorker,
     ips: Vec<IpAddr>,
 ) -> Result<(), NetworkError> {
@@ -425,4 +431,36 @@ pub async fn on_ask_for_operations_cmd(
             NodeCommand::AskForOperations(wishlist),
         )
         .await;
+}
+
+fn get_connection_ids(
+    worker: &mut NetworkWorker,
+    node: &NodeId,
+) -> Result<HashSet<ConnectionId>, NetworkError> {
+    let mut ids: HashSet<ConnectionId> = HashSet::new();
+    if let Some((orig_conn_id, _)) = worker.active_nodes.get(node) {
+        if let Some((orig_ip, _)) = worker.active_connections.get(orig_conn_id) {
+            worker.peer_info_db.peer_banned(orig_ip)?;
+            for (target_conn_id, (target_ip, _)) in worker.active_connections.iter() {
+                if target_ip == orig_ip {
+                    ids.insert(*target_conn_id);
+                }
+            }
+        }
+    }
+
+    Ok(ids)
+}
+
+fn get_ip(worker: &mut NetworkWorker, node: &NodeId) -> Option<IpAddr> {
+    if let Some((orig_conn_id, _)) = worker.active_nodes.get(node) {
+        if let Some((orig_ip, _)) = worker.active_connections.get(orig_conn_id) {
+            for (_, (target_ip, _)) in worker.active_connections.iter() {
+                if target_ip == orig_ip {
+                    return Some(*target_ip);
+                }
+            }
+        }
+    }
+    None
 }

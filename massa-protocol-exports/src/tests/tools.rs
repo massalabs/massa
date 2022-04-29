@@ -335,19 +335,7 @@ pub async fn asked_list(
         .expect("Hash not asked for before timer.")
 }
 
-/// assert a node has been banned
-pub async fn assert_banned_node(node_id: NodeId, network_controller: &mut MockNetworkController) {
-    let banned_node = network_controller
-        .wait_command(1000.into(), |cmd| match cmd {
-            NetworkCommand::Ban(node) => Some(node),
-            _ => None,
-        })
-        .await
-        .expect("Node not banned before timeout.");
-    assert_eq!(banned_node, node_id);
-}
-
-/// assert nodes have been banned
+/// assert a list of node(s) has been banned
 pub async fn assert_banned_nodes(
     mut nodes: Vec<NodeId>,
     network_controller: &mut MockNetworkController,
@@ -358,12 +346,12 @@ pub async fn assert_banned_nodes(
         tokio::select! {
             msg = network_controller
                    .wait_command(1000.into(), |cmd| match cmd {
-                       NetworkCommand::Ban(node) => Some(node),
+                       NetworkCommand::NodeBanByIds(node) => Some(node),
                        _ => None,
                    })
              =>  {
-                 let banned_node = msg.expect("Nodes not banned before timeout.");
-                 nodes.drain_filter(|id| *id == banned_node);
+                 let banned_nodes = msg.expect("Nodes not banned before timeout.");
+                 nodes.drain_filter(|id| banned_nodes.contains(id));
                  if nodes.is_empty() {
                      break;
                  }
