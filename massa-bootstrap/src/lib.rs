@@ -444,6 +444,7 @@ impl BootstrapServer {
                     let version = self.version;
                     let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     bootstrap_sessions.push(async move {
+                        sleep(std::time::Duration::new(5, 0)).await;
                         match manage_bootstrap(self.bootstrap_settings, dplx, data_pos, data_graph, data_peers, data_execution, private_key, compensation_millis, version).await {
                             Ok(_) => info!("bootstrapped peer {}", remote_addr),
                             Err(err) => debug!("bootstrap serving error for peer {}: {}", remote_addr, err),
@@ -451,6 +452,15 @@ impl BootstrapServer {
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
+                    let mut server = BootstrapServerBinder::new(dplx, self.private_key);
+                    send_state_timeout(
+                        std::time::Duration::new(1, 0),
+                        server.send(BootstrapMessage::BootstrapError {
+                            error: "no available slots to bootstrap".to_string()
+                        }),
+                        "bootstrap error no available slots send timed out",
+                    )
+                    .await?;
                     debug!("did not bootstrap {}: no available slots", remote_addr);
                 }
             }
