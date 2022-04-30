@@ -38,6 +38,8 @@ pub enum BootstrapMessage {
         /// final execution state bootstrap
         final_state: FinalStateBootstrap,
     },
+    /// Bootstrap error
+    BootstrapError { error: String },
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -47,6 +49,7 @@ enum MessageTypeId {
     Peers = 1u32,
     ConsensusState = 2u32,
     FinalState = 3u32,
+    BootstrapError = 4u32,
 }
 
 impl SerializeCompact for BootstrapMessage {
@@ -73,6 +76,11 @@ impl SerializeCompact for BootstrapMessage {
             BootstrapMessage::FinalState { final_state } => {
                 res.extend(u32::from(MessageTypeId::FinalState).to_varint_bytes());
                 res.extend(&final_state.to_bytes_compact()?);
+            }
+            BootstrapMessage::BootstrapError { error } => {
+                res.extend(u32::from(MessageTypeId::BootstrapError).to_varint_bytes());
+                res.extend(u64::to_varint_bytes(error.len() as u64));
+                res.extend(error.as_bytes())
             }
         }
         Ok(res)
@@ -122,6 +130,17 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += delta;
 
                 BootstrapMessage::FinalState { final_state }
+            }
+            MessageTypeId::BootstrapError => {
+                let (error_len, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+
+                let error = String::from_utf8_lossy(&buffer[cursor..cursor + error_len as usize]);
+                cursor += error_len as usize;
+
+                BootstrapMessage::BootstrapError {
+                    error: error.into_owned(),
+                }
             }
         };
         Ok((res, cursor))

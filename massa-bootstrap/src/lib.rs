@@ -88,7 +88,7 @@ async fn get_state_internal(
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    match tokio::time::timeout(cfg.write_timeout.into(), client.handshake()).await {
+    match tokio::time::timeout(cfg.write_timeout.into(), client.handshake(our_version)).await {
         Err(_) => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -452,7 +452,7 @@ impl BootstrapServer {
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
                     debug!("did not bootstrap {}: no available slots", remote_addr);
-                },
+                }
             }
         }
 
@@ -481,7 +481,7 @@ async fn manage_bootstrap(
     // Handshake
     send_state_timeout(
         bootstrap_settings.read_timeout.into(),
-        server.handshake(),
+        server.handshake(version),
         "bootstrap handshake send timed out",
     )
     .await?;

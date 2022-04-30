@@ -3,12 +3,12 @@
 use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
-use massa_hash::Hash;
-use massa_models::SerializeCompact;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
     DeserializeMinBEInt, SerializeMinBEInt,
 };
+use massa_models::{SerializeCompact, Version};
 use massa_signature::{verify_signature, PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use tokio::io::AsyncReadExt;
@@ -20,8 +20,29 @@ pub struct BootstrapClientBinder {
     size_field_len: usize,
     remote_pubkey: PublicKey,
     duplex: Duplex,
-    prev_sig: Option<Signature>,
-    sent_message: Option<BootstrapMessage>,
+    prev_message: Option<PrevData>,
+}
+
+#[derive(Copy, Clone)]
+enum PrevData {
+    Signature(Signature),
+    Hash(Hash),
+}
+
+impl PrevData {
+    const fn len(&self) -> usize {
+        match self {
+            PrevData::Hash(_) => HASH_SIZE_BYTES,
+            PrevData::Signature(_) => SIGNATURE_SIZE_BYTES,
+        }
+    }
+
+    fn to_bytes(self) -> Vec<u8> {
+        match self {
+            PrevData::Hash(hash) => hash.to_bytes().to_vec(),
+            PrevData::Signature(signature) => signature.to_bytes().to_vec(),
+        }
+    }
 }
 
 impl BootstrapClientBinder {
@@ -38,35 +59,27 @@ impl BootstrapClientBinder {
             size_field_len,
             remote_pubkey,
             duplex,
-            prev_sig: None,
-            sent_message: None,
+            prev_message: None,
         }
     }
 
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
-    pub async fn handshake(&mut self) -> Result<(), BootstrapError> {
+    pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // send randomness and their hash
         let rand_hash = {
-            let mut random_bytes = [0u8; BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
-            StdRng::from_entropy().fill_bytes(&mut random_bytes);
-            self.duplex.write_all(&random_bytes).await?;
-            let rand_hash = Hash::compute_from(&random_bytes);
+            let version = version.to_bytes_compact()?;
+            let mut version_random_bytes =
+                vec![0u8; (version.len() as usize) + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
+            version_random_bytes[..version.len()].clone_from_slice(&version);
+            StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version.len()..]);
+            self.duplex.write_all(&version_random_bytes).await?;
+            let rand_hash = Hash::compute_from(&version_random_bytes);
             self.duplex.write_all(&rand_hash.to_bytes()).await?;
             rand_hash
         };
 
-        // read and check response signature
-        let sig = {
-            let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
-            self.duplex.read_exact(&mut sig_bytes).await?;
-            let sig = Signature::from_bytes(&sig_bytes)?;
-            verify_signature(&rand_hash, &sig, &self.remote_pubkey)?;
-            sig
-        };
-
-        // save prev sig
-        self.prev_sig = Some(sig);
+        self.prev_message = Some(PrevData::Hash(rand_hash));
 
         Ok(())
     }
@@ -89,47 +102,21 @@ impl BootstrapClientBinder {
 
         // read message, check signature and optionally check signature of the message sent just before then deserialize it
         let message = {
-            let mut sig_msg_bytes = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
-            if let Some(sent_message) = &self.sent_message {
-                let old_message_sig_from_server = {
-                    let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
-                    self.duplex.read_exact(&mut sig_bytes).await?;
-                    Signature::from_bytes(&sig_bytes)?
-                };
-                // Check if old signature matches
-                {
-                    let old_message = &sent_message.to_bytes_compact()?;
-                    let mut old_sig_msg_bytes =
-                        vec![0u8; SIGNATURE_SIZE_BYTES + (old_message.len())];
-                    old_sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
-                        .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
-                    old_sig_msg_bytes[SIGNATURE_SIZE_BYTES..].clone_from_slice(old_message);
-                    let old_msg_hash = Hash::compute_from(&old_sig_msg_bytes);
-                    verify_signature(
-                        &old_msg_hash,
-                        &old_message_sig_from_server,
-                        &self.remote_pubkey,
-                    )?;
-                };
-                sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
-                    .clone_from_slice(&old_message_sig_from_server.to_bytes());
-            } else {
-                sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
-                    .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
-            }
+            let prev_message = self.prev_message.unwrap();
+            let mut sig_msg_bytes = vec![0u8; prev_message.len() + (msg_len as usize)];
+            sig_msg_bytes[..prev_message.len()].copy_from_slice(&prev_message.to_bytes());
             self.duplex
-                .read_exact(&mut sig_msg_bytes[SIGNATURE_SIZE_BYTES..])
+                .read_exact(&mut sig_msg_bytes[prev_message.len()..])
                 .await?;
             let msg_hash = Hash::compute_from(&sig_msg_bytes);
             verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
             let (msg, _len) =
-                BootstrapMessage::from_bytes_compact(&sig_msg_bytes[SIGNATURE_SIZE_BYTES..])?;
+                BootstrapMessage::from_bytes_compact(&sig_msg_bytes[prev_message.len()..])?;
             msg
         };
 
         // save prev sig
-        self.prev_sig = Some(sig);
-        self.sent_message = None;
+        self.prev_message = Some(PrevData::Signature(sig));
 
         Ok(message)
     }
@@ -141,8 +128,15 @@ impl BootstrapClientBinder {
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
-        if let Some(prev_sig) = self.prev_sig {
-            self.duplex.write_all(&prev_sig.to_bytes()).await?;
+        if let Some(prev_message) = self.prev_message {
+            match prev_message {
+                PrevData::Hash(hash) => self.duplex.write_all(&hash.to_bytes()).await?,
+                PrevData::Signature(signature) => {
+                    self.duplex
+                        .write_all(&Hash::compute_from(&signature.to_bytes()).to_bytes())
+                        .await?
+                }
+            }
         }
         // send message length
         {
@@ -152,7 +146,7 @@ impl BootstrapClientBinder {
 
         // send message
         self.duplex.write_all(&msg_bytes).await?;
-        self.sent_message = Some(msg);
+        self.prev_message = Some(PrevData::Hash(Hash::compute_from(&msg.to_bytes_compact()?)));
         Ok(())
     }
 }
