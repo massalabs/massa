@@ -10,38 +10,16 @@ use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
     DeserializeMinBEInt, SerializeCompact, SerializeMinBEInt,
 };
-use massa_signature::{sign, PrivateKey, Signature, SIGNATURE_SIZE_BYTES};
+use massa_signature::{sign, PrivateKey};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-#[derive(Copy, Clone)]
-enum PrevData {
-    Signature(Signature),
-    Hash(Hash),
-}
-
-impl PrevData {
-    const fn len(&self) -> usize {
-        match self {
-            PrevData::Hash(_) => HASH_SIZE_BYTES,
-            PrevData::Signature(_) => SIGNATURE_SIZE_BYTES,
-        }
-    }
-
-    fn to_bytes(self) -> Vec<u8> {
-        match self {
-            PrevData::Hash(hash) => hash.to_bytes().to_vec(),
-            PrevData::Signature(signature) => signature.to_bytes().to_vec(),
-        }
-    }
-}
 
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     local_privkey: PrivateKey,
     duplex: Duplex,
-    prev_data: Option<PrevData>,
+    prev_data: Option<Hash>,
 }
 
 impl BootstrapServerBinder {
@@ -85,7 +63,7 @@ impl BootstrapServerBinder {
         };
 
         // save prev sig
-        self.prev_data = Some(PrevData::Hash(rand_hash));
+        self.prev_data = Some(rand_hash);
 
         Ok(())
     }
@@ -101,9 +79,9 @@ impl BootstrapServerBinder {
         // compute signature
         let sig = {
             let prev_data = self.prev_data.unwrap();
-            let mut signed_data = vec![0u8; prev_data.len() + (msg_len as usize)];
-            signed_data[..prev_data.len()].clone_from_slice(&prev_data.to_bytes());
-            signed_data[prev_data.len()..].clone_from_slice(&msg_bytes);
+            let mut signed_data = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
+            signed_data[..HASH_SIZE_BYTES].clone_from_slice(&prev_data.to_bytes());
+            signed_data[HASH_SIZE_BYTES..].clone_from_slice(&msg_bytes);
             sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
         };
 
@@ -120,7 +98,7 @@ impl BootstrapServerBinder {
         self.duplex.write_all(&msg_bytes).await?;
 
         // save prev sig
-        self.prev_data = Some(PrevData::Signature(sig));
+        self.prev_data = Some(Hash::compute_from(&sig.to_bytes()));
 
         Ok(())
     }
@@ -148,11 +126,7 @@ impl BootstrapServerBinder {
         let message = {
             self.duplex.read_exact(&mut msg_bytes).await?;
             let prev_message = self.prev_data.unwrap();
-            let prev_hash = match prev_message {
-                PrevData::Hash(hash) => hash,
-                PrevData::Signature(signature) => Hash::compute_from(&signature.to_bytes()),
-            };
-            if prev_hash != hash {
+            if prev_message != hash {
                 return Err(BootstrapError::GeneralError(
                     "Sequential in message has been broken".to_string(),
                 ));
@@ -160,7 +134,7 @@ impl BootstrapServerBinder {
             let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
             msg
         };
-        self.prev_data = Some(PrevData::Hash(Hash::compute_from(&msg_bytes)));
+        self.prev_data = Some(Hash::compute_from(&msg_bytes));
         Ok(message)
     }
 }

@@ -20,29 +20,7 @@ pub struct BootstrapClientBinder {
     size_field_len: usize,
     remote_pubkey: PublicKey,
     duplex: Duplex,
-    prev_message: Option<PrevData>,
-}
-
-#[derive(Copy, Clone)]
-enum PrevData {
-    Signature(Signature),
-    Hash(Hash),
-}
-
-impl PrevData {
-    const fn len(&self) -> usize {
-        match self {
-            PrevData::Hash(_) => HASH_SIZE_BYTES,
-            PrevData::Signature(_) => SIGNATURE_SIZE_BYTES,
-        }
-    }
-
-    fn to_bytes(self) -> Vec<u8> {
-        match self {
-            PrevData::Hash(hash) => hash.to_bytes().to_vec(),
-            PrevData::Signature(signature) => signature.to_bytes().to_vec(),
-        }
-    }
+    prev_message: Option<Hash>,
 }
 
 impl BootstrapClientBinder {
@@ -79,7 +57,7 @@ impl BootstrapClientBinder {
             rand_hash
         };
 
-        self.prev_message = Some(PrevData::Hash(rand_hash));
+        self.prev_message = Some(rand_hash);
 
         Ok(())
     }
@@ -103,20 +81,20 @@ impl BootstrapClientBinder {
         // read message, check signature and optionally check signature of the message sent just before then deserialize it
         let message = {
             let prev_message = self.prev_message.unwrap();
-            let mut sig_msg_bytes = vec![0u8; prev_message.len() + (msg_len as usize)];
-            sig_msg_bytes[..prev_message.len()].copy_from_slice(&prev_message.to_bytes());
+            let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
+            sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(&prev_message.to_bytes());
             self.duplex
-                .read_exact(&mut sig_msg_bytes[prev_message.len()..])
+                .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])
                 .await?;
             let msg_hash = Hash::compute_from(&sig_msg_bytes);
             verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
             let (msg, _len) =
-                BootstrapMessage::from_bytes_compact(&sig_msg_bytes[prev_message.len()..])?;
+                BootstrapMessage::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
             msg
         };
 
         // save prev sig
-        self.prev_message = Some(PrevData::Signature(sig));
+        self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
         Ok(message)
     }
@@ -128,16 +106,11 @@ impl BootstrapClientBinder {
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
-        if let Some(prev_message) = self.prev_message {
-            match prev_message {
-                PrevData::Hash(hash) => self.duplex.write_all(&hash.to_bytes()).await?,
-                PrevData::Signature(signature) => {
-                    self.duplex
-                        .write_all(&Hash::compute_from(&signature.to_bytes()).to_bytes())
-                        .await?
-                }
-            }
-        }
+
+        self.duplex
+            .write_all(&self.prev_message.unwrap().to_bytes())
+            .await?;
+
         // send message length
         {
             let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
@@ -146,7 +119,7 @@ impl BootstrapClientBinder {
 
         // send message
         self.duplex.write_all(&msg_bytes).await?;
-        self.prev_message = Some(PrevData::Hash(Hash::compute_from(&msg.to_bytes_compact()?)));
+        self.prev_message = Some(Hash::compute_from(&msg.to_bytes_compact()?));
         Ok(())
     }
 }
