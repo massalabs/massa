@@ -97,7 +97,7 @@ impl BootstrapClientBinder {
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
                 let (msg, _len) =
-                    BootstrapMessage::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
+                    BootstrapMessage::from_bytes_compact(&sig_msg_bytes[..])?;
                 msg
             }
         };
