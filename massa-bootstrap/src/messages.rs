@@ -10,8 +10,8 @@ use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_time::MassaTime;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use tracing::debug;
 use std::convert::TryInto;
+use tracing::debug;
 
 /// Messages used during bootstrap
 #[derive(Debug, Serialize, Deserialize, Clone)]

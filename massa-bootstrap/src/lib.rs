@@ -98,7 +98,7 @@ async fn get_state_internal(
             ))
         }
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg))
-    }
+    };
 
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
