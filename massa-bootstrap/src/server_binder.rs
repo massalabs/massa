@@ -113,9 +113,13 @@ impl BootstrapServerBinder {
     pub async fn next(&mut self) -> Result<BootstrapMessage, BootstrapError> {
         // read prev hash
         let hash = {
-            let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
-            self.duplex.read_exact(&mut hash_bytes).await?;
-            Hash::from_bytes(&hash_bytes)?
+            if self.prev_message.is_some() {
+                let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
+                self.duplex.read_exact(&mut hash_bytes).await?;
+                Some(Hash::from_bytes(&hash_bytes)?)
+            } else {
+                None
+            }
         };
 
         let size_field_len = u32::be_bytes_min_length(self.max_bootstrap_message_size);
@@ -130,11 +134,12 @@ impl BootstrapServerBinder {
         let mut msg_bytes = vec![0u8; msg_len as usize];
         let message = {
             self.duplex.read_exact(&mut msg_bytes).await?;
-            let prev_message = self.prev_message.unwrap();
-            if prev_message != hash {
-                return Err(BootstrapError::GeneralError(
-                    "Sequential in message has been broken".to_string(),
-                ));
+            if let Some(prev_message) = self.prev_message {
+                if prev_message != hash.unwrap() {
+                    return Err(BootstrapError::GeneralError(
+                        "Sequential in message has been broken".to_string(),
+                    ));
+                }
             }
             let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
             msg

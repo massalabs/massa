@@ -115,9 +115,9 @@ impl BootstrapClientBinder {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
 
-        self.duplex
-            .write_all(&self.prev_message.unwrap().to_bytes())
-            .await?;
+        if let Some(prev_message) = self.prev_message {
+            self.duplex.write_all(&prev_message.to_bytes()).await?;
+        }
 
         // send message length
         {
