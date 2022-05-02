@@ -12,7 +12,6 @@
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
 use crate::client_binder::BootstrapClientBinder;
-use crate::establisher::types::Duplex;
 use crate::server_binder::BootstrapServerBinder;
 use error::BootstrapError;
 pub use establisher::types::Establisher;
@@ -85,7 +84,7 @@ async fn get_state_internal(
         }
         Ok(Err(e)) => return Err(e),
         Ok(Ok(BootstrapMessage::BootstrapError{error: _})) => {
-            return Err(BootstrapError::GeneralError(
+            return Err(BootstrapError::ReceivedError(
                 "Bootstrap cancelled on this server because there is no slots available on this server. Will try to bootstrap to another node soon.".to_string()
             ))
         }
@@ -140,6 +139,9 @@ async fn get_state_internal(
             }
             server_time
         }
+        Ok(Ok(BootstrapMessage::BootstrapError { error })) => {
+            return Err(BootstrapError::ReceivedError(error))
+        }
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
@@ -191,6 +193,9 @@ async fn get_state_internal(
         }
         Ok(Err(e)) => return Err(e),
         Ok(Ok(BootstrapMessage::BootstrapPeers { peers })) => peers,
+        Ok(Ok(BootstrapMessage::BootstrapError { error })) => {
+            return Err(BootstrapError::ReceivedError(error))
+        }
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
@@ -206,6 +211,9 @@ async fn get_state_internal(
         }
         Ok(Err(e)) => return Err(e),
         Ok(Ok(BootstrapMessage::ConsensusState { pos, graph })) => (pos, graph),
+        Ok(Ok(BootstrapMessage::BootstrapError { error })) => {
+            return Err(BootstrapError::ReceivedError(error))
+        }
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
@@ -221,6 +229,9 @@ async fn get_state_internal(
         }
         Ok(Err(e)) => return Err(e),
         Ok(Ok(BootstrapMessage::FinalState { final_state })) => final_state,
+        Ok(Ok(BootstrapMessage::BootstrapError { error })) => {
+            return Err(BootstrapError::ReceivedError(error))
+        }
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
@@ -235,8 +246,6 @@ async fn get_state_internal(
     })
 }
 
-// We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-#[allow(unused_must_use)]
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
 pub async fn get_state(
@@ -282,9 +291,11 @@ pub async fn get_state(
                 match get_state_internal(bootstrap_settings, &mut client, version)
                     .await  // cancellable
                 {
+                    Err(BootstrapError::ReceivedError(error)) => warn!("error received from bootstrap server: {}", error),
                     Err(e) => {
                         warn!("error while bootstrapping: {}", e);
-                        tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(BootstrapMessage::BootstrapError { error: e.to_string() })).await;
+                        // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                        let _ = tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(BootstrapMessage::BootstrapError { error: e.to_string() })).await;
                         // Sleep a bit to give time for the server to read the error.
                         sleep(bootstrap_settings.write_error_timeout.into()).await;
                     }
@@ -485,10 +496,19 @@ impl BootstrapServer {
                     let version = self.version;
                     let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     bootstrap_sessions.push(async move {
-                        sleep(std::time::Duration::new(5, 0)).await;
-                        match manage_bootstrap(self.bootstrap_settings, dplx, data_pos, data_graph, data_peers, data_execution, private_key, compensation_millis, version).await {
+                        //TODO: Remove debug
+                        sleep(std::time::Duration::new(3, 0)).await;
+                        let mut server = BootstrapServerBinder::new(dplx, private_key);
+                        match manage_bootstrap(self.bootstrap_settings,&mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
                             Ok(_) => info!("bootstrapped peer {}", remote_addr),
-                            Err(err) => debug!("bootstrap serving error for peer {}: {}", remote_addr, err),
+                            Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
+                            Err(err) => {
+                                debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                                // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                                let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessage::BootstrapError { error: err.to_string() })).await;
+                                // Sleep a bit to give time for the server to read the error.
+                                sleep(self.bootstrap_settings.write_error_timeout.into()).await;
+                            },
                         }
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
@@ -519,17 +539,15 @@ impl BootstrapServer {
 #[allow(clippy::too_many_arguments)]
 async fn manage_bootstrap(
     bootstrap_settings: &'static BootstrapSettings,
-    duplex: Duplex,
+    server: &mut BootstrapServerBinder,
     data_pos: ExportProofOfStake,
     data_graph: BootstrapableGraph,
     data_peers: BootstrapPeers,
     final_state: FinalStateBootstrap,
-    private_key: PrivateKey,
     compensation_millis: i64,
     version: Version,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
-    let mut server = BootstrapServerBinder::new(duplex, private_key);
     let read_error_timeout: std::time::Duration = bootstrap_settings.read_error_timeout.into();
 
     match tokio::time::timeout(
@@ -566,7 +584,7 @@ async fn manage_bootstrap(
     send_state_timeout_with_error_check(
         write_timeout,
         read_error_timeout,
-        &mut server,
+        server,
         messages::BootstrapMessage::BootstrapTime {
             server_time,
             version,
@@ -579,7 +597,7 @@ async fn manage_bootstrap(
     send_state_timeout_with_error_check(
         write_timeout,
         read_error_timeout,
-        &mut server,
+        server,
         messages::BootstrapMessage::BootstrapPeers { peers: data_peers },
         "bootstrap clock send timed out",
     )
@@ -589,7 +607,7 @@ async fn manage_bootstrap(
     send_state_timeout_with_error_check(
         write_timeout,
         read_error_timeout,
-        &mut server,
+        server,
         messages::BootstrapMessage::ConsensusState {
             pos: data_pos,
             graph: data_graph,
@@ -602,7 +620,7 @@ async fn manage_bootstrap(
     send_state_timeout_with_error_check(
         write_timeout,
         read_error_timeout,
-        &mut server,
+        server,
         messages::BootstrapMessage::FinalState { final_state },
         "bootstrap ledger state send timed out",
     )
@@ -629,7 +647,7 @@ async fn send_state_timeout_with_error_check(
         Err(_) => Ok(()),
         Ok(Err(e)) => Err(e),
         Ok(Ok(BootstrapMessage::BootstrapError { error })) => {
-            Err(BootstrapError::GeneralError(error))
+            Err(BootstrapError::ReceivedError(error))
         }
         Ok(Ok(msg)) => Err(BootstrapError::UnexpectedMessage(msg)),
     }
