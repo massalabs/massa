@@ -1,0 +1,11 @@
+image:
+  file: .gitpod.Dockerfile
+
+ports:
+  - port: 31244
+  - port: 31245
+  - port: 33034
+  - port: 33035
+
+tasks:
+  - init: cargo build
