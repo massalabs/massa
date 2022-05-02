@@ -498,17 +498,21 @@ impl BootstrapServer {
                     bootstrap_sessions.push(async move {
                         //TODO: Remove debug
                         sleep(std::time::Duration::new(3, 0)).await;
-                        let mut server = BootstrapServerBinder::new(dplx, private_key);
-                        match manage_bootstrap(self.bootstrap_settings,&mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
-                            Ok(_) => info!("bootstrapped peer {}", remote_addr),
-                            Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
-                            Err(err) => {
-                                debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
-                                // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessage::BootstrapError { error: err.to_string() })).await;
-                                // Sleep a bit to give time for the server to read the error.
-                                sleep(self.bootstrap_settings.write_error_timeout.into()).await;
-                            },
+                        //Socket lifetime
+                        {
+                            let mut server = BootstrapServerBinder::new(dplx, private_key);
+                            debug!("New bootstrap");
+                            match manage_bootstrap(self.bootstrap_settings,&mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
+                                Ok(_) => info!("bootstrapped peer {}", remote_addr),
+                                Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
+                                Err(err) => {
+                                    debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                                    // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                                    let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessage::BootstrapError { error: err.to_string() })).await;
+                                    // Sleep a bit to give time for the server to read the error.
+                                    sleep(self.bootstrap_settings.write_error_timeout.into()).await;
+                                },
+                            }
                         }
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
@@ -549,7 +553,7 @@ async fn manage_bootstrap(
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: std::time::Duration = bootstrap_settings.read_error_timeout.into();
-
+    debug!("Before handshake sent");
     match tokio::time::timeout(
         bootstrap_settings.read_timeout.into(),
         server.handshake(version),
@@ -566,6 +570,8 @@ async fn manage_bootstrap(
         Ok(Err(e)) => return Err(e),
         Ok(Ok(_)) => (),
     };
+    debug!("After handshake sent");
+
 
     match tokio::time::timeout(read_error_timeout, server.next()).await {
         Err(_) => (),
@@ -575,6 +581,8 @@ async fn manage_bootstrap(
         }
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
+
+    debug!("After handshake error try");
 
     let write_timeout: std::time::Duration = bootstrap_settings.write_timeout.into();
 
