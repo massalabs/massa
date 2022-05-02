@@ -78,7 +78,7 @@ impl BootstrapClientBinder {
             u32::from_be_bytes_min(&meg_len_bytes, self.max_bootstrap_message_size)?.0
         };
 
-        // read message, check signature and optionally check signature of the message sent just before then deserialize it
+        // read message, check signature and check signature of the message sent just before then deserialize it
         let message = {
             if let Some(prev_message) = self.prev_message {
                 let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
