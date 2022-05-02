@@ -114,8 +114,6 @@ async fn get_state_internal(
         ));
     }
 
-    //TODO: Remove testing
-
     // First, clock and version.
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let server_time = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
@@ -154,10 +152,6 @@ async fn get_state_internal(
             "bootstrap ping too high".into(),
         ));
     }
-
-    return Err(BootstrapError::IncompatibleVersionError(
-        "AurelienDEBUG".to_string(),
-    ));
 
     // compute compensation
     let compensation_millis = if cfg.enable_clock_synchronization {
@@ -449,7 +443,6 @@ impl BootstrapServer {
                     match self.ip_hist_map.entry(remote_addr.ip()) {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
-                                debug!("Should not happens here");
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
                                 send_state_timeout_with_error_check(
                                     self.bootstrap_settings.write_error_timeout.into(),
@@ -497,11 +490,9 @@ impl BootstrapServer {
                     let version = self.version;
                     let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     bootstrap_sessions.push(async move {
-                        //TODO: Remove debug
                         //Socket lifetime
                         {
                             let mut server = BootstrapServerBinder::new(dplx, private_key);
-                            debug!("New bootstrap");
                             match manage_bootstrap(self.bootstrap_settings,&mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
                                 Ok(_) => info!("bootstrapped peer {}", remote_addr),
                                 Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
@@ -513,7 +504,6 @@ impl BootstrapServer {
                                     sleep(self.bootstrap_settings.write_error_timeout.into()).await;
                                 },
                             }
-                            sleep(std::time::Duration::new(3, 0)).await;
                         }
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
@@ -554,7 +544,7 @@ async fn manage_bootstrap(
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: std::time::Duration = bootstrap_settings.read_error_timeout.into();
-    debug!("Before handshake sent");
+
     match tokio::time::timeout(
         bootstrap_settings.read_timeout.into(),
         server.handshake(version),
@@ -571,8 +561,6 @@ async fn manage_bootstrap(
         Ok(Err(e)) => return Err(e),
         Ok(Ok(_)) => (),
     };
-    debug!("After handshake sent");
-
 
     match tokio::time::timeout(read_error_timeout, server.next()).await {
         Err(_) => (),
@@ -582,8 +570,6 @@ async fn manage_bootstrap(
         }
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
-
-    debug!("After handshake error try");
 
     let write_timeout: std::time::Duration = bootstrap_settings.write_timeout.into();
 

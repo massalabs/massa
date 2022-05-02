@@ -13,7 +13,6 @@ use massa_signature::{verify_signature, PublicKey, Signature, SIGNATURE_SIZE_BYT
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
-use tracing::debug;
 
 /// Bootstrap client binder
 pub struct BootstrapClientBinder {
@@ -102,8 +101,6 @@ impl BootstrapClientBinder {
             }
         };
 
-        debug!("Received = {:#?}", message);
-
         // save prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
@@ -117,8 +114,6 @@ impl BootstrapClientBinder {
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
-
-        debug!("Sent = {:#?}", msg);
 
         if let Some(prev_message) = self.prev_message {
             self.duplex.write_all(&prev_message.to_bytes()).await?;

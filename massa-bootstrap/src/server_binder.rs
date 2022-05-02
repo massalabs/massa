@@ -11,7 +11,6 @@ use massa_models::{
     DeserializeMinBEInt, SerializeCompact, SerializeMinBEInt,
 };
 use massa_signature::{sign, PrivateKey};
-use tracing::debug;
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -90,7 +89,6 @@ impl BootstrapServerBinder {
                 sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
             }
         };
-        debug!("Sent = {:#?}", msg);
 
         // send signature
         self.duplex.write_all(&sig.to_bytes()).await?;
@@ -146,7 +144,7 @@ impl BootstrapServerBinder {
             let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
             msg
         };
-        debug!("Received = {:#?}", message);
+
         self.prev_message = Some(Hash::compute_from(&msg_bytes));
         Ok(message)
     }

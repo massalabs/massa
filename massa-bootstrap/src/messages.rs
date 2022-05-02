@@ -11,7 +11,6 @@ use massa_time::MassaTime;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use tracing::debug;
 
 /// Messages used during bootstrap
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -94,8 +93,6 @@ impl DeserializeCompact for BootstrapMessage {
 
         let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
-
-        debug!("type_id = {}", type_id_raw);
 
         let type_id: MessageTypeId = type_id_raw
             .try_into()
