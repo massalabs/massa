@@ -96,8 +96,7 @@ impl BootstrapClientBinder {
                 self.duplex.read_exact(&mut sig_msg_bytes[..]).await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
-                let (msg, _len) =
-                    BootstrapMessage::from_bytes_compact(&sig_msg_bytes[..])?;
+                let (msg, _len) = BootstrapMessage::from_bytes_compact(&sig_msg_bytes[..])?;
                 msg
             }
         };
