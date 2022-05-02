@@ -19,7 +19,7 @@ pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     local_privkey: PrivateKey,
     duplex: Duplex,
-    prev_data: Option<Hash>,
+    prev_message: Option<Hash>,
 }
 
 impl BootstrapServerBinder {
@@ -34,7 +34,7 @@ impl BootstrapServerBinder {
             max_bootstrap_message_size,
             local_privkey,
             duplex,
-            prev_data: None,
+            prev_message: None,
         }
     }
 
@@ -63,7 +63,7 @@ impl BootstrapServerBinder {
         };
 
         // save prev sig
-        self.prev_data = Some(rand_hash);
+        self.prev_message = Some(rand_hash);
 
         Ok(())
     }
@@ -78,11 +78,16 @@ impl BootstrapServerBinder {
 
         // compute signature
         let sig = {
-            let prev_data = self.prev_data.unwrap();
-            let mut signed_data = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
-            signed_data[..HASH_SIZE_BYTES].clone_from_slice(&prev_data.to_bytes());
-            signed_data[HASH_SIZE_BYTES..].clone_from_slice(&msg_bytes);
-            sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+            if let Some(prev_message) = self.prev_message {
+                let mut signed_data = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
+                signed_data[..HASH_SIZE_BYTES].clone_from_slice(&prev_message.to_bytes());
+                signed_data[HASH_SIZE_BYTES..].clone_from_slice(&msg_bytes);
+                sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+            } else {
+                let mut signed_data = vec![0u8; msg_len as usize];
+                signed_data[..].clone_from_slice(&msg_bytes);
+                sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+            }
         };
 
         // send signature
@@ -98,7 +103,7 @@ impl BootstrapServerBinder {
         self.duplex.write_all(&msg_bytes).await?;
 
         // save prev sig
-        self.prev_data = Some(Hash::compute_from(&sig.to_bytes()));
+        self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
         Ok(())
     }
@@ -125,7 +130,7 @@ impl BootstrapServerBinder {
         let mut msg_bytes = vec![0u8; msg_len as usize];
         let message = {
             self.duplex.read_exact(&mut msg_bytes).await?;
-            let prev_message = self.prev_data.unwrap();
+            let prev_message = self.prev_message.unwrap();
             if prev_message != hash {
                 return Err(BootstrapError::GeneralError(
                     "Sequential in message has been broken".to_string(),
@@ -134,7 +139,7 @@ impl BootstrapServerBinder {
             let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
             msg
         };
-        self.prev_data = Some(Hash::compute_from(&msg_bytes));
+        self.prev_message = Some(Hash::compute_from(&msg_bytes));
         Ok(message)
     }
 }

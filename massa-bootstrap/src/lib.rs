@@ -454,7 +454,7 @@ impl BootstrapServer {
                 } else {
                     let mut server = BootstrapServerBinder::new(dplx, self.private_key);
                     send_state_timeout(
-                        std::time::Duration::new(1, 0),
+                        std::time::Duration::new(0, 200000000),
                         server.send(BootstrapMessage::BootstrapError {
                             error: "no available slots to bootstrap".to_string()
                         }),

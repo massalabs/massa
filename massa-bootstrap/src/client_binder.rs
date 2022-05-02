@@ -80,17 +80,26 @@ impl BootstrapClientBinder {
 
         // read message, check signature and optionally check signature of the message sent just before then deserialize it
         let message = {
-            let prev_message = self.prev_message.unwrap();
-            let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
-            sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(&prev_message.to_bytes());
-            self.duplex
-                .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])
-                .await?;
-            let msg_hash = Hash::compute_from(&sig_msg_bytes);
-            verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
-            let (msg, _len) =
-                BootstrapMessage::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
-            msg
+            if let Some(prev_message) = self.prev_message {
+                let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
+                sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(&prev_message.to_bytes());
+                self.duplex
+                    .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])
+                    .await?;
+                let msg_hash = Hash::compute_from(&sig_msg_bytes);
+                verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
+                let (msg, _len) =
+                    BootstrapMessage::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
+                msg
+            } else {
+                let mut sig_msg_bytes = vec![0u8; msg_len as usize];
+                self.duplex.read_exact(&mut sig_msg_bytes[..]).await?;
+                let msg_hash = Hash::compute_from(&sig_msg_bytes);
+                verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
+                let (msg, _len) =
+                    BootstrapMessage::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
+                msg
+            }
         };
 
         // save prev sig
