@@ -449,6 +449,7 @@ impl BootstrapServer {
                     match self.ip_hist_map.entry(remote_addr.ip()) {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
+                                debug!("Should not happens here");
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
                                 send_state_timeout_with_error_check(
                                     self.bootstrap_settings.write_error_timeout.into(),
@@ -497,7 +498,6 @@ impl BootstrapServer {
                     let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     bootstrap_sessions.push(async move {
                         //TODO: Remove debug
-                        sleep(std::time::Duration::new(3, 0)).await;
                         //Socket lifetime
                         {
                             let mut server = BootstrapServerBinder::new(dplx, private_key);
@@ -513,6 +513,7 @@ impl BootstrapServer {
                                     sleep(self.bootstrap_settings.write_error_timeout.into()).await;
                                 },
                             }
+                            sleep(std::time::Duration::new(3, 0)).await;
                         }
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
