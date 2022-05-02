@@ -85,6 +85,21 @@ async fn get_state_internal(
     let socket = connector.connect(*bootstrap_addr).await?; // cancellable
     let mut client = BootstrapClientBinder::new(socket, *bootstrap_public_key);
 
+    // read error (if sent by the server)
+    // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
+    match tokio::time::timeout(cfg.read_error_timeout.into(), client.next()).await {
+        Err(_) => {
+            massa_trace!("bootstrap.lib.get_state_internal: No error sent at connection", {});
+        }
+        Ok(Err(e)) => return Err(e),
+        Ok(Ok(BootstrapMessage::BootstrapError{error: _})) => {
+            return Err(BootstrapError::GeneralError(
+                "Bootstrap cancelled on this server because there is no slots available on this server. Will try to bootstrap to another node soon.".to_string()
+            ))
+        }
+        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg))
+    }
+
     // handshake
     let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
@@ -454,7 +469,7 @@ impl BootstrapServer {
                 } else {
                     let mut server = BootstrapServerBinder::new(dplx, self.private_key);
                     send_state_timeout(
-                        std::time::Duration::new(0, 200000000),
+                        self.bootstrap_settings.write_error_timeout.into(),
                         server.send(BootstrapMessage::BootstrapError {
                             error: "no available slots to bootstrap".to_string()
                         }),
