@@ -10,6 +10,7 @@ use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_time::MassaTime;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 use std::convert::TryInto;
 
 /// Messages used during bootstrap
@@ -79,7 +80,7 @@ impl SerializeCompact for BootstrapMessage {
             }
             BootstrapMessage::BootstrapError { error } => {
                 res.extend(u32::from(MessageTypeId::BootstrapError).to_varint_bytes());
-                res.extend(u64::to_varint_bytes(error.len() as u64));
+                res.extend(u32::to_varint_bytes(error.len() as u32));
                 res.extend(error.as_bytes())
             }
         }
@@ -93,6 +94,8 @@ impl DeserializeCompact for BootstrapMessage {
 
         let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
+
+        debug!("type_id = {}", type_id_raw);
 
         let type_id: MessageTypeId = type_id_raw
             .try_into()
@@ -132,7 +135,7 @@ impl DeserializeCompact for BootstrapMessage {
                 BootstrapMessage::FinalState { final_state }
             }
             MessageTypeId::BootstrapError => {
-                let (error_len, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
 
                 let error = String::from_utf8_lossy(&buffer[cursor..cursor + error_len as usize]);
