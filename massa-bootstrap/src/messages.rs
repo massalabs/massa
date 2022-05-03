@@ -109,12 +109,15 @@ impl SerializeCompact for BootstrapMessage {
                 }
             }
             BootstrapMessage::AskExecutionLedgerPart { address } => {
+                res.extend(u32::from(MessageTypeId::AskExecutionLedgerPart).to_varint_bytes());
                 res.extend(address.to_bytes());
             }
             BootstrapMessage::ResponseConsensusLedgerPart { ledger } => {
+                res.extend(u32::from(MessageTypeId::ResponseConsensusLedgerPart).to_varint_bytes());
                 res.extend(ledger.to_bytes_compact()?);
             }
             BootstrapMessage::ResponseExecutionLedgerPart { ledger } => {
+                res.extend(u32::from(MessageTypeId::ResponseExecutionLedgerPart).to_varint_bytes());
                 res.extend(ledger.to_bytes_compact()?);
             }
             BootstrapMessage::BootstrapError { error } => {

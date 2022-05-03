@@ -182,8 +182,7 @@ async fn get_state_internal(
     info!("Start bootstrap ledger");
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
-    let read_error_timeout: std::time::Duration = cfg.read_error_timeout.into();
-    let last_address: Option<Address> = None;
+    let mut last_address: Option<Address> = None;
     // Fifth, ask for the first parts of the ledger
     loop {
         match tokio::time::timeout(write_timeout, client.send(messages::BootstrapMessage::AskConsensusLedgerPart {
@@ -207,8 +206,13 @@ async fn get_state_internal(
             Ok(Ok(BootstrapMessage::ResponseConsensusLedgerPart { ledger })) => ledger,
             Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
         };
-        debug!("consensus = {:#?}", ledger_part);
-        break;
+        debug!("Ledger part = {:#?}", ledger_part);
+        debug!("Size max = {:#?}", BOOTSTRAP_LEDGER_ENTRY_SIZE);
+        if ledger_part.0.len() < BOOTSTRAP_LEDGER_ENTRY_SIZE as usize {
+            break;
+        }
+        // Unwrap is safe here because we verified there is data just above
+        last_address = Some(*ledger_part.0.last_key_value().unwrap().0);
     }
 
     info!("End bootstrap ledger");
@@ -616,18 +620,16 @@ async fn manage_bootstrap(
     // First, sync clocks.
     let server_time = MassaTime::compensated_now(compensation_millis)?;
 
-    send_with_timeout_with_error_check(
-        write_timeout,
-        read_error_timeout,
-        server,
-        messages::BootstrapMessage::BootstrapTime {
-            server_time,
-            version,
-        },
-        "bootstrap clock send timed out",
-    )
-    .await?;
+    match tokio::time::timeout(write_timeout, server.send(messages::BootstrapMessage::BootstrapTime {
+        server_time,
+        version,
+    })).await {
+        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap clock send timed out").into()),
+        Ok(Err(e)) => Err(e),
+        Ok(Ok(_)) => Ok(()),
+    }?;
 
+    debug!("Start ledger loop");
     loop {
         // Fifth, send ledger parts
         // server.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
@@ -645,20 +647,23 @@ async fn manage_bootstrap(
                 Ok(Ok(BootstrapMessage::AskConsensusLedgerPart { address })) => address,
                 Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
             };
+        debug!("Start address = {:#?}", start_address);
         let ledger_part = consensus_command_sender
             .get_ledger_part(start_address, BOOTSTRAP_LEDGER_ENTRY_SIZE as usize)
             .await?;
-            send_with_timeout_with_error_check(
-            write_timeout,
-            read_error_timeout,
-            server,
-            messages::BootstrapMessage::ResponseConsensusLedgerPart {
-                ledger: ledger_part,
-            },
-            "bootstrap ledger part send timed out",
-        )
-        .await?;
-        break;
+        debug!("Ledger part = {:#?}", ledger_part);
+        let ledger_part_len = ledger_part.0.len();
+        match tokio::time::timeout(write_timeout, server.send(messages::BootstrapMessage::ResponseConsensusLedgerPart {
+            ledger: ledger_part,
+        })).await {
+            Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap ask ledger part send timed out").into()),
+            Ok(Err(e)) => Err(e),
+            Ok(Ok(_)) => Ok(()),
+        }?;
+        debug!("Size max = {:#?}", BOOTSTRAP_LEDGER_ENTRY_SIZE);
+        if ledger_part_len < BOOTSTRAP_LEDGER_ENTRY_SIZE as usize {
+            break;
+        }
     }
 
     // Second, send peers

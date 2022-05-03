@@ -135,7 +135,7 @@ pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Batch size of ledger entries sent by the bootstrap
 /// TODO: Define value
-pub const BOOTSTRAP_LEDGER_ENTRY_SIZE: u32 = 10;
+pub const BOOTSTRAP_LEDGER_ENTRY_SIZE: u32 = 3;
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 

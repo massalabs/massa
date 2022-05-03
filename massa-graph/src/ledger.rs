@@ -485,17 +485,14 @@ impl Ledger {
         subset_size: usize,
     ) -> Result<ConsensusLedgerSubset> {
         let mut res = ConsensusLedgerSubset::default();
-        let mut start: bool = false;
+        let mut start: bool = start_address.is_none();
         let mut count: usize = 0;
         // TODO: Optimize to avoid checking the threads before the address passed
         for tree in self.ledger_per_thread.iter() {
             for element in tree.iter() {
                 let (addr, data) = element?;
                 let address = Address::from_bytes(addr.as_ref().try_into()?)?;
-                if !start && let Some(inner_start_address) = start_address && inner_start_address == address {
-                    start = true;
-                }
-                if start && count <= subset_size {
+                if start && count < subset_size {
                     let (ledger_data, _) = LedgerData::from_bytes_compact(&data)?;
                     if let Some(val) = res.0.insert(address, ledger_data) {
                         return Err(LedgerError::LedgerInconsistency(format!(
@@ -504,6 +501,13 @@ impl Ledger {
                         )));
                     }
                     count += 1;
+                }
+                if !start  {
+                    start = match start_address {
+                        Some(inner_start_address) if inner_start_address == address => true,
+                        Some(_) => false,
+                        None => true
+                    };
                 }
             }
         }

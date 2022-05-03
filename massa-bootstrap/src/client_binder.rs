@@ -107,7 +107,6 @@ impl Binder for BootstrapClientBinder {
                 msg
             }
         };
-
         Ok(message)
     }
 
