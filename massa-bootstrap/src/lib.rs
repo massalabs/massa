@@ -37,7 +37,9 @@ use std::{convert::TryInto, net::IpAddr};
 use tokio::time::Instant;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 use tracing::{debug, info, warn};
+use crate::binders_trait::Binder;
 
+mod binders_trait;
 mod client_binder;
 mod error;
 mod establisher;
@@ -177,6 +179,41 @@ async fn get_state_internal(
         0
     };
 
+    info!("Start bootstrap ledger");
+
+    let write_timeout: std::time::Duration = cfg.write_timeout.into();
+    let read_error_timeout: std::time::Duration = cfg.read_error_timeout.into();
+    let last_address: Option<Address> = None;
+    // Fifth, ask for the first parts of the ledger
+    loop {
+        send_with_timeout_with_error_check(
+            write_timeout,
+            read_error_timeout,
+            client,
+            messages::BootstrapMessage::AskConsensusLedgerPart {
+                address: last_address,
+            },
+            "bootstrap ask ledger part send timed out",
+        )
+        .await?;
+        let _ledger_part = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await
+        {
+            Err(_) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "final state bootstrap read timed out",
+                )
+                .into())
+            }
+            Ok(Err(e)) => return Err(e),
+            Ok(Ok(BootstrapMessage::ResponseConsensusLedgerPart { ledger })) => ledger,
+            Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
+        };
+        break;
+    }
+
+    info!("End bootstrap ledger");
+
     // Second, get peers
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let peers = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
@@ -231,40 +268,6 @@ async fn get_state_internal(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
-    info!("Start bootstrap ledger");
-
-    let write_timeout: std::time::Duration = cfg.write_timeout.into();
-    let read_error_timeout: std::time::Duration = cfg.read_error_timeout.into();
-    let last_address: Option<Address> = None;
-    // Fifth, ask for the first parts of the ledger
-    loop {
-        send_command_timeout_with_error_check(
-            write_timeout,
-            read_error_timeout,
-            client,
-            messages::BootstrapMessage::AskConsensusLedgerPart {
-                address: last_address,
-            },
-            "bootstrap ask ledger part send timed out",
-        )
-        .await?;
-        let _ledger_part = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await
-        {
-            Err(_) => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "final state bootstrap read timed out",
-                )
-                .into())
-            }
-            Ok(Err(e)) => return Err(e),
-            Ok(Ok(BootstrapMessage::ResponseConsensusLedgerPart { ledger })) => ledger,
-            Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
-        };
-        break;
-    }
-
-    info!("End bootstrap ledger");
     info!("Successful state bootstrap");
 
     Ok(GlobalBootstrapState {
@@ -480,7 +483,7 @@ impl BootstrapServer {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                                send_state_timeout_with_error_check(
+                                send_with_timeout_with_error_check(
                                     self.bootstrap_settings.write_error_timeout.into(),
                                     self.bootstrap_settings.read_error_timeout.into(),
                                     &mut server,
@@ -546,7 +549,7 @@ impl BootstrapServer {
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
                     let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                    send_state_timeout_with_error_check(
+                    send_with_timeout_with_error_check(
                         self.bootstrap_settings.write_error_timeout.into(),
                         self.bootstrap_settings.read_error_timeout.into(),
                         &mut server,
@@ -614,7 +617,7 @@ async fn manage_bootstrap(
     // First, sync clocks.
     let server_time = MassaTime::compensated_now(compensation_millis)?;
 
-    send_state_timeout_with_error_check(
+    send_with_timeout_with_error_check(
         write_timeout,
         read_error_timeout,
         server,
@@ -623,39 +626,6 @@ async fn manage_bootstrap(
             version,
         },
         "bootstrap clock send timed out",
-    )
-    .await?;
-
-    // Second, send peers
-    send_state_timeout_with_error_check(
-        write_timeout,
-        read_error_timeout,
-        server,
-        messages::BootstrapMessage::BootstrapPeers { peers: data_peers },
-        "bootstrap clock send timed out",
-    )
-    .await?;
-
-    // Third, send consensus state
-    send_state_timeout_with_error_check(
-        write_timeout,
-        read_error_timeout,
-        server,
-        messages::BootstrapMessage::ConsensusState {
-            pos: data_pos,
-            graph: data_graph,
-        },
-        "bootstrap graph send timed out",
-    )
-    .await?;
-
-    // Fourth, send final state
-    send_state_timeout_with_error_check(
-        write_timeout,
-        read_error_timeout,
-        server,
-        messages::BootstrapMessage::FinalState { final_state },
-        "bootstrap ledger state send timed out",
     )
     .await?;
 
@@ -679,7 +649,7 @@ async fn manage_bootstrap(
         let ledger_part = consensus_command_sender
             .get_ledger_part(start_address, BOOTSTRAP_LEDGER_ENTRY_SIZE as usize)
             .await?;
-        send_state_timeout_with_error_check(
+            send_with_timeout_with_error_check(
             write_timeout,
             read_error_timeout,
             server,
@@ -691,46 +661,49 @@ async fn manage_bootstrap(
         .await?;
         break;
     }
-    Ok(())
-}
 
-// TODO: Refactor to take in param bootstrap binders client adn server with trait
+    // Second, send peers
+    send_with_timeout_with_error_check(
+        write_timeout,
+        read_error_timeout,
+        server,
+        messages::BootstrapMessage::BootstrapPeers { peers: data_peers },
+        "bootstrap clock send timed out",
+    )
+    .await?;
+
+    // Third, send consensus state
+    send_with_timeout_with_error_check(
+        write_timeout,
+        read_error_timeout,
+        server,
+        messages::BootstrapMessage::ConsensusState {
+            pos: data_pos,
+            graph: data_graph,
+        },
+        "bootstrap graph send timed out",
+    )
+    .await?;
+
+    // Fourth, send final state
+    send_with_timeout_with_error_check(
+        write_timeout,
+        read_error_timeout,
+        server,
+        messages::BootstrapMessage::FinalState { final_state },
+        "bootstrap ledger state send timed out",
+    )
+    .await
+}
 
 /// Tooling, Send a future with a timeout, print error if timeout reached
 /// It will wait a short time for an error
 /// Don't use if you except to receive a real message after because it can be retrieve during the error check.
 /// Instead make your own call to `next()`
-async fn send_command_timeout_with_error_check(
+async fn send_with_timeout_with_error_check(
     duration: std::time::Duration,
     duration_read_error: std::time::Duration,
-    sender: &mut BootstrapClientBinder,
-    message: BootstrapMessage,
-    error: &str,
-) -> Result<(), BootstrapError> {
-    match tokio::time::timeout(duration, sender.send(message)).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(_)) => Ok(()),
-    }?;
-    match tokio::time::timeout(duration_read_error, sender.next()).await {
-        Err(_) => Ok(()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(BootstrapMessage::BootstrapError { error })) => {
-            Err(BootstrapError::ReceivedError(error))
-        }
-        Ok(Ok(msg)) => Err(BootstrapError::UnexpectedMessage(msg)),
-    }
-}
-
-
-/// Tooling, Send a future with a timeout, print error if timeout reached
-/// It will wait a short time for an error
-/// Don't use if you except to receive a real message after because it can be retrieve during the error check.
-/// Instead make your own call to `next()`
-async fn send_state_timeout_with_error_check(
-    duration: std::time::Duration,
-    duration_read_error: std::time::Duration,
-    sender: &mut BootstrapServerBinder,
+    sender: &mut impl Binder,
     message: BootstrapMessage,
     error: &str,
 ) -> Result<(), BootstrapError> {

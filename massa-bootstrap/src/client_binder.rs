@@ -1,8 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::messages::BootstrapMessage;
+use crate::binders_trait::Binder;
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
+use async_trait::async_trait;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
@@ -40,10 +42,13 @@ impl BootstrapClientBinder {
             prev_message: None,
         }
     }
+}
 
+#[async_trait]
+impl Binder for BootstrapClientBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
-    pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
+    async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // send randomness and their hash
         let rand_hash = {
             let version = version.to_bytes_compact()?;
@@ -63,7 +68,7 @@ impl BootstrapClientBinder {
     }
 
     /// Reads the next message. NOT cancel-safe
-    pub async fn next(&mut self) -> Result<BootstrapMessage, BootstrapError> {
+    async fn next(&mut self) -> Result<BootstrapMessage, BootstrapError> {
         // read signature
         let sig = {
             let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
@@ -109,7 +114,7 @@ impl BootstrapClientBinder {
 
     #[allow(dead_code)]
     /// Send a message to the bootstrap server
-    pub async fn send(&mut self, msg: BootstrapMessage) -> Result<(), BootstrapError> {
+    async fn send(&mut self, msg: BootstrapMessage) -> Result<(), BootstrapError> {
         let msg_bytes = msg.to_bytes_compact()?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
