@@ -15,6 +15,7 @@ use massa_models::{
     SignedOperation, Slot,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
+use massa_storage::Storage;
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -31,6 +32,7 @@ pub async fn start_pool_controller(
     cfg: &'static PoolConfig,
     protocol_command_sender: ProtocolCommandSender,
     protocol_pool_event_receiver: ProtocolPoolEventReceiver,
+    storage: Storage,
 ) -> Result<(PoolCommandSender, PoolManager), PoolError> {
     debug!("starting pool controller");
     massa_trace!("pool.pool_controller.start_pool_controller", {});
@@ -45,6 +47,7 @@ pub async fn start_pool_controller(
             protocol_pool_event_receiver,
             command_rx,
             manager_rx,
+            storage,
         )?
         .run_loop()
         .await;

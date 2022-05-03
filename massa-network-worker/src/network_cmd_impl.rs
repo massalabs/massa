@@ -23,7 +23,6 @@ use crate::network_worker::NetworkWorker;
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::operation::Operations;
 use massa_models::{
     composite::PubkeySig, node::NodeId, operation::OperationIds, stats::NetworkStats, BlockId,
     SignedEndorsement,
@@ -365,7 +364,7 @@ pub async fn on_get_stats_cmd(
 pub async fn on_send_operations_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
-    operations: Operations,
+    operations: OperationIds,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperations",
