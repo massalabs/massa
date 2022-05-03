@@ -799,6 +799,7 @@
 <span id="794">794</span>
 <span id="795">795</span>
 <span id="796">796</span>
+<span id="797">797</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
@@ -1316,8 +1317,8 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">manage_network_command</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cmd</span>: <span class="ident">NetworkCommand</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::network_cmd_impl</span>::<span class="kw-2">*</span>;
         <span class="kw">match</span> <span class="ident">cmd</span> {
-            <span class="ident">NetworkCommand::BanIp</span>(<span class="ident">ips</span>) =&gt; <span class="ident">on_ban_ip_cmd</span>(<span class="self">self</span>, <span class="ident">ips</span>).<span class="kw">await</span><span class="question-mark">?</span>,
-            <span class="ident">NetworkCommand::Ban</span>(<span class="ident">node</span>) =&gt; <span class="ident">on_ban_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+            <span class="ident">NetworkCommand::NodeBanByIps</span>(<span class="ident">ips</span>) =&gt; <span class="ident">on_node_ban_by_ips_cmd</span>(<span class="self">self</span>, <span class="ident">ips</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+            <span class="ident">NetworkCommand::NodeBanByIds</span>(<span class="ident">ids</span>) =&gt; <span class="ident">on_node_ban_by_ids_cmd</span>(<span class="self">self</span>, <span class="ident">ids</span>).<span class="kw">await</span><span class="question-mark">?</span>,
             <span class="ident">NetworkCommand::SendBlockHeader</span> { <span class="ident">node</span>, <span class="ident">block_id</span> } =&gt; {
                 <span class="ident">on_send_block_header_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">block_id</span>).<span class="kw">await</span><span class="question-mark">?</span>
             }
@@ -1347,7 +1348,8 @@
             <span class="ident">NetworkCommand::NodeSignMessage</span> { <span class="ident">msg</span>, <span class="ident">response_tx</span> } =&gt; {
                 <span class="ident">on_node_sign_message_cmd</span>(<span class="self">self</span>, <span class="ident">msg</span>, <span class="ident">response_tx</span>).<span class="kw">await</span><span class="question-mark">?</span>
             }
-            <span class="ident">NetworkCommand::Unban</span>(<span class="ident">ip</span>) =&gt; <span class="ident">on_unban_cmd</span>(<span class="self">self</span>, <span class="ident">ip</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+            <span class="ident">NetworkCommand::NodeUnbanByIds</span>(<span class="ident">ids</span>) =&gt; <span class="ident">on_node_unban_by_ids_cmd</span>(<span class="self">self</span>, <span class="ident">ids</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+            <span class="ident">NetworkCommand::NodeUnbanByIps</span>(<span class="ident">ips</span>) =&gt; <span class="ident">on_node_unban_by_ips_cmd</span>(<span class="self">self</span>, <span class="ident">ips</span>).<span class="kw">await</span><span class="question-mark">?</span>,
             <span class="ident">NetworkCommand::GetStats</span> { <span class="ident">response_tx</span> } =&gt; <span class="ident">on_get_stats_cmd</span>(<span class="self">self</span>, <span class="ident">response_tx</span>).<span class="kw">await</span>,
             <span class="ident">NetworkCommand::Whitelist</span>(<span class="ident">ips</span>) =&gt; <span class="ident">on_whitelist_cmd</span>(<span class="self">self</span>, <span class="ident">ips</span>).<span class="kw">await</span><span class="question-mark">?</span>,
             <span class="ident">NetworkCommand::RemoveFromWhitelist</span>(<span class="ident">ips</span>) =&gt; {
@@ -1596,5 +1598,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>

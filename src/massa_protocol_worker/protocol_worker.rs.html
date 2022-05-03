@@ -2307,7 +2307,7 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.ban_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">node_id</span> });
         <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">remove</span>(<span class="ident">node_id</span>);
         <span class="self">self</span>.<span class="ident">network_command_sender</span>
-            .<span class="ident">ban</span>(<span class="kw-2">*</span><span class="ident">node_id</span>)
+            .<span class="ident">node_ban_by_ids</span>(<span class="macro">vec!</span>[<span class="kw-2">*</span><span class="ident">node_id</span>])
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;Ban node command send failed&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -3056,5 +3056,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>

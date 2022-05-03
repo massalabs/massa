@@ -258,6 +258,16 @@
 <span id="253">253</span>
 <span id="254">254</span>
 <span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Json RPC API for a massa-node</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
@@ -423,10 +433,15 @@
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_staking_addresses&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-    <span class="doccomment">/// Bans given IP address.</span>
+    <span class="doccomment">/// Bans given IP address(es).</span>
     <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ban&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">ban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_ban_by_ip&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">node_ban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
+    <span class="doccomment">/// Bans given node id.</span>
+    <span class="doccomment">/// No confirmation to expect.</span>
+    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_ban_by_id&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">node_ban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// whitelist given IP address.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
@@ -440,10 +455,15 @@
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_remove_from_whitelist&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">node_remove_from_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-    <span class="doccomment">/// Unban given IP address.</span>
+    <span class="doccomment">/// Unbans given IP address(es).</span>
     <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;unban&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_unban_by_ip&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">node_unban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
+    <span class="doccomment">/// Unbans given node id.</span>
+    <span class="doccomment">/// No confirmation to expect.</span>
+    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_unban_by_id&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">node_unban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_status&quot;</span>)]</span>
@@ -514,5 +534,5 @@
     <span class="comment">// TODO: jsonrpc_client_transports::RawClient::call_method ... see #1182</span>
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>

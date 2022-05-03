@@ -729,6 +729,14 @@
 <span id="724">724</span>
 <span id="725">725</span>
 <span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -957,11 +965,19 @@
         <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span>()
     }
 
-    <span class="kw">fn</span> <span class="ident">ban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">node_ban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span>()<span class="op">&gt;</span>()
     }
 
-    <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">node_ban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span>()<span class="op">&gt;</span>()
+    }
+
+    <span class="kw">fn</span> <span class="ident">node_unban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span>()<span class="op">&gt;</span>()
+    }
+
+    <span class="kw">fn</span> <span class="ident">node_unban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span>()<span class="op">&gt;</span>()
     }
 
@@ -1456,5 +1472,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>

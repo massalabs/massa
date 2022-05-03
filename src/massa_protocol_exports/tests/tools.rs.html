@@ -365,18 +365,6 @@
 <span id="360">360</span>
 <span id="361">361</span>
 <span id="362">362</span>
-<span id="363">363</span>
-<span id="364">364</span>
-<span id="365">365</span>
-<span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
-<span id="373">373</span>
-<span id="374">374</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::mock_network_controller::MockNetworkController</span>;
@@ -714,19 +702,7 @@
         .<span class="ident">expect</span>(<span class="string">&quot;Hash not asked for before timer.&quot;</span>)
 }
 
-<span class="doccomment">/// assert a node has been banned</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">assert_banned_node</span>(<span class="ident">node_id</span>: <span class="ident">NodeId</span>, <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>) {
-    <span class="kw">let</span> <span class="ident">banned_node</span> <span class="op">=</span> <span class="ident">network_controller</span>
-        .<span class="ident">wait_command</span>(<span class="number">1000</span>.<span class="ident">into</span>(), <span class="op">|</span><span class="ident">cmd</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">cmd</span> {
-            <span class="ident">NetworkCommand::Ban</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">node</span>),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
-        })
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;Node not banned before timeout.&quot;</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">banned_node</span>, <span class="ident">node_id</span>);
-}
-
-<span class="doccomment">/// assert nodes have been banned</span>
+<span class="doccomment">/// assert a list of node(s) has been banned</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">assert_banned_nodes</span>(
     <span class="kw-2">mut</span> <span class="ident">nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>,
     <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>,
@@ -737,12 +713,12 @@
         <span class="macro">tokio::select!</span> {
             <span class="ident">msg</span> <span class="op">=</span> <span class="ident">network_controller</span>
                    .<span class="ident">wait_command</span>(<span class="number">1000</span>.<span class="ident">into</span>(), <span class="op">|</span><span class="ident">cmd</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">cmd</span> {
-                       <span class="ident">NetworkCommand::Ban</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">node</span>),
+                       <span class="ident">NetworkCommand::NodeBanByIds</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">node</span>),
                        <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
                    })
              =&gt;  {
-                 <span class="kw">let</span> <span class="ident">banned_node</span> <span class="op">=</span> <span class="ident">msg</span>.<span class="ident">expect</span>(<span class="string">&quot;Nodes not banned before timeout.&quot;</span>);
-                 <span class="ident">nodes</span>.<span class="ident">drain_filter</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">id</span> <span class="op">==</span> <span class="ident">banned_node</span>);
+                 <span class="kw">let</span> <span class="ident">banned_nodes</span> <span class="op">=</span> <span class="ident">msg</span>.<span class="ident">expect</span>(<span class="string">&quot;Nodes not banned before timeout.&quot;</span>);
+                 <span class="ident">nodes</span>.<span class="ident">drain_filter</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">banned_nodes</span>.<span class="ident">contains</span>(<span class="ident">id</span>));
                  <span class="kw">if</span> <span class="ident">nodes</span>.<span class="ident">is_empty</span>() {
                      <span class="kw">break</span>;
                  }
@@ -752,5 +728,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>

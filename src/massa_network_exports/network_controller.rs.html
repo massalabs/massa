@@ -307,6 +307,15 @@
 <span id="302">302</span>
 <span id="303">303</span>
 <span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -334,19 +343,19 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">NetworkCommandSender</span> {
-    <span class="doccomment">/// ban by node</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_id</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// ban node(s) by id(s)</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_ids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::Ban</span>(<span class="ident">node_id</span>))
+            .<span class="ident">send</span>(<span class="ident">NetworkCommand::NodeBanByIds</span>(<span class="ident">ids</span>))
             .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send Ban command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send BanId command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// ban ip</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ban_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// ban node(s) by ip(s)</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_ips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::BanIp</span>(<span class="ident">ips</span>))
+            .<span class="ident">send</span>(<span class="ident">NetworkCommand::NodeBanByIps</span>(<span class="ident">ips</span>))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send BanIp command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -372,10 +381,19 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// remove from banned nodes</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// remove from banned node(s) by id(s)</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_unban_by_ids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::Unban</span>(<span class="ident">ips</span>))
+            .<span class="ident">send</span>(<span class="ident">NetworkCommand::NodeUnbanByIds</span>(<span class="ident">ids</span>))
+            .<span class="kw">await</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send Unban command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// remove from banned node(s) by ip(s)</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_unban_ips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="number">0</span>
+            .<span class="ident">send</span>(<span class="ident">NetworkCommand::NodeUnbanByIps</span>(<span class="ident">ips</span>))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send Unban command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -612,5 +630,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>

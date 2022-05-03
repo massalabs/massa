@@ -298,6 +298,8 @@
 <span id="293">293</span>
 <span id="294">294</span>
 <span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by</span>
 <span class="doccomment">//! `massa-network` that allow external communication with other nodes.</span>
 <span class="doccomment">//!</span>
@@ -337,7 +339,7 @@
 <span class="doccomment">//! NodeWorker      NetworkWorker          ProtocolWorker</span>
 <span class="doccomment">//!    |               |                         |</span>
 <span class="doccomment">//!    +------------------------------------------------------- Receive a batch of annoucemnt</span>
-<span class="doccomment">//!    .               |                         |              </span>
+<span class="doccomment">//!    .               |                         |</span>
 <span class="doccomment">//!    +--------------&gt;|                         |              NetworkWorker react on previous event. Forward to protocol.</span>
 <span class="doccomment">//!    |               +------------------------&gt;#              - Check in the protocol if we already have operations</span>
 <span class="doccomment">//!    |               |                         #              or not. Build the vector of requirement.</span>
@@ -349,13 +351,13 @@
 <span class="doccomment">//!    |               |                         |</span>
 <span class="doccomment">//!    |               |                         |              &gt; Ask to the node that sent the batch a list of operations</span>
 <span class="doccomment">//!    |               |                         |              &gt; that we don&#39;t already know with `NodeCommand::AskForOperations`.</span>
-<span class="doccomment">//!    |               |                         |                 </span>
+<span class="doccomment">//!    |               |                         |</span>
 <span class="doccomment">//!    +--------------&gt;|                         |</span>
 <span class="doccomment">//!    |               +------------------------&gt;#</span>
-<span class="doccomment">//!    |               |                         #              </span>
+<span class="doccomment">//!    |               |                         #</span>
 <span class="doccomment">//!    |               |                         #              &gt; Receive the full operations inside the structure</span>
 <span class="doccomment">//!    |               |                         #              &gt; `AskedOperation`.</span>
-<span class="doccomment">//!    |               |                         #              </span>
+<span class="doccomment">//!    |               |                         #</span>
 <span class="doccomment">//!    |               |                         #              Update local state and the `NodeInfo` of the sender if required.</span>
 <span class="doccomment">//!    |               |                         |</span>
 <span class="doccomment">//!    |               |&lt;------------------------+              Once we received and store the operation, we can propagate it.</span>
@@ -463,12 +465,14 @@
     <span class="ident">GetPeers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Peers</span><span class="op">&gt;</span>),
     <span class="doccomment">/// get peers for bootstrap server</span>
     <span class="ident">GetBootstrapPeers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Ban a peer by his node id</span>
-    <span class="ident">Ban</span>(<span class="ident">NodeId</span>),
+    <span class="doccomment">/// Ban a list of peer by their node id</span>
+    <span class="ident">NodeBanByIds</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Ban a list of peer by their ip address</span>
-    <span class="ident">BanIp</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
+    <span class="ident">NodeBanByIps</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Unban a list of peer by their node id</span>
+    <span class="ident">NodeUnbanByIds</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Unban a list of peer by their ip address</span>
-    <span class="ident">Unban</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
+    <span class="ident">NodeUnbanByIps</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Send a message that a block is not found to a node</span>
     <span class="ident">BlockNotFound</span> {
         <span class="doccomment">/// to node id</span>
@@ -594,5 +598,5 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkManagementCommand</span> {}
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>

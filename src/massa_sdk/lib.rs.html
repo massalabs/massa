@@ -267,6 +267,19 @@
 <span id="262">262</span>
 <span id="263">263</span>
 <span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Utilities for a massa client</span>
 
@@ -282,6 +295,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
+<span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">SignedOperation</span>};
@@ -384,19 +398,31 @@
             .<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// Bans given node id</span>
+    <span class="doccomment">/// Bans given ip address(es)</span>
     <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;ban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_ban_by_ip&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// Unban given ip address</span>
+    <span class="doccomment">/// Bans given node id(s)</span>
     <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;unban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_ban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_ban_by_id&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ids</span>]).<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// add IPs to whitelist</span>
+    <span class="doccomment">/// Unbans given ip address(es)</span>
+    <span class="doccomment">/// No confirmation to expect.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_unban_by_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_unban_by_ip&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
+    }
+
+    <span class="doccomment">/// Unbans given node id(s)</span>
+    <span class="doccomment">/// No confirmation to expect.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_unban_by_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_unban_by_id&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ids</span>]).<span class="kw">await</span>
+    }
+
+    <span class="doccomment">/// add ips to whitelist</span>
     <span class="doccomment">/// create peer if it was unknown</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
@@ -532,5 +558,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_sdk" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_sdk" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>

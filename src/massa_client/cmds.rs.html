@@ -1060,6 +1060,47 @@
 <span id="1055">1055</span>
 <span id="1056">1056</span>
 <span id="1057">1057</span>
+<span id="1058">1058</span>
+<span id="1059">1059</span>
+<span id="1060">1060</span>
+<span id="1061">1061</span>
+<span id="1062">1062</span>
+<span id="1063">1063</span>
+<span id="1064">1064</span>
+<span id="1065">1065</span>
+<span id="1066">1066</span>
+<span id="1067">1067</span>
+<span id="1068">1068</span>
+<span id="1069">1069</span>
+<span id="1070">1070</span>
+<span id="1071">1071</span>
+<span id="1072">1072</span>
+<span id="1073">1073</span>
+<span id="1074">1074</span>
+<span id="1075">1075</span>
+<span id="1076">1076</span>
+<span id="1077">1077</span>
+<span id="1078">1078</span>
+<span id="1079">1079</span>
+<span id="1080">1080</span>
+<span id="1081">1081</span>
+<span id="1082">1082</span>
+<span id="1083">1083</span>
+<span id="1084">1084</span>
+<span id="1085">1085</span>
+<span id="1086">1086</span>
+<span id="1087">1087</span>
+<span id="1088">1088</span>
+<span id="1089">1089</span>
+<span id="1090">1090</span>
+<span id="1091">1091</span>
+<span id="1092">1092</span>
+<span id="1093">1093</span>
+<span id="1094">1094</span>
+<span id="1095">1095</span>
+<span id="1096">1096</span>
+<span id="1097">1097</span>
+<span id="1098">1098</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -1067,6 +1108,7 @@
 <span class="kw">use</span> <span class="ident">console::style</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">CompactAddressInfo</span>, <span class="ident">EventFilter</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>};
+<span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident">massa_models::timeslots::get_current_latest_block_slot</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
@@ -1099,17 +1141,31 @@
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
-        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;[IpAddr]&quot;</span>),
-        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;unban given IP addresses&quot;</span>
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;IpAddr1 IpAddr2 ...&quot;</span>),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;unban given IP address(es)&quot;</span>
     )]</span>
-    <span class="ident">unban</span>,
+    <span class="ident">node_unban_by_ip</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
-        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;[IpAddr]&quot;</span>),
-        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;ban given IP addresses&quot;</span>
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;Id1 Id2 ...&quot;</span>),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;unban given id(s)&quot;</span>
     )]</span>
-    <span class="ident">ban</span>,
+    <span class="ident">node_unban_by_id</span>,
+
+    <span class="attribute">#[<span class="ident">strum</span>(
+        <span class="ident">ascii_case_insensitive</span>,
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;IpAddr1 IpAddr2 ...&quot;</span>),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;ban given IP address(es)&quot;</span>
+    )]</span>
+    <span class="ident">node_ban_by_ip</span>,
+
+    <span class="attribute">#[<span class="ident">strum</span>(
+        <span class="ident">ascii_case_insensitive</span>,
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;Id1 Id2 ...&quot;</span>),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;ban given id(s)&quot;</span>
+    )]</span>
+    <span class="ident">node_ban_by_id</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(<span class="ident">ascii_case_insensitive</span>, <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;stops the node&quot;</span>)]</span>
     <span class="ident">node_stop</span>,
@@ -1427,9 +1483,9 @@
                 <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
             }
 
-            <span class="ident">Command::unban</span> =&gt; {
+            <span class="ident">Command::node_unban_by_ip</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">ips</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>;
-                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">unban</span>(<span class="ident">ips</span>).<span class="kw">await</span> {
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">node_unban_by_ip</span>(<span class="ident">ips</span>).<span class="kw">await</span> {
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
                             <span class="macro">println!</span>(<span class="string">&quot;Request of unbanning successfully sent!&quot;</span>)
@@ -1440,9 +1496,35 @@
                 <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
             }
 
-            <span class="ident">Command::ban</span> =&gt; {
+            <span class="ident">Command::node_unban_by_id</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">ids</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>;
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">node_unban_by_id</span>(<span class="ident">ids</span>).<span class="kw">await</span> {
+                    <span class="prelude-val">Ok</span>(()) =&gt; {
+                        <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
+                            <span class="macro">println!</span>(<span class="string">&quot;Request of unbanning successfully sent!&quot;</span>)
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">rpc_error!</span>(<span class="ident">e</span>),
+                };
+                <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
+            }
+
+            <span class="ident">Command::node_ban_by_ip</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">ips</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>;
-                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">ban</span>(<span class="ident">ips</span>).<span class="kw">await</span> {
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">node_ban_by_ip</span>(<span class="ident">ips</span>).<span class="kw">await</span> {
+                    <span class="prelude-val">Ok</span>(()) =&gt; {
+                        <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
+                            <span class="macro">println!</span>(<span class="string">&quot;Request of banning successfully sent!&quot;</span>)
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">rpc_error!</span>(<span class="ident">e</span>),
+                }
+                <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
+            }
+
+            <span class="ident">Command::node_ban_by_id</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">ids</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>;
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">node_ban_by_id</span>(<span class="ident">ids</span>).<span class="kw">await</span> {
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
                             <span class="macro">println!</span>(<span class="string">&quot;Request of banning successfully sent!&quot;</span>)
@@ -2118,5 +2200,5 @@
     })
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>
