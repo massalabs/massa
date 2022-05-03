@@ -38,15 +38,15 @@ impl Default for Settings {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct NodeAddr {
-    pub public: SocketAddr,
-    pub private: SocketAddr,
+    pub public_ip: SocketAddr,
+    pub private_ip: SocketAddr,
 }
 
 impl Default for NodeAddr {
     fn default() -> Self {
         Self {
-            public: "0.0.0.0:33035".parse().unwrap(),
-            private: "127.0.0.1:33034".parse().unwrap(),
+            public_ip: "0.0.0.0:33035".parse().unwrap(),
+            private_ip: "127.0.0.1:33034".parse().unwrap(),
         }
     }
 }

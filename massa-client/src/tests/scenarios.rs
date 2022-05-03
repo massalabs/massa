@@ -6,8 +6,11 @@ use serde::de::DeserializeOwned;
 use serial_test::serial;
 use std::{thread::JoinHandle, time::Duration};
 
+const TIMEOUT: u64 = 30;
+const TENTATIVES: u64 = 10;
+
 async fn send_cmd(cmd: &str) -> Result<String> {
-    for _ in 0..10 {
+    for _ in 0..TENTATIVES {
         let output = Command::new("cargo")
             .args(&["run", "--features", "testing", "--", cmd, "--json"])
             .assert()
@@ -18,7 +21,7 @@ async fn send_cmd(cmd: &str) -> Result<String> {
         if !stdout.contains("tcp connect error") {
             return Ok(stdout);
         }
-        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(TIMEOUT)).await;
     }
     bail!("was not able to send command")
 }
@@ -36,6 +39,7 @@ async fn send_cmd_with_output<T: DeserializeOwned>(cmd: &str) -> Result<T> {
 
 fn spawn_node(timeout: Duration) -> JoinHandle<String> {
     std::thread::spawn(move || {
+        println!("in spawn node");
         let output = Command::new("cargo")
             .args(["run", "--features", "sandbox"])
             .current_dir("../massa-node")
@@ -45,7 +49,8 @@ fn spawn_node(timeout: Duration) -> JoinHandle<String> {
             .assert()
             .get_output()
             .clone();
-        println!("{}", std::str::from_utf8(&output.stderr).unwrap());
+        println!("stderr {}", std::str::from_utf8(&output.stderr).unwrap());
+        println!("stdout {}", std::str::from_utf8(&output.stdout).unwrap());
         std::str::from_utf8(&output.stdout).unwrap().to_string()
     })
 }
@@ -53,13 +58,13 @@ fn spawn_node(timeout: Duration) -> JoinHandle<String> {
 #[tokio::test]
 #[serial]
 async fn test_run_node() {
-    let handle = spawn_node(Duration::from_secs(1000));
+    let handle = spawn_node(Duration::from_secs(10));
 
     let output = send_cmd_with_output::<NodeStatus>("get_status")
         .await
         .unwrap();
     // TODO: assert_eq! or try a REGEX against the received output to validate it
-    println!("{}", output);
+    println!("output out = {}", output);
 
     ////////////////////////////////////////////////////
     // TODO: test other API endpoints/client commands //

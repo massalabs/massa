@@ -60,11 +60,11 @@ async fn main(args: Args) -> Result<()> {
     // TODO: move settings loading in another crate ... see #1277
     let public = match args.public {
         Some(addr) => addr,
-        None => SETTINGS.default_node.public,
+        None => SETTINGS.default_node.public_ip,
     };
     let private = match args.private {
         Some(addr) => addr,
-        None => SETTINGS.default_node.private,
+        None => SETTINGS.default_node.private_ip,
     };
 
     let client = Client::new(public, private).await;

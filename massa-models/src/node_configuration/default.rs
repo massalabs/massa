@@ -40,7 +40,7 @@ lazy_static::lazy_static! {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
-                .saturating_add(MassaTime::from(1000 * 60 * 3))
+                .saturating_add(MassaTime::from(1000 * 10))
         )
     } else {
         1649358000000.into()  //  	Thu Apr 07 2022 19:00:00 GMT+0000
