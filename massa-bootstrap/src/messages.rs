@@ -59,6 +59,8 @@ pub enum BootstrapMessage {
         /// Part of the execution ledger sent
         ledger: ExecutionLedgerSubset,
     },
+    /// Bootstrap error
+    BootstrapError { error: String },
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -72,6 +74,7 @@ enum MessageTypeId {
     ResponseConsensusLedgerPart = 5u32,
     AskExecutionLedgerPart = 6u32,
     ResponseExecutionLedgerPart = 7u32,
+    BootstrapError = 8u32,
 }
 
 impl SerializeCompact for BootstrapMessage {
@@ -112,6 +115,11 @@ impl SerializeCompact for BootstrapMessage {
             }
             BootstrapMessage::ResponseExecutionLedgerPart { ledger } => {
                 res.extend(ledger.to_bytes_compact()?);
+            }
+            BootstrapMessage::BootstrapError { error } => {
+                res.extend(u32::from(MessageTypeId::BootstrapError).to_varint_bytes());
+                res.extend(u32::to_varint_bytes(error.len() as u32));
+                res.extend(error.as_bytes())
             }
         }
         Ok(res)
@@ -191,6 +199,17 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += delta;
 
                 BootstrapMessage::ResponseExecutionLedgerPart { ledger }
+            }
+            MessageTypeId::BootstrapError => {
+                let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+
+                let error = String::from_utf8_lossy(&buffer[cursor..cursor + error_len as usize]);
+                cursor += error_len as usize;
+
+                BootstrapMessage::BootstrapError {
+                    error: error.into_owned(),
+                }
             }
         };
         Ok((res, cursor))

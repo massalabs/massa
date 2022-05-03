@@ -5,11 +5,12 @@ use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
+use massa_models::Version;
 use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
     DeserializeMinBEInt, SerializeCompact, SerializeMinBEInt,
 };
-use massa_signature::{sign, PrivateKey, Signature, SIGNATURE_SIZE_BYTES};
+use massa_signature::{sign, PrivateKey};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -18,8 +19,7 @@ pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     local_privkey: PrivateKey,
     duplex: Duplex,
-    prev_sig: Option<Signature>,
-    received_client_message_sig: Option<Signature>,
+    prev_message: Option<Hash>,
 }
 
 impl BootstrapServerBinder {
@@ -34,18 +34,25 @@ impl BootstrapServerBinder {
             max_bootstrap_message_size,
             local_privkey,
             duplex,
-            prev_sig: None,
-            received_client_message_sig: None,
+            prev_message: None,
         }
     }
 
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
-    pub async fn handshake(&mut self) -> Result<(), BootstrapError> {
+    /// MUST always be followed by a send of the BootstrapMessage::BootstrapTime
+    pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // read randomness, check hash
         let rand_hash = {
-            let mut random_bytes = [0u8; BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
+            let version_bytes = version.to_bytes_compact()?;
+            let mut random_bytes =
+                vec![0u8; (version_bytes.len() as usize) + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
             self.duplex.read_exact(&mut random_bytes).await?;
+            let receive_version =
+                Version::from_bytes_compact(&random_bytes[..version_bytes.len()])?;
+            if !receive_version.0.is_compatible(&version) {
+                return Err(BootstrapError::IncompatibleVersionError(format!("Received a bad incompatible version in handshake. (excepted: {}, received: {})", version, receive_version.0)));
+            }
             let expected_hash = Hash::compute_from(&random_bytes);
             let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
             self.duplex.read_exact(&mut hash_bytes).await?;
@@ -55,12 +62,8 @@ impl BootstrapServerBinder {
             expected_hash
         };
 
-        // send signature
-        let sig = sign(&rand_hash, &self.local_privkey)?;
-        self.duplex.write_all(&sig.to_bytes()).await?;
-
         // save prev sig
-        self.prev_sig = Some(sig);
+        self.prev_message = Some(rand_hash);
 
         Ok(())
     }
@@ -75,11 +78,16 @@ impl BootstrapServerBinder {
 
         // compute signature
         let sig = {
-            let mut signed_data = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
-            signed_data[..SIGNATURE_SIZE_BYTES]
-                .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
-            signed_data[SIGNATURE_SIZE_BYTES..].clone_from_slice(&msg_bytes);
-            sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+            if let Some(prev_message) = self.prev_message {
+                let mut signed_data = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
+                signed_data[..HASH_SIZE_BYTES].clone_from_slice(&prev_message.to_bytes());
+                signed_data[HASH_SIZE_BYTES..].clone_from_slice(&msg_bytes);
+                sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+            } else {
+                let mut signed_data = vec![0u8; msg_len as usize];
+                signed_data[..].clone_from_slice(&msg_bytes);
+                sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+            }
         };
 
         // send signature
@@ -91,18 +99,11 @@ impl BootstrapServerBinder {
             self.duplex.write_all(&msg_len_bytes).await?;
         }
 
-        if let Some(received_client_message_sig) = self.received_client_message_sig {
-            self.duplex
-                .write_all(&received_client_message_sig.to_bytes())
-                .await?;
-            self.received_client_message_sig = None;
-        }
-
         // send message
         self.duplex.write_all(&msg_bytes).await?;
 
         // save prev sig
-        self.prev_sig = Some(sig);
+        self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
         Ok(())
     }
@@ -110,20 +111,17 @@ impl BootstrapServerBinder {
     #[allow(dead_code)]
     /// Read a message sent from the client (not signed). NOT cancel-safe
     pub async fn next(&mut self) -> Result<BootstrapMessage, BootstrapError> {
-        // read prev signature
-        let sig = {
-            let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
-            self.duplex.read_exact(&mut sig_bytes).await?;
-            Signature::from_bytes(&sig_bytes)?
+        // read prev hash
+        let hash = {
+            if self.prev_message.is_some() {
+                let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
+                self.duplex.read_exact(&mut hash_bytes).await?;
+                Some(Hash::from_bytes(&hash_bytes)?)
+            } else {
+                None
+            }
         };
 
-        if let Some(prev_sig) = self.prev_sig {
-            if sig != prev_sig || self.received_client_message_sig.is_some() {
-                return Err(BootstrapError::GeneralError(
-                    "The prev signature sent by the client doesn't match ours.".to_string(),
-                ));
-            }
-        }
         let size_field_len = u32::be_bytes_min_length(self.max_bootstrap_message_size);
 
         // read message length
@@ -133,22 +131,21 @@ impl BootstrapServerBinder {
             u32::from_be_bytes_min(&meg_len_bytes, self.max_bootstrap_message_size)?.0
         };
         // read message and deserialize
+        let mut msg_bytes = vec![0u8; msg_len as usize];
         let message = {
-            let mut msg_bytes = vec![0u8; msg_len as usize];
             self.duplex.read_exact(&mut msg_bytes).await?;
-            // compute signature
-            let sig = {
-                let mut signed_data = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
-                signed_data[..SIGNATURE_SIZE_BYTES]
-                    .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
-                signed_data[SIGNATURE_SIZE_BYTES..].clone_from_slice(&msg_bytes);
-                sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
-            };
-            self.received_client_message_sig = Some(sig);
-            self.prev_sig = Some(sig);
+            if let Some(prev_message) = self.prev_message {
+                if prev_message != hash.unwrap() {
+                    return Err(BootstrapError::GeneralError(
+                        "Message sequencing has been broken".to_string(),
+                    ));
+                }
+            }
             let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
             msg
         };
+
+        self.prev_message = Some(Hash::compute_from(&msg_bytes));
         Ok(message)
     }
 }

@@ -132,6 +132,8 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         max_ping: MassaTime::from(500),
         read_timeout: 1000.into(),
         write_timeout: 1000.into(),
+        read_error_timeout: 200.into(),
+        write_error_timeout: 200.into(),
         bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 16), bootstrap_public_key)],
         enable_clock_synchronization: true,
         cache_duration: 10000.into(),
