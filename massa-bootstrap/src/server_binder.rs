@@ -134,7 +134,6 @@ impl BootstrapServerBinder {
         let mut msg_bytes = vec![0u8; msg_len as usize];
         let message = {
             self.duplex.read_exact(&mut msg_bytes).await?;
-            self.prev_message = Some(Hash::compute_from(&msg_bytes));
             if let Some(prev_message) = self.prev_message {
                 if prev_message != hash.unwrap() {
                     return Err(BootstrapError::GeneralError(
@@ -142,6 +141,7 @@ impl BootstrapServerBinder {
                     ));
                 }
             }
+            self.prev_message = Some(Hash::compute_from(&msg_bytes));
             let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
             msg
         };

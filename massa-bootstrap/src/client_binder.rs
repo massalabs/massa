@@ -71,8 +71,6 @@ impl BootstrapClientBinder {
             Signature::from_bytes(&sig_bytes)?
         };
 
-        self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
-
         // read message length
         let msg_len = {
             let mut meg_len_bytes = vec![0u8; self.size_field_len];
@@ -83,6 +81,7 @@ impl BootstrapClientBinder {
         // read message, check signature and check signature of the message sent just before then deserialize it
         let message = {
             if let Some(prev_message) = self.prev_message {
+                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
                 let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
                 sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(&prev_message.to_bytes());
                 self.duplex
@@ -94,6 +93,7 @@ impl BootstrapClientBinder {
                     BootstrapMessage::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
                 msg
             } else {
+                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
                 let mut sig_msg_bytes = vec![0u8; msg_len as usize];
                 self.duplex.read_exact(&mut sig_msg_bytes[..]).await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
