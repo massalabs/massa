@@ -71,6 +71,8 @@ impl BootstrapClientBinder {
             Signature::from_bytes(&sig_bytes)?
         };
 
+        self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
+
         // read message length
         let msg_len = {
             let mut meg_len_bytes = vec![0u8; self.size_field_len];
@@ -100,9 +102,6 @@ impl BootstrapClientBinder {
                 msg
             }
         };
-
-        // save prev sig
-        self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
         Ok(message)
     }
