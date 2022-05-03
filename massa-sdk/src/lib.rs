@@ -13,6 +13,7 @@ use massa_models::api::{
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
@@ -115,19 +116,31 @@ impl RpcClient {
             .await
     }
 
-    /// Bans given node id
+    /// Bans given ip address(es)
     /// No confirmation to expect.
-    pub async fn ban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        self.call_method("ban", "()", vec![ips]).await
+    pub async fn node_ban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.call_method("node_ban_by_ip", "()", vec![ips]).await
     }
 
-    /// Unban given ip address
+    /// Bans given node id(s)
     /// No confirmation to expect.
-    pub async fn unban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
-        self.call_method("unban", "()", vec![ips]).await
+    pub async fn node_ban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
+        self.call_method("node_ban_by_id", "()", vec![ids]).await
     }
 
-    /// add IPs to whitelist
+    /// Unbans given ip address(es)
+    /// No confirmation to expect.
+    pub async fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.call_method("node_unban_by_ip", "()", vec![ips]).await
+    }
+
+    /// Unbans given node id(s)
+    /// No confirmation to expect.
+    pub async fn node_unban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
+        self.call_method("node_unban_by_id", "()", vec![ids]).await
+    }
+
+    /// add ips to whitelist
     /// create peer if it was unknown
     pub async fn node_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("node_whitelist", "()", vec![ips]).await
