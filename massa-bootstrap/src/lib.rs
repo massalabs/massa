@@ -196,7 +196,7 @@ async fn get_state_internal(
             "bootstrap ask ledger part send timed out",
         )
         .await?;
-        let _ledger_part = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await
+        let ledger_part = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await
         {
             Err(_) => {
                 return Err(std::io::Error::new(
@@ -209,6 +209,7 @@ async fn get_state_internal(
             Ok(Ok(BootstrapMessage::ResponseConsensusLedgerPart { ledger })) => ledger,
             Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
         };
+        debug!("consensus = {:#?}", ledger_part);
         break;
     }
 
