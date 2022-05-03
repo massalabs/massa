@@ -186,16 +186,14 @@ async fn get_state_internal(
     let last_address: Option<Address> = None;
     // Fifth, ask for the first parts of the ledger
     loop {
-        send_with_timeout_with_error_check(
-            write_timeout,
-            read_error_timeout,
-            client,
-            messages::BootstrapMessage::AskConsensusLedgerPart {
-                address: last_address,
-            },
-            "bootstrap ask ledger part send timed out",
-        )
-        .await?;
+        match tokio::time::timeout(write_timeout, client.send(messages::BootstrapMessage::AskConsensusLedgerPart {
+            address: last_address,
+        })).await {
+            Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap ask ledger part send timed out").into()),
+            Ok(Err(e)) => Err(e),
+            Ok(Ok(_)) => Ok(()),
+        }?;
+        info!("Send ask bootstrap ledger");
         let ledger_part = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await
         {
             Err(_) => {

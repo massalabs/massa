@@ -103,6 +103,7 @@ impl SerializeCompact for BootstrapMessage {
                 res.extend(&final_state.to_bytes_compact()?);
             }
             BootstrapMessage::AskConsensusLedgerPart { address } => {
+                res.extend(u32::from(MessageTypeId::AskConsensusLedgerPart).to_varint_bytes());
                 if let Some(address) = address {
                     res.extend(address.to_bytes());
                 }
