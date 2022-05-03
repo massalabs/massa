@@ -1838,6 +1838,7 @@ dependencies = [
  "massa_models",
  "massa_protocol_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "num",
  "serde 1.0.136",

@@ -42,9 +42,14 @@ impl ProtocolWorker {
     /// - Update the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
-    pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
+    pub(crate) async fn on_operations_received(
+        &mut self,
+        node_id: NodeId,
+        operations: Operations,
+        serialized: Vec<Vec<u8>>,
+    ) {
         if self
-            .note_operations_from_node(operations, &node_id, true)
+            .note_operations_from_node(operations, &node_id, true, Some(serialized))
             .await
             .is_err()
         {
@@ -203,8 +208,7 @@ impl ProtocolWorker {
 
     /// Process the reception of a batch of asked operations, that means that
     /// we sent already a batch of ids in the network notifying that we already
-    /// have those operations. Ask pool for the operations (will change with
-    /// the shared storage)
+    /// have those operations. Ask pool for the operations.
     ///
     /// See also `on_operation_results_from_pool`
     pub(crate) async fn on_asked_operations_received(
@@ -232,7 +236,7 @@ impl ProtocolWorker {
     pub(crate) async fn on_operation_results_from_pool(
         &mut self,
         node_id: NodeId,
-        operations: Operations,
+        operations: OperationIds,
     ) -> Result<(), NetworkError> {
         self.network_command_sender
             .send_operations(node_id, operations)

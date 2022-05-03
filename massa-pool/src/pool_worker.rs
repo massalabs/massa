@@ -5,11 +5,13 @@ use crate::operation_pool::OperationPool;
 use crate::{endorsement_pool::EndorsementPool, settings::PoolConfig};
 use massa_models::prehash::{Map, Set};
 use massa_models::stats::PoolStats;
+use massa_models::SerializeCompact;
 use massa_models::{
     Address, BlockId, EndorsementId, OperationId, OperationSearchResult, SignedEndorsement,
     SignedOperation, Slot,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
+use massa_storage::Storage;
 use tokio::sync::{mpsc, oneshot};
 use tracing::warn;
 
@@ -121,6 +123,7 @@ impl PoolWorker {
         protocol_pool_event_receiver: ProtocolPoolEventReceiver,
         controller_command_rx: mpsc::Receiver<PoolCommand>,
         controller_manager_rx: mpsc::Receiver<PoolManagementCommand>,
+        storage: Storage,
     ) -> Result<PoolWorker, PoolError> {
         massa_trace!("pool.pool_worker.new", {});
         Ok(PoolWorker {
@@ -128,7 +131,7 @@ impl PoolWorker {
             protocol_pool_event_receiver,
             controller_command_rx,
             controller_manager_rx,
-            operation_pool: OperationPool::new(cfg),
+            operation_pool: OperationPool::new(cfg, storage),
             endorsement_pool: EndorsementPool::new(cfg),
         })
     }
@@ -182,12 +185,19 @@ impl PoolWorker {
     /// * `cmd`: consensus command to process
     async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
-            PoolCommand::AddOperations(mut operations) => {
-                let newly_added = self.operation_pool.add_operations(operations.clone())?;
-                operations.retain(|op_id, _op| newly_added.contains(op_id));
-                if !operations.is_empty() {
+            PoolCommand::AddOperations(operations) => {
+                let operations = operations
+                    .into_iter()
+                    .filter_map(|(id, op)| {
+                        op.to_bytes_compact()
+                            .map(|serialized| (id, (op, serialized)))
+                            .ok()
+                    })
+                    .collect();
+                let newly_added = self.operation_pool.process_operations(operations)?;
+                if !newly_added.is_empty() {
                     self.protocol_command_sender
-                        .propagate_operations(operations.keys().cloned().collect())
+                        .propagate_operations(newly_added)
                         .await?;
                 }
             }
@@ -319,19 +329,18 @@ impl PoolWorker {
     ) -> Result<(), PoolError> {
         match event {
             ProtocolPoolEvent::ReceivedOperations {
-                mut operations,
+                operations,
                 propagate,
             } => {
                 if propagate {
-                    let newly_added = self.operation_pool.add_operations(operations.clone())?;
-                    operations.retain(|op_id, _op| newly_added.contains(op_id));
-                    if !operations.is_empty() {
+                    let newly_added = self.operation_pool.process_operations(operations)?;
+                    if !newly_added.is_empty() {
                         self.protocol_command_sender
-                            .propagate_operations(operations.keys().cloned().collect())
+                            .propagate_operations(newly_added)
                             .await?;
                     }
                 } else {
-                    self.operation_pool.add_operations(operations)?;
+                    self.operation_pool.process_operations(operations)?;
                 }
             }
             ProtocolPoolEvent::ReceivedEndorsements {
@@ -353,9 +362,9 @@ impl PoolWorker {
                 }
             }
             ProtocolPoolEvent::GetOperations((node_id, operation_ids)) => {
-                let operations = self.operation_pool.get_operations(&operation_ids);
+                let results = self.operation_pool.find_operations(operation_ids);
                 self.protocol_command_sender
-                    .send_get_operations_results(node_id, operations.into_values().collect())
+                    .send_get_operations_results(node_id, results)
                     .await?;
             }
         }

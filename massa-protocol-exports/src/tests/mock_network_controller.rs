@@ -96,10 +96,12 @@ impl MockNetworkController {
     /// send operations
     /// todo inconsistency with names
     pub async fn send_operations(&mut self, source_node_id: NodeId, operations: Operations) {
+        let serialized = operations.iter().map(|_| Default::default()).collect();
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
                 node: source_node_id,
                 operations,
+                serialized,
             })
             .await
             .expect("Couldn't send operations to protocol.");

@@ -14,12 +14,13 @@ use crate::{
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
+use massa_models::DeserializeCompact;
 use massa_models::SerializeCompact;
 use massa_models::{
     node::NodeId,
     signed::{Signable, Signed},
 };
-use massa_models::{BlockId, Endorsement, Slot};
+use massa_models::{BlockId, Endorsement, SignedOperation, Slot};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
@@ -113,6 +114,76 @@ async fn test_node_worker_shutdown() {
     node_fn_handle.await.unwrap().unwrap();
 }
 
+/// Test that a node worker can send an operations message.
+#[tokio::test]
+#[serial]
+async fn test_node_worker_operations_message() {
+    let bind_port: u16 = 50_000;
+    let temp_peers_file = super::tools::generate_peers_file(&[]);
+    let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
+    let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
+    let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
+    let reader = ReadBinder::new(duplex_mock_read);
+    let writer = WriteBinder::new(duplex_mock_write);
+
+    // Note: both channels have size 1.
+    let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
+    let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
+
+    let private_key = massa_signature::generate_random_private_key();
+    let public_key = massa_signature::derive_public_key(&private_key);
+    let mock_node_id = NodeId(public_key);
+    let storage: Storage = Default::default();
+
+    // Create transaction.
+    let (transaction, _) = get_transaction(50, 10);
+    let ref_id = transaction.verify_integrity().unwrap();
+
+    // Add to storage.
+    let serialized = transaction
+        .to_bytes_compact()
+        .expect("Failed to serialize operation.");
+    storage.store_operation(ref_id, transaction.clone(), serialized);
+
+    let node_fn_handle = tokio::spawn(async move {
+        NodeWorker::new(
+            network_conf,
+            mock_node_id,
+            reader,
+            writer,
+            node_command_rx,
+            node_event_tx,
+            storage,
+        )
+        .run_loop()
+        .await
+    });
+
+    // Send operations message.
+    node_command_tx
+        .send(NodeCommand::SendOperations(
+            vec![ref_id].iter().copied().collect(),
+        ))
+        .await
+        .unwrap();
+
+    // TODO: add some infra to receive the message via the duplex mock, and assert it is what is expected.
+
+    // Send a bunch of additional commands until the channel is closed,
+    // which would deadlock if not properly handled by the worker.
+    loop {
+        if node_command_tx
+            .send(NodeCommand::Close(ConnectionClosureReason::Normal))
+            .await
+            .is_err()
+        {
+            break;
+        }
+    }
+
+    node_fn_handle.await.unwrap().unwrap();
+}
+
 // test connecting two different peers simultaneously to the controller
 // then attempt to connect to controller from an already connected peer to test max_in_connections_per_ip
 // then try to connect a third peer to test max_in_connection
@@ -145,7 +216,8 @@ async fn test_multiple_connections_to_controller() {
         async move |_network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface| {
+                    mut mock_interface,
+                    _storage| {
             // note: the peers list is empty so the controller will not attempt outgoing connections
 
             // 1) connect peer1 to controller
@@ -259,7 +331,8 @@ async fn test_peer_ban() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface| {
+                    mut mock_interface,
+                    _storage| {
             // accept connection from controller to peer
             let (conn1_id, conn1_r, conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -394,7 +467,8 @@ async fn test_peer_ban_by_ip() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface| {
+                    mut mock_interface,
+                    _storage| {
             // accept connection from controller to peer
             let (_, conn1_r, conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -537,7 +611,8 @@ async fn test_advertised_and_wakeup_interval() {
         async move |_network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface| {
+                    mut mock_interface,
+                    _storage| {
             // 1) open a connection, advertize peer, disconnect
             {
                 let (conn2_id, conn2_r, mut conn2_w) = tools::full_connection_to_controller(
@@ -676,7 +751,8 @@ async fn test_block_not_found() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface| {
+                    mut mock_interface,
+                    _storage| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -866,7 +942,8 @@ async fn test_retry_connection_closed() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface| {
+                    mut mock_interface,
+                    _storage| {
             let (node_id, _read, _write) = tools::full_connection_to_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
@@ -970,7 +1047,8 @@ async fn test_operation_messages() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface| {
+                    mut mock_interface,
+                    storage| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -997,12 +1075,14 @@ async fn test_operation_messages() {
                 .unwrap();
 
             // assert it is sent to protocol
-            if let Some((operations, node)) =
+            if let Some((operations, node, serialized)) =
                 tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
                 {
-                    NetworkEvent::ReceivedOperations { operations, node } => {
-                        Some((operations, node))
-                    }
+                    NetworkEvent::ReceivedOperations {
+                        operations,
+                        node,
+                        serialized,
+                    } => Some((operations, node, serialized)),
                     _ => None,
                 })
                 .await
@@ -1010,16 +1090,30 @@ async fn test_operation_messages() {
                 assert_eq!(operations.len(), 1);
                 assert!(operations[0].verify_integrity().is_ok());
                 assert_eq!(operations[0].verify_integrity().unwrap(), ref_id);
+
+                // Check the serialized form.
+                let (serialized, _) = SignedOperation::from_bytes_compact(&(serialized[0])[0..])
+                    .expect("Failed to deserialize operation.");
+                assert!(serialized.verify_integrity().is_ok());
+                assert_eq!(serialized.verify_integrity().unwrap(), ref_id);
+
                 assert_eq!(node, conn1_id);
             } else {
-                panic!("Timeout while waiting for asked for block event");
+                panic!("Timeout while waiting for received operations event");
             }
 
             let (transaction2, _) = get_transaction(10, 50);
             let ref_id2 = transaction2.verify_integrity().unwrap();
+
+            // Add to storage.
+            let serialized = transaction2
+                .to_bytes_compact()
+                .expect("Failed to serialize operation.");
+            storage.store_operation(ref_id2, transaction2, serialized);
+
             // reply with another transaction
             network_command_sender
-                .send_operations(conn1_id, vec![transaction2.clone()])
+                .send_operations(conn1_id, vec![ref_id2].iter().copied().collect())
                 .await
                 .unwrap();
 
@@ -1096,7 +1190,8 @@ async fn test_endorsements_messages() {
         async move |network_command_sender,
                     mut network_event_receiver,
                     network_manager,
-                    mut mock_interface| {
+                    mut mock_interface,
+                    _storage| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
