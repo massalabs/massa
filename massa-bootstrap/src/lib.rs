@@ -13,7 +13,7 @@
 #![feature(ip)]
 #![feature(map_first_last)]
 use crate::client_binder::BootstrapClientBinder;
-use crate::messages::{BootstrapMessageServer, BootstrapMessageClient};
+use crate::messages::{BootstrapMessageClient, BootstrapMessageServer};
 use crate::server_binder::BootstrapServerBinder;
 use error::BootstrapError;
 pub use establisher::types::Establisher;
@@ -39,7 +39,6 @@ use tokio::time::Instant;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
 use tracing::{debug, info, warn};
 
-mod binders_trait;
 mod client_binder;
 mod error;
 mod establisher;
@@ -190,53 +189,86 @@ async fn bootstrap_from_server(
     // TODO: Add ledger to the state
     loop {
         match next_message_bootstrap {
-            Some(BootstrapMessageClient::AskConsensusLedgerPart {address: _}) => {
-                let ledger_part = 
-                    match send_message_client(next_message_bootstrap.as_ref().unwrap(), client, write_timeout, cfg.read_timeout.into()).await? {
-                        BootstrapMessageServer::ResponseConsensusLedgerPart { ledger } => ledger,
-                        BootstrapMessageServer::BootstrapError { error } => return Err(BootstrapError::ReceivedError(error)),
-                        other => return Err(BootstrapError::UnexpectedMessageServer(other))
-                    };
-                    debug!("Ledger part = {:#?}", ledger_part);
-                    debug!("Size max = {:#?}", BOOTSTRAP_LEDGER_ENTRY_SIZE);
-                    if ledger_part.0.len() < BOOTSTRAP_LEDGER_ENTRY_SIZE as usize {
-                        *next_message_bootstrap = Some(BootstrapMessageClient::AskBootstrapPeers);
-                    } else {
-                        *next_message_bootstrap = Some(BootstrapMessageClient::AskConsensusLedgerPart{
-                            address: Some(*ledger_part.0.last_key_value().unwrap().0)
-                        });
+            Some(BootstrapMessageClient::AskConsensusLedgerPart { address: _ }) => {
+                let ledger_part = match send_message_client(
+                    next_message_bootstrap.as_ref().unwrap(),
+                    client,
+                    write_timeout,
+                    cfg.read_timeout.into(),
+                )
+                .await?
+                {
+                    BootstrapMessageServer::ResponseConsensusLedgerPart { ledger } => ledger,
+                    BootstrapMessageServer::BootstrapError { error } => {
+                        return Err(BootstrapError::ReceivedError(error))
                     }
-            },
-            Some(BootstrapMessageClient::AskBootstrapPeers) => { 
-                    let peers = 
-                    match send_message_client(next_message_bootstrap.as_ref().unwrap(), client, write_timeout, cfg.read_timeout.into()).await? {
-                        BootstrapMessageServer::BootstrapPeers { peers } => peers,
-                        BootstrapMessageServer::BootstrapError { error } => return Err(BootstrapError::ReceivedError(error)),
-                        other => return Err(BootstrapError::UnexpectedMessageServer(other))
-                    };
-                    global_bootstrap_state.peers = Some(peers);
-                    *next_message_bootstrap = Some(BootstrapMessageClient::AskConsensusState);
+                    other => return Err(BootstrapError::UnexpectedMessageServer(other)),
+                };
+                debug!("Ledger part = {:#?}", ledger_part);
+                debug!("Size max = {:#?}", BOOTSTRAP_LEDGER_ENTRY_SIZE);
+                if ledger_part.0.len() < BOOTSTRAP_LEDGER_ENTRY_SIZE as usize {
+                    *next_message_bootstrap = Some(BootstrapMessageClient::AskBootstrapPeers);
+                } else {
+                    *next_message_bootstrap =
+                        Some(BootstrapMessageClient::AskConsensusLedgerPart {
+                            address: Some(*ledger_part.0.last_key_value().unwrap().0),
+                        });
                 }
-            Some(BootstrapMessageClient::AskExecutionLedgerPart{address: _}) => {
+            }
+            Some(BootstrapMessageClient::AskBootstrapPeers) => {
+                let peers = match send_message_client(
+                    next_message_bootstrap.as_ref().unwrap(),
+                    client,
+                    write_timeout,
+                    cfg.read_timeout.into(),
+                )
+                .await?
+                {
+                    BootstrapMessageServer::BootstrapPeers { peers } => peers,
+                    BootstrapMessageServer::BootstrapError { error } => {
+                        return Err(BootstrapError::ReceivedError(error))
+                    }
+                    other => return Err(BootstrapError::UnexpectedMessageServer(other)),
+                };
+                global_bootstrap_state.peers = Some(peers);
+                *next_message_bootstrap = Some(BootstrapMessageClient::AskConsensusState);
+            }
+            Some(BootstrapMessageClient::AskExecutionLedgerPart { address: _ }) => {
                 panic!("no implemented yet. Should be between consensus and peers")
             }
             Some(BootstrapMessageClient::AskConsensusState) => {
-                let state = 
-                match send_message_client(next_message_bootstrap.as_ref().unwrap(), client, write_timeout, cfg.read_timeout.into()).await? {
+                let state = match send_message_client(
+                    next_message_bootstrap.as_ref().unwrap(),
+                    client,
+                    write_timeout,
+                    cfg.read_timeout.into(),
+                )
+                .await?
+                {
                     BootstrapMessageServer::ConsensusState { pos, graph } => (pos, graph),
-                    BootstrapMessageServer::BootstrapError { error } => return Err(BootstrapError::ReceivedError(error)),
-                    other => return Err(BootstrapError::UnexpectedMessageServer(other))
+                    BootstrapMessageServer::BootstrapError { error } => {
+                        return Err(BootstrapError::ReceivedError(error))
+                    }
+                    other => return Err(BootstrapError::UnexpectedMessageServer(other)),
                 };
                 global_bootstrap_state.pos = Some(state.0);
                 global_bootstrap_state.graph = Some(state.1);
                 *next_message_bootstrap = Some(BootstrapMessageClient::AskFinalState);
             }
             Some(BootstrapMessageClient::AskFinalState) => {
-                let final_state = 
-                match send_message_client(next_message_bootstrap.as_ref().unwrap(), client, write_timeout, cfg.read_timeout.into()).await? {
+                let final_state = match send_message_client(
+                    next_message_bootstrap.as_ref().unwrap(),
+                    client,
+                    write_timeout,
+                    cfg.read_timeout.into(),
+                )
+                .await?
+                {
                     BootstrapMessageServer::FinalState { final_state } => final_state,
-                    BootstrapMessageServer::BootstrapError { error } => return Err(BootstrapError::ReceivedError(error)),
-                    other => return Err(BootstrapError::UnexpectedMessageServer(other))
+                    BootstrapMessageServer::BootstrapError { error } => {
+                        return Err(BootstrapError::ReceivedError(error))
+                    }
+                    other => return Err(BootstrapError::UnexpectedMessageServer(other)),
                 };
                 global_bootstrap_state.final_state = Some(final_state);
                 *next_message_bootstrap = None;
@@ -266,16 +298,24 @@ async fn bootstrap_from_server(
     Ok(())
 }
 
-async fn send_message_client(message_to_send: &BootstrapMessageClient, client: &mut BootstrapClientBinder, write_timeout: Duration, read_timeout: Duration) -> Result<BootstrapMessageServer, BootstrapError> {
+async fn send_message_client(
+    message_to_send: &BootstrapMessageClient,
+    client: &mut BootstrapClientBinder,
+    write_timeout: Duration,
+    read_timeout: Duration,
+) -> Result<BootstrapMessageServer, BootstrapError> {
     match tokio::time::timeout(write_timeout, client.send(message_to_send)).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap ask ledger part send timed out").into()),
+        Err(_) => Err(std::io::Error::new(
+            std::io::ErrorKind::TimedOut,
+            "bootstrap ask ledger part send timed out",
+        )
+        .into()),
         Ok(Err(e)) => Err(e),
         Ok(Ok(_)) => Ok(()),
     }?;
-    match tokio::time::timeout(read_timeout, client.next()).await
-    {
+    match tokio::time::timeout(read_timeout, client.next()).await {
         Err(_) => {
-            return Err(std::io::Error::new(
+            Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 "final state bootstrap read timed out",
             )
@@ -312,7 +352,8 @@ pub async fn get_state(
     let mut shuffled_list = bootstrap_settings.bootstrap_list.clone();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     // Will be none when bootstrap is over
-    let mut next_message_bootstrap: Option<BootstrapMessageClient> = Some(BootstrapMessageClient::AskConsensusLedgerPart { address: None });
+    let mut next_message_bootstrap: Option<BootstrapMessageClient> =
+        Some(BootstrapMessageClient::AskConsensusLedgerPart { address: None });
     let mut global_bootstrap_state: GlobalBootstrapState = Default::default();
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
@@ -493,17 +534,12 @@ impl BootstrapServer {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                                send_server_with_timeout_with_error_check(
-                                    self.bootstrap_settings.write_error_timeout.into(),
-                                    self.bootstrap_settings.read_error_timeout.into(),
-                                    &mut server,
-                                    BootstrapMessageServer::BootstrapError {
-                                        error:
-                                        format!("Your last bootstrap on this server was at {:#?} and you have to {:#?} milliseconds before retrying. Wait and retry or try an other server.", *occ.get(), per_ip_min_interval)
-                                    },
-                                    "bootstrap error no available slots send timed out",
-                                )
-                                .await?;
+                                #[allow(unused_must_use)]
+                                {
+                                    tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
+                                        error: format!("Your last bootstrap on this server was at {:#?} and you have to {:#?} milliseconds before retrying. Wait and retry or try an other server.", *occ.get(), per_ip_min_interval)
+                                    })).await;
+                                }
                                 // in list, non-expired => refuse
                                 massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
                                 continue;
@@ -558,17 +594,13 @@ impl BootstrapServer {
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
-                    let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                    send_server_with_timeout_with_error_check(
-                        self.bootstrap_settings.write_error_timeout.into(),
-                        self.bootstrap_settings.read_error_timeout.into(),
-                        &mut server,
-                        BootstrapMessageServer::BootstrapError {
+                    #[allow(unused_must_use)]
+                    {
+                        let mut server = BootstrapServerBinder::new(dplx, self.private_key);
+                        tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
                             error: "no available slots to bootstrap".to_string()
-                        },
-                        "bootstrap error no available slots send timed out",
-                    )
-                    .await?;
+                        })).await;   
+                    }
                     debug!("did not bootstrap {}: no available slots", remote_addr);
                 }
             }
@@ -624,99 +656,118 @@ async fn manage_bootstrap(
 
     let write_timeout: std::time::Duration = bootstrap_settings.write_timeout.into();
 
-    // First, sync clocks.
+    // Sync clocks.
     let server_time = MassaTime::compensated_now(compensation_millis)?;
 
-    match tokio::time::timeout(write_timeout, server.send(messages::BootstrapMessageServer::BootstrapTime {
-        server_time,
-        version,
-    })).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap clock send timed out").into()),
+    match tokio::time::timeout(
+        write_timeout,
+        server.send(messages::BootstrapMessageServer::BootstrapTime {
+            server_time,
+            version,
+        }),
+    )
+    .await
+    {
+        Err(_) => Err(std::io::Error::new(
+            std::io::ErrorKind::TimedOut,
+            "bootstrap clock send timed out",
+        )
+        .into()),
         Ok(Err(e)) => Err(e),
         Ok(Ok(_)) => Ok(()),
     }?;
 
     loop {
         match tokio::time::timeout(bootstrap_settings.read_timeout.into(), server.next()).await {
-            Err(_) => {
-               return Ok(())
-            }
+            Err(_) => return Ok(()),
             Ok(Err(e)) => return Err(e),
             Ok(Ok(msg)) => match msg {
                 BootstrapMessageClient::AskBootstrapPeers => {
-                    match tokio::time::timeout(write_timeout, server.send(messages::BootstrapMessageServer::BootstrapPeers {
-                        peers: data_peers.clone(),
-                    })).await {
-                        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap peers send timed out").into()),
+                    match tokio::time::timeout(
+                        write_timeout,
+                        server.send(messages::BootstrapMessageServer::BootstrapPeers {
+                            peers: data_peers.clone(),
+                        }),
+                    )
+                    .await
+                    {
+                        Err(_) => Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "bootstrap peers send timed out",
+                        )
+                        .into()),
                         Ok(Err(e)) => Err(e),
                         Ok(Ok(_)) => Ok(()),
                     }?;
-                },
+                }
                 BootstrapMessageClient::AskConsensusLedgerPart { address } => {
                     let ledger_part = consensus_command_sender
-                    .get_ledger_part(address, BOOTSTRAP_LEDGER_ENTRY_SIZE as usize)
-                    .await?;
+                        .get_ledger_part(address, BOOTSTRAP_LEDGER_ENTRY_SIZE as usize)
+                        .await?;
                     debug!("Ledger part = {:#?}", ledger_part);
-                       match tokio::time::timeout(write_timeout, server.send(messages::BootstrapMessageServer::ResponseConsensusLedgerPart {
-                         ledger: ledger_part,
-                    })).await {
-                        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap ask ledger part send timed out").into()),
+                    match tokio::time::timeout(
+                        write_timeout,
+                        server.send(
+                            messages::BootstrapMessageServer::ResponseConsensusLedgerPart {
+                                ledger: ledger_part,
+                            },
+                        ),
+                    )
+                    .await
+                    {
+                        Err(_) => Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "bootstrap ask ledger part send timed out",
+                        )
+                        .into()),
                         Ok(Err(e)) => Err(e),
                         Ok(Ok(_)) => Ok(()),
                     }?;
-                },
+                }
                 BootstrapMessageClient::AskExecutionLedgerPart { address: _ } => {
                     panic!("Not implemented yet.");
-                },
+                }
                 BootstrapMessageClient::AskConsensusState => {
-                    match tokio::time::timeout(write_timeout, server.send(messages::BootstrapMessageServer::ConsensusState {
-                        pos: data_pos.clone(),
-                        graph: data_graph.clone()
-                    })).await {
-                        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap consensus state send timed out").into()),
+                    match tokio::time::timeout(
+                        write_timeout,
+                        server.send(messages::BootstrapMessageServer::ConsensusState {
+                            pos: data_pos.clone(),
+                            graph: data_graph.clone(),
+                        }),
+                    )
+                    .await
+                    {
+                        Err(_) => Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "bootstrap consensus state send timed out",
+                        )
+                        .into()),
                         Ok(Err(e)) => Err(e),
                         Ok(Ok(_)) => Ok(()),
                     }?;
-                },
+                }
                 BootstrapMessageClient::AskFinalState => {
-                    match tokio::time::timeout(write_timeout, server.send(messages::BootstrapMessageServer::FinalState {
-                        final_state: final_state.clone(),
-                    })).await {
-                        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap ledger state send timed out").into()),
+                    match tokio::time::timeout(
+                        write_timeout,
+                        server.send(messages::BootstrapMessageServer::FinalState {
+                            final_state: final_state.clone(),
+                        }),
+                    )
+                    .await
+                    {
+                        Err(_) => Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "bootstrap ledger state send timed out",
+                        )
+                        .into()),
                         Ok(Err(e)) => Err(e),
                         Ok(Ok(_)) => Ok(()),
                     }?;
-                },
+                }
                 BootstrapMessageClient::BootstrapError { error } => {
                     return Err(BootstrapError::ReceivedError(error));
-                },
+                }
             },
         };
-    }
-}
-
-/// Tooling, Send a future with a timeout, print error if timeout reached
-/// It will wait a short time for an error
-/// Don't use if you except to receive a real message after because it can be retrieve during the error check.
-/// Instead make your own call to `next()`
-async fn send_server_with_timeout_with_error_check(
-    duration: std::time::Duration,
-    duration_read_error: std::time::Duration,
-    sender: &mut BootstrapServerBinder,
-    message: BootstrapMessageServer,
-    error: &str,
-) -> Result<(), BootstrapError> {
-    match tokio::time::timeout(duration, sender.send(message)).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(_)) => Ok(()),
-    }?;
-    match tokio::time::timeout(duration_read_error, sender.next()).await {
-        Err(_) => Ok(()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(BootstrapMessageClient::BootstrapError { error })) => {
-            Err(BootstrapError::ReceivedError(error))
-        }
-        Ok(Ok(msg)) => Err(BootstrapError::UnexpectedMessageClient(msg)),
     }
 }

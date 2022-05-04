@@ -79,7 +79,7 @@ async fn test_binders() {
         }
 
         client
-            .send(BootstrapMessageClient::BootstrapError {
+            .send(&BootstrapMessageClient::BootstrapError {
                 error: "test error".to_string(),
             })
             .await
@@ -230,7 +230,7 @@ async fn test_binders_try_double_send_client_works() {
         }
 
         client
-            .send(BootstrapMessageClient::BootstrapError {
+            .send(&BootstrapMessageClient::BootstrapError {
                 error: "test error".to_string(),
             })
             .await
@@ -238,7 +238,7 @@ async fn test_binders_try_double_send_client_works() {
 
         // Test message 3
         client
-            .send(BootstrapMessageClient::BootstrapError {
+            .send(&BootstrapMessageClient::BootstrapError {
                 error: "test error".to_string(),
             })
             .await
