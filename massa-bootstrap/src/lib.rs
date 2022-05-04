@@ -298,6 +298,7 @@ pub async fn get_state(
                     }
                 }
             }
+            info!("The bootstrap on the server {} has failed. Your node will try to bootstrap to another node in {} ms", addr, bootstrap_settings.retry_delay);
             sleep(bootstrap_settings.retry_delay.into()).await;
         }
     }
