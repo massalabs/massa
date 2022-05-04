@@ -381,6 +381,8 @@ struct BootstrapServer {
 }
 
 impl BootstrapServer {
+    // We don't want to leave on a fail of sending error to a bootstrap client.
+    #[allow(unused_must_use)]
     pub async fn run(mut self) -> Result<(), BootstrapError> {
         debug!("starting bootstrap server");
         massa_trace!("bootstrap.lib.run", {});
@@ -455,7 +457,7 @@ impl BootstrapServer {
                                     },
                                     "bootstrap error no available slots send timed out",
                                 )
-                                .await?;
+                                .await;
                                 // in list, non-expired => refuse
                                 massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
                                 continue;
@@ -519,7 +521,7 @@ impl BootstrapServer {
                         },
                         "bootstrap error no available slots send timed out",
                     )
-                    .await?;
+                    .await;
                     debug!("did not bootstrap {}: no available slots", remote_addr);
                 }
             }
