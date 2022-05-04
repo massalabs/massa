@@ -1,10 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::messages::BootstrapMessage;
-use crate::binders_trait::Binder;
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
-use async_trait::async_trait;
+use crate::messages::{BootstrapMessageClient, BootstrapMessageServer};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
@@ -44,11 +42,10 @@ impl BootstrapClientBinder {
     }
 }
 
-#[async_trait]
-impl Binder for BootstrapClientBinder {
+impl BootstrapClientBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
-    async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
+    pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // send randomness and their hash
         let rand_hash = {
             let version = version.to_bytes_compact()?;
@@ -68,7 +65,7 @@ impl Binder for BootstrapClientBinder {
     }
 
     /// Reads the next message. NOT cancel-safe
-    async fn next(&mut self) -> Result<BootstrapMessage, BootstrapError> {
+    pub async fn next(&mut self) -> Result<BootstrapMessageServer, BootstrapError> {
         // read signature
         let sig = {
             let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
@@ -95,7 +92,7 @@ impl Binder for BootstrapClientBinder {
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
                 let (msg, _len) =
-                    BootstrapMessage::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
+                BootstrapMessageServer::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
                 msg
             } else {
                 self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
@@ -103,7 +100,7 @@ impl Binder for BootstrapClientBinder {
                 self.duplex.read_exact(&mut sig_msg_bytes[..]).await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
-                let (msg, _len) = BootstrapMessage::from_bytes_compact(&sig_msg_bytes[..])?;
+                let (msg, _len) = BootstrapMessageServer::from_bytes_compact(&sig_msg_bytes[..])?;
                 msg
             }
         };
@@ -112,7 +109,7 @@ impl Binder for BootstrapClientBinder {
 
     #[allow(dead_code)]
     /// Send a message to the bootstrap server
-    async fn send(&mut self, msg: BootstrapMessage) -> Result<(), BootstrapError> {
+    pub async fn send(&mut self, msg: BootstrapMessageClient) -> Result<(), BootstrapError> {
         let msg_bytes = msg.to_bytes_compact()?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))

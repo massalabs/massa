@@ -1,10 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::messages::BootstrapMessage;
-use crate::binders_trait::Binder;
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
-use async_trait::async_trait;
+use crate::messages::BootstrapMessageClient;
+use crate::messages::BootstrapMessageServer;
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::Version;
@@ -41,12 +40,11 @@ impl BootstrapServerBinder {
     }
 }
 
-#[async_trait]
-impl Binder for BootstrapServerBinder {
+impl BootstrapServerBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     /// MUST always be followed by a send of the BootstrapMessage::BootstrapTime
-    async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
+    pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // read randomness, check hash
         let rand_hash = {
             let version_bytes = version.to_bytes_compact()?;
@@ -74,7 +72,7 @@ impl Binder for BootstrapServerBinder {
     }
 
     /// Writes the next message. NOT cancel-safe
-    async fn send(&mut self, msg: BootstrapMessage) -> Result<(), BootstrapError> {
+    pub async fn send(&mut self, msg: BootstrapMessageServer) -> Result<(), BootstrapError> {
         // serialize message
         let msg_bytes = msg.to_bytes_compact()?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
@@ -115,7 +113,7 @@ impl Binder for BootstrapServerBinder {
 
     #[allow(dead_code)]
     /// Read a message sent from the client (not signed). NOT cancel-safe
-    async fn next(&mut self) -> Result<BootstrapMessage, BootstrapError> {
+    pub async fn next(&mut self) -> Result<BootstrapMessageClient, BootstrapError> {
         // read prev hash
         let hash = {
             if self.prev_message.is_some() {
@@ -147,7 +145,7 @@ impl Binder for BootstrapServerBinder {
                 }
             }
             self.prev_message = Some(Hash::compute_from(&msg_bytes));
-            let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
+            let (msg, _len) = BootstrapMessageClient::from_bytes_compact(&msg_bytes)?;
             msg
         };
 
