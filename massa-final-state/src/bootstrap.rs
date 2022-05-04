@@ -14,7 +14,7 @@ pub struct FinalStateBootstrap {
     /// slot at the output of which the state is attached
     pub(crate) slot: Slot,
     /// final ledger
-    pub(crate) ledger: FinalLedgerBootstrapState,
+    pub ledger: FinalLedgerBootstrapState,
     /// asynchronous pool
     pub(crate) async_pool: AsyncPoolBootstrap,
 }

@@ -40,12 +40,12 @@ pub enum BootstrapMessageServer {
         final_state: FinalStateBootstrap,
     },
     /// Part of the ledger of consensus
-    ResponseConsensusLedgerPart {
+    ConsensusLedgerPart {
         /// Part of the consensus ledger sent
         ledger: ConsensusLedgerSubset,
     },
     /// Part of the ledger of execution
-    ResponseExecutionLedgerPart {
+    ExecutionLedgerPart {
         /// Part of the execution ledger sent
         ledger: ExecutionLedgerSubset,
     },
@@ -60,8 +60,8 @@ enum MessageServerTypeId {
     Peers = 1u32,
     ConsensusState = 2u32,
     FinalState = 3u32,
-    ResponseConsensusLedgerPart = 4u32,
-    ResponseExecutionLedgerPart = 5u32,
+    ConsensusLedgerPart = 4u32,
+    ExecutionLedgerPart = 5u32,
     BootstrapError = 6u32,
 }
 
@@ -90,16 +90,12 @@ impl SerializeCompact for BootstrapMessageServer {
                 res.extend(u32::from(MessageServerTypeId::FinalState).to_varint_bytes());
                 res.extend(&final_state.to_bytes_compact()?);
             }
-            BootstrapMessageServer::ResponseConsensusLedgerPart { ledger } => {
-                res.extend(
-                    u32::from(MessageServerTypeId::ResponseConsensusLedgerPart).to_varint_bytes(),
-                );
+            BootstrapMessageServer::ConsensusLedgerPart { ledger } => {
+                res.extend(u32::from(MessageServerTypeId::ConsensusLedgerPart).to_varint_bytes());
                 res.extend(ledger.to_bytes_compact()?);
             }
-            BootstrapMessageServer::ResponseExecutionLedgerPart { ledger } => {
-                res.extend(
-                    u32::from(MessageServerTypeId::ResponseExecutionLedgerPart).to_varint_bytes(),
-                );
+            BootstrapMessageServer::ExecutionLedgerPart { ledger } => {
+                res.extend(u32::from(MessageServerTypeId::ExecutionLedgerPart).to_varint_bytes());
                 res.extend(ledger.to_bytes_compact()?);
             }
             BootstrapMessageServer::BootstrapError { error } => {
@@ -156,17 +152,17 @@ impl DeserializeCompact for BootstrapMessageServer {
 
                 BootstrapMessageServer::FinalState { final_state }
             }
-            MessageServerTypeId::ResponseConsensusLedgerPart => {
+            MessageServerTypeId::ConsensusLedgerPart => {
                 let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
-                BootstrapMessageServer::ResponseConsensusLedgerPart { ledger }
+                BootstrapMessageServer::ConsensusLedgerPart { ledger }
             }
-            MessageServerTypeId::ResponseExecutionLedgerPart => {
+            MessageServerTypeId::ExecutionLedgerPart => {
                 let (ledger, delta) = ExecutionLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
-                BootstrapMessageServer::ResponseExecutionLedgerPart { ledger }
+                BootstrapMessageServer::ExecutionLedgerPart { ledger }
             }
             MessageServerTypeId::BootstrapError => {
                 let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
@@ -201,7 +197,7 @@ pub enum BootstrapMessageClient {
     /// Ask for a part of the ledger of execution
     AskExecutionLedgerPart {
         /// Last address sent
-        address: Address,
+        address: Option<Address>,
     },
     /// Bootstrap error
     BootstrapError { error: String },
@@ -243,7 +239,9 @@ impl SerializeCompact for BootstrapMessageClient {
                 res.extend(
                     u32::from(MessageClientTypeId::AskExecutionLedgerPart).to_varint_bytes(),
                 );
-                res.extend(address.to_bytes());
+                if let Some(address) = address {
+                    res.extend(address.to_bytes());
+                }
             }
             BootstrapMessageClient::BootstrapError { error } => {
                 res.extend(u32::from(MessageClientTypeId::BootstrapError).to_varint_bytes());
@@ -283,10 +281,16 @@ impl DeserializeCompact for BootstrapMessageClient {
                 }
             }
             MessageClientTypeId::AskExecutionLedgerPart => {
-                let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += ADDRESS_SIZE_BYTES;
+                if buffer.len() == cursor {
+                    BootstrapMessageClient::AskExecutionLedgerPart { address: None }
+                } else {
+                    let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                    cursor += ADDRESS_SIZE_BYTES;
 
-                BootstrapMessageClient::AskExecutionLedgerPart { address }
+                    BootstrapMessageClient::AskExecutionLedgerPart {
+                        address: Some(address),
+                    }
+                }
             }
             MessageClientTypeId::BootstrapError => {
                 let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
