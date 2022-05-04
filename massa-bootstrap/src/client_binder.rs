@@ -92,7 +92,7 @@ impl BootstrapClientBinder {
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
                 let (msg, _len) =
-                BootstrapMessageServer::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
+                    BootstrapMessageServer::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
                 msg
             } else {
                 self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
@@ -109,7 +109,7 @@ impl BootstrapClientBinder {
 
     #[allow(dead_code)]
     /// Send a message to the bootstrap server
-    pub async fn send(&mut self, msg: BootstrapMessageClient) -> Result<(), BootstrapError> {
+    pub async fn send(&mut self, msg: &BootstrapMessageClient) -> Result<(), BootstrapError> {
         let msg_bytes = msg.to_bytes_compact()?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))

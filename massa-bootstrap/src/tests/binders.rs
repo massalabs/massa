@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use super::tools::get_keys;
+use crate::messages::{BootstrapMessageClient, BootstrapMessageServer};
 use crate::BootstrapSettings;
-use crate::messages::{BootstrapMessageServer, BootstrapMessageClient};
 use crate::{
     tests::tools::get_bootstrap_config, BootstrapClientBinder, BootstrapPeers,
     BootstrapServerBinder,
@@ -78,7 +78,12 @@ async fn test_binders() {
             _ => panic!("Bad message receive: Expected a peers list message"),
         }
 
-        client.send(BootstrapMessageClient::BootstrapError { error: "test error".to_string() }).await.unwrap();
+        client
+            .send(BootstrapMessageClient::BootstrapError {
+                error: "test error".to_string(),
+            })
+            .await
+            .unwrap();
 
         // Test message 3
         let vector_peers = vec![
@@ -224,14 +229,20 @@ async fn test_binders_try_double_send_client_works() {
             _ => panic!("Bad message receive: Expected a peers list message"),
         }
 
-        client.send(BootstrapMessageClient::BootstrapError {
-            error: "test error".to_string(),
-        }).await.unwrap();
+        client
+            .send(BootstrapMessageClient::BootstrapError {
+                error: "test error".to_string(),
+            })
+            .await
+            .unwrap();
 
         // Test message 3
-        client.send(BootstrapMessageClient::BootstrapError {
-            error: "test error".to_string(),
-        }).await.unwrap();
+        client
+            .send(BootstrapMessageClient::BootstrapError {
+                error: "test error".to_string(),
+            })
+            .await
+            .unwrap();
 
         let vector_peers = vec![bootstrap_settings.bootstrap_list[0].0.ip()];
         let message = client.next().await.unwrap();

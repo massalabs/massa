@@ -502,11 +502,11 @@ impl Ledger {
                     }
                     count += 1;
                 }
-                if !start  {
+                if !start {
                     start = match start_address {
                         Some(inner_start_address) if inner_start_address == address => true,
                         Some(_) => false,
-                        None => true
+                        None => true,
                     };
                 }
             }

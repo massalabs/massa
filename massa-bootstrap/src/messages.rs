@@ -91,11 +91,15 @@ impl SerializeCompact for BootstrapMessageServer {
                 res.extend(&final_state.to_bytes_compact()?);
             }
             BootstrapMessageServer::ResponseConsensusLedgerPart { ledger } => {
-                res.extend(u32::from(MessageServerTypeId::ResponseConsensusLedgerPart).to_varint_bytes());
+                res.extend(
+                    u32::from(MessageServerTypeId::ResponseConsensusLedgerPart).to_varint_bytes(),
+                );
                 res.extend(ledger.to_bytes_compact()?);
             }
             BootstrapMessageServer::ResponseExecutionLedgerPart { ledger } => {
-                res.extend(u32::from(MessageServerTypeId::ResponseExecutionLedgerPart).to_varint_bytes());
+                res.extend(
+                    u32::from(MessageServerTypeId::ResponseExecutionLedgerPart).to_varint_bytes(),
+                );
                 res.extend(ledger.to_bytes_compact()?);
             }
             BootstrapMessageServer::BootstrapError { error } => {
@@ -203,7 +207,6 @@ pub enum BootstrapMessageClient {
     BootstrapError { error: String },
 }
 
-
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
 enum MessageClientTypeId {
@@ -229,13 +232,17 @@ impl SerializeCompact for BootstrapMessageClient {
                 res.extend(u32::from(MessageClientTypeId::AskFinalState).to_varint_bytes());
             }
             BootstrapMessageClient::AskConsensusLedgerPart { address } => {
-                res.extend(u32::from(MessageClientTypeId::AskConsensusLedgerPart).to_varint_bytes());
+                res.extend(
+                    u32::from(MessageClientTypeId::AskConsensusLedgerPart).to_varint_bytes(),
+                );
                 if let Some(address) = address {
                     res.extend(address.to_bytes());
                 }
             }
             BootstrapMessageClient::AskExecutionLedgerPart { address } => {
-                res.extend(u32::from(MessageClientTypeId::AskExecutionLedgerPart).to_varint_bytes());
+                res.extend(
+                    u32::from(MessageClientTypeId::AskExecutionLedgerPart).to_varint_bytes(),
+                );
                 res.extend(address.to_bytes());
             }
             BootstrapMessageClient::BootstrapError { error } => {

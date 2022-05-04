@@ -1,6 +1,6 @@
 use crate::error::BootstrapError;
-use massa_models::Version;
 use async_trait::async_trait;
+use massa_models::Version;
 
 #[async_trait]
 pub trait Binder<MessageType> {
