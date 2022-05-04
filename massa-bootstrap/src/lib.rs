@@ -314,13 +314,11 @@ async fn send_message_client(
         Ok(Ok(_)) => Ok(()),
     }?;
     match tokio::time::timeout(read_timeout, client.next()).await {
-        Err(_) => {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "final state bootstrap read timed out",
-            )
-            .into())
-        }
+        Err(_) => Err(std::io::Error::new(
+            std::io::ErrorKind::TimedOut,
+            "final state bootstrap read timed out",
+        )
+        .into()),
         Ok(Err(e)) => Err(e),
         Ok(Ok(msg)) => Ok(msg),
     }
@@ -599,7 +597,7 @@ impl BootstrapServer {
                         let mut server = BootstrapServerBinder::new(dplx, self.private_key);
                         tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
                             error: "no available slots to bootstrap".to_string()
-                        })).await;   
+                        })).await;
                     }
                     debug!("did not bootstrap {}: no available slots", remote_addr);
                 }
