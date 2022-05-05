@@ -445,17 +445,14 @@ impl BootstrapServer {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                                let _ = send_state_timeout_with_error_check(
-                                    self.bootstrap_settings.write_error_timeout.into(),
-                                    self.bootstrap_settings.read_error_timeout.into(),
-                                    &mut server,
-                                    BootstrapMessage::BootstrapError {
-                                        error:
-                                        format!("Your last bootstrap on this server was at {:#?} and you have to {:#?} milliseconds before retrying. Wait and retry or try an other server.", *occ.get(), per_ip_min_interval)
-                                    },
-                                    "bootstrap error no available slots send timed out",
-                                )
-                                .await;
+                                let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessage::BootstrapError {
+                                    error:
+                                    format!("Your last bootstrap on this server was at {:#?} and you have to {:#?} milliseconds before retrying. Wait and retry or try an other server.", *occ.get(), per_ip_min_interval)
+                                })).await {
+                                    Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
+                                    Ok(Err(e)) => Err(e),
+                                    Ok(Ok(_)) => Ok(()),
+                                };
                                 // in list, non-expired => refuse
                                 massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
                                 continue;
@@ -501,8 +498,6 @@ impl BootstrapServer {
                                     debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
                                     // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
                                     let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessage::BootstrapError { error: err.to_string() })).await;
-                                    // Sleep a bit to give time for the server to read the error.
-                                    sleep(self.bootstrap_settings.write_error_timeout.into()).await;
                                 },
                             }
                         }
@@ -510,16 +505,13 @@ impl BootstrapServer {
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
                     let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                    let _ = send_state_timeout_with_error_check(
-                        self.bootstrap_settings.write_error_timeout.into(),
-                        self.bootstrap_settings.read_error_timeout.into(),
-                        &mut server,
-                        BootstrapMessage::BootstrapError {
-                            error: "no available slots to bootstrap".to_string()
-                        },
-                        "bootstrap error no available slots send timed out",
-                    )
-                    .await;
+                    let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessage::BootstrapError {
+                        error: "no available slots to bootstrap".to_string()
+                    })).await {
+                        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
+                        Ok(Err(e)) => Err(e),
+                        Ok(Ok(_)) => Ok(()),
+                    };
                     debug!("did not bootstrap {}: no available slots", remote_addr);
                 }
             }
