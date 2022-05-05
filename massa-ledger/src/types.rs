@@ -2,6 +2,8 @@
 
 //! Provides various tools to manipulate ledger entries and changes happening on them.
 
+use massa_models::{Deserializer, ModelsError, DeserializeVarInt, SerializeVarInt, Serializer};
+
 /// Trait marking a structure that supports another one (V) being applied to it
 pub trait Applicable<V> {
     /// apply changes from other to mutable self
@@ -23,6 +25,92 @@ pub enum SetUpdateOrDelete<T: Default + Applicable<V>, V: Applicable<V> + Clone>
 
     /// Deletes the value T
     Delete,
+}
+
+pub struct SetUpdateOrDeleteDeserializer<T: Default + Applicable<V>, V: Applicable<V> + Clone, DT: Deserializer<T>, DV: Deserializer<V>> {
+    inner_deserializer_set: DT,
+    inner_deserializer_update: DV,
+    phantom_t: std::marker::PhantomData<T>,
+    phantom_v: std::marker::PhantomData<V>,
+}
+
+impl<T: Default + Applicable<V>, V: Applicable<V> + Clone, DT: Deserializer<T>, DV: Deserializer<V>> SetUpdateOrDeleteDeserializer<T, V, DT, DV> {
+    pub fn new(inner_deserializer_set: DT, inner_deserializer_update: DV) -> Self { 
+        Self {
+            inner_deserializer_set,
+            inner_deserializer_update,
+            phantom_t: std::marker::PhantomData,
+            phantom_v: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T: Default + Applicable<V>, V: Applicable<V> + Clone, DT: Deserializer<T>, DV: Deserializer<V>> Deserializer<SetUpdateOrDelete<T, V>> for SetUpdateOrDeleteDeserializer<T, V, DT, DV> {
+    fn deserialize(&self, buffer: &[u8]) -> Result<(SetUpdateOrDelete<T, V>, usize), ModelsError> {
+        let mut cursor = 0;
+        let (update_type, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        match update_type {
+            0 => {
+                let (value, delta) = self.inner_deserializer_set.deserialize(&buffer[cursor..])?;
+                cursor += delta;
+                Ok((SetUpdateOrDelete::Set(value), cursor))
+            },
+            1 => {
+                let (value, delta) = self.inner_deserializer_update.deserialize(&buffer[cursor..])?;
+                cursor += delta;
+                Ok((SetUpdateOrDelete::Update(value), cursor))
+            },
+            2 => {
+                Ok((SetUpdateOrDelete::Delete, cursor))
+            }
+            _ => {
+                Err(ModelsError::DeserializeError("unknown update type".into()))
+            }
+        }
+    }
+}
+
+pub struct SetUpdateOrDeleteSerializer<T: Default + Applicable<V>, V: Applicable<V> + Clone, ST: Serializer<T>, SV: Serializer<V>> {
+    inner_serializer_set: ST,
+    inner_serializer_update: SV,
+    phantom_t: std::marker::PhantomData<T>,
+    phantom_v: std::marker::PhantomData<V>,
+}
+
+impl<T: Default + Applicable<V>, V: Applicable<V> + Clone, ST: Serializer<T>, SV: Serializer<V>> SetUpdateOrDeleteSerializer<T, V, ST, SV> {
+    pub fn new(inner_serializer_set: ST, inner_serializer_update: SV) -> Self { 
+        Self {
+            inner_serializer_set,
+            inner_serializer_update,
+            phantom_t: std::marker::PhantomData,
+            phantom_v: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T: Default + Applicable<V>, V: Applicable<V> + Clone, ST: Serializer<T>, SV: Serializer<V>> Serializer<SetUpdateOrDelete<T, V>> for SetUpdateOrDeleteSerializer<T, V, ST, SV> {
+    fn serialize(&self, value: &SetUpdateOrDelete<T, V>) -> Result<Vec<u8>, ModelsError> {
+        let mut res = Vec::new();
+
+        match value {
+            SetUpdateOrDelete::Set(value) => {
+                res.extend(0u32.to_varint_bytes());
+                res.extend(self.inner_serializer_set.serialize(&value)?);
+                Ok(res)
+            },
+            SetUpdateOrDelete::Update(value) => {
+                res.extend(1u32.to_varint_bytes());
+                res.extend(self.inner_serializer_update.serialize(&value)?);
+                Ok(res)
+            },
+            SetUpdateOrDelete::Delete => {
+                res.extend(2u32.to_varint_bytes());
+                Ok(res)
+            }
+        }
+    }
 }
 
 /// Support applying another `SetUpdateOrDelete` to self
@@ -69,6 +157,74 @@ pub enum SetOrDelete<T: Clone> {
     Delete,
 }
 
+pub struct SetOrDeleteDeserializer<T: Clone, DT: Deserializer<T>> {
+    inner_deserializer: DT,
+    phantom_t: std::marker::PhantomData<T>,
+}
+
+impl<T: Clone, DT: Deserializer<T>> SetOrDeleteDeserializer<T, DT> {
+    pub fn new(inner_deserializer: DT) -> Self { 
+        Self {
+            inner_deserializer,
+            phantom_t: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrDelete<T>> for SetOrDeleteDeserializer<T, DT> {
+    fn deserialize(&self, buffer: &[u8]) -> Result<(SetOrDelete<T>, usize), ModelsError> {
+        let mut cursor = 0;
+        let (update_type, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        match update_type {
+            0 => {
+                let (value, delta) = self.inner_deserializer.deserialize(&buffer[cursor..])?;
+                cursor += delta;
+                Ok((SetOrDelete::Set(value), cursor))
+            },
+            1 => {
+                Ok((SetOrDelete::Delete, cursor))
+            }
+            _ => {
+                Err(ModelsError::DeserializeError("unknown update type".into()))
+            }
+        }
+    }
+}
+
+pub struct SetOrDeleteSerializer<T: Clone, ST: Serializer<T>> {
+    inner_serializer: ST,
+    phantom_t: std::marker::PhantomData<T>,
+}
+
+impl<T: Clone, ST: Serializer<T>> SetOrDeleteSerializer<T, ST> {
+    pub fn new(inner_serializer: ST) -> Self { 
+        Self {
+            inner_serializer,
+            phantom_t: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T: Clone, ST: Serializer<T>> Serializer<SetOrDelete<T>> for SetOrDeleteSerializer<T, ST> {
+    fn serialize(&self, value: SetOrDelete<T>) -> Result<Vec<u8>, ModelsError> {
+        let res = Vec::new();
+
+        match value {
+            SetOrDelete::Set(value) => {
+                res.extend(0u32.to_varint_bytes());
+                res.extend(self.inner_serializer.serialize(value)?);
+                Ok(res)
+            },
+            SetOrDelete::Delete => {
+                res.extend(1u32.to_varint_bytes());
+                Ok(res)
+            }
+        }
+    }
+}
+
 /// allows applying another `SetOrDelete` to the current one
 impl<T: Clone> Applicable<SetOrDelete<T>> for SetOrDelete<T> {
     fn apply(&mut self, other: Self) {
@@ -84,6 +240,74 @@ pub enum SetOrKeep<T: Clone> {
 
     /// keeps the existing value
     Keep,
+}
+
+pub struct SetOrKeepDeserializer<T: Clone, DT: Deserializer<T>> {
+    inner_deserializer: DT,
+    phantom_t: std::marker::PhantomData<T>
+}
+
+impl <T: Clone, DT: Deserializer<T>> SetOrKeepDeserializer<T, DT> {
+    pub fn new(inner_deserializer: DT) -> Self {
+        Self {
+            inner_deserializer,
+            phantom_t: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrKeep<T>> for SetOrKeepDeserializer<T, DT> {
+    fn deserialize(&self, buffer: &[u8]) -> Result<(SetOrKeep<T>, usize), ModelsError> {
+        let mut cursor = 0;
+        let (update_type, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        match update_type {
+            0 => {
+                let (value, delta) = self.inner_deserializer.deserialize(&buffer[cursor..])?;
+                cursor += delta;
+                Ok((SetOrKeep::Set(value), cursor))
+            }
+            1 => {
+                Ok((SetOrKeep::Keep, cursor))
+            }
+            _ => {
+                Err(ModelsError::DeserializeError("unknown update type".into()))
+            }
+        }
+    }
+}
+
+pub struct SetOrKeepSerializer<T: Clone, ST: Serializer<T>> {
+    inner_serializer: ST,
+    phantom_t: std::marker::PhantomData<T>
+}
+
+impl <T: Clone, ST: Serializer<T>> SetOrKeepSerializer<T, ST> {
+    pub fn new(inner_serializer: ST) -> Self {
+        Self {
+            inner_serializer,
+            phantom_t: std::marker::PhantomData,
+        }
+    }
+}
+
+impl <T: Clone, ST: Serializer<T>> Serializer<SetOrKeep<T>> for SetOrKeepSerializer<T, ST> {
+    fn serialize(&self, value: SetOrKeep<T>) -> Result<Vec<u8>, ModelsError> {
+        let res = Vec::new();
+
+        match value {
+            SetOrKeep::Set(value) => {
+                res.extend(0u32.to_varint_bytes());
+                res.extend(self.inner_serializer.serialize(value)?);
+                Ok(res)
+            }
+            SetOrKeep::Keep => {
+                res.extend(1u32.to_varint_bytes());
+                Ok(res)
+            }
+        }
+    }
 }
 
 /// allows applying another `SetOrKeep` to the current one

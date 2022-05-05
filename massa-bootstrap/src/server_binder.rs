@@ -153,7 +153,7 @@ impl BootstrapServerBinder {
         }
 
         // deserialize message
-        let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
+        let (msg, _len) = BootstrapMessageClient::from_bytes_compact(&msg_bytes)?;
 
         Ok(msg)
     }

@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
-use crate::ModelsError;
+use crate::{ModelsError, Serializer, SerializeVarInt, Deserializer, DeserializeVarInt};
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
@@ -114,6 +114,41 @@ impl Amount {
     /// ```
     pub fn checked_div_u64(self, factor: u64) -> Option<Self> {
         self.0.checked_div(factor).map(Amount)
+    }
+}
+
+/// Serializer for amount
+pub struct AmountSerializer;
+
+impl AmountSerializer {
+    /// Create a new `AmountSerializer`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Serializer<Amount> for AmountSerializer {
+    fn serialize(&self, value: Amount) -> Result<Vec<u8>, ModelsError> {
+        Ok(value.0.to_varint_bytes())
+    }
+}
+
+/// Deserializer for amount
+pub struct AmountDeserializer;
+
+impl AmountDeserializer {
+    /// Create a new `AmountDeserializer`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Deserializer<Amount> for AmountDeserializer {
+    fn deserialize(&self, bytes: &[u8]) -> Result<(Amount, usize), ModelsError> {
+        let mut cursor = 0;
+        let (raw, delta) = u64::from_varint_bytes(bytes)?;
+        cursor += delta;
+        Ok((Amount::from_raw(raw), cursor))
     }
 }
 

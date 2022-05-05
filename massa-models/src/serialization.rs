@@ -296,6 +296,66 @@ impl DeserializeCompact for Amount {
         Ok((Amount::from_raw(res_u64), delta))
     }
 }
+/// TODO: Doc
+pub trait Deserializer<T> {
+    /// TODO: Doc and change to use rest instead of usize of cursor in the serialization update.
+    fn deserialize(&self, buffer: &[u8]) -> Result<(T, usize), ModelsError>;
+}
+
+/// TODO: Doc
+pub trait Serializer<T> {
+    /// TODO: Doc and change to use `[u8]` instead of vec.
+    fn serialize(&self, value: &T) -> Result<Vec<u8>, ModelsError>;
+}
+
+/// Basic `Vec<u8>` serializer
+pub struct VecU8Serializer;
+
+impl VecU8Serializer {
+    /// Creates a new `VecU8Serializer`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Serializer<Vec<u8>> for VecU8Serializer {
+    fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, ModelsError> {
+        let mut res = Vec::new();
+        let len: u64 = value.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many entries data in VecU8: {}",
+                err
+            ))
+        })?;
+        res.extend(len.to_varint_bytes());
+        res.extend(value);
+        Ok(res)
+    }
+}
+
+/// Basic `Vec<u8>` deserializer
+pub struct VecU8Deserializer;
+
+impl VecU8Deserializer {
+    /// Creates a new `VecU8Deserializer`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Deserializer<Vec<u8>> for VecU8Deserializer {
+    fn deserialize(&self, buffer: &[u8]) -> Result<(Vec<u8>, usize), ModelsError> {
+        let mut cursor = 0usize;
+        let (len, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        cursor += delta;
+
+        let mut res = Vec::with_capacity(len as usize);
+        res.clone_from_slice(&buffer[cursor..]);
+        cursor += len as usize;
+
+        Ok((res, cursor))
+    }
+}
 
 #[cfg(test)]
 mod tests {

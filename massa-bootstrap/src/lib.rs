@@ -12,6 +12,7 @@
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
 #![feature(map_first_last)]
+#![feature(let_chains)]
 use crate::client_binder::BootstrapClientBinder;
 use crate::messages::{BootstrapMessageClient, BootstrapMessageServer};
 use crate::server_binder::BootstrapServerBinder;
