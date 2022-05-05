@@ -3,16 +3,13 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_changes::LedgerChanges;
+use crate::ledger_db::{LedgerDB, LedgerDBEntry};
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
 use massa_hash::Hash;
 use massa_models::{Address, Amount};
-use rocksdb::DB;
 use std::collections::BTreeMap;
-
-const BINCODE_ERROR: &str = "critical: internal bincode operation failed";
-const ROCKSDB_ERROR: &str = "critical: rocksdb crud operation failed";
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -24,8 +21,7 @@ pub struct FinalLedger {
     /// ledger configuration
     _config: LedgerConfig,
     /// ledger tree, sorted by address
-    sorted_ledger: DB,
-    // sorted_ledger: BTreeMap<Address, LedgerEntry>,
+    sorted_ledger: LedgerDB,
 }
 
 /// Allows applying `LedgerChanges` to the final ledger
@@ -37,54 +33,18 @@ impl Applicable<LedgerChanges> for FinalLedger {
                 // the incoming change sets a ledger entry to a new one
                 SetUpdateOrDelete::Set(new_entry) => {
                     // inserts/overwrites the entry with the incoming one
-                    self.sorted_ledger
-                        .put(
-                            addr.to_bytes(),
-                            bincode::serialize(&new_entry).expect(BINCODE_ERROR),
-                        )
-                        .expect(ROCKSDB_ERROR);
+                    self.sorted_ledger.put(&addr, new_entry);
                 }
-
                 // the incoming change updates an existing ledger entry
-                SetUpdateOrDelete::Update(_entry_update) => {
+                SetUpdateOrDelete::Update(entry_update) => {
                     // applies the updates to the entry
                     // if the entry does not exist, inserts a default one and applies the updates to it
-                    match self
-                        .sorted_ledger
-                        .get(addr.to_bytes())
-                        .expect(ROCKSDB_ERROR)
-                    {
-                        // important: this requires 1 deser 1 apply 1 ser
-                        // TODO: find a way to perform only 1 apply
-                        // TODO: save each address entry on 1 different key
-                        Some(_bytes) => self
-                            .sorted_ledger
-                            .put(
-                                addr.to_bytes(),
-                                b"",
-                                // bincode::deserialize::<LedgerEntry>(&bytes)
-                                //     .expect(BINCODE_ERROR)
-                                //     .apply(entry_update),
-                            )
-                            .expect(ROCKSDB_ERROR),
-                        None => self
-                            .sorted_ledger
-                            .put(addr.to_bytes(), b"")
-                            .expect(ROCKSDB_ERROR), // create new default entry and updates it
-                    };
-                    // self.sorted_ledger
-                    //     .get(addr)
-                    //     .unwrap()
-                    //     .or_insert_with(Default::default)
-                    //     .apply(entry_update);
+                    self.sorted_ledger.update(&addr, entry_update);
                 }
-
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
                     // delete the entry, if it exists
-                    self.sorted_ledger
-                        .delete(addr.to_bytes())
-                        .expect(ROCKSDB_ERROR);
+                    self.sorted_ledger.delete(&addr);
                 }
             }
         }
@@ -113,7 +73,7 @@ impl FinalLedger {
         // open db with default options
         // and use only single threaded mode
         // should explore these options before review
-        let sorted_ledger = DB::open_default("_path_for_rocksdb_storage").unwrap();
+        let sorted_ledger = LedgerDB::new();
 
         // load the ledger tree from file
         let initial_ledger = serde_json::from_str::<BTreeMap<Address, Amount>>(
@@ -125,16 +85,13 @@ impl FinalLedger {
         // parsing from json to rust types, then types to bytes, maybe
         // there is a better way to do this
         for (address, amount) in &initial_ledger {
-            sorted_ledger
-                .put(
-                    address.to_bytes(),
-                    bincode::serialize(&LedgerEntry {
-                        parallel_balance: *amount,
-                        ..Default::default()
-                    })
-                    .map_err(init_file_error!("serialize", config))?,
-                )
-                .map_err(init_file_error!("insert", config))?;
+            sorted_ledger.put(
+                address,
+                LedgerEntry {
+                    parallel_balance: *amount,
+                    ..Default::default()
+                },
+            );
         }
 
         // generate the final ledger
@@ -165,7 +122,7 @@ impl FinalLedger {
         // }
         // dummy temp implem since an actual one would have no purpose rn
         FinalLedger {
-            sorted_ledger: DB::open_default("_path_for_rocksdb_storage").unwrap(),
+            sorted_ledger: LedgerDB::new(),
             _config: config,
         }
     }
@@ -188,12 +145,7 @@ impl FinalLedger {
     /// TODO: in the future, never manipulate full ledger entries because their datastore can be huge
     /// `https://github.com/massalabs/massa/issues/2342`
     pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
-        // would probably be worth it to make a db module
-        self.sorted_ledger
-            .get(addr.to_bytes())
-            .ok()
-            .flatten()
-            .map(|bytes| bincode::deserialize(&bytes).expect("HANDLE THIS"))
+        self.sorted_ledger.get_full_entry(addr)
     }
 
     /// Gets the parallel balance of a ledger entry
@@ -201,14 +153,15 @@ impl FinalLedger {
     /// # Returns
     /// The parallel balance, or None if the ledger entry was not found
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
-        self.sorted_ledger
-            .get(addr.to_bytes())
-            .expect(ROCKSDB_ERROR)
-            .map(|bytes| {
-                bincode::deserialize::<LedgerEntry>(&bytes)
-                    .expect(BINCODE_ERROR)
-                    .parallel_balance
-            })
+        // note: think twice about this conversion
+        // note: this could be handled better
+        if let Some(bytes) = self.sorted_ledger.get_entry(addr, LedgerDBEntry::Balance) {
+            Some(Amount::from_raw(u64::from_be_bytes(
+                bytes.try_into().expect("critical: invalid balance format"),
+            )))
+        } else {
+            None
+        }
     }
 
     /// Gets a copy of the bytecode of a ledger entry
@@ -216,14 +169,7 @@ impl FinalLedger {
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
-        self.sorted_ledger
-            .get(addr.to_bytes())
-            .expect(ROCKSDB_ERROR)
-            .map(|bytes| {
-                bincode::deserialize::<LedgerEntry>(&bytes)
-                    .expect(BINCODE_ERROR)
-                    .bytecode
-            })
+        self.sorted_ledger.get_entry(addr, LedgerDBEntry::Bytecode)
     }
 
     /// Checks if a ledger entry exists
@@ -231,7 +177,8 @@ impl FinalLedger {
     /// # Returns
     /// true if it exists, false otherwise.
     pub fn entry_exists(&self, addr: &Address) -> bool {
-        self.sorted_ledger.key_may_exist(addr.to_bytes())
+        self.sorted_ledger
+            .entry_exists(addr, LedgerDBEntry::Balance)
     }
 
     /// Gets a copy of the value of a datastore entry for a given address.
@@ -244,16 +191,7 @@ impl FinalLedger {
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
     pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         self.sorted_ledger
-            .get(addr.to_bytes())
-            .expect(ROCKSDB_ERROR)
-            .map(|bytes| {
-                bincode::deserialize::<LedgerEntry>(&bytes)
-                    .expect(BINCODE_ERROR)
-                    .datastore
-                    .get(key)
-                    .cloned()
-                    .expect("missing datastore key")
-            })
+            .get_entry(addr, LedgerDBEntry::Datastore(*key))
     }
 
     /// Checks for the existence of a datastore entry for a given address.
@@ -266,14 +204,6 @@ impl FinalLedger {
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
     pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
         self.sorted_ledger
-            .get(addr.to_bytes())
-            .expect(ROCKSDB_ERROR)
-            .map(|bytes| {
-                bincode::deserialize::<LedgerEntry>(&bytes)
-                    .expect(BINCODE_ERROR)
-                    .datastore
-                    .contains_key(key)
-            })
-            .expect("missing ledger key")
+            .entry_exists(addr, LedgerDBEntry::Datastore(*key))
     }
 }

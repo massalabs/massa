@@ -9,13 +9,13 @@ const DB_PATH: &str = "_path_to_db";
 const OPEN_ERROR: &str = "critical: rocksdb open failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 
-pub(crate) struct LedgerDB(DB);
-
 pub(crate) enum LedgerDBEntry {
     Balance,
     Bytecode,
     Datastore(Hash),
 }
+
+pub(crate) struct LedgerDB(DB);
 
 macro_rules! balance_key {
     ($addr:ident) => {
@@ -36,11 +36,11 @@ macro_rules! datastore_key {
 }
 
 impl LedgerDB {
-    fn new() -> Self {
+    pub fn new() -> Self {
         LedgerDB(DB::open_default(DB_PATH).expect(OPEN_ERROR))
     }
 
-    fn put(&self, addr: Address, ledger_entry: LedgerEntry) {
+    pub fn put(&self, addr: &Address, ledger_entry: LedgerEntry) {
         let mut batch = WriteBatch::default();
         batch.put(
             balance_key!(addr),
@@ -53,7 +53,7 @@ impl LedgerDB {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
-    fn update(&self, addr: Address, entry_update: LedgerEntryUpdate) {
+    pub fn update(&self, addr: &Address, entry_update: LedgerEntryUpdate) {
         let mut batch = WriteBatch::default();
         if let SetOrKeep::Set(balance) = entry_update.parallel_balance {
             batch.put(balance_key!(addr), balance.to_raw().to_be_bytes());
@@ -72,6 +72,10 @@ impl LedgerDB {
             }
         }
         self.0.write(batch).expect(CRUD_ERROR);
+    }
+
+    pub fn delete(&self, _addr: &Address) {
+        // note: missing delete
     }
 
     pub fn entry_exists(&self, addr: &Address, ty: LedgerDBEntry) -> bool {
