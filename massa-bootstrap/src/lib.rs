@@ -410,6 +410,7 @@ pub async fn get_state(
                     }
                 }
             }
+            info!("The bootstrap on the server {} has failed. Your node will try to bootstrap to another node in {} ms", addr, bootstrap_settings.retry_delay);
             sleep(bootstrap_settings.retry_delay.into()).await;
         }
     }
@@ -556,12 +557,9 @@ impl BootstrapServer {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                                #[allow(unused_must_use)]
-                                {
-                                    tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
-                                        error: format!("Your last bootstrap on this server was at {:#?} and you have to {:#?} milliseconds before retrying. Wait and retry or try an other server.", *occ.get(), per_ip_min_interval)
-                                    })).await;
-                                }
+                                let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
+                                    error: format!("Your last bootstrap on this server was at {:#?} and you have to {:#?} milliseconds before retrying. Wait and retry or try an other server.", *occ.get(), per_ip_min_interval)
+                                })).await;
                                 // in list, non-expired => refuse
                                 massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
                                 continue;
@@ -616,13 +614,10 @@ impl BootstrapServer {
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
-                    #[allow(unused_must_use)]
-                    {
-                        let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                        tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
+                    let mut server = BootstrapServerBinder::new(dplx, self.private_key);
+                    let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
                             error: "no available slots to bootstrap".to_string()
-                        })).await;
-                    }
+                    })).await;
                     debug!("did not bootstrap {}: no available slots", remote_addr);
                 }
             }

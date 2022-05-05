@@ -18,6 +18,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
+    size_field_len: usize,
     local_privkey: PrivateKey,
     duplex: Duplex,
     prev_message: Option<Hash>,
@@ -31,8 +32,10 @@ impl BootstrapServerBinder {
     pub fn new(duplex: Duplex, local_privkey: PrivateKey) -> Self {
         let max_bootstrap_message_size =
             with_serialization_context(|context| context.max_bootstrap_message_size);
+        let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
+            size_field_len,
             local_privkey,
             duplex,
             prev_message: None,
@@ -45,28 +48,20 @@ impl BootstrapServerBinder {
     /// NOT cancel-safe
     /// MUST always be followed by a send of the BootstrapMessage::BootstrapTime
     pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
-        // read randomness, check hash
-        let rand_hash = {
+        // read version and random bytes, send signature
+        let msg_hash = {
             let version_bytes = version.to_bytes_compact()?;
-            let mut random_bytes =
-                vec![0u8; (version_bytes.len() as usize) + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
-            self.duplex.read_exact(&mut random_bytes).await?;
-            let receive_version =
-                Version::from_bytes_compact(&random_bytes[..version_bytes.len()])?;
-            if !receive_version.0.is_compatible(&version) {
-                return Err(BootstrapError::IncompatibleVersionError(format!("Received a bad incompatible version in handshake. (excepted: {}, received: {})", version, receive_version.0)));
+            let mut msg_bytes = vec![0u8; version_bytes.len() + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
+            self.duplex.read_exact(&mut msg_bytes).await?;
+            let received_version = Version::from_bytes_compact(&msg_bytes[..version_bytes.len()])?;
+            if !received_version.0.is_compatible(&version) {
+                return Err(BootstrapError::IncompatibleVersionError(format!("Received a bad incompatible version in handshake. (excepted: {}, received: {})", version, received_version.0)));
             }
-            let expected_hash = Hash::compute_from(&random_bytes);
-            let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
-            self.duplex.read_exact(&mut hash_bytes).await?;
-            if Hash::from_bytes(&hash_bytes)? != expected_hash {
-                return Err(BootstrapError::GeneralError("wrong handshake hash".into()));
-            }
-            expected_hash
+            Hash::compute_from(&msg_bytes)
         };
 
         // save prev sig
-        self.prev_message = Some(rand_hash);
+        self.prev_message = Some(msg_hash);
 
         Ok(())
     }
@@ -82,14 +77,15 @@ impl BootstrapServerBinder {
         // compute signature
         let sig = {
             if let Some(prev_message) = self.prev_message {
-                let mut signed_data = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
-                signed_data[..HASH_SIZE_BYTES].clone_from_slice(&prev_message.to_bytes());
-                signed_data[HASH_SIZE_BYTES..].clone_from_slice(&msg_bytes);
+                // there was a previous message: sign(prev_msg_hash + msg)
+                let mut signed_data =
+                    Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_len as usize));
+                signed_data.extend(prev_message.to_bytes());
+                signed_data.extend(&msg_bytes);
                 sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
             } else {
-                let mut signed_data = vec![0u8; msg_len as usize];
-                signed_data[..].clone_from_slice(&msg_bytes);
-                sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+                // there was no previous message: sign(msg)
+                sign(&Hash::compute_from(&msg_bytes), &self.local_privkey)?
             }
         };
 
@@ -115,7 +111,7 @@ impl BootstrapServerBinder {
     /// Read a message sent from the client (not signed). NOT cancel-safe
     pub async fn next(&mut self) -> Result<BootstrapMessageClient, BootstrapError> {
         // read prev hash
-        let hash = {
+        let received_prev_hash = {
             if self.prev_message.is_some() {
                 let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
                 self.duplex.read_exact(&mut hash_bytes).await?;
@@ -125,30 +121,40 @@ impl BootstrapServerBinder {
             }
         };
 
-        let size_field_len = u32::be_bytes_min_length(self.max_bootstrap_message_size);
-
         // read message length
         let msg_len = {
-            let mut meg_len_bytes = vec![0u8; size_field_len];
-            self.duplex.read_exact(&mut meg_len_bytes[..]).await?;
-            u32::from_be_bytes_min(&meg_len_bytes, self.max_bootstrap_message_size)?.0
-        };
-        // read message and deserialize
-        let mut msg_bytes = vec![0u8; msg_len as usize];
-        let message = {
-            self.duplex.read_exact(&mut msg_bytes).await?;
-            if let Some(prev_message) = self.prev_message {
-                if prev_message != hash.unwrap() {
-                    return Err(BootstrapError::GeneralError(
-                        "Message sequencing has been broken".to_string(),
-                    ));
-                }
-            }
-            self.prev_message = Some(Hash::compute_from(&msg_bytes));
-            let (msg, _len) = BootstrapMessageClient::from_bytes_compact(&msg_bytes)?;
-            msg
+            let mut msg_len_bytes = vec![0u8; self.size_field_len];
+            self.duplex.read_exact(&mut msg_len_bytes[..]).await?;
+            u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
         };
 
-        Ok(message)
+        // read message
+        let mut msg_bytes = vec![0u8; msg_len as usize];
+        self.duplex.read_exact(&mut msg_bytes).await?;
+
+        // check previous hash
+        if received_prev_hash != self.prev_message {
+            return Err(BootstrapError::GeneralError(
+                "Message sequencing has been broken".to_string(),
+            ));
+        }
+
+        // update previous hash
+        if let Some(prev_hash) = received_prev_hash {
+            // there was a previous message: hash(prev_hash + message)
+            let mut hashed_bytes =
+                Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_bytes.len()));
+            hashed_bytes.extend(prev_hash.to_bytes());
+            hashed_bytes.extend(&msg_bytes);
+            self.prev_message = Some(Hash::compute_from(&hashed_bytes));
+        } else {
+            // no previous message: hash message only
+            self.prev_message = Some(Hash::compute_from(&msg_bytes));
+        }
+
+        // deserialize message
+        let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
+
+        Ok(msg)
     }
 }
