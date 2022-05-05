@@ -63,7 +63,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.9.2"
+            "TEST.10.0"
         }
         .parse()
         .unwrap()
@@ -99,9 +99,9 @@ pub const ENDORSEMENT_COUNT: u32 = 9;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 640;
 /// Maximum number of operations per block
-pub const MAX_OPERATIONS_PER_BLOCK: u32 = 204800;
+pub const MAX_OPERATIONS_PER_BLOCK: u32 = 409600;
 /// Maximum block size in bytes
-pub const MAX_BLOCK_SIZE: u32 = 204800;
+pub const MAX_BLOCK_SIZE: u32 = 409600;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum operation validity period count
@@ -141,9 +141,9 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 //
 
 /// Maximum of GAS allowed for a block
-pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
+pub const MAX_GAS_PER_BLOCK: u64 = 1_000_000_000;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
-pub const MAX_ASYNC_GAS: u64 = 100_000_000;
+pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
 
 //
 // Constants used in network
