@@ -1,15 +1,24 @@
-use std::fmt::format;
+use std::{fmt::format, hash};
 
-use massa_models::Address;
+use massa_hash::Hash;
+use massa_models::{Address, Amount};
 use rocksdb::{Error, WriteBatch, DB};
 
-use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrKeep};
+use crate::{
+    ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
+};
 
 const DB_PATH: &str = "_path_to_db";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 
 pub(crate) struct LedgerDB(DB);
+
+pub(crate) enum LedgerDBEntry {
+    Balance,
+    Bytecode,
+    Datastore(Hash),
+}
 
 macro_rules! balance_key {
     ($addr:ident) => {
@@ -55,7 +64,41 @@ impl LedgerDB {
         if let SetOrKeep::Set(bytecode) = entry_update.bytecode {
             batch.put(bytecode_key!(addr), bytecode);
         }
-        for (hash, entry) in entry_update.datastore {}
+        for (hash, update) in entry_update.datastore {
+            match update {
+                SetOrDelete::Set(entry) => batch.put(datastore_key!(addr, hash), entry),
+                SetOrDelete::Delete => {
+                    if self.0.key_may_exist(datastore_key!(addr, hash)) {
+                        batch.delete(datastore_key!(addr, hash));
+                    }
+                }
+            }
+        }
         self.0.write(batch).expect(CRUD_ERROR);
+    }
+
+    pub fn entry_exists(&self, addr: &Address, ty: LedgerDBEntry) -> bool {
+        match ty {
+            LedgerDBEntry::Balance => self.0.key_may_exist(balance_key!(addr)),
+            LedgerDBEntry::Bytecode => self.0.key_may_exist(bytecode_key!(addr)),
+            LedgerDBEntry::Datastore(hash) => self.0.key_may_exist(datastore_key!(addr, hash)),
+        }
+    }
+
+    pub fn get_entry(&self, addr: &Address, ty: LedgerDBEntry) -> Option<Vec<u8>> {
+        match ty {
+            LedgerDBEntry::Balance => self.0.get(balance_key!(addr)).expect(CRUD_ERROR),
+            LedgerDBEntry::Bytecode => self.0.get(bytecode_key!(addr)).expect(CRUD_ERROR),
+            LedgerDBEntry::Datastore(hash) => {
+                self.0.get(datastore_key!(addr, hash)).expect(CRUD_ERROR)
+            }
+        }
+    }
+
+    pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
+        Some(LedgerEntry {
+            parallel_balance: Amount::from_raw(0),
+            ..Default::default()
+        })
     }
 }
