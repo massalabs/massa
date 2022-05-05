@@ -234,14 +234,14 @@
                 .<span class="ident">saturating_add</span>(<span class="ident">MassaTime::from</span>(<span class="number">1000</span> <span class="op">*</span> <span class="number">60</span> <span class="op">*</span> <span class="number">3</span>))
         )
     } <span class="kw">else</span> {
-        <span class="number">1649358000000</span>.<span class="ident">into</span>()  <span class="comment">//  	Thu Apr 07 2022 19:00:00 GMT+0000</span>
+        <span class="number">1651795200000</span>.<span class="ident">into</span>()  <span class="comment">// Fri May 06 2022 00:00:00 GMT+0000</span>
     };
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
         <span class="prelude-val">None</span>
     } <span class="kw">else</span> {
-        <span class="prelude-val">Some</span>(<span class="number">1651345200000</span>.<span class="ident">into</span>())  <span class="comment">// Sat Apr 30 2022 19:00:00 GMT+0000</span>
+        <span class="prelude-val">Some</span>(<span class="number">1654034400000</span>.<span class="ident">into</span>())  <span class="comment">// Tue May 31 2022 22:00:00 GMT+0000</span>
     };
     <span class="doccomment">/// `PrivateKey` to sign genesis blocks.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">PrivateKey</span> <span class="op">=</span> <span class="string">&quot;SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S&quot;</span>
