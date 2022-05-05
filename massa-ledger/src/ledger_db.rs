@@ -1,15 +1,12 @@
-use std::{fmt::format, hash};
-
 use massa_hash::Hash;
 use massa_models::{Address, Amount};
-use rocksdb::{Error, WriteBatch, DB};
+use rocksdb::{WriteBatch, DB};
+use std::collections::BTreeMap;
 
-use crate::{
-    ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
-};
+use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
 const DB_PATH: &str = "_path_to_db";
-const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
+const OPEN_ERROR: &str = "critical: rocksdb open failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 
 pub(crate) struct LedgerDB(DB);
@@ -96,9 +93,22 @@ impl LedgerDB {
     }
 
     pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
-        Some(LedgerEntry {
-            parallel_balance: Amount::from_raw(0),
-            ..Default::default()
-        })
+        // note: think twice about this conversion
+        if let Some(parallel_balance) = self.get_entry(addr, LedgerDBEntry::Balance).map(|bytes| {
+            Amount::from_raw(u64::from_be_bytes(
+                bytes.try_into().expect("critical: invalid balance format"),
+            ))
+        }) {
+            Some(LedgerEntry {
+                parallel_balance,
+                bytecode: self
+                    .get_entry(addr, LedgerDBEntry::Bytecode)
+                    .unwrap_or_else(|| Vec::new()),
+                // note: missing datastore
+                datastore: BTreeMap::new(),
+            })
+        } else {
+            None
+        }
     }
 }
