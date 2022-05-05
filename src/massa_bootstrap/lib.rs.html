@@ -646,13 +646,6 @@
 <span id="641">641</span>
 <span id="642">642</span>
 <span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Bootstrap crate</span>
 <span class="doccomment">//!</span>
@@ -735,15 +728,16 @@
     <span class="comment">// client.next() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK</span>
     <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(<span class="ident">cfg</span>.<span class="ident">read_error_timeout</span>.<span class="ident">into</span>(), <span class="ident">client</span>.<span class="ident">next</span>()).<span class="kw">await</span> {
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state_internal: No error sent at connection&quot;</span>, {});
+            <span class="macro">massa_trace!</span>(
+                <span class="string">&quot;bootstrap.lib.get_state_internal: No error sent at connection&quot;</span>,
+                {}
+            );
         }
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">BootstrapMessage::BootstrapError</span>{<span class="ident">error</span>: <span class="kw">_</span>})) =&gt; {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::ReceivedError</span>(
-                <span class="string">&quot;Bootstrap cancelled on this server because there is no slots available on this server. Will try to bootstrap to another node soon.&quot;</span>.<span class="ident">to_string</span>()
-            ))
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">BootstrapMessage::BootstrapError</span> { <span class="ident">error</span> })) =&gt; {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::ReceivedError</span>(<span class="ident">error</span>))
         }
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::UnexpectedMessage</span>(<span class="ident">msg</span>))
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::UnexpectedMessage</span>(<span class="ident">msg</span>)),
     };
 
     <span class="comment">// handshake</span>
@@ -953,7 +947,7 @@
                     }
                 }
             }
-            <span class="macro">info!</span>(<span class="string">&quot;The bootstrap on the server {} has failed. Your node will try to bootstrap to another node in {} ms&quot;</span>, <span class="ident">addr</span>, <span class="ident">bootstrap_settings</span>.<span class="ident">retry_delay</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {} milliseconds.&quot;</span>, <span class="ident">addr</span>, <span class="ident">bootstrap_settings</span>.<span class="ident">retry_delay</span>);
             <span class="ident">sleep</span>(<span class="ident">bootstrap_settings</span>.<span class="ident">retry_delay</span>.<span class="ident">into</span>()).<span class="kw">await</span>;
         }
     }
@@ -1100,17 +1094,14 @@
                         <span class="ident">hash_map::Entry::Occupied</span>(<span class="kw-2">mut</span> <span class="ident">occ</span>) =&gt; {
                             <span class="kw">if</span> <span class="ident">now</span>.<span class="ident">duration_since</span>(<span class="kw-2">*</span><span class="ident">occ</span>.<span class="ident">get</span>()) <span class="op">&lt;</span><span class="op">=</span> <span class="ident">per_ip_min_interval</span> {
                                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server</span> <span class="op">=</span> <span class="ident">BootstrapServerBinder::new</span>(<span class="ident">dplx</span>, <span class="self">self</span>.<span class="ident">private_key</span>);
-                                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">send_state_timeout_with_error_check</span>(
-                                    <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>(),
-                                    <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">read_error_timeout</span>.<span class="ident">into</span>(),
-                                    <span class="kw-2">&amp;mut</span> <span class="ident">server</span>,
-                                    <span class="ident">BootstrapMessage::BootstrapError</span> {
-                                        <span class="ident">error</span>:
-                                        <span class="macro">format!</span>(<span class="string">&quot;Your last bootstrap on this server was at {:#?} and you have to {:#?} milliseconds before retrying. Wait and retry or try an other server.&quot;</span>, <span class="kw-2">*</span><span class="ident">occ</span>.<span class="ident">get</span>(), <span class="ident">per_ip_min_interval</span>)
-                                    },
-                                    <span class="string">&quot;bootstrap error no available slots send timed out&quot;</span>,
-                                )
-                                .<span class="kw">await</span>;
+                                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(<span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>(), <span class="ident">server</span>.<span class="ident">send</span>(<span class="ident">BootstrapMessage::BootstrapError</span> {
+                                    <span class="ident">error</span>:
+                                    <span class="macro">format!</span>(<span class="string">&quot;Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying. Wait and retry or try an other server.&quot;</span>, <span class="ident">occ</span>.<span class="ident">get</span>().<span class="ident">elapsed</span>(), <span class="ident">per_ip_min_interval</span>.<span class="ident">saturating_sub</span>(<span class="ident">occ</span>.<span class="ident">get</span>().<span class="ident">elapsed</span>()))
+                                })).<span class="kw">await</span> {
+                                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">std::io::Error::new</span>(<span class="ident">std::io::ErrorKind::TimedOut</span>, <span class="string">&quot;bootstrap error no available slots send timed out&quot;</span>).<span class="ident">into</span>()),
+                                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
+                                };
                                 <span class="comment">// in list, non-expired =&gt; refuse</span>
                                 <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_limit&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: <span class="ident">remote_addr</span>});
                                 <span class="kw">continue</span>;
@@ -1156,8 +1147,6 @@
                                     <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error for peer {}: {}&quot;</span>, <span class="ident">remote_addr</span>, <span class="ident">err</span>);
                                     <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.</span>
                                     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tokio::time::timeout</span>(<span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>(), <span class="ident">server</span>.<span class="ident">send</span>(<span class="ident">BootstrapMessage::BootstrapError</span> { <span class="ident">error</span>: <span class="ident">err</span>.<span class="ident">to_string</span>() })).<span class="kw">await</span>;
-                                    <span class="comment">// Sleep a bit to give time for the server to read the error.</span>
-                                    <span class="ident">sleep</span>(<span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>()).<span class="kw">await</span>;
                                 },
                             }
                         }
@@ -1165,16 +1154,13 @@
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: <span class="ident">bootstrap_sessions</span>.<span class="ident">len</span>()});
                 } <span class="kw">else</span> {
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server</span> <span class="op">=</span> <span class="ident">BootstrapServerBinder::new</span>(<span class="ident">dplx</span>, <span class="self">self</span>.<span class="ident">private_key</span>);
-                    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">send_state_timeout_with_error_check</span>(
-                        <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>(),
-                        <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">read_error_timeout</span>.<span class="ident">into</span>(),
-                        <span class="kw-2">&amp;mut</span> <span class="ident">server</span>,
-                        <span class="ident">BootstrapMessage::BootstrapError</span> {
-                            <span class="ident">error</span>: <span class="string">&quot;no available slots to bootstrap&quot;</span>.<span class="ident">to_string</span>()
-                        },
-                        <span class="string">&quot;bootstrap error no available slots send timed out&quot;</span>,
-                    )
-                    .<span class="kw">await</span>;
+                    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(<span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>(), <span class="ident">server</span>.<span class="ident">send</span>(<span class="ident">BootstrapMessage::BootstrapError</span> {
+                        <span class="ident">error</span>: <span class="string">&quot;Bootstrap failed because the bootstrap server currently has no slots available.&quot;</span>.<span class="ident">to_string</span>()
+                    })).<span class="kw">await</span> {
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">std::io::Error::new</span>(<span class="ident">std::io::ErrorKind::TimedOut</span>, <span class="string">&quot;bootstrap error no available slots send timed out&quot;</span>).<span class="ident">into</span>()),
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
+                    };
                     <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, <span class="ident">remote_addr</span>);
                 }
             }
