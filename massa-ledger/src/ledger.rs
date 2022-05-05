@@ -109,18 +109,7 @@ impl FinalLedger {
     /// * configuration: ledger configuration
     /// * state: bootstrap state
     pub fn from_bootstrap_state(config: LedgerConfig, _state: FinalLedgerBootstrapState) -> Self {
-        // conversion code if needed for testing
-        // temporary because bootstrap streaming is not ready yet
-        // let sorted_ledger = DB::open_default("_path_for_rocksdb_storage").unwrap();
-        // for (address, entry) in &state.sorted_ledger {
-        //     sorted_ledger
-        //         .put(
-        //             address.to_bytes(),
-        //             bincode::serialize(entry).expect("WIIL BE NATURALLY REMOVED"),
-        //         )
-        //         .expect("WIIL BE NATURALLY REMOVED");
-        // }
-        // dummy temp implem since an actual one would have no purpose rn
+        // dummy implementation since bootstrap streaming is currently developed
         FinalLedger {
             sorted_ledger: LedgerDB::new(),
             _config: config,
@@ -131,7 +120,7 @@ impl FinalLedger {
     ///
     /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
     pub fn get_bootstrap_state(&self) -> FinalLedgerBootstrapState {
-        // dummy temp implem since an actual one would have no purpose rn
+        // dummy implementation since bootstrap streaming is currently developed
         FinalLedgerBootstrapState {
             sorted_ledger: BTreeMap::new(),
         }
