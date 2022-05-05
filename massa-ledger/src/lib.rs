@@ -51,10 +51,10 @@
 
 mod bootstrap;
 mod config;
-mod ledger_db;
 mod error;
 mod ledger;
 mod ledger_changes;
+mod ledger_db;
 mod ledger_entry;
 mod types;
 
