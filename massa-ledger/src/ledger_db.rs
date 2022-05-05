@@ -17,6 +17,11 @@ pub(crate) enum LedgerDBEntry {
 
 pub(crate) struct LedgerDB(DB);
 
+// IMPORTANT NOTES:
+// - use cf instead of key formatting
+// - find a way to open datastore cf's on new db
+// - might not need to have a mutex on ledger with multi threaded disk db
+
 macro_rules! balance_key {
     ($addr:ident) => {
         format!("{}:balance", $addr).as_bytes()
