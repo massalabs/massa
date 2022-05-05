@@ -2,12 +2,19 @@
 
 //! This file provides structures representing changes to ledger entries
 
-use crate::ledger_entry::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
-use crate::types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete, SetOrKeepSerializer, SetOrDeleteSerializer, SetOrKeepDeserializer, SetOrDeleteDeserializer, SetUpdateOrDeleteSerializer, SetUpdateOrDeleteDeserializer};
+use crate::ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
+use crate::types::{
+    Applicable, SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeep,
+    SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+    SetUpdateOrDeleteSerializer,
+};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_models::amount::{AmountSerializer, AmountDeserializer};
+use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::constants::ADDRESS_SIZE_BYTES;
-use massa_models::{DeserializeVarInt, ModelsError, SerializeVarInt, array_from_slice, SerializeCompact, DeserializeCompact, Serializer, Deserializer, VecU8Serializer, VecU8Deserializer};
+use massa_models::{
+    array_from_slice, DeserializeVarInt, Deserializer, ModelsError, SerializeVarInt, Serializer,
+    VecU8Deserializer, VecU8Serializer,
+};
 use massa_models::{prehash::Map, Address, Amount};
 use std::collections::hash_map;
 
@@ -35,7 +42,7 @@ impl DatastoreSerializer {
 }
 
 impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreSerializer {
-    fn serialize(&self, value: Map<Hash, SetOrDelete<Vec<u8>>>) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &Map<Hash, SetOrDelete<Vec<u8>>>) -> Result<Vec<u8>, ModelsError> {
         let mut res = Vec::new();
 
         let entry_count: u64 = value.len().try_into().map_err(|err| {
@@ -44,9 +51,12 @@ impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreSerializer {
                 err
             ))
         })?;
+
+        res.extend(entry_count.to_varint_bytes());
+
         for (key, value) in value.iter() {
             res.extend(key.to_bytes());
-            res.extend(self.value_serializer.serialize(*value)?);
+            res.extend(self.value_serializer.serialize(value)?);
         }
         Ok(res)
     }
@@ -65,7 +75,10 @@ impl DatastoreDeserializer {
 }
 
 impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreDeserializer {
-    fn deserialize(&self, buffer: &[u8]) -> Result<(Map<Hash, SetOrDelete<Vec<u8>>>, usize), ModelsError> {
+    fn deserialize(
+        &self,
+        buffer: &[u8],
+    ) -> Result<(Map<Hash, SetOrDelete<Vec<u8>>>, usize), ModelsError> {
         let mut cursor = 0usize;
         let mut res = Map::default();
         let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
@@ -97,17 +110,20 @@ impl LedgerEntryUpdateSerializer {
         Self {
             parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new()),
             bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new()),
-            datastore_serializer: DatastoreSerializer::new()
+            datastore_serializer: DatastoreSerializer::new(),
         }
     }
 }
 
 impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
-    fn serialize(&self, value: LedgerEntryUpdate) -> Result<Vec<u8>, ModelsError> {
-        let res = Vec::new();
-        res.extend(self.parallel_balance_serializer.serialize(value.parallel_balance)?);
-        res.extend(self.bytecode_serializer.serialize(value.bytecode)?);
-        res.extend(self.datastore_serializer.serialize(value.datastore)?);
+    fn serialize(&self, value: &LedgerEntryUpdate) -> Result<Vec<u8>, ModelsError> {
+        let mut res = Vec::new();
+        res.extend(
+            self.parallel_balance_serializer
+                .serialize(&value.parallel_balance)?,
+        );
+        res.extend(self.bytecode_serializer.serialize(&value.bytecode)?);
+        res.extend(self.datastore_serializer.serialize(&value.datastore)?);
         Ok(res)
     }
 }
@@ -123,7 +139,7 @@ impl LedgerEntryUpdateDeserializer {
         Self {
             parallel_balance_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new()),
             bytecode_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new()),
-            datastore_deserializer: DatastoreDeserializer::new()
+            datastore_deserializer: DatastoreDeserializer::new(),
         }
     }
 }
@@ -131,17 +147,22 @@ impl LedgerEntryUpdateDeserializer {
 impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     fn deserialize(&self, buffer: &[u8]) -> Result<(LedgerEntryUpdate, usize), ModelsError> {
         let mut cursor = 0usize;
-        let (parallel_balance, delta) = self.parallel_balance_deserializer.deserialize(&buffer[cursor..])?;
+        let (parallel_balance, delta) = self
+            .parallel_balance_deserializer
+            .deserialize(&buffer[cursor..])?;
         cursor += delta;
         let (bytecode, delta) = self.bytecode_deserializer.deserialize(&buffer[cursor..])?;
         cursor += delta;
         let (datastore, delta) = self.datastore_deserializer.deserialize(&buffer[cursor..])?;
         cursor += delta;
-        Ok((LedgerEntryUpdate {
-            parallel_balance,
-            bytecode,
-            datastore,
-        }, cursor))
+        Ok((
+            LedgerEntryUpdate {
+                parallel_balance,
+                bytecode,
+                datastore,
+            },
+            cursor,
+        ))
     }
 }
 
@@ -158,44 +179,57 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
 #[derive(Default, Debug, Clone)]
 pub struct LedgerChanges(pub Map<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>);
 
-struct LedgerChangesSerializer {
-    entry_serializer: SetUpdateOrDeleteSerializer<LedgerEntry, LedgerEntryUpdate, LedgerEntrySerializer, LedgerEntryUpdateSerializer>,
+pub struct LedgerChangesSerializer {
+    entry_serializer: SetUpdateOrDeleteSerializer<
+        LedgerEntry,
+        LedgerEntryUpdate,
+        LedgerEntrySerializer,
+        LedgerEntryUpdateSerializer,
+    >,
 }
 
 impl LedgerChangesSerializer {
     pub fn new() -> Self {
         Self {
-            entry_serializer: SetUpdateOrDeleteSerializer::new(LedgerEntrySerializer::new(), LedgerEntryUpdateSerializer::new()),
+            entry_serializer: SetUpdateOrDeleteSerializer::new(
+                LedgerEntrySerializer::new(),
+                LedgerEntryUpdateSerializer::new(),
+            ),
         }
     }
 }
 
 impl Serializer<LedgerChanges> for LedgerChangesSerializer {
-    fn serialize(&self, value: LedgerChanges) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &LedgerChanges) -> Result<Vec<u8>, ModelsError> {
         let mut res = Vec::new();
         let entry_count: u64 = value.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
-                "too many entries in LedgerChanges: {}",
-                err
-            ))
+            ModelsError::SerializeError(format!("too many entries in LedgerChanges: {}", err))
         })?;
         res.extend(entry_count.to_varint_bytes());
         for (address, data) in value.0.iter() {
             res.extend(address.to_bytes());
-            res.extend(self.entry_serializer.serialize(*data)?);
+            res.extend(self.entry_serializer.serialize(data)?);
         }
         Ok(res)
     }
 }
 
-struct LedgerChangesDeserializer {
-    entry_deserializer: SetUpdateOrDeleteDeserializer<LedgerEntry, LedgerEntryUpdate, LedgerEntryDeserializer, LedgerEntryUpdateDeserializer>,
+pub struct LedgerChangesDeserializer {
+    entry_deserializer: SetUpdateOrDeleteDeserializer<
+        LedgerEntry,
+        LedgerEntryUpdate,
+        LedgerEntryDeserializer,
+        LedgerEntryUpdateDeserializer,
+    >,
 }
 
 impl LedgerChangesDeserializer {
     pub fn new() -> Self {
         Self {
-            entry_deserializer: SetUpdateOrDeleteDeserializer::new(LedgerEntryDeserializer::new(), LedgerEntryUpdateDeserializer::new()),
+            entry_deserializer: SetUpdateOrDeleteDeserializer::new(
+                LedgerEntryDeserializer::new(),
+                LedgerEntryUpdateDeserializer::new(),
+            ),
         }
     }
 }

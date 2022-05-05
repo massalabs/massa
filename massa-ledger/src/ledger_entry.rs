@@ -6,8 +6,11 @@ use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
-use massa_models::amount::{AmountSerializer, AmountDeserializer};
-use massa_models::{array_from_slice, Amount, DeserializeVarInt, ModelsError, SerializeVarInt, VecU8Serializer, Serializer, VecU8Deserializer, Deserializer};
+use massa_models::amount::{AmountDeserializer, AmountSerializer};
+use massa_models::{
+    array_from_slice, Amount, DeserializeVarInt, Deserializer, ModelsError, SerializeVarInt,
+    Serializer, VecU8Deserializer, VecU8Serializer,
+};
 use massa_models::{DeserializeCompact, SerializeCompact};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -39,7 +42,7 @@ impl DatastoreSerializer {
 }
 
 impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
-    fn serialize(&self, value: BTreeMap<Hash, Vec<u8>>) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &BTreeMap<Hash, Vec<u8>>) -> Result<Vec<u8>, ModelsError> {
         let mut res = Vec::new();
 
         let entry_count: u64 = value.len().try_into().map_err(|err| {
@@ -50,7 +53,7 @@ impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
         })?;
         for (key, value) in value.iter() {
             res.extend(key.to_bytes());
-            res.extend(self.value_serializer.serialize(*value)?);
+            res.extend(self.value_serializer.serialize(value)?);
         }
         Ok(res)
     }
@@ -107,11 +110,11 @@ impl LedgerEntrySerializer {
 }
 
 impl Serializer<LedgerEntry> for LedgerEntrySerializer {
-    fn serialize(&self, value: LedgerEntry) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &LedgerEntry) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
-        res.extend(self.amount_serializer.serialize(value.parallel_balance)?);
-        res.extend(self.vec_u8_serializer.serialize(value.bytecode)?);
-        res.extend(self.datastore_serializer.serialize(value.datastore)?);
+        res.extend(self.amount_serializer.serialize(&value.parallel_balance)?);
+        res.extend(self.vec_u8_serializer.serialize(&value.bytecode)?);
+        res.extend(self.datastore_serializer.serialize(&value.datastore)?);
         Ok(res)
     }
 }
@@ -141,11 +144,14 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
         cursor += delta;
         let (datastore, delta) = self.datastore_deserializer.deserialize(&buffer[cursor..])?;
         cursor += delta;
-        Ok((LedgerEntry {
-            parallel_balance,
-            bytecode,
-            datastore,
-        }, cursor))
+        Ok((
+            LedgerEntry {
+                parallel_balance,
+                bytecode,
+                datastore,
+            },
+            cursor,
+        ))
     }
 }
 

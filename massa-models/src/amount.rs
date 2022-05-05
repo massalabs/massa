@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
-use crate::{ModelsError, Serializer, SerializeVarInt, Deserializer, DeserializeVarInt};
+use crate::{DeserializeVarInt, Deserializer, ModelsError, SerializeVarInt, Serializer};
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
@@ -128,7 +128,7 @@ impl AmountSerializer {
 }
 
 impl Serializer<Amount> for AmountSerializer {
-    fn serialize(&self, value: Amount) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &Amount) -> Result<Vec<u8>, ModelsError> {
         Ok(value.0.to_varint_bytes())
     }
 }

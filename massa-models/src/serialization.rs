@@ -322,10 +322,7 @@ impl Serializer<Vec<u8>> for VecU8Serializer {
     fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, ModelsError> {
         let mut res = Vec::new();
         let len: u64 = value.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
-                "too many entries data in VecU8: {}",
-                err
-            ))
+            ModelsError::SerializeError(format!("too many entries data in VecU8: {}", err))
         })?;
         res.extend(len.to_varint_bytes());
         res.extend(value);

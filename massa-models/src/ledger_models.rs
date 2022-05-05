@@ -1,9 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
+    array_from_slice,
     error::ModelsResult as Result,
+    node_configuration::ADDRESS_SIZE_BYTES,
     prehash::{Map, Set},
-    u8_from_slice, Address, Amount, DeserializeCompact, ModelsError, SerializeCompact, SerializeVarInt, DeserializeVarInt, array_from_slice, node_configuration::ADDRESS_SIZE_BYTES
+    u8_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, ModelsError,
+    SerializeCompact, SerializeVarInt,
 };
 use core::usize;
 use serde::{Deserialize, Serialize};
