@@ -254,7 +254,7 @@
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
             <span class="string">&quot;SAND.0.0&quot;</span>
         } <span class="kw">else</span> {
-            <span class="string">&quot;TEST.9.2&quot;</span>
+            <span class="string">&quot;TEST.10.0&quot;</span>
         }
         .<span class="ident">parse</span>()
         .<span class="ident">unwrap</span>()
@@ -290,9 +290,9 @@
 <span class="doccomment">/// Threshold for fitness.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DELTA_F0</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">640</span>;
 <span class="doccomment">/// Maximum number of operations per block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">204800</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">409600</span>;
 <span class="doccomment">/// Maximum block size in bytes</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BLOCK_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">204800</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BLOCK_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">409600</span>;
 <span class="doccomment">/// Maximum capacity of the asynchronous messages pool</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_POOL_LENGTH</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10_000</span>;
 <span class="doccomment">/// Maximum operation validity period count</span>
@@ -332,9 +332,9 @@
 <span class="comment">//</span>
 
 <span class="doccomment">/// Maximum of GAS allowed for a block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_GAS_PER_BLOCK</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">100_000_000</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_GAS_PER_BLOCK</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000_000</span>;
 <span class="doccomment">/// Maximum of GAS allowed for asynchronous messages execution on one slot</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_GAS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">100_000_000</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_GAS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000_000</span>;
 
 <span class="comment">//</span>
 <span class="comment">// Constants used in network</span>
