@@ -299,7 +299,7 @@ pub async fn get_state(
                     }
                 }
             }
-            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {} milliseconds.", addr, bootstrap_settings.retry_delay);
+            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?} milliseconds.", addr, bootstrap_settings.retry_delay.to_duration());
             sleep(bootstrap_settings.retry_delay.into()).await;
         }
     }
@@ -448,7 +448,7 @@ impl BootstrapServer {
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
                                 let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessage::BootstrapError {
                                     error:
-                                    format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying. Wait and retry or try an other server.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
+                                    format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
                                 })).await {
                                     Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
                                     Ok(Err(e)) => Err(e),
