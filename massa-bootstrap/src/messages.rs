@@ -135,7 +135,15 @@ impl DeserializeCompact for BootstrapMessage {
                 let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
 
-                let error = String::from_utf8_lossy(&buffer[cursor..cursor + error_len as usize]);
+                let error = String::from_utf8_lossy(
+                    buffer
+                        .get(cursor..cursor + error_len as usize)
+                        .ok_or_else(|| {
+                            ModelsError::DeserializeError(
+                                "Error message content too short.".to_string(),
+                            )
+                        })?,
+                );
                 cursor += error_len as usize;
 
                 BootstrapMessage::BootstrapError {

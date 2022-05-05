@@ -381,8 +381,6 @@ struct BootstrapServer {
 }
 
 impl BootstrapServer {
-    // We don't want to leave on a fail of sending error to a bootstrap client.
-    #[allow(unused_must_use)]
     pub async fn run(mut self) -> Result<(), BootstrapError> {
         debug!("starting bootstrap server");
         massa_trace!("bootstrap.lib.run", {});
@@ -447,7 +445,7 @@ impl BootstrapServer {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                                send_state_timeout_with_error_check(
+                                let _ = send_state_timeout_with_error_check(
                                     self.bootstrap_settings.write_error_timeout.into(),
                                     self.bootstrap_settings.read_error_timeout.into(),
                                     &mut server,
@@ -512,7 +510,7 @@ impl BootstrapServer {
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
                     let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                    send_state_timeout_with_error_check(
+                    let _ = send_state_timeout_with_error_check(
                         self.bootstrap_settings.write_error_timeout.into(),
                         self.bootstrap_settings.read_error_timeout.into(),
                         &mut server,
