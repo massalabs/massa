@@ -160,7 +160,11 @@
         ["149.202.86.103:31245", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
         ["149.202.89.125:31245", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
         ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
-        ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
+        ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"],
+        ["198.27.74.5:31245", "6j68EAFjS6mc7kheMAXnPqbzrtCTQY8cZ45RomkEJx7PPQqYk7"],
+        ["198.27.74.52:31245", "6Z5XzjTBQ6CwZdoWvYYirmfaFCgujSLfu4yGnhVcSKf4EHNXWu"],
+        ["54.36.174.177:31245", "6cXtgCafUpiG1WPQqXxw4kat6Hv7qUvH6aQJVh828ghKAKWkso"],
+        ["51.75.60.228:31245", "7fWWX1vwgaUD3AFy6XDBXCVmMEjcjRhyVE53QyUK6Avo3EMH94"]
     ]
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
