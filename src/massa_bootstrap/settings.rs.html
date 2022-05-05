@@ -39,6 +39,10 @@
 <span id="34">34</span>
 <span id="35">35</span>
 <span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_signature::PublicKey</span>;
@@ -60,6 +64,10 @@
     <span class="kw">pub</span> <span class="ident">read_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// write timeout</span>
     <span class="kw">pub</span> <span class="ident">write_timeout</span>: <span class="ident">MassaTime</span>,
+    <span class="doccomment">/// readout error timeout</span>
+    <span class="kw">pub</span> <span class="ident">read_error_timeout</span>: <span class="ident">MassaTime</span>,
+    <span class="doccomment">/// write error timeout</span>
+    <span class="kw">pub</span> <span class="ident">write_error_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Time we wait before retrying a bootstrap</span>
     <span class="kw">pub</span> <span class="ident">retry_delay</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Max ping delay.</span>
@@ -76,5 +84,5 @@
     <span class="kw">pub</span> <span class="ident">ip_list_max_size</span>: <span class="ident">usize</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4c60a0ea5 2022-05-04)" ></div>
 </body></html>
