@@ -44,20 +44,18 @@ impl BootstrapClientBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
-        // send randomness and their hash
-        let rand_hash = {
+        // send version and randomn bytes
+        let msg_hash = {
             let version = version.to_bytes_compact()?;
             let mut version_random_bytes =
                 vec![0u8; (version.len() as usize) + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
             version_random_bytes[..version.len()].clone_from_slice(&version);
             StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version.len()..]);
             self.duplex.write_all(&version_random_bytes).await?;
-            let rand_hash = Hash::compute_from(&version_random_bytes);
-            self.duplex.write_all(&rand_hash.to_bytes()).await?;
-            rand_hash
+            Hash::compute_from(&version_random_bytes)
         };
 
-        self.prev_message = Some(rand_hash);
+        self.prev_message = Some(msg_hash);
 
         Ok(())
     }
@@ -73,9 +71,9 @@ impl BootstrapClientBinder {
 
         // read message length
         let msg_len = {
-            let mut meg_len_bytes = vec![0u8; self.size_field_len];
-            self.duplex.read_exact(&mut meg_len_bytes[..]).await?;
-            u32::from_be_bytes_min(&meg_len_bytes, self.max_bootstrap_message_size)?.0
+            let mut msg_len_bytes = vec![0u8; self.size_field_len];
+            self.duplex.read_exact(&mut msg_len_bytes[..]).await?;
+            u32::from_be_bytes_min(&msg_len_bytes, self.max_bootstrap_message_size)?.0
         };
 
         // read message, check signature and check signature of the message sent just before then deserialize it
@@ -109,13 +107,30 @@ impl BootstrapClientBinder {
     #[allow(dead_code)]
     /// Send a message to the bootstrap server
     pub async fn send(&mut self, msg: BootstrapMessage) -> Result<(), BootstrapError> {
+        // serialize message
         let msg_bytes = msg.to_bytes_compact()?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
 
         if let Some(prev_message) = self.prev_message {
-            self.duplex.write_all(&prev_message.to_bytes()).await?;
+            // there was a previous message
+            let prev_message = prev_message.to_bytes();
+
+            // update current previous message to be hash(prev_msg_hash + msg)
+            let mut hash_data =
+                Vec::with_capacity(prev_message.len().saturating_add(msg_bytes.len()));
+            hash_data.extend(prev_message);
+            hash_data.extend(&msg_bytes);
+            self.prev_message = Some(Hash::compute_from(&hash_data));
+
+            // send old previous message
+            self.duplex.write_all(&prev_message).await?;
+        } else {
+            // there was no previous message
+
+            //update current previous message
+            self.prev_message = Some(Hash::compute_from(&msg_bytes));
         }
 
         // send message length
@@ -126,7 +141,6 @@ impl BootstrapClientBinder {
 
         // send message
         self.duplex.write_all(&msg_bytes).await?;
-        self.prev_message = Some(Hash::compute_from(&msg.to_bytes_compact()?));
         Ok(())
     }
 }
