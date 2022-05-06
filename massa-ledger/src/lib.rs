@@ -48,6 +48,7 @@
 #![warn(unused_crate_dependencies)]
 #![feature(map_first_last)]
 #![feature(async_closure)]
+#![feature(is_some_with)]
 
 mod bootstrap;
 mod config;
