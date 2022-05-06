@@ -1,13 +1,16 @@
 use massa_hash::Hash;
 use massa_models::{Address, Amount};
-use rocksdb::{WriteBatch, DB};
+use rocksdb::{ColumnFamily, Options, WriteBatch, DB};
 use std::collections::BTreeMap;
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
 const DB_PATH: &str = "_path_to_db";
-const OPEN_ERROR: &str = "critical: rocksdb open failed";
+const BALANCE_CF: &str = "balance";
+const BYTECODE_CF: &str = "bytecode";
+const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
+const CF_ERROR: &str = "critical: rocksdb cf operation failed";
 
 pub(crate) enum LedgerDBEntry {
     Balance,
@@ -18,62 +21,88 @@ pub(crate) enum LedgerDBEntry {
 pub(crate) struct LedgerDB(DB);
 
 // IMPORTANT NOTES:
-// - use cf instead of key formatting
 // - find a way to open datastore cf's on new db
 // - might not need to have a mutex on ledger with multi threaded disk db
 
-macro_rules! balance_key {
-    ($addr:ident) => {
-        format!("{}:balance", $addr).as_bytes()
-    };
-}
-
-macro_rules! bytecode_key {
-    ($addr:ident) => {
-        format!("{}:bytecode", $addr).as_bytes()
-    };
-}
-
-macro_rules! datastore_key {
-    ($addr:ident, $hash:ident) => {
-        format!("{}:datastore:{}", $addr, $hash).as_bytes()
-    };
-}
-
 impl LedgerDB {
     pub fn new() -> Self {
-        LedgerDB(DB::open_default(DB_PATH).expect(OPEN_ERROR))
+        let mut opts = Options::default();
+        opts.create_if_missing(true);
+        let mut db = DB::open(&opts, DB_PATH).expect(OPEN_ERROR);
+        db.create_cf(BALANCE_CF, &Options::default())
+            .expect(CF_ERROR);
+        db.create_cf(BYTECODE_CF, &Options::default())
+            .expect(CF_ERROR);
+        LedgerDB(db)
+    }
+
+    // note: save instead for balance and bytecode
+    fn balance_cf(&self) -> &ColumnFamily {
+        self.0.cf_handle(BALANCE_CF).expect(CF_ERROR)
+    }
+
+    fn bytecode_cf(&self) -> &ColumnFamily {
+        self.0.cf_handle(BYTECODE_CF).expect(CF_ERROR)
+    }
+
+    fn datastore_cf(&self, cf_name: String) -> &ColumnFamily {
+        match self.0.cf_handle(&cf_name) {
+            Some(cf) => cf,
+            None => {
+                self.0
+                    .create_cf(cf_name, &Options::default())
+                    .expect(CF_ERROR);
+                self.0.cf_handle(&cf_name).expect(CF_ERROR)
+            }
+        }
     }
 
     pub fn put(&self, addr: &Address, ledger_entry: LedgerEntry) {
         let mut batch = WriteBatch::default();
-        batch.put(
-            balance_key!(addr),
+        let key = addr.to_bytes();
+
+        // balance
+        batch.put_cf(
+            self.balance_cf(),
+            key,
             ledger_entry.parallel_balance.to_raw().to_be_bytes(),
         );
-        batch.put(bytecode_key!(addr), ledger_entry.bytecode);
+
+        // bytecode
+        batch.put_cf(self.bytecode_cf(), key, ledger_entry.bytecode);
+
+        // datastore
+        let cf_name = addr.to_string();
+        let cf = self.datastore_cf(cf_name);
         for (hash, entry) in ledger_entry.datastore {
-            batch.put(datastore_key!(addr, hash), entry);
+            let data_key = hash.to_bytes();
+            batch.put_cf(cf, data_key, entry);
         }
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
     pub fn update(&self, addr: &Address, entry_update: LedgerEntryUpdate) {
         let mut batch = WriteBatch::default();
+        let key = addr.to_bytes();
+
+        // balance
         if let SetOrKeep::Set(balance) = entry_update.parallel_balance {
-            batch.put(balance_key!(addr), balance.to_raw().to_be_bytes());
+            batch.put_cf(self.balance_cf(), key, balance.to_raw().to_be_bytes());
         }
+
+        // bytecode
         if let SetOrKeep::Set(bytecode) = entry_update.bytecode {
-            batch.put(bytecode_key!(addr), bytecode);
+            batch.put_cf(self.bytecode_cf(), key, bytecode);
         }
+
+        // datastore
+        let cf_name = addr.to_string();
+        let cf = self.datastore_cf(cf_name);
         for (hash, update) in entry_update.datastore {
+            let data_key = hash.to_bytes();
             match update {
-                SetOrDelete::Set(entry) => batch.put(datastore_key!(addr, hash), entry),
-                SetOrDelete::Delete => {
-                    if self.0.key_may_exist(datastore_key!(addr, hash)) {
-                        batch.delete(datastore_key!(addr, hash));
-                    }
-                }
+                SetOrDelete::Set(entry) => batch.put_cf(cf, data_key, entry),
+                SetOrDelete::Delete => batch.delete_cf(cf, data_key),
             }
         }
         self.0.write(batch).expect(CRUD_ERROR);
