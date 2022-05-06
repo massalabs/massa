@@ -62,7 +62,7 @@ pub use config::LedgerConfig;
 pub use error::LedgerError;
 pub use ledger::ExecutionLedgerSubset;
 pub use ledger::FinalLedger;
-pub use ledger_changes::LedgerChanges;
+pub use ledger_changes::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
 pub use ledger_entry::LedgerEntry;
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 

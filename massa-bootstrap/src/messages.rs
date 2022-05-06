@@ -2,11 +2,16 @@
 
 use massa_final_state::FinalStateBootstrap;
 use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
-use massa_ledger::{ExecutionLedgerSubset, LedgerChanges as ExecutionLedgerChanges};
+use massa_ledger::{
+    ExecutionLedgerSubset, LedgerChanges as ExecutionLedgerChanges,
+    LedgerChangesDeserializer as ExecutionLedgerChangesDeserializer,
+    LedgerChangesSerializer as ExecutionLedgerChangesSerializer,
+};
 use massa_models::{
     array_from_slice, constants::ADDRESS_SIZE_BYTES,
     ledger_models::LedgerChanges as ConsensusLedgerChanges, Address, DeserializeCompact,
-    DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Slot, Version,
+    DeserializeVarInt, Deserializer, ModelsError, SerializeCompact, SerializeVarInt, Serializer,
+    Slot, Version,
 };
 use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -117,7 +122,8 @@ impl SerializeCompact for BootstrapMessageServer {
                 res.extend(u32::from(MessageServerTypeId::ExecutionLedgerPart).to_varint_bytes());
                 res.extend(ledger.to_bytes_compact()?);
                 res.extend(slot.to_bytes_compact()?);
-                res.extend(ledger_changes.to_bytes_compact()?);
+                let serializer = ExecutionLedgerChangesSerializer::new();
+                res.extend(serializer.serialize(ledger_changes)?);
             }
             BootstrapMessageServer::BootstrapError { error } => {
                 res.extend(u32::from(MessageServerTypeId::BootstrapError).to_varint_bytes());
@@ -196,9 +202,8 @@ impl DeserializeCompact for BootstrapMessageServer {
 
                 let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-
-                let (ledger_changes, delta) =
-                    ExecutionLedgerChanges(&buffer[cursor..])?;
+                let deserializer = ExecutionLedgerChangesDeserializer::new();
+                let (ledger_changes, delta) = deserializer.deserialize(&buffer[cursor..])?;
                 cursor += delta;
 
                 BootstrapMessageServer::ExecutionLedgerPart {

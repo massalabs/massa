@@ -51,6 +51,9 @@ impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
                 err
             ))
         })?;
+
+        res.extend(entry_count.to_varint_bytes());
+
         for (key, value) in value.iter() {
             res.extend(key.to_bytes());
             res.extend(self.value_serializer.serialize(value)?);

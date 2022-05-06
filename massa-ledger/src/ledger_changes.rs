@@ -179,6 +179,7 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
 #[derive(Default, Debug, Clone)]
 pub struct LedgerChanges(pub Map<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>);
 
+/// `LedgerChanges` serializer
 pub struct LedgerChangesSerializer {
     entry_serializer: SetUpdateOrDeleteSerializer<
         LedgerEntry,
@@ -189,6 +190,7 @@ pub struct LedgerChangesSerializer {
 }
 
 impl LedgerChangesSerializer {
+    /// Creates a new `LedgerChangesSerializer`
     pub fn new() -> Self {
         Self {
             entry_serializer: SetUpdateOrDeleteSerializer::new(
@@ -214,6 +216,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     }
 }
 
+/// `LedgerChanges` deserializer
 pub struct LedgerChangesDeserializer {
     entry_deserializer: SetUpdateOrDeleteDeserializer<
         LedgerEntry,
@@ -224,6 +227,7 @@ pub struct LedgerChangesDeserializer {
 }
 
 impl LedgerChangesDeserializer {
+    /// Creates a new `LedgerChangesDeserializer`
     pub fn new() -> Self {
         Self {
             entry_deserializer: SetUpdateOrDeleteDeserializer::new(
