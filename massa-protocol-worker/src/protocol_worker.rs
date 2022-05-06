@@ -776,7 +776,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
         self.network_command_sender
-            .ban(*node_id)
+            .node_ban_by_ids(vec![*node_id])
             .await
             .map_err(|_| ProtocolError::ChannelError("Ban node command send failed".into()))?;
         Ok(())

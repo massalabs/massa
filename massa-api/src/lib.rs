@@ -163,10 +163,15 @@ pub trait Endpoints {
     #[rpc(name = "get_staking_addresses")]
     fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>>;
 
-    /// Bans given IP address.
+    /// Bans given IP address(es).
     /// No confirmation to expect.
-    #[rpc(name = "ban")]
-    fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+    #[rpc(name = "node_ban_by_ip")]
+    fn node_ban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Bans given node id.
+    /// No confirmation to expect.
+    #[rpc(name = "node_ban_by_id")]
+    fn node_ban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>>;
 
     /// whitelist given IP address.
     /// No confirmation to expect.
@@ -180,10 +185,15 @@ pub trait Endpoints {
     #[rpc(name = "node_remove_from_whitelist")]
     fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Unban given IP address.
+    /// Unbans given IP address(es).
     /// No confirmation to expect.
-    #[rpc(name = "unban")]
-    fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+    #[rpc(name = "node_unban_by_ip")]
+    fn node_unban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Unbans given node id.
+    /// No confirmation to expect.
+    #[rpc(name = "node_unban_by_id")]
+    fn node_unban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>>;
 
     /// Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.
     #[rpc(name = "get_status")]

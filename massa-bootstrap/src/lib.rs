@@ -22,9 +22,11 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::{FinalState, FinalStateBootstrap};
 use massa_graph::BootstrapableGraph;
+use massa_ledger::LedgerChanges as ExecutionLedgerChanges;
 use massa_logging::massa_trace;
 use massa_models::constants::default::BOOTSTRAP_LEDGER_ENTRY_SIZE;
-use massa_models::Version;
+use massa_models::ledger_models::LedgerChanges as ConsensusLedgerChanges;
+use massa_models::{Slot, Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::PrivateKey;
@@ -190,8 +192,8 @@ async fn bootstrap_from_server(
     // TODO: Add ledger to the state
     loop {
         match next_message_bootstrap {
-            Some(BootstrapMessageClient::AskConsensusLedgerPart { address: _ }) => {
-                let ledger_part = match send_message_client(
+            Some(BootstrapMessageClient::AskConsensusLedgerPart { .. }) => {
+                let (ledger_part, last_slot, ledger_changes) = match send_message_client(
                     next_message_bootstrap.as_ref().unwrap(),
                     client,
                     write_timeout,
@@ -199,7 +201,11 @@ async fn bootstrap_from_server(
                 )
                 .await?
                 {
-                    BootstrapMessageServer::ConsensusLedgerPart { ledger } => ledger,
+                    BootstrapMessageServer::ConsensusLedgerPart {
+                        ledger,
+                        slot,
+                        ledger_changes,
+                    } => (ledger, slot, ledger_changes),
                     BootstrapMessageServer::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
                     }
@@ -209,16 +215,20 @@ async fn bootstrap_from_server(
                 debug!("Size max = {:#?}", BOOTSTRAP_LEDGER_ENTRY_SIZE);
                 if ledger_part.0.len() < BOOTSTRAP_LEDGER_ENTRY_SIZE as usize {
                     *next_message_bootstrap =
-                        Some(BootstrapMessageClient::AskExecutionLedgerPart { address: None });
+                        Some(BootstrapMessageClient::AskExecutionLedgerPart {
+                            address: None,
+                            slot: None,
+                        });
                 } else {
                     *next_message_bootstrap =
                         Some(BootstrapMessageClient::AskConsensusLedgerPart {
                             address: Some(*ledger_part.0.last_key_value().unwrap().0),
+                            slot: Some(last_slot),
                         });
                 }
             }
-            Some(BootstrapMessageClient::AskExecutionLedgerPart { address: _ }) => {
-                let ledger_part = match send_message_client(
+            Some(BootstrapMessageClient::AskExecutionLedgerPart { .. }) => {
+                let (ledger_part, last_slot, ledger_changes) = match send_message_client(
                     next_message_bootstrap.as_ref().unwrap(),
                     client,
                     write_timeout,
@@ -226,7 +236,11 @@ async fn bootstrap_from_server(
                 )
                 .await?
                 {
-                    BootstrapMessageServer::ExecutionLedgerPart { ledger } => ledger,
+                    BootstrapMessageServer::ExecutionLedgerPart {
+                        ledger,
+                        slot,
+                        ledger_changes,
+                    } => (ledger, slot, ledger_changes),
                     BootstrapMessageServer::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
                     }
@@ -240,6 +254,7 @@ async fn bootstrap_from_server(
                     *next_message_bootstrap =
                         Some(BootstrapMessageClient::AskExecutionLedgerPart {
                             address: Some(*ledger_part.0.last_key_value().unwrap().0),
+                            slot: Some(last_slot),
                         });
                 }
             }
@@ -376,7 +391,10 @@ pub async fn get_state(
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     // Will be none when bootstrap is over
     let mut next_message_bootstrap: Option<BootstrapMessageClient> =
-        Some(BootstrapMessageClient::AskConsensusLedgerPart { address: None });
+        Some(BootstrapMessageClient::AskConsensusLedgerPart {
+            address: None,
+            slot: None,
+        });
     let mut global_bootstrap_state: GlobalBootstrapState = Default::default();
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
@@ -411,7 +429,7 @@ pub async fn get_state(
                     }
                 }
             }
-            info!("The bootstrap on the server {} has failed. Your node will try to bootstrap to another node in {} ms", addr, bootstrap_settings.retry_delay);
+            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?} milliseconds.", addr, bootstrap_settings.retry_delay.to_duration());
             sleep(bootstrap_settings.retry_delay.into()).await;
         }
     }
@@ -558,9 +576,14 @@ impl BootstrapServer {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                                let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
-                                    error: format!("Your last bootstrap on this server was at {:#?} and you have to {:#?} milliseconds before retrying. Wait and retry or try an other server.", *occ.get(), per_ip_min_interval)
-                                })).await;
+                                let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
+                                    error:
+                                    format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
+                                })).await {
+                                    Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
+                                    Ok(Err(e)) => Err(e),
+                                    Ok(Ok(_)) => Ok(()),
+                                };
                                 // in list, non-expired => refuse
                                 massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
                                 continue;
@@ -607,8 +630,6 @@ impl BootstrapServer {
                                     debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
                                     // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
                                     let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError { error: err.to_string() })).await;
-                                    // Sleep a bit to give time for the server to read the error.
-                                    sleep(self.bootstrap_settings.write_error_timeout.into()).await;
                                 },
                             }
                         }
@@ -616,9 +637,13 @@ impl BootstrapServer {
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
                     let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                    let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
-                            error: "no available slots to bootstrap".to_string()
-                    })).await;
+                    let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
+                        error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
+                    })).await {
+                        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
+                        Ok(Err(e)) => Err(e),
+                        Ok(Ok(_)) => Ok(()),
+                    };
                     debug!("did not bootstrap {}: no available slots", remote_addr);
                 }
             }
@@ -718,7 +743,7 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapMessageClient::AskConsensusLedgerPart { address } => {
+                BootstrapMessageClient::AskConsensusLedgerPart { address, slot } => {
                     let ledger_part = consensus_command_sender
                         .get_ledger_part(address, BOOTSTRAP_LEDGER_ENTRY_SIZE as usize)
                         .await?;
@@ -727,6 +752,8 @@ async fn manage_bootstrap(
                         write_timeout,
                         server.send(messages::BootstrapMessageServer::ConsensusLedgerPart {
                             ledger: ledger_part,
+                            slot: Slot::new(1, 0),
+                            ledger_changes: ConsensusLedgerChanges::default(),
                         }),
                     )
                     .await
@@ -740,7 +767,7 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapMessageClient::AskExecutionLedgerPart { address } => {
+                BootstrapMessageClient::AskExecutionLedgerPart { address, slot } => {
                     let ledger_part = final_state
                         .ledger
                         .get_ledger_part(address, BOOTSTRAP_LEDGER_ENTRY_SIZE as usize)
@@ -754,6 +781,8 @@ async fn manage_bootstrap(
                         write_timeout,
                         server.send(messages::BootstrapMessageServer::ExecutionLedgerPart {
                             ledger: ledger_part,
+                            slot: Slot::new(1, 0),
+                            ledger_changes: ExecutionLedgerChanges::default(),
                         }),
                     )
                     .await

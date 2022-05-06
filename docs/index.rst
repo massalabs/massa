@@ -73,7 +73,7 @@ Contents
 
 .. toctree::
    :maxdepth: 2
-   :caption: Massa's decentrlized web
+   :caption: Massa's decentralized web
 
    decentralized-web/decentralized-web.rst
    decentralized-web/hosting.rst

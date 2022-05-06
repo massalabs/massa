@@ -291,7 +291,7 @@ async fn test_peer_ban() {
 
             // ban connection1.
             network_command_sender
-                .ban(conn1_id)
+                .node_ban_by_ids(vec![conn1_id])
                 .await
                 .expect("error during send ban command.");
 
@@ -325,7 +325,7 @@ async fn test_peer_ban() {
 
             // unban connection1.
             network_command_sender
-                .unban(vec![mock_addr.ip()])
+                .node_unban_ips(vec![mock_addr.ip()])
                 .await
                 .expect("error during send unban command.");
 
@@ -426,7 +426,7 @@ async fn test_peer_ban_by_ip() {
 
             // ban connection1.
             network_command_sender
-                .ban_ip(vec![mock_addr.ip()])
+                .node_ban_by_ips(vec![mock_addr.ip()])
                 .await
                 .expect("error during send ban command.");
 
@@ -460,7 +460,7 @@ async fn test_peer_ban_by_ip() {
 
             // unban connection1.
             network_command_sender
-                .unban(vec![mock_addr.ip()])
+                .node_unban_ips(vec![mock_addr.ip()])
                 .await
                 .expect("error during send unban command.");
 
@@ -880,7 +880,7 @@ async fn test_retry_connection_closed() {
 
             // Ban the node.
             network_command_sender
-                .ban(node_id)
+                .node_ban_by_ids(vec![node_id])
                 .await
                 .expect("error during send ban command.");
 
