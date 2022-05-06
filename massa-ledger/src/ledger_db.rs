@@ -24,10 +24,31 @@ pub(crate) struct LedgerDB(DB);
 // - find a way to open datastore cf's on new db
 // - might not need to have a mutex on ledger with multi threaded disk db
 
+macro_rules! balance_cf {
+    ($self:ident) => {
+        $self.0.cf_handle(BALANCE_CF).expect(CF_ERROR)
+    };
+}
+
+macro_rules! bytecode_cf {
+    ($self:ident) => {
+        $self.0.cf_handle(BYTECODE_CF).expect(CF_ERROR)
+    };
+}
+
+macro_rules! datastore_cf {
+    ($self:ident, $name:ident) => {
+        $self.0.cf_handle(&$name).expect(CF_ERROR)
+    };
+}
+
 impl LedgerDB {
     pub fn new() -> Self {
+        // options
         let mut opts = Options::default();
         opts.create_if_missing(true);
+
+        // database init
         let mut db = DB::open(&opts, DB_PATH).expect(OPEN_ERROR);
         db.create_cf(BALANCE_CF, &Options::default())
             .expect(CF_ERROR);
@@ -36,26 +57,17 @@ impl LedgerDB {
         LedgerDB(db)
     }
 
-    // note: save instead for balance and bytecode
-    fn balance_cf(&self) -> &ColumnFamily {
-        self.0.cf_handle(BALANCE_CF).expect(CF_ERROR)
-    }
-
-    fn bytecode_cf(&self) -> &ColumnFamily {
-        self.0.cf_handle(BYTECODE_CF).expect(CF_ERROR)
-    }
-
-    fn datastore_cf(&self, cf_name: String) -> &ColumnFamily {
-        match self.0.cf_handle(&cf_name) {
-            Some(cf) => cf,
-            None => {
-                self.0
-                    .create_cf(cf_name, &Options::default())
-                    .expect(CF_ERROR);
-                self.0.cf_handle(&cf_name).expect(CF_ERROR)
-            }
-        }
-    }
+    // fn datastore_cf(&self, cf_name: String) -> ColumnFamily {
+    //     match self.0.cf_handle(&cf_name) {
+    //         Some(cf) => *cf,
+    //         None => {
+    //             self.0
+    //                 .create_cf(cf_name, &Options::default())
+    //                 .expect(CF_ERROR);
+    //             *self.0.cf_handle(&cf_name).expect(CF_ERROR)
+    //         }
+    //     }
+    // }
 
     pub fn put(&self, addr: &Address, ledger_entry: LedgerEntry) {
         let mut batch = WriteBatch::default();
@@ -63,20 +75,20 @@ impl LedgerDB {
 
         // balance
         batch.put_cf(
-            self.balance_cf(),
+            balance_cf!(self),
             key,
             ledger_entry.parallel_balance.to_raw().to_be_bytes(),
         );
 
         // bytecode
-        batch.put_cf(self.bytecode_cf(), key, ledger_entry.bytecode);
+        batch.put_cf(bytecode_cf!(self), key, ledger_entry.bytecode);
 
         // datastore
         let cf_name = addr.to_string();
-        let cf = self.datastore_cf(cf_name);
+        let cf = datastore_cf!(self, cf_name);
         for (hash, entry) in ledger_entry.datastore {
             let data_key = hash.to_bytes();
-            batch.put_cf(cf, data_key, entry);
+            batch.put_cf(&cf, data_key, entry);
         }
         self.0.write(batch).expect(CRUD_ERROR);
     }
@@ -87,22 +99,22 @@ impl LedgerDB {
 
         // balance
         if let SetOrKeep::Set(balance) = entry_update.parallel_balance {
-            batch.put_cf(self.balance_cf(), key, balance.to_raw().to_be_bytes());
+            batch.put_cf(balance_cf!(self), key, balance.to_raw().to_be_bytes());
         }
 
         // bytecode
         if let SetOrKeep::Set(bytecode) = entry_update.bytecode {
-            batch.put_cf(self.bytecode_cf(), key, bytecode);
+            batch.put_cf(bytecode_cf!(self), key, bytecode);
         }
 
         // datastore
         let cf_name = addr.to_string();
-        let cf = self.datastore_cf(cf_name);
+        let cf = datastore_cf!(self, cf_name);
         for (hash, update) in entry_update.datastore {
             let data_key = hash.to_bytes();
             match update {
-                SetOrDelete::Set(entry) => batch.put_cf(cf, data_key, entry),
-                SetOrDelete::Delete => batch.delete_cf(cf, data_key),
+                SetOrDelete::Set(entry) => batch.put_cf(&cf, data_key, entry),
+                SetOrDelete::Delete => batch.delete_cf(&cf, data_key),
             }
         }
         self.0.write(batch).expect(CRUD_ERROR);
@@ -113,20 +125,27 @@ impl LedgerDB {
     }
 
     pub fn entry_exists(&self, addr: &Address, ty: LedgerDBEntry) -> bool {
+        let key = addr.to_bytes();
+        let cf_name = addr.to_string();
         match ty {
-            LedgerDBEntry::Balance => self.0.key_may_exist(balance_key!(addr)),
-            LedgerDBEntry::Bytecode => self.0.key_may_exist(bytecode_key!(addr)),
-            LedgerDBEntry::Datastore(hash) => self.0.key_may_exist(datastore_key!(addr, hash)),
+            LedgerDBEntry::Balance => self.0.key_may_exist_cf(balance_cf!(self), key),
+            LedgerDBEntry::Bytecode => self.0.key_may_exist_cf(bytecode_cf!(self), key),
+            LedgerDBEntry::Datastore(hash) => self
+                .0
+                .key_may_exist_cf(datastore_cf!(self, cf_name), hash.to_bytes()),
         }
     }
 
     pub fn get_entry(&self, addr: &Address, ty: LedgerDBEntry) -> Option<Vec<u8>> {
+        let key = addr.to_bytes();
+        let cf_name = addr.to_string();
         match ty {
-            LedgerDBEntry::Balance => self.0.get(balance_key!(addr)).expect(CRUD_ERROR),
-            LedgerDBEntry::Bytecode => self.0.get(bytecode_key!(addr)).expect(CRUD_ERROR),
-            LedgerDBEntry::Datastore(hash) => {
-                self.0.get(datastore_key!(addr, hash)).expect(CRUD_ERROR)
-            }
+            LedgerDBEntry::Balance => self.0.get_cf(balance_cf!(self), key).expect(CRUD_ERROR),
+            LedgerDBEntry::Bytecode => self.0.get_cf(bytecode_cf!(self), key).expect(CRUD_ERROR),
+            LedgerDBEntry::Datastore(hash) => self
+                .0
+                .get_cf(datastore_cf!(self, cf_name), hash.to_bytes())
+                .expect(CRUD_ERROR),
         }
     }
 
