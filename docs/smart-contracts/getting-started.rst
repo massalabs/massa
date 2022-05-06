@@ -174,7 +174,7 @@ Everything is in place, we can now execute the `hello world` smart contract on y
 
 .. code-block:: shell
 
-   send_smart_contract <address> <path to wasm file> 0 0 0 0
+   send_smart_contract <address> <path to wasm file> 100000 0 0 0
 
 .. note::
 
