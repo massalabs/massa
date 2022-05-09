@@ -1100,6 +1100,8 @@ impl ProtocolWorker {
         let mut seen_ops = vec![];
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
+        info!("DEBUG MASSA: note_operations_from_node: operations.len(): {:#?}", length);
+        info!("DEBUG MASSA: note_operations_from_node: self.checked_operations.len(): {:#?}", self.checked_operations.len());
         for (idx, operation) in operations.into_iter().enumerate() {
             let operation_id = operation.content.compute_id()?;
             seen_ops.push(operation_id);
@@ -1127,6 +1129,7 @@ impl ProtocolWorker {
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+            info!("DEBUG MASSA: note_operations_from_node: call insert known ops with ids of length: {:#?}", received_ids.len());
             node_info.insert_known_ops(
                 received_ids.keys().copied().collect(),
                 self.protocol_settings.max_known_ops_size,
@@ -1134,6 +1137,7 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
+            info!("DEBUG MASSA: called received operation protocol event with a list of {:#?} operations.", new_operations.len());
             // Add to pool, propagate when received outside of a header.
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
                 operations: new_operations,
