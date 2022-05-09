@@ -159,7 +159,11 @@ impl NodeInfo {
     pub fn remove_known_ops(&mut self, ops: &Set<OperationId>) {
         for op_id in ops.iter() {
             if self.known_operations.remove(op_id) {
-                if let Some(pos) = self.known_operations.iter().position(|id| id == op_id) {
+                if let Some(pos) = self
+                    .known_operations_queue
+                    .iter()
+                    .position(|id| id == op_id)
+                {
                     self.known_operations_queue.remove(pos);
                 }
             }
