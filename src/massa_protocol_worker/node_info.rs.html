@@ -201,6 +201,23 @@
 <span id="196">196</span>
 <span id="197">197</span>
 <span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Only public for the protocol worker.</span>
 <span class="doccomment">//! Contains all what we know for each node we are connected or we used to</span>
 <span class="doccomment">//! know in the network.</span>
@@ -224,21 +241,21 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">NodeInfo</span> {
     <span class="doccomment">/// The blocks the node &quot;knows about&quot;,</span>
     <span class="doccomment">/// defined as the one the node propagated headers to us for.</span>
-    <span class="kw">pub</span> <span class="ident">known_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">bool</span>, <span class="ident">Instant</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">known_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">bool</span>, <span class="ident">Instant</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// The blocks the node asked for.</span>
-    <span class="kw">pub</span> <span class="ident">wanted_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Instant</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">wanted_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Instant</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Blocks we asked that node for</span>
     <span class="kw">pub</span> <span class="ident">asked_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Instant</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Instant when the node was added</span>
     <span class="kw">pub</span> <span class="ident">connection_instant</span>: <span class="ident">Instant</span>,
     <span class="doccomment">/// all known operations</span>
-    <span class="kw">pub</span> <span class="ident">known_operations</span>: <span class="ident">OperationIds</span>,
+    <span class="ident">known_operations</span>: <span class="ident">OperationIds</span>,
     <span class="doccomment">/// Same as `known_operations` but sorted for a premature optimization :-)</span>
-    <span class="kw">pub</span> <span class="ident">known_operations_queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
+    <span class="ident">known_operations_queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// all known endorsements</span>
-    <span class="kw">pub</span> <span class="ident">known_endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
+    <span class="ident">known_endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Same as `known_endorsements` but sorted for a premature optimization :-)</span>
-    <span class="kw">pub</span> <span class="ident">known_endorsements_queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
+    <span class="ident">known_endorsements_queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">NodeInfo</span> {
@@ -343,6 +360,23 @@
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">op_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">pop_front</span>() {
                         <span class="self">self</span>.<span class="ident">known_operations</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">op_id</span>);
                     }
+                }
+            }
+        }
+    }
+
+    <span class="doccomment">/// Remove a list of operation IDs from the list of operation IDs known by a remote node</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Note: this is INEFFICIENT when an element is actually removed (linear traversal of the deque) and should be used sparingly</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_known_ops</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ops</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>) {
+        <span class="kw">for</span> <span class="ident">op_id</span> <span class="kw">in</span> <span class="ident">ops</span>.<span class="ident">iter</span>() {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">known_operations</span>.<span class="ident">remove</span>(<span class="ident">op_id</span>) {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pos</span>) <span class="op">=</span> <span class="self">self</span>
+                    .<span class="ident">known_operations_queue</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">position</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">id</span> <span class="op">==</span> <span class="ident">op_id</span>)
+                {
+                    <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">remove</span>(<span class="ident">pos</span>);
                 }
             }
         }
