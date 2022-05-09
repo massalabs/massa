@@ -21,9 +21,9 @@ use tokio::time::Instant;
 pub(crate) struct NodeInfo {
     /// The blocks the node "knows about",
     /// defined as the one the node propagated headers to us for.
-    known_blocks: Map<BlockId, (bool, Instant)>,
+    pub(crate) known_blocks: Map<BlockId, (bool, Instant)>,
     /// The blocks the node asked for.
-    wanted_blocks: Map<BlockId, Instant>,
+    pub(crate) wanted_blocks: Map<BlockId, Instant>,
     /// Blocks we asked that node for
     pub asked_blocks: Map<BlockId, Instant>,
     /// Instant when the node was added
