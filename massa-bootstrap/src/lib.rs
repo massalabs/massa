@@ -300,8 +300,6 @@ pub async fn get_state(
                             warn!("Error while bootstrapping: {}", e);
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
                             let _ = tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(BootstrapMessage::BootstrapError { error: e.to_string() })).await;
-                            // Sleep a bit to give time for the server to read the error.
-                            sleep(bootstrap_settings.write_error_timeout.into()).await;
                         }
                         Ok(res) => {
                             return Ok(res)
