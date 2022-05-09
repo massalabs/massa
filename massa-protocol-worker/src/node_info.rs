@@ -21,21 +21,21 @@ use tokio::time::Instant;
 pub(crate) struct NodeInfo {
     /// The blocks the node "knows about",
     /// defined as the one the node propagated headers to us for.
-    pub known_blocks: Map<BlockId, (bool, Instant)>,
+    known_blocks: Map<BlockId, (bool, Instant)>,
     /// The blocks the node asked for.
-    pub wanted_blocks: Map<BlockId, Instant>,
+    wanted_blocks: Map<BlockId, Instant>,
     /// Blocks we asked that node for
     pub asked_blocks: Map<BlockId, Instant>,
     /// Instant when the node was added
     pub connection_instant: Instant,
     /// all known operations
-    pub known_operations: OperationIds,
+    known_operations: OperationIds,
     /// Same as `known_operations` but sorted for a premature optimization :-)
-    pub known_operations_queue: VecDeque<OperationId>,
+    known_operations_queue: VecDeque<OperationId>,
     /// all known endorsements
-    pub known_endorsements: Set<EndorsementId>,
+    known_endorsements: Set<EndorsementId>,
     /// Same as `known_endorsements` but sorted for a premature optimization :-)
-    pub known_endorsements_queue: VecDeque<EndorsementId>,
+    known_endorsements_queue: VecDeque<EndorsementId>,
 }
 
 impl NodeInfo {
@@ -140,6 +140,19 @@ impl NodeInfo {
                     if let Some(op_id) = self.known_operations_queue.pop_front() {
                         self.known_operations.remove(&op_id);
                     }
+                }
+            }
+        }
+    }
+
+    /// Remove a list of operation IDs from the list of operation IDs known by a remote node
+    ///
+    /// Note: this is INEFFICIENT (linear traversal of the deque) and should be used sparingly
+    pub fn remove_known_ops(&mut self, ops: &Set<OperationId>) {
+        for op_id in ops.iter() {
+            if self.known_operations.remove(op_id) {
+                if let Some(pos) = self.known_operations.iter().position(|id| id == op_id) {
+                    self.known_operations_queue.remove(pos);
                 }
             }
         }

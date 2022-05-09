@@ -15,7 +15,6 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
     prehash::BuildMap,
-    signed::Signable,
 };
 use massa_network_exports::NetworkError;
 use massa_protocol_exports::{ProtocolError, ProtocolPoolEvent};
@@ -134,16 +133,6 @@ impl ProtocolWorker {
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
     pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
-        let operation_ids: OperationIds = operations
-            .iter()
-            .filter_map(|signed_op| match signed_op.content.compute_id() {
-                Ok(op_id) => Some(op_id),
-                _ => None,
-            })
-            .collect();
-        if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            node_info.known_operations.extend(operation_ids.iter());
-        }
         if self
             .note_operations_from_node(operations, &node_id, true)
             .await
@@ -214,9 +203,8 @@ impl ProtocolWorker {
         op_ids: OperationIds,
     ) -> Result<(), ProtocolError> {
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            for op_ids in op_ids.iter() {
-                node_info.known_operations.remove(op_ids);
-            }
+            // remove_known_ops is inefficient when actually removing an entry, but this is almost never the case
+            node_info.remove_known_ops(&op_ids);
         }
         let mut operation_ids = OperationIds::default();
         for op_id in op_ids.iter() {
