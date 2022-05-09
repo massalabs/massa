@@ -12,9 +12,9 @@ use massa_models::{
 };
 use massa_models::{BlockId, EndorsementId, OperationId};
 use massa_protocol_exports::ProtocolSettings;
-use tracing::{debug, info};
 use std::collections::VecDeque;
 use tokio::time::Instant;
+use tracing::info;
 
 /// Information about a node we are connected to,
 /// essentially our view of its state.
@@ -134,7 +134,10 @@ impl NodeInfo {
     }
 
     pub fn insert_known_ops(&mut self, ops: Set<OperationId>, max_ops_nb: usize) {
-        info!("MASSA DEBUG insert_known_ops called with: {:?} operations.", ops.len());
+        info!(
+            "MASSA DEBUG insert_known_ops called with: {:?} operations.",
+            ops.len()
+        );
         let mut i = 0;
         for operation_id in ops.into_iter() {
             if self.known_operations.insert(operation_id) {

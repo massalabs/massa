@@ -1100,8 +1100,14 @@ impl ProtocolWorker {
         let mut seen_ops = vec![];
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
-        info!("DEBUG MASSA: note_operations_from_node: operations.len(): {:#?}", length);
-        info!("DEBUG MASSA: note_operations_from_node: self.checked_operations.len(): {:#?}", self.checked_operations.len());
+        info!(
+            "DEBUG MASSA: note_operations_from_node: operations.len(): {:#?}",
+            length
+        );
+        info!(
+            "DEBUG MASSA: note_operations_from_node: self.checked_operations.len(): {:#?}",
+            self.checked_operations.len()
+        );
         for (idx, operation) in operations.into_iter().enumerate() {
             let operation_id = operation.content.compute_id()?;
             seen_ops.push(operation_id);
