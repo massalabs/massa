@@ -646,6 +646,18 @@
 <span id="641">641</span>
 <span id="642">642</span>
 <span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Bootstrap crate</span>
 <span class="doccomment">//!</span>
@@ -671,7 +683,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::Version</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">BootstrapPeers</span>, <span class="ident">NetworkCommandSender</span>};
 <span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ExportProofOfStake</span>;
-<span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
+<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">messages::BootstrapMessage</span>;
 <span class="kw">use</span> <span class="ident">parking_lot::RwLock</span>;
@@ -889,6 +901,20 @@
     })
 }
 
+<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">connect_to_server</span>(
+    <span class="ident">establisher</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Establisher</span>,
+    <span class="ident">bootstrap_settings</span>: <span class="kw-2">&amp;</span><span class="ident">BootstrapSettings</span>,
+    <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">SocketAddr</span>,
+    <span class="ident">pub_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BootstrapClientBinder</span>, <span class="ident">BootstrapError</span><span class="op">&gt;</span> {
+    <span class="comment">// connect</span>
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">connector</span> <span class="op">=</span> <span class="ident">establisher</span>
+        .<span class="ident">get_connector</span>(<span class="ident">bootstrap_settings</span>.<span class="ident">connect_timeout</span>)
+        .<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable</span>
+    <span class="kw">let</span> <span class="ident">socket</span> <span class="op">=</span> <span class="ident">connector</span>.<span class="ident">connect</span>(<span class="kw-2">*</span><span class="ident">addr</span>).<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable</span>
+    <span class="prelude-val">Ok</span>(<span class="ident">BootstrapClientBinder::new</span>(<span class="ident">socket</span>, <span class="kw-2">*</span><span class="ident">pub_key</span>))
+}
+
 <span class="doccomment">/// Gets the state from a bootstrap server</span>
 <span class="doccomment">/// needs to be CANCELLABLE</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_state</span>(
@@ -924,30 +950,28 @@
             <span class="macro">info!</span>(<span class="string">&quot;Start bootstrapping from {}&quot;</span>, <span class="ident">addr</span>);
 
             <span class="comment">//Scope life cycle of the socket</span>
-            {
-                <span class="comment">// connect</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">connector</span> <span class="op">=</span> <span class="ident">establisher</span>
-                    .<span class="ident">get_connector</span>(<span class="ident">bootstrap_settings</span>.<span class="ident">connect_timeout</span>)
-                    .<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable</span>
-                <span class="kw">let</span> <span class="ident">socket</span> <span class="op">=</span> <span class="ident">connector</span>.<span class="ident">connect</span>(<span class="kw-2">*</span><span class="ident">addr</span>).<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">BootstrapClientBinder::new</span>(<span class="ident">socket</span>, <span class="kw-2">*</span><span class="ident">pub_key</span>);
-                <span class="kw">match</span> <span class="ident">get_state_internal</span>(<span class="ident">bootstrap_settings</span>, <span class="kw-2">&amp;mut</span> <span class="ident">client</span>, <span class="ident">version</span>)
+            <span class="kw">match</span> <span class="ident">connect_to_server</span>(<span class="kw-2">&amp;mut</span> <span class="ident">establisher</span>, <span class="ident">bootstrap_settings</span>, <span class="ident">addr</span>, <span class="ident">pub_key</span>).<span class="kw">await</span> {
+                <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">client</span>) =&gt; {
+                    <span class="kw">match</span> <span class="ident">get_state_internal</span>(<span class="ident">bootstrap_settings</span>, <span class="kw-2">&amp;mut</span> <span class="ident">client</span>, <span class="ident">version</span>)
                     .<span class="kw">await</span>  <span class="comment">// cancellable</span>
-                {
-                    <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::ReceivedError</span>(<span class="ident">error</span>)) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;error received from bootstrap server: {}&quot;</span>, <span class="ident">error</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">&quot;error while bootstrapping: {}&quot;</span>, <span class="ident">e</span>);
-                        <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.</span>
-                        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tokio::time::timeout</span>(<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>(), <span class="ident">client</span>.<span class="ident">send</span>(<span class="ident">BootstrapMessage::BootstrapError</span> { <span class="ident">error</span>: <span class="ident">e</span>.<span class="ident">to_string</span>() })).<span class="kw">await</span>;
-                        <span class="comment">// Sleep a bit to give time for the server to read the error.</span>
-                        <span class="ident">sleep</span>(<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>()).<span class="kw">await</span>;
-                    }
-                    <span class="prelude-val">Ok</span>(<span class="ident">res</span>) =&gt; {
-                        <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+                    {
+                        <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::ReceivedError</span>(<span class="ident">error</span>)) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;Error received from bootstrap server: {}&quot;</span>, <span class="ident">error</span>),
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                            <span class="macro">warn!</span>(<span class="string">&quot;Error while bootstrapping: {}&quot;</span>, <span class="ident">e</span>);
+                            <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.</span>
+                            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tokio::time::timeout</span>(<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>(), <span class="ident">client</span>.<span class="ident">send</span>(<span class="ident">BootstrapMessage::BootstrapError</span> { <span class="ident">error</span>: <span class="ident">e</span>.<span class="ident">to_string</span>() })).<span class="kw">await</span>;
+                        }
+                        <span class="prelude-val">Ok</span>(<span class="ident">res</span>) =&gt; {
+                            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+                        }
                     }
                 }
-            }
-            <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?} milliseconds.&quot;</span>, <span class="ident">addr</span>, <span class="ident">bootstrap_settings</span>.<span class="ident">retry_delay</span>.<span class="ident">to_duration</span>());
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                    <span class="macro">warn!</span>(<span class="string">&quot;Error while connecting to bootstrap server: {}&quot;</span>, <span class="ident">e</span>);
+                }
+            };
+
+            <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.&quot;</span>, <span class="ident">addr</span>, <span class="ident">bootstrap_settings</span>.<span class="ident">retry_delay</span>.<span class="ident">to_duration</span>());
             <span class="ident">sleep</span>(<span class="ident">bootstrap_settings</span>.<span class="ident">retry_delay</span>.<span class="ident">into</span>()).<span class="kw">await</span>;
         }
     }
@@ -1290,5 +1314,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (77652b9ef 2022-05-06)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (cb1219871 2022-05-08)" ></div>
 </body></html>
