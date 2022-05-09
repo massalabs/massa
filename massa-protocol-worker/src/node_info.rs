@@ -147,7 +147,7 @@ impl NodeInfo {
 
     /// Remove a list of operation IDs from the list of operation IDs known by a remote node
     ///
-    /// Note: this is INEFFICIENT (linear traversal of the deque) and should be used sparingly
+    /// Note: this is INEFFICIENT when an element is actually removed (linear traversal of the deque) and should be used sparingly
     pub fn remove_known_ops(&mut self, ops: &Set<OperationId>) {
         for op_id in ops.iter() {
             if self.known_operations.remove(op_id) {
