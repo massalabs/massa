@@ -4,6 +4,7 @@
 
 #![feature(async_closure)]
 #![feature(drain_filter)]
+#![feature(hash_drain_filter)]
 #![feature(ip)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]

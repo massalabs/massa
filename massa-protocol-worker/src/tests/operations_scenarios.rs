@@ -871,7 +871,7 @@ async fn test_protocol_on_ask_operations() {
             .await
             {
                 None => panic!("Protocol did not send operations to pool."),
-                Some(ProtocolPoolEvent::GetOperations((_, operations_ids))) => {
+                Some(ProtocolPoolEvent::GetOperations(operations_ids)) => {
                     assert_eq!(operations_ids.len(), 1);
                     assert!(operations_ids.get(&expected_operation_id).is_some())
                 }
@@ -879,7 +879,11 @@ async fn test_protocol_on_ask_operations() {
             }
 
             protocol_command_sender
-                .send_get_operations_results(asker_node.id, vec![operation])
+                .send_get_operations_results(
+                    vec![(expected_operation_id, Some(operation))]
+                        .into_iter()
+                        .collect(),
+                )
                 .await
                 .unwrap();
 
@@ -892,6 +896,114 @@ async fn test_protocol_on_ask_operations() {
             {
                 Some(NetworkCommand::SendOperations { node, operations }) => {
                     assert_eq!(asker_node.id, node);
+                    assert!(!operations.is_empty())
+                }
+                _ => panic!("Unexpected or no network command."),
+            };
+
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_protocol_on_ask_operations_does_not_send_operations_if_node_sends_to_us_first() {
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    protocol_test(
+        protocol_settings,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    mut protocol_command_sender,
+                    protocol_manager,
+                    mut protocol_pool_event_receiver| {
+            // Create 3 node.
+            let mut nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
+
+            let creator_node = nodes.pop().expect("Failed to get node info.");
+
+            // 1. Create an operation
+            let operation =
+                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+
+            let expected_operation_id = operation.verify_integrity().unwrap();
+
+            let asker_node = nodes.pop().expect("Failed to get the second node info.");
+            let second_asker_node = nodes.pop().expect("Failed to get the second node info.");
+
+            // 2. Send op to protocol, as coming from the creator node.
+            network_controller
+                .send_operations(creator_node.id, vec![operation.clone()])
+                .await;
+
+            // 3. Two nodes ask for the op.
+            // 3. Send ask for op from asking node.
+            network_controller
+                .send_ask_for_operation(
+                    asker_node.id,
+                    OperationIds::from_iter(vec![expected_operation_id]),
+                )
+                .await;
+            // 3. Send ask for op from asking node.
+            network_controller
+                .send_ask_for_operation(
+                    second_asker_node.id,
+                    OperationIds::from_iter(vec![expected_operation_id]),
+                )
+                .await;
+
+            // 4. Send op again, this time as coming from the first asking node.
+            // This should cancel out the "Ask for" from this node.
+            network_controller
+                .send_operations(asker_node.id, vec![operation.clone()])
+                .await;
+
+            // 5. Wait for protocol to ask for op from pool.
+            match tools::wait_protocol_pool_event(
+                &mut protocol_pool_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolPoolEvent::GetOperations { .. } => Some(evt),
+                    _ => None,
+                },
+            )
+            .await
+            {
+                None => panic!("Protocol did not send operations to pool."),
+                Some(ProtocolPoolEvent::GetOperations(operations_ids)) => {
+                    assert_eq!(operations_ids.len(), 1);
+                    assert!(operations_ids.get(&expected_operation_id).is_some())
+                }
+                Some(_) => panic!("Unexpected protocol pool event."),
+            }
+
+            // 6. Send results from pool, including op.
+            protocol_command_sender
+                .send_get_operations_results(
+                    vec![(expected_operation_id, Some(operation))]
+                        .into_iter()
+                        .collect(),
+                )
+                .await
+                .unwrap();
+
+            // 7. The op should only propagage to the second asking node.
+            match network_controller
+                .wait_command(1000.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),
+                    _ => None,
+                })
+                .await
+            {
+                Some(NetworkCommand::SendOperations { node, operations }) => {
+                    assert_eq!(second_asker_node.id, node);
                     assert!(!operations.is_empty())
                 }
                 _ => panic!("Unexpected or no network command."),

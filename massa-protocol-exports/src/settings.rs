@@ -16,6 +16,8 @@ pub struct ProtocolSettings {
     pub max_known_ops_size: usize,
     /// max known endorsements per node kept in memory
     pub max_known_endorsements_size: usize,
+    /// max operations requested from pool and pending a response.
+    pub max_pending_operations_from_pool: usize,
     /// we ask for the same block `max_simultaneous_ask_blocks_per_node` times at the same time
     pub max_simultaneous_ask_blocks_per_node: usize,
     /// Max wait time for sending a Network or Node event.

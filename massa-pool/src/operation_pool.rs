@@ -314,11 +314,11 @@ impl OperationPool {
 
     pub fn get_operations(
         &self,
-        operation_ids: &Set<OperationId>,
-    ) -> Map<OperationId, SignedOperation> {
+        operation_ids: Set<OperationId>,
+    ) -> Map<OperationId, Option<SignedOperation>> {
         operation_ids
-            .iter()
-            .filter_map(|op_id| self.ops.get(op_id).map(|w_op| (*op_id, w_op.op.clone())))
+            .into_iter()
+            .map(|op_id| (op_id, self.ops.get(&op_id).map(|w_op| w_op.op.clone())))
             .collect()
     }
 
