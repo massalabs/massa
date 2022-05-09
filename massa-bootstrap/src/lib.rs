@@ -299,7 +299,7 @@ pub async fn get_state(
                     }
                 }
             }
-            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?} milliseconds.", addr, bootstrap_settings.retry_delay.to_duration());
+            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.", addr, bootstrap_settings.retry_delay.to_duration());
             sleep(bootstrap_settings.retry_delay.into()).await;
         }
     }
