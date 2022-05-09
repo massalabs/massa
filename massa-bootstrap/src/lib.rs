@@ -23,7 +23,7 @@ use massa_logging::massa_trace;
 use massa_models::Version;
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
 use massa_proof_of_stake_exports::ExportProofOfStake;
-use massa_signature::PrivateKey;
+use massa_signature::{PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use messages::BootstrapMessage;
 use parking_lot::RwLock;
@@ -241,6 +241,20 @@ async fn get_state_internal(
     })
 }
 
+async fn connect_to_server(
+    establisher: &mut Establisher,
+    bootstrap_settings: &BootstrapSettings,
+    addr: &SocketAddr,
+    pub_key: &PublicKey,
+) -> Result<BootstrapClientBinder, BootstrapError> {
+    // connect
+    let mut connector = establisher
+        .get_connector(bootstrap_settings.connect_timeout)
+        .await?; // cancellable
+    let socket = connector.connect(*addr).await?; // cancellable
+    Ok(BootstrapClientBinder::new(socket, *pub_key))
+}
+
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
 pub async fn get_state(
@@ -276,30 +290,28 @@ pub async fn get_state(
             info!("Start bootstrapping from {}", addr);
 
             //Scope life cycle of the socket
-            {
-                // connect
-                let mut connector = establisher
-                    .get_connector(bootstrap_settings.connect_timeout)
-                    .await?; // cancellable
-                let socket = connector.connect(*addr).await?; // cancellable
-                let mut client = BootstrapClientBinder::new(socket, *pub_key);
-                match get_state_internal(bootstrap_settings, &mut client, version)
+            match connect_to_server(&mut establisher, bootstrap_settings, addr, pub_key).await {
+                Ok(mut client) => {
+                    match get_state_internal(bootstrap_settings, &mut client, version)
                     .await  // cancellable
-                {
-                    Err(BootstrapError::ReceivedError(error)) => warn!("error received from bootstrap server: {}", error),
-                    Err(e) => {
-                        warn!("error while bootstrapping: {}", e);
-                        // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                        let _ = tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(BootstrapMessage::BootstrapError { error: e.to_string() })).await;
-                        // Sleep a bit to give time for the server to read the error.
-                        sleep(bootstrap_settings.write_error_timeout.into()).await;
-                    }
-                    Ok(res) => {
-                        return Ok(res)
+                    {
+                        Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
+                        Err(e) => {
+                            warn!("Error while bootstrapping: {}", e);
+                            // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                            let _ = tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(BootstrapMessage::BootstrapError { error: e.to_string() })).await;
+                        }
+                        Ok(res) => {
+                            return Ok(res)
+                        }
                     }
                 }
-            }
-            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?} milliseconds.", addr, bootstrap_settings.retry_delay.to_duration());
+                Err(e) => {
+                    warn!("Error while connecting to bootstrap server: {}", e);
+                }
+            };
+
+            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.", addr, bootstrap_settings.retry_delay.to_duration());
             sleep(bootstrap_settings.retry_delay.into()).await;
         }
     }
