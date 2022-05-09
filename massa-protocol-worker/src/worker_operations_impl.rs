@@ -104,7 +104,9 @@ impl ProtocolWorker {
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         } // EndOf for op_id in op_batch:
-        debug!("re-ask {:#?} operations.", count_reask);
+        if count_reask > 0 {
+            debug!("re-ask {:#?} operations.", count_reask);
+        }
         if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity
             && !future_set.is_empty()
         {

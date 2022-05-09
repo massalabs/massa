@@ -14,7 +14,6 @@ use massa_models::{BlockId, EndorsementId, OperationId};
 use massa_protocol_exports::ProtocolSettings;
 use std::collections::VecDeque;
 use tokio::time::Instant;
-use tracing::info;
 
 /// Information about a node we are connected to,
 /// essentially our view of its state.
@@ -134,14 +133,8 @@ impl NodeInfo {
     }
 
     pub fn insert_known_ops(&mut self, ops: Set<OperationId>, max_ops_nb: usize) {
-        info!(
-            "MASSA DEBUG insert_known_ops called with: {:?} operations.",
-            ops.len()
-        );
-        let mut i = 0;
         for operation_id in ops.into_iter() {
             if self.known_operations.insert(operation_id) {
-                i += 1;
                 self.known_operations_queue.push_back(operation_id);
                 while self.known_operations_queue.len() > max_ops_nb {
                     if let Some(op_id) = self.known_operations_queue.pop_front() {
@@ -150,7 +143,6 @@ impl NodeInfo {
                 }
             }
         }
-        info!("MASSA DEBUG insert_known_ops inserted: {:?} operations in known_operations. The len of known_operations is now {:#?} and the queue is {:#?} (must be the same). This number should be inferior than {:#?}.", i, self.known_operations.len(),  self.known_operations_queue.len(), max_ops_nb);
     }
 
     /// Remove a list of operation IDs from the list of operation IDs known by a remote node
