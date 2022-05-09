@@ -15,7 +15,6 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
     prehash::BuildMap,
-    signed::Signable,
 };
 use massa_network_exports::NetworkError;
 use massa_protocol_exports::{ProtocolError, ProtocolPoolEvent};
@@ -70,6 +69,7 @@ impl ProtocolWorker {
             OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
         // exactitude isn't important, we want to have a now for that function call
         let now = Instant::now();
+        let mut count_reask = 0;
         for op_id in op_batch {
             if self.checked_operations.contains(&op_id) {
                 continue;
@@ -92,11 +92,7 @@ impl ProtocolWorker {
                         .checked_sub(self.protocol_settings.operation_batch_proc_period.into())
                         .ok_or(TimeError::TimeOverflowError)?
                 {
-                    debug!(
-                        "re-ask operation {:?} asked for the first time {:?} millis ago.",
-                        op_id,
-                        wish.0.elapsed().as_millis()
-                    );
+                    count_reask += 1;
                     ask_set.insert(op_id);
                     wish.0 = now;
                     wish.1.push(node_id);
@@ -108,6 +104,9 @@ impl ProtocolWorker {
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         } // EndOf for op_id in op_batch:
+        if count_reask > 0 {
+            debug!("re-ask {:#?} operations.", count_reask);
+        }
         if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity
             && !future_set.is_empty()
         {
@@ -134,16 +133,6 @@ impl ProtocolWorker {
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
     pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
-        let operation_ids: OperationIds = operations
-            .iter()
-            .filter_map(|signed_op| match signed_op.content.compute_id() {
-                Ok(op_id) => Some(op_id),
-                _ => None,
-            })
-            .collect();
-        if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            node_info.known_operations.extend(operation_ids.iter());
-        }
         if self
             .note_operations_from_node(operations, &node_id, true)
             .await
@@ -214,9 +203,8 @@ impl ProtocolWorker {
         op_ids: OperationIds,
     ) -> Result<(), ProtocolError> {
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            for op_ids in op_ids.iter() {
-                node_info.known_operations.remove(op_ids);
-            }
+            // remove_known_ops is inefficient when actually removing an entry, but this is almost never the case
+            node_info.remove_known_ops(&op_ids);
         }
         let mut operation_ids = OperationIds::default();
         for op_id in op_ids.iter() {

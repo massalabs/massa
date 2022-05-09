@@ -76,7 +76,7 @@ impl std::fmt::Display for NodeStatus {
 
         writeln!(f, "Connected nodes:")?;
         for (node_id, ip_addr) in &self.connected_nodes {
-            writeln!(f, "\t[\"{}:31245\", \"{}\"],", ip_addr, node_id)?;
+            writeln!(f, "\t[\"{}\", \"{}\"],", ip_addr, node_id)?
         }
         Ok(())
     }

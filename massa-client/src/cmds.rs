@@ -17,6 +17,7 @@ use massa_time::MassaTime;
 use massa_wallet::{Wallet, WalletError};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::path::PathBuf;
@@ -627,16 +628,14 @@ impl Command {
                 for key in parse_vec::<Address>(parameters)?.into_iter() {
                     match wallet.remove_address(key) {
                         Ok(_) => {
-                            res.push_str(&format!("Removed address {} from the wallet\n", key));
+                            let _ = writeln!(res, "Removed address {} from the wallet", key);
                         }
                         Err(WalletError::MissingKeyError(_)) => {
-                            res.push_str(&format!("Address {} wasn't in the wallet\n", key));
+                            let _ = writeln!(res, "Address {} wasn't in the wallet", key);
                         }
                         Err(_) => {
-                            res.push_str(&format!(
-                                "Failed to remove address {} from the wallet\n",
-                                key
-                            ));
+                            let _ =
+                                writeln!(res, "Failed to remove address {} from the wallet", key);
                         }
                     }
                 }
@@ -785,9 +784,9 @@ impl Command {
                     let (days, hours, mins, secs) =
                         e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation milliseconds is zero
 
-                    res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
+                    let _ = write!(res, "{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs);
                 } else {
-                    res.push_str("There is no end !")
+                    let _ = write!(res, "There is no end !");
                 }
                 if !json {
                     println!("{}", res);
