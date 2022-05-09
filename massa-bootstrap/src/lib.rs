@@ -290,27 +290,29 @@ pub async fn get_state(
             info!("Start bootstrapping from {}", addr);
 
             //Scope life cycle of the socket
-            if let Ok(mut client) =
-                connect_to_server(&mut establisher, bootstrap_settings, addr, pub_key).await
-            {
-                match get_state_internal(bootstrap_settings, &mut client, version)
+            match connect_to_server(&mut establisher, bootstrap_settings, addr, pub_key).await {
+                Ok(mut client) => {
+                    match get_state_internal(bootstrap_settings, &mut client, version)
                     .await  // cancellable
-                {
-                    Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
-                    Err(e) => {
-                        warn!("Error while bootstrapping: {}", e);
-                        // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                        let _ = tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(BootstrapMessage::BootstrapError { error: e.to_string() })).await;
-                        // Sleep a bit to give time for the server to read the error.
-                        sleep(bootstrap_settings.write_error_timeout.into()).await;
-                    }
-                    Ok(res) => {
-                        return Ok(res)
+                    {
+                        Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
+                        Err(e) => {
+                            warn!("Error while bootstrapping: {}", e);
+                            // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                            let _ = tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(BootstrapMessage::BootstrapError { error: e.to_string() })).await;
+                            // Sleep a bit to give time for the server to read the error.
+                            sleep(bootstrap_settings.write_error_timeout.into()).await;
+                        }
+                        Ok(res) => {
+                            return Ok(res)
+                        }
                     }
                 }
-            } else {
-                warn!("Could not connect to {}.", addr);
-            }
+                Err(e) => {
+                    warn!("Error while connecting to bootstrap server: {}", e);
+                }
+            };
+
             info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.", addr, bootstrap_settings.retry_delay.to_duration());
             sleep(bootstrap_settings.retry_delay.into()).await;
         }
