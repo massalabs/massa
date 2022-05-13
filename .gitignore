@@ -20,4 +20,4 @@ shell.nix
 !massa-node/storage/info.md
 docs/_build
 massa.iml
-ledger_db
+.db
