@@ -2,7 +2,7 @@
 
 use massa_hash::Hash;
 use massa_models::{Address, Amount};
-use rocksdb::{ColumnFamilyDescriptor, Options, WriteBatch, DB};
+use rocksdb::{ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch, DB};
 use std::collections::BTreeMap;
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
@@ -14,6 +14,7 @@ const DATASTORE_CF: &str = "datastore";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
+const FORMAT_ERROR: &str = "critical: invalid sub entry format";
 
 pub(crate) enum LedgerDBEntry {
     Balance,
@@ -26,6 +27,12 @@ pub(crate) struct LedgerDB(DB);
 macro_rules! data_key {
     ($addr:ident, $key:ident) => {
         format!("{}:{}", $addr, $key).as_bytes()
+    };
+}
+
+macro_rules! data_start_key {
+    ($addr:ident) => {
+        format!("{}:0", $addr).as_bytes()
     };
 }
 
@@ -158,20 +165,24 @@ impl LedgerDB {
         }
     }
 
+    pub fn get_full_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+        let a = self.0.full_iterator(IteratorMode::From(
+            data_start_key!(addr),
+            Direction::Forward,
+        ));
+        BTreeMap::new()
+    }
+
     pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
-        // note: think twice about this conversion
         if let Some(parallel_balance) = self.get_entry(addr, LedgerDBEntry::Balance).map(|bytes| {
-            Amount::from_raw(u64::from_be_bytes(
-                bytes.try_into().expect("critical: invalid balance format"),
-            ))
+            Amount::from_raw(u64::from_be_bytes(bytes.try_into().expect(FORMAT_ERROR)))
         }) {
             Some(LedgerEntry {
                 parallel_balance,
                 bytecode: self
                     .get_entry(addr, LedgerDBEntry::Bytecode)
                     .unwrap_or_else(|| Vec::new()),
-                // note: missing datastore
-                datastore: BTreeMap::new(),
+                datastore: self.get_full_datastore(addr),
             })
         } else {
             None
@@ -187,7 +198,6 @@ fn ledger_db_test() {
     let a = Address::from_str("eDFNpzpXw7CxMJo3Ez4mKaFF7AhnqtCosXcHMHpVVqBNtUys5").unwrap();
     let b = Address::from_str("jGYcEhE1ms5p8TfjPyKr456bkkLgdRFKqq7TLRGUPS8Tonfja").unwrap();
 
-    let mut db = LedgerDB::new();
     let entry = LedgerEntry {
         parallel_balance: Amount::from_raw(42),
         ..Default::default()
@@ -197,15 +207,18 @@ fn ledger_db_test() {
         bytecode: SetOrKeep::Keep,
         ..Default::default()
     };
+
+    let mut db = LedgerDB::new();
     db.put(&a, entry);
     db.update(&a, entry_update);
+
     assert!(db.entry_exists(&a, LedgerDBEntry::Balance));
     assert_eq!(
         Amount::from_raw(u64::from_be_bytes(
             db.get_entry(&a, LedgerDBEntry::Balance)
                 .unwrap()
                 .try_into()
-                .unwrap()
+                .expect(FORMAT_ERROR)
         )),
         Amount::from_raw(21)
     );
