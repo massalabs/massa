@@ -133,9 +133,10 @@ impl FinalLedger {
     ///
     /// TODO: in the future, never manipulate full ledger entries because their datastore can be huge
     /// `https://github.com/massalabs/massa/issues/2342`
-    // pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
-    //     None
-    // }
+    pub fn get_full_entry(&self, _addr: &Address) -> Option<LedgerEntry> {
+        // note: here 0
+        None
+    }
 
     /// Gets the parallel balance of a ledger entry
     ///
