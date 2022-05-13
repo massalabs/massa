@@ -778,6 +778,7 @@ impl ExecutionState {
         &self,
         addr: &Address,
     ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+        // note: here 1
         // get the full entry from the final ledger
         let final_entry = self.final_state.read().ledger.get_full_entry(addr);
 

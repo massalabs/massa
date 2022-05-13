@@ -102,6 +102,7 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         addr: &Address,
     ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+        // note: here 2
         self.execution_state
             .read()
             .get_final_and_active_ledger_entry(addr)

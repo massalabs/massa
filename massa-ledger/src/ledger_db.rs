@@ -1,9 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_hash::Hash;
-use massa_models::{Address, Amount};
-use rocksdb::{ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch, DB};
-use std::collections::BTreeMap;
+use massa_models::Address;
+use rocksdb::{ColumnFamilyDescriptor, Options, WriteBatch, DB};
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
@@ -14,7 +13,6 @@ const DATASTORE_CF: &str = "datastore";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
-const FORMAT_ERROR: &str = "critical: invalid sub entry format";
 
 pub(crate) enum LedgerDBEntry {
     Balance,
@@ -27,12 +25,6 @@ pub(crate) struct LedgerDB(DB);
 macro_rules! data_key {
     ($addr:ident, $key:ident) => {
         format!("{}:{}", $addr, $key).as_bytes()
-    };
-}
-
-macro_rules! data_start_key {
-    ($addr:ident) => {
-        format!("{}:0", $addr).as_bytes()
     };
 }
 
@@ -164,35 +156,12 @@ impl LedgerDB {
                 .flatten(),
         }
     }
-
-    pub fn get_full_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
-        let a = self.0.full_iterator(IteratorMode::From(
-            data_start_key!(addr),
-            Direction::Forward,
-        ));
-        BTreeMap::new()
-    }
-
-    pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
-        if let Some(parallel_balance) = self.get_entry(addr, LedgerDBEntry::Balance).map(|bytes| {
-            Amount::from_raw(u64::from_be_bytes(bytes.try_into().expect(FORMAT_ERROR)))
-        }) {
-            Some(LedgerEntry {
-                parallel_balance,
-                bytecode: self
-                    .get_entry(addr, LedgerDBEntry::Bytecode)
-                    .unwrap_or_else(|| Vec::new()),
-                datastore: self.get_full_datastore(addr),
-            })
-        } else {
-            None
-        }
-    }
 }
 
 #[test]
 // note: test datastore as well
 fn ledger_db_test() {
+    use massa_models::Amount;
     use std::str::FromStr;
 
     let a = Address::from_str("eDFNpzpXw7CxMJo3Ez4mKaFF7AhnqtCosXcHMHpVVqBNtUys5").unwrap();
@@ -218,7 +187,7 @@ fn ledger_db_test() {
             db.get_entry(&a, LedgerDBEntry::Balance)
                 .unwrap()
                 .try_into()
-                .expect(FORMAT_ERROR)
+                .unwrap()
         )),
         Amount::from_raw(21)
     );

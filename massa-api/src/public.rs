@@ -576,6 +576,7 @@ impl Endpoints for API<Public> {
                         .collect();
 
                     let (final_sce, candidate_sce) =
+                        // note: here 3
                         match exec_snd.get_final_and_active_ledger_entry(&address) {
                             (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
                             (None, Some(candidate)) => (
