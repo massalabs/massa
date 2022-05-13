@@ -2,7 +2,7 @@
 
 //! Provides serializable structures for bootstrapping the `FinalLedger`
 
-use crate::{ExecutionLedgerSubset, LedgerEntry, LedgerError};
+use crate::{cursor::LedgerCursor, ExecutionLedgerSubset, LedgerEntry, LedgerError};
 use massa_models::{
     array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, DeserializeCompact,
     DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
@@ -81,21 +81,10 @@ impl FinalLedgerBootstrapState {
     /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
     pub fn get_ledger_part(
         &self,
-        start_address: Option<Address>,
-        address_batch_size: usize,
+        cursor: Option<LedgerCursor>,
     ) -> Result<ExecutionLedgerSubset, LedgerError> {
         // Need to dereference because Prehashed trait is not implemented for &Address
-        // TODO: Try to remove a clone
-        let ledger_range = if let Some(start_address) = start_address {
-            self.sorted_ledger.range(start_address..)
-        } else {
-            self.sorted_ledger.range(..)
-        };
-        Ok(ExecutionLedgerSubset(
-            ledger_range
-                .take(address_batch_size)
-                .map(|(k, v)| (*k, v.clone()))
-                .collect(),
-        ))
+        // TODO: Reimplement it
+        Err(LedgerError::ContainerInconsistency("wip".into()))
     }
 }

@@ -1,17 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_final_state::FinalStateBootstrap;
-use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
+use massa_graph::BootstrapableGraph;
 use massa_ledger::{
     ExecutionLedgerSubset, LedgerChanges as ExecutionLedgerChanges,
     LedgerChangesDeserializer as ExecutionLedgerChangesDeserializer,
-    LedgerChangesSerializer as ExecutionLedgerChangesSerializer,
+    LedgerChangesSerializer as ExecutionLedgerChangesSerializer, LedgerCursor,
+    LedgerCursorDeserializer, LedgerCursorSerializer,
 };
 use massa_models::{
-    array_from_slice, constants::ADDRESS_SIZE_BYTES,
-    ledger_models::LedgerChanges as ConsensusLedgerChanges, Address, DeserializeCompact,
-    DeserializeVarInt, Deserializer, ModelsError, SerializeCompact, SerializeVarInt, Serializer,
-    Slot, Version,
+    DeserializeCompact, DeserializeVarInt, Deserializer, ModelsError, SerializeCompact,
+    SerializeVarInt, Serializer, Slot, Version,
 };
 use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -45,15 +44,6 @@ pub enum BootstrapMessageServer {
         /// final execution state bootstrap
         final_state: FinalStateBootstrap,
     },
-    /// Part of the ledger of consensus
-    ConsensusLedgerPart {
-        /// Part of the consensus ledger sent
-        ledger: ConsensusLedgerSubset,
-        /// Slot the ledger changes are attached to
-        slot: Slot,
-        /// Ledger change for addresses inferior to `address` of the client message.
-        ledger_changes: ConsensusLedgerChanges,
-    },
     /// Part of the ledger of execution
     ExecutionLedgerPart {
         /// Part of the execution ledger sent
@@ -63,8 +53,11 @@ pub enum BootstrapMessageServer {
         /// Ledger change for addresses inferior to `address` of the client message.
         ledger_changes: ExecutionLedgerChanges,
     },
+    ExecutionLedgerFinished,
     /// Bootstrap error
-    BootstrapError { error: String },
+    BootstrapError {
+        error: String,
+    },
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -74,8 +67,8 @@ enum MessageServerTypeId {
     Peers = 1u32,
     ConsensusState = 2u32,
     FinalState = 3u32,
-    ConsensusLedgerPart = 4u32,
-    ExecutionLedgerPart = 5u32,
+    ExecutionLedgerPart = 4u32,
+    ExecutionLedgerFinished = 5u32,
     BootstrapError = 6u32,
 }
 
@@ -104,16 +97,6 @@ impl SerializeCompact for BootstrapMessageServer {
                 res.extend(u32::from(MessageServerTypeId::FinalState).to_varint_bytes());
                 res.extend(&final_state.to_bytes_compact()?);
             }
-            BootstrapMessageServer::ConsensusLedgerPart {
-                ledger,
-                slot,
-                ledger_changes,
-            } => {
-                res.extend(u32::from(MessageServerTypeId::ConsensusLedgerPart).to_varint_bytes());
-                res.extend(ledger.to_bytes_compact()?);
-                res.extend(slot.to_bytes_compact()?);
-                res.extend(ledger_changes.to_bytes_compact()?);
-            }
             BootstrapMessageServer::ExecutionLedgerPart {
                 ledger,
                 slot,
@@ -124,6 +107,11 @@ impl SerializeCompact for BootstrapMessageServer {
                 res.extend(slot.to_bytes_compact()?);
                 let serializer = ExecutionLedgerChangesSerializer::new();
                 res.extend(serializer.serialize(ledger_changes)?);
+            }
+            BootstrapMessageServer::ExecutionLedgerFinished => {
+                res.extend(
+                    u32::from(MessageServerTypeId::ExecutionLedgerFinished).to_varint_bytes(),
+                );
             }
             BootstrapMessageServer::BootstrapError { error } => {
                 res.extend(u32::from(MessageServerTypeId::BootstrapError).to_varint_bytes());
@@ -179,23 +167,6 @@ impl DeserializeCompact for BootstrapMessageServer {
 
                 BootstrapMessageServer::FinalState { final_state }
             }
-            MessageServerTypeId::ConsensusLedgerPart => {
-                let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                let (ledger_changes, delta) =
-                    ConsensusLedgerChanges::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                BootstrapMessageServer::ConsensusLedgerPart {
-                    ledger,
-                    slot,
-                    ledger_changes,
-                }
-            }
             MessageServerTypeId::ExecutionLedgerPart => {
                 let (ledger, delta) = ExecutionLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
@@ -211,6 +182,9 @@ impl DeserializeCompact for BootstrapMessageServer {
                     slot,
                     ledger_changes,
                 }
+            }
+            MessageServerTypeId::ExecutionLedgerFinished => {
+                BootstrapMessageServer::ExecutionLedgerFinished
             }
             MessageServerTypeId::BootstrapError => {
                 let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
@@ -237,17 +211,10 @@ pub enum BootstrapMessageClient {
     AskConsensusState,
     /// Ask for final state
     AskFinalState,
-    /// Ask for a part of the ledger of consensus
-    AskConsensusLedgerPart {
-        /// Last address sent
-        address: Option<Address>,
-        /// Slot we are attached to for ledger changes
-        slot: Option<Slot>,
-    },
     /// Ask for a part of the ledger of execution
     AskExecutionLedgerPart {
-        /// Last address sent
-        address: Option<Address>,
+        /// Last position of the cursor received from the server
+        cursor: Option<LedgerCursor>,
         /// Slot we are attached to for ledger changes
         slot: Option<Slot>,
     },
@@ -261,9 +228,8 @@ enum MessageClientTypeId {
     AskBootstrapPeers = 0u32,
     AskConsensusState = 1u32,
     AskFinalState = 2u32,
-    AskConsensusLedgerPart = 3u32,
-    AskExecutionLedgerPart = 4u32,
-    BootstrapError = 5u32,
+    AskExecutionLedgerPart = 3u32,
+    BootstrapError = 4u32,
 }
 
 impl SerializeCompact for BootstrapMessageClient {
@@ -279,23 +245,14 @@ impl SerializeCompact for BootstrapMessageClient {
             BootstrapMessageClient::AskFinalState => {
                 res.extend(u32::from(MessageClientTypeId::AskFinalState).to_varint_bytes());
             }
-            BootstrapMessageClient::AskConsensusLedgerPart { address, slot } => {
-                res.extend(
-                    u32::from(MessageClientTypeId::AskConsensusLedgerPart).to_varint_bytes(),
-                );
-                // If we have an address we must have also a slot
-                if let Some(address) = address && let Some(slot) = slot  {
-                    res.extend(address.to_bytes());
-                    res.extend(slot.to_bytes_compact()?);
-                }
-            }
-            BootstrapMessageClient::AskExecutionLedgerPart { address, slot } => {
+            BootstrapMessageClient::AskExecutionLedgerPart { cursor, slot } => {
                 res.extend(
                     u32::from(MessageClientTypeId::AskExecutionLedgerPart).to_varint_bytes(),
                 );
-                // If we have an address we must have also a slot
-                if let Some(address) = address && let Some(slot) = slot  {
-                    res.extend(address.to_bytes());
+                // If we have a cursor we must have also a slot
+                if let Some(cursor) = cursor && let Some(slot) = slot  {
+                    let cursor_serializer = LedgerCursorSerializer::new();
+                    res.extend(cursor_serializer.serialize(cursor)?);
                     res.extend(slot.to_bytes_compact()?);
                 }
             }
@@ -324,41 +281,23 @@ impl DeserializeCompact for BootstrapMessageClient {
             MessageClientTypeId::AskBootstrapPeers => BootstrapMessageClient::AskBootstrapPeers,
             MessageClientTypeId::AskConsensusState => BootstrapMessageClient::AskConsensusState,
             MessageClientTypeId::AskFinalState => BootstrapMessageClient::AskFinalState,
-            MessageClientTypeId::AskConsensusLedgerPart => {
-                // If we have an address we must have also a slot
-                if buffer.len() == cursor {
-                    BootstrapMessageClient::AskConsensusLedgerPart {
-                        address: None,
-                        slot: None,
-                    }
-                } else {
-                    let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                    cursor += ADDRESS_SIZE_BYTES;
-
-                    let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
-                    cursor += delta;
-
-                    BootstrapMessageClient::AskConsensusLedgerPart {
-                        address: Some(address),
-                        slot: Some(slot),
-                    }
-                }
-            }
             MessageClientTypeId::AskExecutionLedgerPart => {
                 if buffer.len() == cursor {
                     BootstrapMessageClient::AskExecutionLedgerPart {
-                        address: None,
+                        cursor: None,
                         slot: None,
                     }
                 } else {
-                    let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                    cursor += ADDRESS_SIZE_BYTES;
+                    let cursor_deserializer = LedgerCursorDeserializer::new();
+                    let (bootstrap_cursor, delta) =
+                        cursor_deserializer.deserialize(&buffer[cursor..])?;
+                    cursor += delta;
 
                     let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
                     cursor += delta;
 
                     BootstrapMessageClient::AskExecutionLedgerPart {
-                        address: Some(address),
+                        cursor: Some(bootstrap_cursor),
                         slot: Some(slot),
                     }
                 }

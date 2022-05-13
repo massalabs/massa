@@ -51,6 +51,7 @@
 
 mod bootstrap;
 mod config;
+mod cursor;
 mod error;
 mod ledger;
 mod ledger_changes;
@@ -59,6 +60,7 @@ mod types;
 
 pub use bootstrap::FinalLedgerBootstrapState;
 pub use config::LedgerConfig;
+pub use cursor::{LedgerCursor, LedgerCursorDeserializer, LedgerCursorSerializer};
 pub use error::LedgerError;
 pub use ledger::ExecutionLedgerSubset;
 pub use ledger::FinalLedger;

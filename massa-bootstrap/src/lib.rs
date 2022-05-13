@@ -24,8 +24,6 @@ use massa_final_state::{FinalState, FinalStateBootstrap};
 use massa_graph::BootstrapableGraph;
 use massa_ledger::LedgerChanges as ExecutionLedgerChanges;
 use massa_logging::massa_trace;
-use massa_models::constants::default::BOOTSTRAP_LEDGER_ENTRY_SIZE;
-use massa_models::ledger_models::LedgerChanges as ConsensusLedgerChanges;
 use massa_models::{Slot, Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -192,41 +190,6 @@ async fn bootstrap_from_server(
     // TODO: Add ledger to the state
     loop {
         match next_message_bootstrap {
-            Some(BootstrapMessageClient::AskConsensusLedgerPart { .. }) => {
-                let (ledger_part, last_slot, ledger_changes) = match send_message_client(
-                    next_message_bootstrap.as_ref().unwrap(),
-                    client,
-                    write_timeout,
-                    cfg.read_timeout.into(),
-                )
-                .await?
-                {
-                    BootstrapMessageServer::ConsensusLedgerPart {
-                        ledger,
-                        slot,
-                        ledger_changes,
-                    } => (ledger, slot, ledger_changes),
-                    BootstrapMessageServer::BootstrapError { error } => {
-                        return Err(BootstrapError::ReceivedError(error))
-                    }
-                    other => return Err(BootstrapError::UnexpectedMessageServer(other)),
-                };
-                debug!("Ledger part = {:#?}", ledger_part);
-                debug!("Size max = {:#?}", BOOTSTRAP_LEDGER_ENTRY_SIZE);
-                if ledger_part.0.len() < BOOTSTRAP_LEDGER_ENTRY_SIZE as usize {
-                    *next_message_bootstrap =
-                        Some(BootstrapMessageClient::AskExecutionLedgerPart {
-                            address: None,
-                            slot: None,
-                        });
-                } else {
-                    *next_message_bootstrap =
-                        Some(BootstrapMessageClient::AskConsensusLedgerPart {
-                            address: Some(*ledger_part.0.last_key_value().unwrap().0),
-                            slot: Some(last_slot),
-                        });
-                }
-            }
             Some(BootstrapMessageClient::AskExecutionLedgerPart { .. }) => {
                 let (ledger_part, last_slot, ledger_changes) = match send_message_client(
                     next_message_bootstrap.as_ref().unwrap(),
@@ -244,19 +207,18 @@ async fn bootstrap_from_server(
                     BootstrapMessageServer::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
                     }
+                    BootstrapMessageServer::ExecutionLedgerFinished => {
+                        *next_message_bootstrap = Some(BootstrapMessageClient::AskBootstrapPeers);
+                        continue;
+                    }
                     other => return Err(BootstrapError::UnexpectedMessageServer(other)),
                 };
                 debug!("Execution ledger part = {:#?}", ledger_part);
-                debug!("Size max = {:#?}", BOOTSTRAP_LEDGER_ENTRY_SIZE);
-                if ledger_part.0.len() < BOOTSTRAP_LEDGER_ENTRY_SIZE as usize {
-                    *next_message_bootstrap = Some(BootstrapMessageClient::AskBootstrapPeers);
-                } else {
-                    *next_message_bootstrap =
-                        Some(BootstrapMessageClient::AskExecutionLedgerPart {
-                            address: Some(*ledger_part.0.last_key_value().unwrap().0),
-                            slot: Some(last_slot),
-                        });
-                }
+                *next_message_bootstrap = Some(BootstrapMessageClient::AskExecutionLedgerPart {
+                    // TODO: Aurelien change
+                    cursor: None,
+                    slot: Some(last_slot),
+                });
             }
             Some(BootstrapMessageClient::AskBootstrapPeers) => {
                 let peers = match send_message_client(
@@ -382,6 +344,7 @@ async fn connect_to_server(
 /// needs to be CANCELLABLE
 pub async fn get_state(
     bootstrap_settings: &'static BootstrapSettings,
+    final_state: Arc<RwLock<FinalState>>,
     mut establisher: Establisher,
     version: Version,
     genesis_timestamp: MassaTime,
@@ -405,8 +368,8 @@ pub async fn get_state(
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     // Will be none when bootstrap is over
     let mut next_message_bootstrap: Option<BootstrapMessageClient> =
-        Some(BootstrapMessageClient::AskConsensusLedgerPart {
-            address: None,
+        Some(BootstrapMessageClient::AskExecutionLedgerPart {
+            cursor: None,
             slot: None,
         });
     let mut global_bootstrap_state: GlobalBootstrapState = Default::default();
@@ -629,12 +592,11 @@ impl BootstrapServer {
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
                     let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
-                    let command_sender = self.consensus_command_sender.clone();
                     bootstrap_sessions.push(async move {
                         //Socket lifetime
                         {
                             let mut server = BootstrapServerBinder::new(dplx, private_key);
-                            match manage_bootstrap(self.bootstrap_settings, command_sender, &mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
+                            match manage_bootstrap(self.bootstrap_settings, &mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
                                 Ok(_) => info!("bootstrapped peer {}", remote_addr),
                                 Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
                                 Err(err) => {
@@ -670,7 +632,6 @@ impl BootstrapServer {
 #[allow(clippy::too_many_arguments)]
 async fn manage_bootstrap(
     bootstrap_settings: &'static BootstrapSettings,
-    consensus_command_sender: ConsensusCommandSender,
     server: &mut BootstrapServerBinder,
     data_pos: ExportProofOfStake,
     data_graph: BootstrapableGraph,
@@ -754,39 +715,12 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapMessageClient::AskConsensusLedgerPart { address, slot } => {
-                    let ledger_part = consensus_command_sender
-                        .get_ledger_part(address, BOOTSTRAP_LEDGER_ENTRY_SIZE as usize)
-                        .await?;
-                    debug!("Ledger part = {:#?}", ledger_part);
-                    match tokio::time::timeout(
-                        write_timeout,
-                        server.send(messages::BootstrapMessageServer::ConsensusLedgerPart {
-                            ledger: ledger_part,
-                            slot: Slot::new(1, 0),
-                            ledger_changes: ConsensusLedgerChanges::default(),
-                        }),
-                    )
-                    .await
-                    {
-                        Err(_) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap ask ledger part send timed out",
+                BootstrapMessageClient::AskExecutionLedgerPart { cursor, slot } => {
+                    let ledger_part = final_state.ledger.get_ledger_part(cursor).map_err(|_| {
+                        BootstrapError::GeneralError(
+                            "Error on fetching ledger part of execution".to_string(),
                         )
-                        .into()),
-                        Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
-                    }?;
-                }
-                BootstrapMessageClient::AskExecutionLedgerPart { address, slot } => {
-                    let ledger_part = final_state
-                        .ledger
-                        .get_ledger_part(address, BOOTSTRAP_LEDGER_ENTRY_SIZE as usize)
-                        .map_err(|_| {
-                            BootstrapError::GeneralError(
-                                "Error on fetching ledger part of execution".to_string(),
-                            )
-                        })?;
+                    })?;
                     debug!("Execution ledger part = {:#?}", ledger_part);
                     match tokio::time::timeout(
                         write_timeout,
