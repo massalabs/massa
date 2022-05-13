@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use massa_hash::Hash;
 use massa_models::{Address, Amount};
 use rocksdb::{Options, WriteBatch, DB};
@@ -5,7 +7,7 @@ use std::collections::BTreeMap;
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
-const DB_PATH: &str = "_path_to_db";
+const DB_PATH: &str = "../ledger_db";
 const BALANCE_CF: &str = "balance";
 const BYTECODE_CF: &str = "bytecode";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
@@ -182,4 +184,19 @@ impl LedgerDB {
             None
         }
     }
+}
+
+#[test]
+fn ledger_db_test() {
+    use std::str::FromStr;
+
+    let a = Address::from_str("eDFNpzpXw7CxMJo3Ez4mKaFF7AhnqtCosXcHMHpVVqBNtUys5").unwrap();
+    let b = Address::from_str("jGYcEhE1ms5p8TfjPyKr456bkkLgdRFKqq7TLRGUPS8Tonfja").unwrap();
+
+    let mut db = LedgerDB::new();
+    let entry = LedgerEntry {
+        parallel_balance: Amount::from_raw(42),
+        ..Default::default()
+    };
+    db.put(&a, entry);
 }
