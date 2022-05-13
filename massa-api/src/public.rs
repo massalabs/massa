@@ -491,6 +491,8 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
+    // fn get_datastore_entry(&self, addresses: Vec<Address>, key: Vec<u8>) {}
+
     fn get_addresses(
         &self,
         addresses: Vec<Address>,
@@ -576,7 +578,7 @@ impl Endpoints for API<Public> {
                         .collect();
 
                     let (final_sce, candidate_sce) =
-                        // note: here 3
+                        // note: here 3 = résumé = balance, taille datastore
                         match exec_snd.get_final_and_active_ledger_entry(&address) {
                             (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
                             (None, Some(candidate)) => (
