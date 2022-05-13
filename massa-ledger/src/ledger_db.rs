@@ -10,7 +10,7 @@ const BALANCE_CF: &str = "balance";
 const BYTECODE_CF: &str = "bytecode";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
-const CF_ERROR: &str = "critical: rocksdb cf operation failed";
+const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 
 pub(crate) enum LedgerDBEntry {
     Balance,
@@ -37,7 +37,7 @@ impl LedgerDB {
         LedgerDB(db)
     }
 
-    pub fn put(&self, addr: &Address, ledger_entry: LedgerEntry) {
+    pub fn put(&mut self, addr: &Address, ledger_entry: LedgerEntry) {
         let mut batch = WriteBatch::default();
         let key = addr.to_bytes();
 
@@ -56,19 +56,24 @@ impl LedgerDB {
         );
 
         // datastore
-        let cf_name = addr.to_string();
-        // note: match this
-        let cf = self.0.cf_handle(&cf_name).expect(CF_ERROR);
-        for (hash, entry) in ledger_entry.datastore {
-            let data_key = hash.to_bytes();
-            batch.put_cf(&cf, data_key, entry);
+        if !ledger_entry.datastore.is_empty() {
+            // note: this might be enough
+            let cf_name = addr.to_string();
+            self.0
+                .create_cf(&cf_name, &Options::default())
+                .expect(CF_ERROR);
+            let cf = self.0.cf_handle(&cf_name).expect(CF_ERROR);
+            for (hash, entry) in ledger_entry.datastore {
+                let data_key = hash.to_bytes();
+                batch.put_cf(&cf, data_key, entry);
+            }
         }
 
         // write batch
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
-    pub fn update(&self, addr: &Address, entry_update: LedgerEntryUpdate) {
+    pub fn update(&mut self, addr: &Address, entry_update: LedgerEntryUpdate) {
         let mut batch = WriteBatch::default();
         let key = addr.to_bytes();
 
@@ -91,14 +96,23 @@ impl LedgerDB {
         }
 
         // datastore
-        let cf_name = addr.to_string();
-        // note: match this
-        let cf = self.0.cf_handle(&cf_name).expect(CF_ERROR);
-        for (hash, update) in entry_update.datastore {
-            let data_key = hash.to_bytes();
-            match update {
-                SetOrDelete::Set(entry) => batch.put_cf(&cf, data_key, entry),
-                SetOrDelete::Delete => batch.delete_cf(&cf, data_key),
+        if !entry_update.datastore.is_empty() {
+            let cf_name = addr.to_string();
+            let cf = match self.0.cf_handle(&cf_name) {
+                Some(cf) => cf,
+                None => {
+                    self.0
+                        .create_cf(&cf_name, &Options::default())
+                        .expect(CF_ERROR);
+                    self.0.cf_handle(&cf_name).expect(CF_ERROR)
+                }
+            };
+            for (hash, update) in entry_update.datastore {
+                let data_key = hash.to_bytes();
+                match update {
+                    SetOrDelete::Set(entry) => batch.put_cf(&cf, data_key, entry),
+                    SetOrDelete::Delete => batch.delete_cf(&cf, data_key),
+                }
             }
         }
 

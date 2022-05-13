@@ -73,7 +73,7 @@ impl FinalLedger {
         // open db with default options
         // and use only single threaded mode
         // should explore these options before review
-        let sorted_ledger = LedgerDB::new();
+        let mut sorted_ledger = LedgerDB::new();
 
         // load the ledger tree from file
         let initial_ledger = serde_json::from_str::<BTreeMap<Address, Amount>>(
