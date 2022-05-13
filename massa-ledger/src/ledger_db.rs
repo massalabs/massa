@@ -132,8 +132,8 @@ impl LedgerDB {
                 .is_some_and(|cf| self.0.key_may_exist_cf(cf, key)),
             LedgerDBEntry::Datastore(hash) => self
                 .0
-                .cf_handle(&addr.to_string())
-                .is_some_and(|cf| self.0.key_may_exist_cf(cf, hash.to_bytes())),
+                .cf_handle(DATASTORE_CF)
+                .is_some_and(|cf| self.0.key_may_exist_cf(cf, data_key!(addr, hash))),
         }
     }
 
@@ -152,8 +152,8 @@ impl LedgerDB {
                 .flatten(),
             LedgerDBEntry::Datastore(hash) => self
                 .0
-                .cf_handle(&addr.to_string())
-                .map(|cf| self.0.get_cf(cf, hash.to_bytes()).expect(CRUD_ERROR))
+                .cf_handle(DATASTORE_CF)
+                .map(|cf| self.0.get_cf(cf, data_key!(addr, hash)).expect(CRUD_ERROR))
                 .flatten(),
         }
     }
