@@ -180,6 +180,7 @@ impl LedgerDB {
 }
 
 #[test]
+// note: test datastore as well
 fn ledger_db_test() {
     use std::str::FromStr;
 
@@ -191,7 +192,22 @@ fn ledger_db_test() {
         parallel_balance: Amount::from_raw(42),
         ..Default::default()
     };
+    let entry_update = LedgerEntryUpdate {
+        parallel_balance: SetOrKeep::Set(Amount::from_raw(21)),
+        bytecode: SetOrKeep::Keep,
+        ..Default::default()
+    };
     db.put(&a, entry);
+    db.update(&a, entry_update);
     assert!(db.entry_exists(&a, LedgerDBEntry::Balance));
+    assert_eq!(
+        Amount::from_raw(u64::from_be_bytes(
+            db.get_entry(&a, LedgerDBEntry::Balance)
+                .unwrap()
+                .try_into()
+                .unwrap()
+        )),
+        Amount::from_raw(21)
+    );
     assert!(!db.entry_exists(&b, LedgerDBEntry::Balance));
 }
