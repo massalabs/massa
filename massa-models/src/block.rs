@@ -74,6 +74,7 @@ impl FromStr for BlockId {
 }
 
 impl BlockId {
+    /// block id to bytes
     pub fn to_bytes(&self) -> &[u8; BLOCK_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }

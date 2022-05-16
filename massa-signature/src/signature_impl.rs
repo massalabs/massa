@@ -5,8 +5,11 @@ use massa_hash::Hash;
 use secp256k1::{schnorr, Message, SECP256K1};
 use std::{convert::TryInto, str::FromStr};
 
+/// Size of a private key
 pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
+/// Size of a public key
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
+/// S size of a signature
 pub const SIGNATURE_SIZE_BYTES: usize = 64;
 const PRIVATE_KEY_STRING_PREFIX: &str = "PRI";
 const PUBLIC_KEY_STRING_PREFIX: &str = "PUB";

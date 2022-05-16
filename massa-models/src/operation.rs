@@ -84,6 +84,7 @@ impl Id for OperationId {
 }
 
 impl OperationId {
+    /// op id to bytes
     pub fn to_bytes(&self) -> &[u8; OPERATION_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }

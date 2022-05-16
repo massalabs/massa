@@ -5,6 +5,7 @@ use crate::settings::{HASH_SIZE_BYTES, HASH_VERSION};
 use blake3;
 use std::{cmp::Ordering, convert::TryInto, str::FromStr};
 
+/// Hash wrapper, the underlying hash type is Blake3
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub struct Hash(blake3::Hash);
 

@@ -66,11 +66,12 @@ impl FromStr for EndorsementId {
 }
 
 impl EndorsementId {
+    /// endorsement id to bytes
     pub fn to_bytes(&self) -> &[u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
-    /// endorsement ids into bytes
+    /// endorsement id into bytes
     pub fn into_bytes(self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
