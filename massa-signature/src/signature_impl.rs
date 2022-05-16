@@ -57,7 +57,7 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use massa_signature::generate_random_private_key;
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized: String = private_key.to_bs58_check();
@@ -71,7 +71,7 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use massa_signature::generate_random_private_key;
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized = private_key.to_bytes();
@@ -87,7 +87,7 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use massa_signature::generate_random_private_key;
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized = private_key.into_bytes();
@@ -101,7 +101,7 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use massa_signature::{PrivateKey, generate_random_private_key};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized: String = private_key.to_bs58_check();
@@ -132,7 +132,7 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use massa_signature::{PrivateKey, generate_random_private_key};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized = private_key.to_bytes();
@@ -530,7 +530,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use massa_signature::{generate_random_private_key, sign};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
@@ -547,7 +547,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use massa_signature::{generate_random_private_key, sign};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
@@ -564,7 +564,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use massa_signature::{generate_random_private_key, sign};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
@@ -581,7 +581,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use massa_signature::{generate_random_private_key, sign, Signature};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
@@ -615,7 +615,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use massa_signature::{generate_random_private_key, sign, Signature};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
@@ -644,7 +644,7 @@ impl ::serde::Serialize for Signature {
     /// Human readable serialization :
     /// ```
     /// # use massa_signature::{generate_random_private_key, sign};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
@@ -673,7 +673,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// Human readable deserialization :
     /// ```
     /// # use massa_signature::{generate_random_private_key, sign, Signature};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
@@ -755,7 +755,7 @@ pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
 /// # Example
 ///  ```
 /// # use massa_signature::{derive_public_key, generate_random_private_key, sign, PublicKey};
-/// # use massa_hash::hash::Hash;
+/// # use massa_hash::Hash;
 /// # use serde::{Deserialize, Serialize};
 /// let private_key = generate_random_private_key();
 /// let public_key: PublicKey = derive_public_key(&private_key);
@@ -773,7 +773,7 @@ pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaSig
 /// # Example
 ///  ```
 /// # use massa_signature::{derive_public_key, generate_random_private_key, sign, verify_signature, PublicKey};
-/// # use massa_hash::hash::Hash;
+/// # use massa_hash::Hash;
 /// # use serde::{Deserialize, Serialize};
 /// let private_key = generate_random_private_key();
 /// let public_key: PublicKey = derive_public_key(&private_key);
@@ -803,7 +803,7 @@ pub fn generate_random_private_key() -> PrivateKey {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_hash::hash::Hash;
+    use massa_hash::Hash;
     use serial_test::serial;
 
     #[test]

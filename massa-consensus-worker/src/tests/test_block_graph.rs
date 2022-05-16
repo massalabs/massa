@@ -23,13 +23,9 @@ use std::str::FromStr;
 use tempfile::NamedTempFile;
 use tracing::warn;
 
-<<<<<<< HEAD
 /// the data input to create the public keys was generated using the secp256k1 curve
 /// a test using this function is a regression test not an implementation test
-fn get_export_active_test_block() -> ExportActiveBlock {
-=======
 fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
->>>>>>> main
     let pk = generate_random_private_key();
     let block = Block {
         header: Signed::new_signed(
