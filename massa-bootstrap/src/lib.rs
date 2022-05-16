@@ -53,7 +53,7 @@ pub use settings::BootstrapSettings;
 pub mod tests;
 
 /// a collection of the bootstrap state snapshots of all relevant modules
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct GlobalBootstrapState {
     /// state of the proof of stake state (distributions, seeds...)
     pub pos: Option<ExportProofOfStake>,
@@ -68,13 +68,26 @@ pub struct GlobalBootstrapState {
     pub peers: Option<BootstrapPeers>,
 
     /// state of the final state
-    pub final_state: Option<FinalStateBootstrap>,
+    pub final_state: Arc<RwLock<FinalState>>,
+}
+
+impl GlobalBootstrapState {
+    fn new(final_state: Arc<RwLock<FinalState>>) -> Self {
+        Self {
+            pos: None,
+            graph: None,
+            compensation_millis: Default::default(),
+            peers: None,
+            final_state: final_state,
+        }
+    }
 }
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
 async fn bootstrap_from_server(
     cfg: &BootstrapSettings, // TODO: should be a &'static ... see #1848
+    final_state: Arc<RwLock<FinalState>>,
     client: &mut BootstrapClientBinder,
     next_message_bootstrap: &mut Option<BootstrapMessageClient>,
     global_bootstrap_state: &mut GlobalBootstrapState,
@@ -214,6 +227,7 @@ async fn bootstrap_from_server(
                     }
                     other => return Err(BootstrapError::UnexpectedMessageServer(other)),
                 };
+                //final_state.write().ledger.
                 *next_message_bootstrap = Some(BootstrapMessageClient::AskExecutionLedgerPart {
                     cursor: Some(cursor),
                     slot: Some(last_slot),
@@ -254,31 +268,9 @@ async fn bootstrap_from_server(
                 };
                 global_bootstrap_state.pos = Some(state.0);
                 global_bootstrap_state.graph = Some(state.1);
-                *next_message_bootstrap = Some(BootstrapMessageClient::AskFinalState);
-            }
-            Some(BootstrapMessageClient::AskFinalState) => {
-                let final_state = match send_message_client(
-                    next_message_bootstrap.as_ref().unwrap(),
-                    client,
-                    write_timeout,
-                    cfg.read_timeout.into(),
-                )
-                .await?
-                {
-                    BootstrapMessageServer::FinalState { final_state } => final_state,
-                    BootstrapMessageServer::BootstrapError { error } => {
-                        return Err(BootstrapError::ReceivedError(error))
-                    }
-                    other => return Err(BootstrapError::UnexpectedMessageServer(other)),
-                };
-                global_bootstrap_state.final_state = Some(final_state);
                 *next_message_bootstrap = None;
             }
             None => {
-                if global_bootstrap_state.final_state.is_none() {
-                    *next_message_bootstrap = Some(BootstrapMessageClient::AskFinalState);
-                    continue;
-                }
                 if global_bootstrap_state.graph.is_none() || global_bootstrap_state.pos.is_none() {
                     *next_message_bootstrap = Some(BootstrapMessageClient::AskConsensusState);
                     continue;
@@ -354,7 +346,7 @@ pub async fn get_state(
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-        return Ok(GlobalBootstrapState::default());
+        return Ok(GlobalBootstrapState::new(final_state.clone()));
     }
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
@@ -371,7 +363,7 @@ pub async fn get_state(
             cursor: None,
             slot: None,
         });
-    let mut global_bootstrap_state: GlobalBootstrapState = Default::default();
+    let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
             if let Some(end) = end_timestamp {
@@ -383,7 +375,7 @@ pub async fn get_state(
 
             match connect_to_server(&mut establisher, bootstrap_settings, addr, pub_key).await {
                 Ok(mut client) => {
-                    match bootstrap_from_server(bootstrap_settings, &mut client, &mut next_message_bootstrap, &mut global_bootstrap_state,version)
+                    match bootstrap_from_server(bootstrap_settings, final_state.clone(), &mut client, &mut next_message_bootstrap, &mut global_bootstrap_state,version)
                     .await  // cancellable
                     {
                         Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
@@ -495,7 +487,7 @@ impl BootstrapServer {
             ExportProofOfStake,
             BootstrapableGraph,
             BootstrapPeers,
-            FinalStateBootstrap,
+            Arc<RwLock<FinalState>>,
         )> = None;
         let cache_timer = sleep(cache_timeout);
         let per_ip_min_interval = self.bootstrap_settings.per_ip_min_interval.to_duration();
@@ -579,9 +571,8 @@ impl BootstrapServer {
                         // If the consensus state snapshot is older than the execution state snapshot,
                         //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
                         let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
-                        let res_state = self.final_state.read().get_bootstrap_state();
                         let (pos_boot, graph_boot) = self.consensus_command_sender.get_bootstrap_state().await?;
-                        bootstrap_data = Some((pos_boot, graph_boot, peer_boot, res_state));
+                        bootstrap_data = Some((pos_boot, graph_boot, peer_boot, self.final_state.clone()));
                         cache_timer.set(sleep(cache_timeout));
                     }
                     massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
@@ -635,7 +626,7 @@ async fn manage_bootstrap(
     data_pos: ExportProofOfStake,
     data_graph: BootstrapableGraph,
     data_peers: BootstrapPeers,
-    final_state: FinalStateBootstrap,
+    final_state: Arc<RwLock<FinalState>>,
     compensation_millis: i64,
     version: Version,
 ) -> Result<(), BootstrapError> {
@@ -715,8 +706,11 @@ async fn manage_bootstrap(
                     }?;
                 }
                 BootstrapMessageClient::AskExecutionLedgerPart { cursor, slot } => {
-                    let (data, cursor) =
-                        final_state.ledger.get_ledger_part(cursor).map_err(|_| {
+                    let (data, cursor) = final_state
+                        .read()
+                        .ledger
+                        .get_ledger_part(cursor)
+                        .map_err(|_| {
                             BootstrapError::GeneralError(
                                 "Error on fetching ledger part of execution".to_string(),
                             )
@@ -754,24 +748,6 @@ async fn manage_bootstrap(
                         Err(_) => Err(std::io::Error::new(
                             std::io::ErrorKind::TimedOut,
                             "bootstrap consensus state send timed out",
-                        )
-                        .into()),
-                        Ok(Err(e)) => Err(e),
-                        Ok(Ok(_)) => Ok(()),
-                    }?;
-                }
-                BootstrapMessageClient::AskFinalState => {
-                    match tokio::time::timeout(
-                        write_timeout,
-                        server.send(messages::BootstrapMessageServer::FinalState {
-                            final_state: final_state.clone(),
-                        }),
-                    )
-                    .await
-                    {
-                        Err(_) => Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "bootstrap ledger state send timed out",
                         )
                         .into()),
                         Ok(Err(e)) => Err(e),

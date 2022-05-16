@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_final_state::FinalStateBootstrap;
 use massa_graph::BootstrapableGraph;
 use massa_ledger::{
     LedgerChanges as ExecutionLedgerChanges,
@@ -19,7 +18,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
 
 /// Messages used during bootstrap by server
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum BootstrapMessageServer {
     /// Sync clocks
     BootstrapTime {
@@ -38,11 +37,6 @@ pub enum BootstrapMessageServer {
         pos: ExportProofOfStake,
         /// block graph
         graph: BootstrapableGraph,
-    },
-    /// Final execution state
-    FinalState {
-        /// final execution state bootstrap
-        final_state: FinalStateBootstrap,
     },
     /// Part of the ledger of execution
     ExecutionLedgerPart {
@@ -68,10 +62,9 @@ enum MessageServerTypeId {
     BootstrapTime = 0u32,
     Peers = 1u32,
     ConsensusState = 2u32,
-    FinalState = 3u32,
-    ExecutionLedgerPart = 4u32,
-    ExecutionLedgerFinished = 5u32,
-    BootstrapError = 6u32,
+    ExecutionLedgerPart = 3u32,
+    ExecutionLedgerFinished = 4u32,
+    BootstrapError = 5u32,
 }
 
 impl SerializeCompact for BootstrapMessageServer {
@@ -95,10 +88,6 @@ impl SerializeCompact for BootstrapMessageServer {
                 res.extend(&pos.to_bytes_compact()?);
                 res.extend(&graph.to_bytes_compact()?);
             }
-            BootstrapMessageServer::FinalState { final_state } => {
-                res.extend(u32::from(MessageServerTypeId::FinalState).to_varint_bytes());
-                res.extend(&final_state.to_bytes_compact()?);
-            }
             BootstrapMessageServer::ExecutionLedgerPart {
                 data,
                 cursor,
@@ -108,7 +97,7 @@ impl SerializeCompact for BootstrapMessageServer {
                 let cursor_serializer = LedgerCursorSerializer::new();
                 let ledger_execution_serializer = ExecutionLedgerChangesSerializer::new();
                 res.extend(u32::from(MessageServerTypeId::ExecutionLedgerPart).to_varint_bytes());
-                res.extend(u64::from(data.len() as u64).to_varint_bytes());
+                res.extend((data.len() as u64).to_varint_bytes());
                 res.extend(data);
                 res.extend(&cursor_serializer.serialize(cursor)?);
                 res.extend(slot.to_bytes_compact()?);
@@ -166,13 +155,6 @@ impl DeserializeCompact for BootstrapMessageServer {
 
                 BootstrapMessageServer::ConsensusState { pos, graph }
             }
-            MessageServerTypeId::FinalState => {
-                let (final_state, delta) =
-                    FinalStateBootstrap::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                BootstrapMessageServer::FinalState { final_state }
-            }
             MessageServerTypeId::ExecutionLedgerPart => {
                 let cursor_deserializer = LedgerCursorDeserializer::new();
                 let ledger_execution_deserializer = ExecutionLedgerChangesDeserializer::new();
@@ -219,14 +201,12 @@ impl DeserializeCompact for BootstrapMessageServer {
 }
 
 /// Messages used during bootstrap by client
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum BootstrapMessageClient {
     /// Ask for bootstrap peers
     AskBootstrapPeers,
     /// Ask for consensus state
     AskConsensusState,
-    /// Ask for final state
-    AskFinalState,
     /// Ask for a part of the ledger of execution
     AskExecutionLedgerPart {
         /// Last position of the cursor received from the server
@@ -243,9 +223,8 @@ pub enum BootstrapMessageClient {
 enum MessageClientTypeId {
     AskBootstrapPeers = 0u32,
     AskConsensusState = 1u32,
-    AskFinalState = 2u32,
-    AskExecutionLedgerPart = 3u32,
-    BootstrapError = 4u32,
+    AskExecutionLedgerPart = 2u32,
+    BootstrapError = 3u32,
 }
 
 impl SerializeCompact for BootstrapMessageClient {
@@ -257,9 +236,6 @@ impl SerializeCompact for BootstrapMessageClient {
             }
             BootstrapMessageClient::AskConsensusState => {
                 res.extend(u32::from(MessageClientTypeId::AskConsensusState).to_varint_bytes());
-            }
-            BootstrapMessageClient::AskFinalState => {
-                res.extend(u32::from(MessageClientTypeId::AskFinalState).to_varint_bytes());
             }
             BootstrapMessageClient::AskExecutionLedgerPart { cursor, slot } => {
                 res.extend(
@@ -296,7 +272,6 @@ impl DeserializeCompact for BootstrapMessageClient {
         let res = match type_id {
             MessageClientTypeId::AskBootstrapPeers => BootstrapMessageClient::AskBootstrapPeers,
             MessageClientTypeId::AskConsensusState => BootstrapMessageClient::AskConsensusState,
-            MessageClientTypeId::AskFinalState => BootstrapMessageClient::AskFinalState,
             MessageClientTypeId::AskExecutionLedgerPart => {
                 if buffer.len() == cursor {
                     BootstrapMessageClient::AskExecutionLedgerPart {

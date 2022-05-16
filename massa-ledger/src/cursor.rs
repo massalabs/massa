@@ -3,10 +3,11 @@ use massa_models::{
     array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, Deserializer, ModelsError, Serializer,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LedgerCursorStep {
     Start,
     Balance,
+    Bytecode,
     StartDatastore,
     Datastore(Hash),
     Finish,
@@ -26,13 +27,14 @@ impl Serializer<LedgerCursorStep> for LedgerCursorStepSerializer {
         match value {
             LedgerCursorStep::Start => Ok(vec![0]),
             LedgerCursorStep::Balance => Ok(vec![1]),
-            LedgerCursorStep::StartDatastore => Ok(vec![2]),
+            LedgerCursorStep::Bytecode => Ok(vec![2]),
+            LedgerCursorStep::StartDatastore => Ok(vec![3]),
             LedgerCursorStep::Datastore(key) => {
-                let mut bytes = vec![3];
+                let mut bytes = vec![4];
                 bytes.extend(key.to_bytes());
                 Ok(bytes)
             }
-            LedgerCursorStep::Finish => Ok(vec![4]),
+            LedgerCursorStep::Finish => Ok(vec![5]),
         }
     }
 }
@@ -51,14 +53,15 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
         match bytes[cursor] {
             0 => Ok((LedgerCursorStep::Start, cursor + 1)),
             1 => Ok((LedgerCursorStep::Balance, cursor + 1)),
-            2 => Ok((LedgerCursorStep::StartDatastore, cursor + 1)),
-            3 => {
+            2 => Ok((LedgerCursorStep::Bytecode, cursor + 1)),
+            3 => Ok((LedgerCursorStep::StartDatastore, cursor + 1)),
+            4 => {
                 cursor += 1;
                 let key = Hash::from_bytes(&array_from_slice(&bytes[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 Ok((LedgerCursorStep::Datastore(key), cursor))
             }
-            4 => Ok((LedgerCursorStep::Finish, cursor + 1)),
+            5 => Ok((LedgerCursorStep::Finish, cursor + 1)),
             _ => Err(ModelsError::DeserializeError(
                 "Unknown cursor step".to_string(),
             )),
@@ -66,8 +69,9 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 /// A cursor to iterate through the ledger with different granularity.
-pub type LedgerCursor = (Address, LedgerCursorStep);
+pub struct LedgerCursor(pub Address, pub LedgerCursorStep);
 
 /// A serializer for the ledger cursor.
 pub struct LedgerCursorSerializer {
@@ -127,6 +131,6 @@ impl Deserializer<LedgerCursor> for LedgerCursorDeserializer {
             .bootstrap_cursor_step_deserializer
             .deserialize(&bytes[cursor..])?;
         cursor += delta;
-        Ok(((address, step), cursor))
+        Ok((LedgerCursor(address, step), cursor))
     }
 }

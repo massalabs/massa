@@ -15,6 +15,7 @@ use massa_models::Slot;
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool)`
+#[derive(Debug)]
 pub struct FinalState {
     /// execution state configuration
     config: FinalStateConfig,
