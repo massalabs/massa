@@ -7,7 +7,7 @@ use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerCursor, LedgerError};
-use massa_hash::Hash;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::constants::default::MAXIMUM_BYTES_MESSAGE_BOOTSTRAP;
 use massa_models::constants::ADDRESS_SIZE_BYTES;
@@ -281,6 +281,14 @@ impl FinalLedger {
             }
             if let LedgerCursorStep::Balance = next_cursor.1 {
                 data.extend(amount_serializer.serialize(&entry.parallel_balance)?);
+                next_cursor.1 = LedgerCursorStep::Bytecode;
+                if data.len() as u32 > MAXIMUM_BYTES_MESSAGE_BOOTSTRAP {
+                    return Ok((data, next_cursor));
+                }
+            }
+            if let LedgerCursorStep::Bytecode = next_cursor.1 {
+                data.extend((entry.bytecode.len() as u64).to_varint_bytes());
+                data.extend(&entry.bytecode);
                 next_cursor.1 = LedgerCursorStep::StartDatastore;
                 if data.len() as u32 > MAXIMUM_BYTES_MESSAGE_BOOTSTRAP {
                     return Ok((data, next_cursor));
@@ -307,11 +315,10 @@ impl FinalLedger {
                         return Ok((data, next_cursor));
                     }
                 }
+                next_cursor.1 = LedgerCursorStep::Finish;
             }
         }
-        // Need to dereference because Prehashed trait is not implemented for &Address
-        // TODO: Reimplement it
-        Err(ModelsError::SerializeError("wip".into()))
+        Ok((data, next_cursor))
     }
 
     /// Set a part of the ledger
@@ -358,20 +365,114 @@ impl FinalLedger {
                     let (balance, delta) = amount_deserializer.deserialize(&data[cursor_data..])?;
                     self.sorted_ledger
                         .get_mut(&cursor.0)
-                        .ok_or_else(|| ModelsError::InvalidLedgerChange(format!(
-                            "Address: {:#?} not found",
-                            cursor.0
-                        )))?
+                        .ok_or_else(|| {
+                            ModelsError::InvalidLedgerChange(format!(
+                                "Address: {:#?} not found",
+                                cursor.0
+                            ))
+                        })?
                         .parallel_balance = balance;
+                    cursor_data += delta;
+                    cursor.1 = LedgerCursorStep::Bytecode;
+                }
+                LedgerCursorStep::Bytecode => {
+                    let (bytecode_len, delta) = u64::from_varint_bytes(&data[cursor_data..])?;
+                    cursor_data += delta;
+                    let bytecode = data[cursor_data..cursor_data + bytecode_len as usize].to_vec();
+                    self.sorted_ledger
+                        .get_mut(&cursor.0)
+                        .ok_or_else(|| {
+                            ModelsError::InvalidLedgerChange(format!(
+                                "Address: {:#?} not found",
+                                cursor.0
+                            ))
+                        })?
+                        .bytecode = bytecode;
                     cursor_data += delta;
                     cursor.1 = LedgerCursorStep::StartDatastore;
                 }
-                LedgerCursorStep::StartDatastore => {}
-                LedgerCursorStep::Bytecode => {}
-                LedgerCursorStep::Datastore(key) => {}
-                LedgerCursorStep::Finish => {}
+                LedgerCursorStep::StartDatastore => {
+                    let key = Hash::from_bytes(&array_from_slice(&data[cursor_data..])?)?;
+                    cursor_data += HASH_SIZE_BYTES;
+                    let (value_len, delta) = u64::from_varint_bytes(&data[cursor_data..])?;
+                    cursor_data += delta;
+                    let value = data[cursor_data..cursor_data + value_len as usize].to_vec();
+                    self.sorted_ledger
+                        .get_mut(&cursor.0)
+                        .ok_or_else(|| {
+                            ModelsError::InvalidLedgerChange(format!(
+                                "Address: {:#?} not found",
+                                cursor.0
+                            ))
+                        })?
+                        .datastore
+                        .insert(key, value);
+                }
+                LedgerCursorStep::Datastore(message_key) => {
+                    let key = Hash::from_bytes(&array_from_slice(&data[cursor_data..])?)?;
+                    if key == message_key {
+                        return Err(ModelsError::BufferError(
+                            "Message key and key is not similar".to_string(),
+                        ));
+                    }
+                    cursor_data += HASH_SIZE_BYTES;
+                    let (value_len, delta) = u64::from_varint_bytes(&data[cursor_data..])?;
+                    cursor_data += delta;
+                    let value = data[cursor_data..cursor_data + value_len as usize].to_vec();
+                    self.sorted_ledger
+                        .get_mut(&cursor.0)
+                        .ok_or_else(|| {
+                            ModelsError::InvalidLedgerChange(format!(
+                                "Address: {:#?} not found",
+                                cursor.0
+                            ))
+                        })?
+                        .datastore
+                        .insert(key, value);
+                }
+                _ => {
+                    return Err(ModelsError::BufferError(
+                        "Bad ledger cursor step".to_string(),
+                    ))
+                }
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use crate::{FinalLedger, LedgerConfig, LedgerEntry};
+    use massa_hash::Hash;
+    use massa_models::{Address, Amount};
+
+    #[test]
+    fn test_part_ledger() {
+        let mut ledger: FinalLedger = FinalLedger::new(LedgerConfig {
+            initial_sce_ledger_path: "../massa-node/base_config/initial_sce_ledger.json".into(),
+        })
+        .unwrap();
+        let mut datastore = BTreeMap::new();
+        datastore.insert(Hash::compute_from(&"hello".as_bytes()), vec![4, 5, 6]);
+        let ledger_entry = LedgerEntry {
+            parallel_balance: Amount::from_raw(10),
+            bytecode: vec![1, 2, 3],
+            datastore,
+        };
+        ledger.sorted_ledger.insert(
+            Address::from_bs58_check("xh1fXpp7VuciaCwejMF7ufF19SWv7dFPJ7U6HiTQaeNEFBiV3").unwrap(),
+            ledger_entry,
+        );
+        let (part, cursor) = ledger.get_ledger_part(None).unwrap();
+        println!("{:#?}", part);
+        let mut new_ledger: FinalLedger = FinalLedger::new(LedgerConfig {
+            initial_sce_ledger_path: "../massa-node/base_config/initial_sce_ledger.json".into(),
+        })
+        .unwrap();
+        new_ledger.set_ledger_part(None, cursor, part).unwrap();
+        println!("{:#?}", new_ledger);
     }
 }
