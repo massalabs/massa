@@ -1353,7 +1353,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.3.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=append_delete_datastore#d8a54a8048d7180986dcd6ecc593d438bb0348f2"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.4#82ef2bad81eb63d8b0efa67174c7cc8c4ea0e5b4"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
