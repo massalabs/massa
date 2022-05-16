@@ -7,6 +7,7 @@ use massa_models::signed::Signable;
 use massa_models::{Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
@@ -482,6 +483,7 @@ async fn test_roll_block_creation() {
         t0: 500.into(),
         ..Default::default()
     };
+    let storage: Storage = Default::default();
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
     let (_, priv_1, _) = random_address_on_thread(0, cfg.thread_count).into();
@@ -500,13 +502,13 @@ async fn test_roll_block_creation() {
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
     let init_time: MassaTime = 1000.into();
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
@@ -519,6 +521,7 @@ async fn test_roll_block_creation() {
             },
             None,
             None,
+            storage.clone(),
             0,
         )
         .await
@@ -586,9 +589,13 @@ async fn test_roll_block_creation() {
     // wait for block
     let (_block_id, block) = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock {
-                block_id, block, ..
-            } => Some((block_id, block)),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                let block = storage
+                    .retrieve_block(&block_id)
+                    .expect(&format!("Block id : {} not found in storage", block_id));
+                let stored_block = block.read();
+                Some((block_id, stored_block.block.clone()))
+            }
             _ => None,
         })
         .await
@@ -649,9 +656,13 @@ async fn test_roll_block_creation() {
     // wait for block
     let (_block_id, block) = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock {
-                block_id, block, ..
-            } => Some((block_id, block)),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                let block = storage
+                    .retrieve_block(&block_id)
+                    .expect(&format!("Block id : {} not found in storage", block_id));
+                let stored_block = block.read();
+                Some((block_id, stored_block.block.clone()))
+            }
             _ => None,
         })
         .await
@@ -692,9 +703,13 @@ async fn test_roll_block_creation() {
     // wait for block
     let (_block_id, block) = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock {
-                block_id, block, ..
-            } => Some((block_id, block)),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                let block = storage
+                    .retrieve_block(&block_id)
+                    .expect(&format!("Block id : {} not found in storage", block_id));
+                let stored_block = block.read();
+                Some((block_id, stored_block.block.clone()))
+            }
             _ => None,
         })
         .await
@@ -762,6 +777,7 @@ async fn test_roll_deactivation() {
         pos_miss_rate_deactivation_threshold: Ratio::new(50, 100),
         ..Default::default()
     };
+    let storage: Storage = Default::default();
 
     // setup addresses
     let (address_a0, privkey_a0, _) = random_address_on_thread(0, cfg.thread_count).into();
@@ -781,11 +797,12 @@ async fn test_roll_deactivation() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
+
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
@@ -798,6 +815,7 @@ async fn test_roll_deactivation() {
             },
             None,
             None,
+            storage,
             0,
         )
         .await

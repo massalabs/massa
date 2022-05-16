@@ -2,7 +2,7 @@
     {
         "advertised": true,
         "banned": false,
-        "bootstrap": true,
+        "peer_type": "Bootstrap",
         "ip": "149.202.86.103",
         "last_alive": null,
         "last_failure": null
@@ -10,7 +10,7 @@
     {
         "advertised": true,
         "banned": false,
-        "bootstrap": true,
+        "peer_type": "Bootstrap",
         "ip": "149.202.89.125",
         "last_alive": null,
         "last_failure": null
@@ -18,7 +18,7 @@
     {
         "advertised": true,
         "banned": false,
-        "bootstrap": true,
+        "peer_type": "Bootstrap",
         "ip": "158.69.120.215",
         "last_alive": null,
         "last_failure": null
@@ -26,7 +26,7 @@
     {
         "advertised": false,
         "banned": false,
-        "bootstrap": true,
+        "peer_type": "Bootstrap",
         "ip": "158.69.23.120",
         "last_alive": null,
         "last_failure": null

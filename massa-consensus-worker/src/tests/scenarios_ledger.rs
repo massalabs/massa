@@ -16,6 +16,7 @@ use massa_models::ledger_models::LedgerData;
 use massa_models::ledger_models::{LedgerChange, LedgerChanges};
 use massa_models::{Amount, Slot};
 use massa_signature::PrivateKey;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -492,10 +493,11 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         operation_validity_periods: 20,
         ..ConsensusConfig::default_with_staking_keys_and_ledger(&staking_keys, &ledger)
     };
+    let storage: Storage = Default::default();
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
@@ -512,6 +514,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             },
             None,
             None,
+            storage,
             0,
         )
         .await

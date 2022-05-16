@@ -4,13 +4,15 @@
 
 use massa_time::MassaTime;
 
-/// Executio module configuration
+/// Execution module configuration
 #[derive(Debug, Clone)]
 pub struct ExecutionConfig {
     /// read-only execution request queue length
     pub readonly_queue_length: usize,
     /// maximum number of SC output events kept in cache
     pub max_final_events: usize,
+    /// maximum available gas for asynchronous messages execution
+    pub max_async_gas: u64,
     /// number of threads
     pub thread_count: u8,
     /// extra lag to add on the execution cursor to improve performance

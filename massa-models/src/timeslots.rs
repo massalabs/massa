@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! warning: assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
+//! warning: assumes `thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0`
 
 use massa_time::MassaTime;
 use std::convert::TryInto;
@@ -10,9 +10,9 @@ use crate::{ModelsError, Slot};
 /// Counts the number of slots in a slot range [a, b)
 ///
 /// # Arguments
-/// * a: starting slot (included)
-/// * b: ending slot (excluded)
-/// * thread_count: number of threads
+/// * `a`: starting slot (included)
+/// * `b`: ending slot (excluded)
+/// * `thread_count`: number of threads
 pub fn slot_count_in_range(a: Slot, b: Slot, thread_count: u8) -> Result<u64, ModelsError> {
     b.period
         .checked_sub(a.period)
@@ -25,12 +25,12 @@ pub fn slot_count_in_range(a: Slot, b: Slot, thread_count: u8) -> Result<u64, Mo
         .ok_or(ModelsError::TimeOverflowError)
 }
 
-/// Gets timestamp in millis for given slot.
+/// Gets timestamp in milliseconds for given slot.
 ///
 /// # Arguments
-/// * thread_count: number of threads.
-/// * t0: time in millis between two periods in the same thread.
-/// * slot: the considered slot.
+/// * `thread_count`: number of threads.
+/// * `t0`: time in milliseconds between two periods in the same thread.
+/// * `slot`: the considered slot.
 pub fn get_block_slot_timestamp(
     thread_count: u8,
     t0: MassaTime,
@@ -52,13 +52,13 @@ pub fn get_block_slot_timestamp(
         .or(Err(ModelsError::TimeOverflowError))
 }
 
-/// Returns the thread and block period index of the latest block slot at a given timstamp (inclusive), if any happened
+/// Returns the thread and block period index of the latest block slot at a given timestamp (inclusive), if any happened
 ///
 /// # Arguments
-/// * thread_count: number of threads.
-/// * t0: time in millis between two periods in the same thread.
-/// * genesis_timestamp: when the blockclique first started, in millis.
-/// * timestamp: target timestamp in millis.
+/// * `thread_count`: number of threads.
+/// * `t0`: time in milliseconds between two periods in the same thread.
+/// * `genesis_timestamp`: when the blockclique first started, in milliseconds.
+/// * `timestamp`: target timestamp in milliseconds.
 pub fn get_latest_block_slot_at_timestamp(
     thread_count: u8,
     t0: MassaTime,
@@ -81,9 +81,9 @@ pub fn get_latest_block_slot_at_timestamp(
 /// Returns the thread and block slot index of the current block slot (inclusive), if any happened yet
 ///
 /// # Arguments
-/// * thread_count: number of threads.
-/// * t0: time in millis between two periods in the same thread.
-/// * genesis_timestamp: when the blockclique first started, in millis.
+/// * `thread_count`: number of threads.
+/// * `t0`: time in milliseconds between two periods in the same thread.
+/// * `genesis_timestamp`: when the blockclique first started, in milliseconds.
 pub fn get_current_latest_block_slot(
     thread_count: u8,
     t0: MassaTime,
@@ -98,17 +98,17 @@ pub fn get_current_latest_block_slot(
     )
 }
 
-/// Turns an MassaTime range [start, end) with optional start/end to a Slot range [start, end) with optional start/end
+/// Turns an `MassaTime` range [start, end) with optional start/end to a `Slot` range [start, end) with optional start/end
 ///
 /// # Arguments
-/// * thread_count: number of threads.
-/// * t0: time in millis between two periods in the same thread.
-/// * genesis_timestamp: when the blockclique first started, in millis
-/// * start_time: optional start time
-/// * end_time: optional end time
+/// * `thread_count`: number of threads.
+/// * `t0`: time in milliseconds between two periods in the same thread.
+/// * `genesis_timestamp`: when the blockclique first started, in milliseconds
+/// * `start_time`: optional start time
+/// * `end_time`: optional end time
 /// # Returns
-/// (Option<Slot>, Option<Slot>) pair of options representing the start (included) and end (excluded) slots
-/// or ConsensusError on error
+/// `(Option<Slot>, Option<Slot>)` pair of options representing the start (included) and end (excluded) slots
+/// or `ConsensusError` on error
 pub fn time_range_to_slot_range(
     thread_count: u8,
     t0: MassaTime,

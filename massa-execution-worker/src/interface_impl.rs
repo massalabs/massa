@@ -1,19 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
-//! This allows the VM runtime to acceess the Massa execution context,
+//! This allows the VM runtime to access the Massa execution context,
 //! for example to interact with the ledger.
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
 use anyhow::{bail, Result};
+use massa_async_pool::AsyncMessage;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
-use massa_hash::hash::Hash;
-use massa_models::{
-    output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
-    timeslots::get_block_slot_timestamp,
-};
+use massa_models::{timeslots::get_block_slot_timestamp, Address, Amount, Slot};
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;
@@ -31,25 +28,25 @@ macro_rules! context_guard {
 /// an implementation of the Interface trait (see massa-sc-runtime crate)
 #[derive(Clone)]
 pub(crate) struct InterfaceImpl {
-    /// execution config
+    /// execution configuration
     config: ExecutionConfig,
     /// thread-safe shared access to the execution context (see context.rs)
     context: Arc<Mutex<ExecutionContext>>,
 }
 
 impl InterfaceImpl {
-    /// creates a new InterfaceImpl
+    /// creates a new `InterfaceImpl`
     ///
     /// # Arguments
-    /// * config: execution config
-    /// * context: thread-safe shared access to the current execution context (see context.rs)
+    /// * `config`: execution configuration
+    /// * `context`: thread-safe shared access to the current execution context (see context.rs)
     pub fn new(config: ExecutionConfig, context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
         InterfaceImpl { config, context }
     }
 }
 
 impl InterfaceClone for InterfaceImpl {
-    /// allows cloning a boxed InterfaceImpl
+    /// allows cloning a boxed `InterfaceImpl`
     fn clone_box(&self) -> Box<dyn Interface> {
         Box::new(self.clone())
     }
@@ -58,7 +55,7 @@ impl InterfaceClone for InterfaceImpl {
 /// Implementation of the Interface trait providing functions for massa-sc-runtime to call
 /// in order to interact with the execution context during bytecode execution.
 /// See the massa-sc-runtime crate for a functional description of the trait and its methods.
-/// Note that massa-sc-runtime uses basic types (str for addresses, u64 for amounts...) for genericity.
+/// Note that massa-sc-runtime uses basic types (`str` for addresses, `u64` for amounts...) for genericity.
 impl Interface for InterfaceImpl {
     /// prints a message in the node logs at log level 3 (debug)
     fn print(&self, message: &str) -> Result<()> {
@@ -72,8 +69,8 @@ impl Interface for InterfaceImpl {
     /// and returns the target bytecode from the ledger.
     ///
     /// # Arguments
-    /// * address: string representation of the target address on which the bytecode will be called
-    /// * raw_coins: raw representation (without decimal factor) of the amount of parallel coins to transfer from the caller address to the target address at the beginning of the call
+    /// * `address`: string representation of the target address on which the bytecode will be called
+    /// * `raw_coins`: raw representation (without decimal factor) of the amount of parallel coins to transfer from the caller address to the target address at the beginning of the call
     ///
     /// # Returns
     /// The target bytecode or an error
@@ -188,7 +185,7 @@ impl Interface for InterfaceImpl {
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
         let addr = &massa_models::Address::from_bs58_check(address)?;
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         match context.get_data_entry(addr, &key) {
             Some(value) => Ok(value),
@@ -204,7 +201,7 @@ impl Interface for InterfaceImpl {
     /// * value: new value to set
     fn raw_set_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
         let addr = massa_models::Address::from_str(address)?;
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         context.set_data_entry(&addr, key, value.to_vec())?;
         Ok(())
@@ -220,7 +217,7 @@ impl Interface for InterfaceImpl {
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data_for(&self, address: &str, key: &str) -> Result<bool> {
         let addr = massa_models::Address::from_str(address)?;
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         Ok(context.has_data_entry(&addr, &key))
     }
@@ -233,7 +230,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         match context.get_data_entry(&addr, &key) {
@@ -249,7 +246,7 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
     fn raw_set_data(&self, key: &str, value: &[u8]) -> Result<()> {
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
         context.set_data_entry(&addr, key, value.to_vec())?;
@@ -264,13 +261,13 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data(&self, key: &str) -> Result<bool> {
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         Ok(context.has_data_entry(&addr, &key))
     }
 
-    /// Hashses arbitrary data
+    /// Hashes arbitrary data
     ///
     /// # Arguments
     /// * data: data bytes to hash
@@ -278,13 +275,13 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the resulting hash
     fn hash(&self, data: &[u8]) -> Result<String> {
-        Ok(massa_hash::hash::Hash::compute_from(data).to_bs58_check())
+        Ok(massa_hash::Hash::compute_from(data).to_bs58_check())
     }
 
-    /// Converts a pubkey to an address
+    /// Converts a public key to an address
     ///
     /// # Arguments
-    /// * public_key: string representation of the public key
+    /// * `public_key`: string representation of the public key
     ///
     /// # Returns
     /// The string representation of the resulting address
@@ -312,15 +309,15 @@ impl Interface for InterfaceImpl {
             Ok(pubk) => pubk,
             Err(_) => return Ok(false),
         };
-        let h = massa_hash::hash::Hash::compute_from(data);
+        let h = massa_hash::Hash::compute_from(data);
         Ok(massa_signature::verify_signature(&h, &signature, &public_key).is_ok())
     }
 
     /// Transfer parallel coins from the current address (top of the call stack) towards a target address.
     ///
     /// # Arguments
-    /// * to_address: string representation of the address to which the coins are sent
-    /// * raw_amount: raw representation (no decimal factor) of the amount of coins to transfer
+    /// * `to_address`: string representation of the address to which the coins are sent
+    /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
         let to_address = massa_models::Address::from_str(to_address)?;
         let amount = massa_models::Amount::from_raw(raw_amount);
@@ -333,9 +330,9 @@ impl Interface for InterfaceImpl {
     /// Transfer parallel coins from a given address towards a target address.
     ///
     /// # Arguments
-    /// * from_address: string representation of the address that is sending the coins
-    /// * to_address: string representation of the address to which the coins are sent
-    /// * raw_amount: raw representation (no decimal factor) of the amount of coins to transfer
+    /// * `from_address`: string representation of the address that is sending the coins
+    /// * `to_address`: string representation of the address to which the coins are sent
+    /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
     fn transfer_coins_for(
         &self,
         from_address: &str,
@@ -350,7 +347,7 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Returns the list of owned adresses (top of the call stack).
+    /// Returns the list of owned addresses (top of the call stack).
     /// Those addresses are the ones the current execution context has write access to,
     /// typically it includes the current address itself,
     /// but also the ones that were created previously by the current call to allow initializing them.
@@ -378,8 +375,8 @@ impl Interface for InterfaceImpl {
             .collect())
     }
 
-    /// Gets the amount of coins that have been ransferred at the beginning of the call.
-    /// See the init_call method.
+    /// Gets the amount of coins that have been transferred at the beginning of the call.
+    /// See the `init_call` method.
     ///
     /// # Returns
     /// The raw representation (no decimal factor) of the amount of coins
@@ -392,42 +389,11 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
-        let mut execution_context = context_guard!(self);
-
-        // Generate a unique event ID
-        // Initialize a seed from the current slot
-        let mut to_hash: Vec<u8> = execution_context.slot.to_bytes_key().to_vec();
-        // Append the index of the emitted event during the current slot
-        to_hash.append(&mut execution_context.created_event_index.to_be_bytes().to_vec());
-        // Append 0u8 if the context is readonly, 1u8 otherwise
-        // This is used to allow event ID collisions between readonly and active executions
-        to_hash.push(!execution_context.read_only as u8);
-        // Hash the seed to generate the ID
-        let id = SCOutputEventId(Hash::compute_from(&to_hash));
-
-        // Gather contextual information from the execution context
-        let context = EventExecutionContext {
-            slot: execution_context.slot,
-            block: execution_context.opt_block_id,
-            call_stack: execution_context.stack.iter().map(|e| e.address).collect(),
-            read_only: execution_context.read_only,
-            index_in_slot: execution_context.created_event_index,
-            origin_operation_id: execution_context.origin_operation_id,
-        };
-
-        // Generate the event
-        let event = SCOutputEvent { id, context, data };
-
-        // Increment the event counter fot this slot
-        execution_context.created_event_index += 1;
-
-        // Add the event to the context store
-        execution_context.events.insert(id, event);
-
+        context_guard!(self).generate_event(data)?;
         Ok(())
     }
 
-    /// Returns the current time (millisecond unix timestamp)
+    /// Returns the current time (millisecond UNIX timestamp)
     /// Note that in order to ensure determinism, this is actually the time of the context slot.
     fn get_time(&self) -> Result<u64> {
         let slot = context_guard!(self).slot;
@@ -440,7 +406,7 @@ impl Interface for InterfaceImpl {
         Ok(ts.to_millis())
     }
 
-    /// Returns a pseudo-random deterministic i64 number
+    /// Returns a pseudo-random deterministic `i64` number
     ///
     /// # Warning
     /// This random number generator is unsafe:
@@ -448,5 +414,87 @@ impl Interface for InterfaceImpl {
     fn unsafe_random(&self) -> Result<i64> {
         let distr = rand::distributions::Uniform::new_inclusive(i64::MIN, i64::MAX);
         Ok(context_guard!(self).unsafe_rng.sample(distr))
+    }
+
+    /// Adds an asynchronous message to the context speculative asynchronous pool
+    ///
+    /// # Arguments
+    /// * `target_address`: Destination address hash in format string
+    /// * `target_handler`: Name of the message handling function
+    /// * `validity_start`: Tuple containing the period and thread of the validity start slot
+    /// * `validity_end`: Tuple containing the period and thread of the validity end slot
+    /// * `max_gas`: Maximum gas for the message execution
+    /// * `gas_price`: Price of one gas unit
+    /// * `raw_coins`: Coins given by the sender
+    /// * `data`: Message data
+    fn send_message(
+        &self,
+        target_address: &str,
+        target_handler: &str,
+        validity_start: (u64, u8),
+        validity_end: (u64, u8),
+        max_gas: u64,
+        gas_price: u64,
+        raw_coins: u64,
+        data: &[u8],
+    ) -> Result<()> {
+        if validity_start.1 >= self.config.thread_count {
+            bail!("validity start thread exceeds the configuration thread count")
+        }
+        if validity_end.1 >= self.config.thread_count {
+            bail!("validity end thread exceeds the configuration thread count")
+        }
+        let mut execution_context = context_guard!(self);
+        let emission_slot = execution_context.slot;
+        let emission_index = execution_context.created_message_index;
+        let sender = execution_context.get_current_address()?;
+        execution_context.push_new_message(AsyncMessage {
+            emission_slot,
+            emission_index,
+            sender,
+            destination: Address::from_str(target_address)?,
+            handler: target_handler.to_string(),
+            validity_start: Slot::new(validity_start.0, validity_start.1),
+            validity_end: Slot::new(validity_end.0, validity_end.1),
+            max_gas,
+            gas_price: Amount::from_raw(gas_price),
+            coins: Amount::from_raw(raw_coins),
+            data: data.to_vec(),
+        });
+        execution_context.created_message_index += 1;
+        Ok(())
+    }
+
+    /// Returns the period of the current execution slot
+    fn get_current_period(&self) -> Result<u64> {
+        let slot = context_guard!(self).slot;
+        Ok(slot.period)
+    }
+
+    /// Returns the thread of the current execution slot
+    fn get_current_thread(&self) -> Result<u8> {
+        let slot = context_guard!(self).slot;
+        Ok(slot.thread)
+    }
+
+    /// Sets the bytecode of the current address
+    fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
+        let mut execution_context = context_guard!(self);
+        let address = execution_context.get_current_address()?;
+        match execution_context.set_bytecode(&address, bytecode.to_vec()) {
+            Ok(()) => Ok(()),
+            Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
+        }
+    }
+
+    /// Sets the bytecode of an arbitrary address.
+    /// Fails if the address does not exist of if the context doesn't have write access rights on it.
+    fn raw_set_bytecode_for(&self, address: &str, bytecode: &[u8]) -> Result<()> {
+        let address = massa_models::Address::from_str(address)?;
+        let mut execution_context = context_guard!(self);
+        match execution_context.set_bytecode(&address, bytecode.to_vec()) {
+            Ok(()) => Ok(()),
+            Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
+        }
     }
 }

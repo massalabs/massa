@@ -12,10 +12,15 @@ use crate::{
     DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
 };
 
+/// Mutually compatible blocks in the graph
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Clique {
+    /// the block ids of the blocks in that clique
     pub block_ids: Set<BlockId>,
+    /// Fitness used to compute finality
+    /// Depends on descendants and endorsement count
     pub fitness: u64,
+    /// True if it is the clique of higher fitness
     pub is_blockclique: bool,
 }
 
@@ -24,7 +29,7 @@ impl SerializeCompact for Clique {
     /// ```rust
     /// use massa_models::clique::Clique;
     /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
     /// # pub fn get_dummy_block_id(s: &str) -> BlockId {

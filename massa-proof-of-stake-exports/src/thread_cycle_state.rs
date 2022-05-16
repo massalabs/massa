@@ -9,6 +9,7 @@ use massa_models::{
 };
 use serde::{Deserialize, Serialize};
 
+/// Rolls state for a cycle in a thread
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ThreadCycleState {
     /// Cycle number
@@ -21,7 +22,7 @@ pub struct ThreadCycleState {
     pub cycle_updates: RollUpdates,
     /// Used to seed the random selector at each cycle
     pub rng_seed: BitVec<Lsb0, u8>,
-    /// Per-address production statistics (ok_count, nok_count)
+    /// Per-address production statistics `(ok_count, nok_count)`
     pub production_stats: Map<Address, (u64, u64)>,
 }
 

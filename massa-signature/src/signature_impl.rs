@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::MassaSignatureError;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use secp256k1::{schnorr, Message, SECP256K1};
 use std::{convert::TryInto, str::FromStr};
 

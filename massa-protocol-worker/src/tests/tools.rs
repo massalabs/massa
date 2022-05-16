@@ -4,6 +4,7 @@ use massa_protocol_exports::{
     tests::mock_network_controller::MockNetworkController, ProtocolCommandSender,
     ProtocolEventReceiver, ProtocolManager, ProtocolPoolEventReceiver, ProtocolSettings,
 };
+use massa_storage::Storage;
 
 pub async fn protocol_test<F, V>(protocol_settings: &'static ProtocolSettings, test: F)
 where
@@ -26,7 +27,7 @@ where
 {
     let (network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
-
+    let storage: Storage = Default::default();
     // start protocol controller
     let (
         protocol_command_sender,
@@ -39,6 +40,7 @@ where
         10,
         network_command_sender,
         network_event_receiver,
+        storage,
     )
     .await
     .expect("could not start protocol controller");

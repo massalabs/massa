@@ -1,11 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Flexbuffer layer between raw data and our objects.
-use super::messages::Message;
-use massa_models::{
-    with_serialization_context, DeserializeCompact, DeserializeMinBEInt, SerializeCompact,
-    SerializeMinBEInt,
-};
+//! `Flexbuffer` layer between raw data and our objects.
+use super::messages::{deserialize_message_with_optional_serialized_object, Message};
+use massa_models::{with_serialization_context, DeserializeMinBEInt, SerializeMinBEInt};
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -17,12 +14,10 @@ pub struct WriteBinder {
 }
 
 impl WriteBinder {
-    /// Creates a new WriteBinder.
+    /// Creates a new `WriteBinder`.
     ///
     /// # Argument
-    /// * write_half: writer half.
-    /// * serialization_context: SerializationContext instance
-    /// * max_message_size: max message size in bytes
+    /// * `write_half`: writer half.
     pub fn new(write_half: WriteHalf) -> Self {
         WriteBinder {
             write_half,
@@ -30,15 +25,13 @@ impl WriteBinder {
         }
     }
 
-    /// Serializes and sends message.
+    /// Sends a serialized message.
     ///
     /// # Argument
-    /// * msg: date to transmit.
-    pub async fn send(&mut self, msg: &Message) -> Result<u64, NetworkError> {
+    /// * `buf`: data to transmit.
+    pub async fn send(&mut self, buf: &[u8]) -> Result<u64, NetworkError> {
         //        massa_trace!("binder.send", { "msg": msg });
-        // serialize
-        let bytes_vec = msg.to_bytes_compact()?;
-        let msg_size: u32 = bytes_vec
+        let msg_size: u32 = buf
             .len()
             .try_into()
             .map_err(|_| NetworkError::GeneralProtocolError("message too long".into()))?;
@@ -50,7 +43,7 @@ impl WriteBinder {
             .await?;
 
         // send message
-        self.write_half.write_all(&bytes_vec[..]).await?;
+        self.write_half.write_all(buf).await?;
 
         let res_index = self.message_index;
         self.message_index += 1;
@@ -69,12 +62,10 @@ pub struct ReadBinder {
 }
 
 impl ReadBinder {
-    /// Creates a new ReadBinder.
+    /// Creates a new `ReadBinder`.
     ///
     /// # Argument
-    /// * read_half: reader half.
-    /// * serialization_context: SerializationContext instance
-    /// * max_message_size: max message size in bytes
+    /// * `read_half`: reader half.
     pub fn new(read_half: ReadHalf) -> Self {
         ReadBinder {
             read_half,
@@ -85,17 +76,18 @@ impl ReadBinder {
         }
     }
 
-    /// Awaits the next incoming message and deserializes it. Async cancel-safe.
+    /// Awaits the next incoming message and deserializes it. Asynchronous cancel-safe.
+    /// Returns the message, as well as the serialized object in the case of a block.
     ///
-    /// This function must be async cancel-safe.
+    /// This function must be asynchronous cancel-safe.
     /// This means that the function can restart from the beginning at any "await" point and we need to avoid losing any data,
     /// and we can only use the cancel-safe read() function
-    /// https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read
-    /// that returns an arbitrary number of bytes that were received that is > 0 and <= buffer.len(),
-    /// or =0 if there is no more data.
-    /// We can't use read_exact and similar because they are not cancel-safe:
-    /// https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2
-    pub async fn next(&mut self) -> Result<Option<(u64, Message)>, NetworkError> {
+    /// `https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read`
+    /// that returns an arbitrary number of bytes that were received that is `> 0 and <= buffer.len()`,
+    /// or = 0 if there is no more data.
+    /// We can't use `read_exact` and similar because they are not cancel-safe:
+    /// `https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2`
+    pub async fn next(&mut self) -> Result<Option<(u64, Message, Option<Vec<u8>>)>, NetworkError> {
         let max_message_size = with_serialization_context(|context| context.max_message_size);
 
         // check if we are in the process of reading the message length
@@ -136,7 +128,7 @@ impl ReadBinder {
             if self.buf.len() != (res_size as usize) {
                 self.buf = vec![0u8; res_size as usize];
             }
-            // reset the curor so that it now represents how many content bytes have been read so far
+            // reset the cursor so that it now represents how many content bytes have been read so far
             self.cursor = 0;
         }
 
@@ -160,7 +152,7 @@ impl ReadBinder {
             }
         }
         // deserialize the message
-        let (res_msg, _res_msg_len) = Message::from_bytes_compact(&self.buf)?;
+        let (res_msg, serialized) = deserialize_message_with_optional_serialized_object(&self.buf)?;
 
         // now the message readout is over, we reset the state to start reading the next message's size field again at the next run
         self.cursor = 0;
@@ -172,6 +164,6 @@ impl ReadBinder {
         // update sequence numbers and return the deserialized message
         let res_index = self.message_index;
         self.message_index += 1;
-        Ok(Some((res_index, res_msg)))
+        Ok(Some((res_index, res_msg, serialized)))
     }
 }

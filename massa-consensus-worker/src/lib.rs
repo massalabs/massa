@@ -2,11 +2,11 @@
 
 #![doc = include_str!("../endorsements.md")]
 #![feature(async_closure)]
-#![feature(bool_to_option)]
 #![feature(hash_drain_filter)]
 #![feature(map_first_last)]
 #![feature(int_roundings)]
-
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 #[macro_use]
 extern crate massa_logging;
 

@@ -9,13 +9,9 @@ displaydoc = "0.2"
 integer-encoding = "3.0"
 lazy_static = "1.4"
 num_enum = "0.5"
-num-traits = "0.2"
-rand = "0.8"
-reqwest = { version = "0.11", features = ["blocking", "json"] }
 rust_decimal = "1.15"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1.15", features = ["full"] }
 num = { version = "0.4", features = ["serde"] }
 directories = "4.0"
 config = "0.11"
@@ -26,11 +22,11 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
-pretty_assertions = "1.0"
 serial_test = "0.5"
 
+# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 hash-prefix = ["massa_signature/hash-prefix"]
-instrument = ["tokio/tracing", "massa_time/instrument"]
+instrument = [ "massa_time/instrument"]
 sandbox = []
 testing = []

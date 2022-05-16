@@ -5,6 +5,8 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
+/// Bootstrap settings.
+/// Both bootstrapping at start-up and bootstrap server settings
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     /// Ip address of our bootstrap nodes and their public key.
@@ -17,6 +19,10 @@ pub struct BootstrapSettings {
     pub read_timeout: MassaTime,
     /// write timeout
     pub write_timeout: MassaTime,
+    /// readout error timeout
+    pub read_error_timeout: MassaTime,
+    /// write error timeout
+    pub write_error_timeout: MassaTime,
     /// Time we wait before retrying a bootstrap
     pub retry_delay: MassaTime,
     /// Max ping delay.

@@ -1,4 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Unsigned time management
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
 mod error;
 pub use error::TimeError;
@@ -13,8 +16,8 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use tokio::time::Instant;
 
-/// Time structure used every where.
-/// Millis since 01/01/1970.
+/// Time structure used everywhere.
+/// milliseconds since 01/01/1970.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct MassaTime(u64);
 
@@ -47,7 +50,7 @@ impl TryFrom<Duration> for MassaTime {
 }
 
 impl From<u64> for MassaTime {
-    /// Conversion from u64, representing timestamp in millis.
+    /// Conversion from `u64`, representing timestamp in milliseconds.
     /// ```
     /// # use massa_time::*;
     /// let time : MassaTime = MassaTime::from(42);
@@ -58,7 +61,7 @@ impl From<u64> for MassaTime {
 }
 
 impl From<MassaTime> for Duration {
-    /// Conversion massa_time to duration, representing timestamp in millis.
+    /// Conversion from `massa_time` to duration, representing timestamp in milliseconds.
     /// ```
     /// # use std::time::Duration;
     /// # use massa_time::*;
@@ -94,7 +97,7 @@ impl FromStr for MassaTime {
 }
 
 impl MassaTime {
-    /// Conversion from u64, representing timestamp in millis.
+    /// Conversion from `u64`, representing timestamp in milliseconds.
     /// ```
     /// # use massa_time::*;
     /// let time : MassaTime = MassaTime::from(42);
@@ -106,10 +109,10 @@ impl MassaTime {
     /// Smallest time interval
     pub const EPSILON: MassaTime = MassaTime(1);
 
-    /// Gets current compensated unix timestamp (resolution: milliseconds).
+    /// Gets current compensated UNIX timestamp (resolution: milliseconds).
     ///
     /// # Parameters
-    ///   * compensation_millis: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp
+    ///   * `compensation_millis`: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp
     ///
     /// ```
     /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -136,7 +139,7 @@ impl MassaTime {
         Ok(MassaTime(compensated))
     }
 
-    /// Gets current unix timestamp (resolution: milliseconds).
+    /// Gets current UNIX timestamp (resolution: milliseconds).
     ///
     /// ```
     /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -171,7 +174,7 @@ impl MassaTime {
         Duration::from_millis(self.0)
     }
 
-    /// Conversion to u64, representing millis.
+    /// Conversion to `u64`, representing milliseconds.
     /// ```
     /// # use massa_time::*;
     /// let time : MassaTime = MassaTime::from(42);

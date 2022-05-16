@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::Slot;
 use massa_signature::{generate_random_private_key, PrivateKey};
 use massa_time::MassaTime;
@@ -233,11 +233,7 @@ async fn test_doubles() {
             )
             .await;
 
-            if let Some(block) = consensus_command_sender
-                .get_active_block(valid_hasht0)
-                .await
-                .unwrap()
-            {
+            if let Some(block) = protocol_controller.get_block(&valid_hasht0) {
                 propagate_block(&mut protocol_controller, block, false, 1000).await;
             };
             (

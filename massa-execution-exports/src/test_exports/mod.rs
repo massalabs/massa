@@ -6,15 +6,14 @@
 //!
 //! # Architecture
 //!
-//! ## config.rs
+//! ## `config.rs`
 //! Provides a default execution configuration for testing.
 //!
-//! ## mock.rs
-//! Provides a mock of ExecutionController to simulate interactions
+//! ## `mock.rs`
+//! Provides a mock of `ExecutionController` to simulate interactions
 //! with an execution worker within tests.
 
-mod config;
 mod mock;
-
-pub use config::*;
+mod settings;
 pub use mock::*;
+pub use settings::*;

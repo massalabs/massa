@@ -1,11 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::ConnectionId;
+use crate::{peers::PeerType, ConnectionId};
 use displaydoc::Display;
 use massa_models::ModelsError;
 use std::net::IpAddr;
 use thiserror::Error;
 
+/// Network error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum NetworkError {
@@ -18,7 +19,7 @@ pub enum NetworkError {
     /// A tokio task has crashed err:{0}
     TokioTaskJoinError(#[from] tokio::task::JoinError),
     /// error receiving oneshot response : {0}
-    TokieRecvError(#[from] tokio::sync::oneshot::error::RecvError),
+    TokioRecvError(#[from] tokio::sync::oneshot::error::RecvError),
     /// Error during network connection: {0}
     PeerConnectionError(#[from] NetworkConnectionErrorType),
     /// The ip:`{0}` address is not valid
@@ -29,7 +30,7 @@ pub enum NetworkError {
     IOError(#[from] std::io::Error),
     /// Serde error : {0}
     SerdeError(#[from] serde_json::Error),
-    /// massa_hash error {0}
+    /// `MassaHash` error {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
     /// massa_signature error {0}
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
@@ -37,31 +38,42 @@ pub enum NetworkError {
     HandshakeError(HandshakeErrorType),
     /// the network controller should not drop a node command sender before shutting down the node.
     UnexpectedNodeCommandChannelClosure,
-    /// the writer of a node should not drop its event sender before sending a clean_exit message.
+    /// the writer of a node should not drop its event sender before sending a `clean_exit` message.
     UnexpectedWriterClosure,
     /// Time error {0}
     TimeError(#[from] massa_time::TimeError),
     /// missing peers
     MissingPeersError,
+    /// missing block
+    MissingBlock,
     /// models error: {0}
     ModelsError(#[from] ModelsError),
     /// container inconsistency error: {0}
     ContainerInconsistencyError(String),
 }
 
+/// Handshake error type
 #[derive(Debug)]
 pub enum HandshakeErrorType {
+    /// Id already exist
     HandshakeIdAlreadyExist(String),
+    /// timeout
     HandshakeTimeout,
+    /// Unexpected interruption
     HandshakeInterruption(String),
+    /// wrong handshake message
     HandshakeWrongMessage,
+    /// if remote id is the same as ours
     HandshakeKey,
+    /// Invalid signature
     HandshakeInvalidSignature,
+    /// Incompatible version
     IncompatibleVersion,
     /// Outgoing connection returned a bootstrapable peer list: {0:?}
     PeerListReceived(Vec<IpAddr>),
 }
 
+/// return handshake error
 #[macro_export]
 macro_rules! throw_handshake_error {
     ($err:ident) => {
@@ -82,14 +94,18 @@ pub enum NetworkConnectionErrorType {
     CloseConnectionWithNoConnectionToClose(IpAddr),
     /// Peer info not found for address: {0}
     PeerInfoNotFoundError(IpAddr),
+    /// Peer info not found for address: {0}
+    PeerTypeNotFoundError(PeerType),
     /// Too many connection attempt: {0}
-    ToManyConnectionAttempt(IpAddr),
+    TooManyConnectionAttempts(IpAddr),
     /// Too many connection failure: {0}
-    ToManyConnectionFailure(IpAddr),
+    TooManyConnectionFailure(IpAddr),
     /// Max connected peers reached: {0}
     MaxPeersConnectionReached(IpAddr),
     /// Attempt too connect from you own IP
     SelfConnection,
     /// A banned peer is trying to connect: {0}
     BannedPeerTryingToConnect(IpAddr),
+    /// Unexpected error
+    UnexpectedError,
 }

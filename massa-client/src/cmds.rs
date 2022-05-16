@@ -3,8 +3,9 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::api::ReadOnlyExecution;
-use massa_models::api::{AddressInfo, CompactAddressInfo};
+use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter};
+use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
+use massa_models::node::NodeId;
 use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
@@ -16,6 +17,7 @@ use massa_time::MassaTime;
 use massa_wallet::{Wallet, WalletError};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::path::PathBuf;
@@ -23,6 +25,9 @@ use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 
+/// All the client commands
+/// the order they are defined is the order they are displayed in so be careful
+/// Maybe it would be worth renaming some of them for consistency
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
@@ -34,17 +39,31 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "unban a given IP addresses"
+        props(args = "IpAddr1 IpAddr2 ..."),
+        message = "unban given IP address(es)"
     )]
-    unban,
+    node_unban_by_ip,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "ban a given IP addresses"
+        props(args = "Id1 Id2 ..."),
+        message = "unban given id(s)"
     )]
-    ban,
+    node_unban_by_id,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "IpAddr1 IpAddr2 ..."),
+        message = "ban given IP address(es)"
+    )]
+    node_ban_by_ip,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "Id1 Id2 ..."),
+        message = "ban given id(s)"
+    )]
+    node_ban_by_id,
 
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
@@ -72,6 +91,20 @@ pub enum Command {
         message = "generate the testnet rewards program node/staker ownership proof"
     )]
     node_testnet_rewards_program_ownership_proof,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "[IpAddr]"),
+        message = "whitelist given IP addresses"
+    )]
+    node_whitelist,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "[IpAddr]"),
+        message = "remove from whitelist given IP addresses"
+    )]
+    node_remove_from_whitelist,
 
     #[strum(
         ascii_case_insensitive,
@@ -106,6 +139,15 @@ pub enum Command {
         message = "show info about a list of operations(content, finality ...) "
     )]
     get_operations,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(
+            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId"
+        ),
+        message = "show events emitted by smart contracts with various filters"
+    )]
+    get_filtered_sc_output_event,
 
     #[strum(
         ascii_case_insensitive,
@@ -170,10 +212,26 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
+        props(
+            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",
+        ),
+        message = "create and send an operation to call a function of a smart contract"
+    )]
+    call_smart_contract,
+
+    #[strum(
+        ascii_case_insensitive,
         props(args = "PathToBytecode MaxGas GasPrice Address",),
-        message = "execute byte code, address is optionnal. Nothing is really executed on chain"
+        message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
     read_only_smart_contract,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "TargetAddress TargetFunction Parameter MaxGas GasPrice SenderAddress",),
+        message = "call a smart contract function, sender address is optional. Nothing is really executed on chain"
+    )]
+    read_only_call,
 
     #[strum(
         ascii_case_insensitive,
@@ -185,27 +243,35 @@ pub enum Command {
     when_moon,
 }
 
+/// Display the help of all commands
 pub(crate) fn help() {
     println!("HELP of Massa client (list of available commands):");
     Command::iter().map(|c| c.help()).collect()
 }
 
+/// bail a shinny RPC error
 macro_rules! rpc_error {
     ($e:expr) => {
         bail!("check if your node is running: {}", $e)
     };
 }
 
+/// print a yellow warning
 macro_rules! client_warning {
     ($e:expr) => {
         println!("{}: {}", style("WARNING").yellow(), $e)
     };
 }
 
-#[derive(Serialize)]
+/// Used to have a shinny json output
+/// TODO re-factor me
+#[derive(Debug, Serialize)]
 struct ExtendedWalletEntry {
+    /// the private key
     pub private_key: PrivateKey,
+    /// corresponding pub key
     pub public_key: PublicKey,
+    /// address and balance information
     pub address_info: CompactAddressInfo,
 }
 
@@ -219,10 +285,13 @@ impl Display for ExtendedWalletEntry {
     }
 }
 
-#[derive(Serialize)]
+/// Aggregation of the local, with some useful information as the balance, etc
+/// to be printed by the client.
+#[derive(Debug, Serialize)]
 pub struct ExtendedWallet(Map<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
+    /// Reorganize everything into an extended wallet
     fn new(wallet: &Wallet, addresses_info: &[AddressInfo]) -> Result<Self> {
         Ok(ExtendedWallet(
             addresses_info
@@ -231,7 +300,7 @@ impl ExtendedWallet {
                     let &(public_key, private_key) = wallet
                         .keys
                         .get(&x.address)
-                        .ok_or(anyhow!("missing private key"))?;
+                        .ok_or_else(|| anyhow!("missing private key"))?;
                     Ok((
                         x.address,
                         ExtendedWalletEntry {
@@ -256,6 +325,8 @@ impl Display for ExtendedWallet {
 }
 
 impl Command {
+    /// Display the help of the command
+    /// with fancy colors and so on
     pub(crate) fn help(&self) {
         println!(
             "- {} {}: {}{}",
@@ -274,6 +345,14 @@ impl Command {
         )
     }
 
+    /// run a given command
+    ///
+    /// # parameters
+    /// - client: the RPC client
+    /// - wallet: an access to the wallet
+    /// - parameters: the parsed parameters
+    /// - json: true if --json was passed as an option
+    ///     it means that we don't want to print anything we just want the json output
     pub(crate) async fn run(
         &self,
         client: &Client,
@@ -302,9 +381,9 @@ impl Command {
                 Ok(Box::new(()))
             }
 
-            Command::unban => {
+            Command::node_unban_by_ip => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.unban(ips).await {
+                match client.private.node_unban_by_ip(ips).await {
                     Ok(()) => {
                         if !json {
                             println!("Request of unbanning successfully sent!")
@@ -315,9 +394,35 @@ impl Command {
                 Ok(Box::new(()))
             }
 
-            Command::ban => {
+            Command::node_unban_by_id => {
+                let ids = parse_vec::<NodeId>(parameters)?;
+                match client.private.node_unban_by_id(ids).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of unbanning successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                };
+                Ok(Box::new(()))
+            }
+
+            Command::node_ban_by_ip => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.ban(ips).await {
+                match client.private.node_ban_by_ip(ips).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of banning successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                }
+                Ok(Box::new(()))
+            }
+
+            Command::node_ban_by_id => {
+                let ids = parse_vec::<NodeId>(parameters)?;
+                match client.private.node_ban_by_id(ids).await {
                     Ok(()) => {
                         if !json {
                             println!("Request of banning successfully sent!")
@@ -444,6 +549,36 @@ impl Command {
                 }
             }
 
+            Command::get_filtered_sc_output_event => {
+                let p_list: [&str; 5] = [
+                    "start",
+                    "end",
+                    "emitter_address",
+                    "caller_address",
+                    "operation_id",
+                ];
+                let mut p: HashMap<&str, &str> = HashMap::new();
+                for v in parameters {
+                    let s: Vec<&str> = v.split('=').collect();
+                    if s.len() == 2 && p_list.contains(&s[0]) {
+                        p.insert(s[0], s[1]);
+                    } else {
+                        bail!("invalid parameter");
+                    }
+                }
+                let filter = EventFilter {
+                    start: parse_value(&p, p_list[0]),
+                    end: parse_value(&p, p_list[1]),
+                    emitter_address: parse_value(&p, p_list[2]),
+                    original_caller_address: parse_value(&p, p_list[3]),
+                    original_operation_id: parse_value(&p, p_list[4]),
+                };
+                match client.public.get_filtered_sc_output_event(filter).await {
+                    Ok(events) => Ok(Box::new(events)),
+                    Err(e) => rpc_error!(e),
+                }
+            }
+
             Command::wallet_info => {
                 if !json {
                     client_warning!("do not share your private key");
@@ -493,16 +628,14 @@ impl Command {
                 for key in parse_vec::<Address>(parameters)?.into_iter() {
                     match wallet.remove_address(key) {
                         Ok(_) => {
-                            res.push_str(&format!("Removed address {} from the wallet\n", key));
+                            let _ = writeln!(res, "Removed address {} from the wallet", key);
                         }
                         Err(WalletError::MissingKeyError(_)) => {
-                            res.push_str(&format!("Address {} wasn't in the wallet\n", key));
+                            let _ = writeln!(res, "Address {} wasn't in the wallet", key);
                         }
                         Err(_) => {
-                            res.push_str(&format!(
-                                "Failed to remove address {} from the wallet\n",
-                                key
-                            ));
+                            let _ =
+                                writeln!(res, "Failed to remove address {} from the wallet", key);
                         }
                     }
                 }
@@ -536,7 +669,7 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insuffisant balance");
+                                            client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
                                     None => {
@@ -576,7 +709,7 @@ impl Command {
                                 if info.ledger_info.candidate_ledger_info.balance < fee
                                     || roll_count > info.rolls.candidate_rolls
                                 {
-                                    client_warning!("this operation may be rejected due to insuffisant balance or roll count");
+                                    client_warning!("this operation may be rejected due to insufficient balance or roll count");
                                 }
                             }
                             None => client_warning!(format!("address {} not found", addr)),
@@ -613,7 +746,7 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insuffisant balance");
+                                            client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
                                     None => {
@@ -649,11 +782,11 @@ impl Command {
                 let mut res = "".to_string();
                 if let Some(e) = end {
                     let (days, hours, mins, secs) =
-                        e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation millis is zero
+                        e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation milliseconds is zero
 
-                    res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
+                    let _ = write!(res, "{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs);
                 } else {
-                    res.push_str("There is no end !")
+                    let _ = write!(res, "There is no end !");
                 }
                 if !json {
                     println!("{}", res);
@@ -691,7 +824,7 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insuffisant balance");
+                                            client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
                                     None => {
@@ -712,7 +845,7 @@ impl Command {
                         Err(e) => bail!("RpcError: {}", e),
                     };
                     if data.len() > max_block_size as usize / 2 {
-                        client_warning!("bytecode size exeeded half of the maximum size of a block, operation will certainly be rejected");
+                        client_warning!("bytecode size exceeded half of the maximum size of a block, operation will certainly be rejected");
                     }
                 }
 
@@ -723,6 +856,67 @@ impl Command {
                         data,
                         max_gas,
                         coins,
+                        gas_price,
+                    },
+                    fee,
+                    addr,
+                    json,
+                )
+                .await
+            }
+            Command::call_smart_contract => {
+                if parameters.len() != 8 {
+                    bail!("wrong number of parameters");
+                }
+                let addr = parameters[0].parse::<Address>()?;
+                let target_addr = parameters[1].parse::<Address>()?;
+                let target_func = parameters[2].clone();
+                let param = parameters[3].clone();
+                let max_gas = parameters[4].parse::<u64>()?;
+                let gas_price = parameters[5].parse::<Amount>()?;
+                let coins = parameters[6].parse::<Amount>()?;
+                let fee = parameters[7].parse::<Amount>()?;
+                if !json {
+                    match gas_price
+                        .checked_mul_u64(max_gas)
+                        .and_then(|x| x.checked_add(fee))
+                    {
+                        Some(total) => {
+                            if let Ok(addresses_info) =
+                                client.public.get_addresses(vec![target_addr]).await
+                            {
+                                match addresses_info.get(0) {
+                                    Some(info) => {
+                                        if info.ledger_info.candidate_ledger_info.balance < total
+                                            || info.candidate_sce_ledger_info.balance < coins
+                                        {
+                                            client_warning!("this operation may be rejected due to insufficient balance");
+                                        }
+                                    }
+                                    None => {
+                                        client_warning!(format!(
+                                            "address {} not found",
+                                            target_addr
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                        None => {
+                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                        }
+                    }
+                };
+                send_operation(
+                    client,
+                    wallet,
+                    OperationType::CallSC {
+                        target_addr,
+                        target_func,
+                        param,
+                        max_gas,
+                        sequential_coins: Amount::from_raw(0),
+                        parallel_coins: coins,
                         gas_price,
                     },
                     fee,
@@ -759,7 +953,7 @@ impl Command {
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
                     .public
-                    .execute_read_only_request(ReadOnlyExecution {
+                    .execute_read_only_bytecode(ReadOnlyBytecodeExecution {
                         max_gas,
                         simulated_gas_price,
                         bytecode,
@@ -771,10 +965,66 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
+            Command::read_only_call => {
+                if parameters.len() != 5 && parameters.len() != 6 {
+                    bail!("wrong number of parameters");
+                }
+
+                let target_address = parameters[0].parse::<Address>()?;
+                let target_function = parameters[1].parse::<String>()?;
+                let parameter = parameters[2].parse::<String>()?;
+                let max_gas = parameters[3].parse::<u64>()?;
+                let simulated_gas_price = parameters[4].parse::<Amount>()?;
+                let caller_address = if let Some(addr) = parameters.get(5) {
+                    Some(addr.parse::<Address>()?)
+                } else {
+                    None
+                };
+                match client
+                    .public
+                    .execute_read_only_call(ReadOnlyCall {
+                        caller_address,
+                        target_address,
+                        target_function,
+                        parameter,
+                        max_gas,
+                        simulated_gas_price,
+                    })
+                    .await
+                {
+                    Ok(res) => Ok(Box::new(res)),
+                    Err(e) => rpc_error!(e),
+                }
+            }
+            Command::node_whitelist => {
+                let ips = parse_vec::<IpAddr>(parameters)?;
+                match client.private.node_whitelist(ips).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of whitelisting successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                }
+                Ok(Box::new(()))
+            }
+            Command::node_remove_from_whitelist => {
+                let ips = parse_vec::<IpAddr>(parameters)?;
+                match client.private.node_remove_from_whitelist(ips).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of removing from whitelist successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                }
+                Ok(Box::new(()))
+            }
         }
     }
 }
 
+/// helper to wrap and send an operation with proper validity period
 async fn send_operation(
     client: &Client,
     wallet: &Wallet,
@@ -821,11 +1071,27 @@ async fn send_operation(
     }
 }
 
-// TODO: ugly utilities functions
+/// TODO: ugly utilities functions
+/// takes a slice of string and makes it into a `Vec<T>`
 pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, T::Err> {
     args.iter().map(|x| x.parse::<T>()).collect()
 }
 
+/// reads a file
 async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
+}
+
+// chains get_key_value with its parsing and displays a warning on parsing error
+pub fn parse_value<T: std::str::FromStr>(p: &HashMap<&str, &str>, key: &str) -> Option<T> {
+    p.get_key_value(key).and_then(|x| {
+        x.1.parse::<T>()
+            .map_err(|_| {
+                client_warning!(format!(
+                    "'{}' parameter was ignored because of wrong corresponding value",
+                    key
+                ))
+            })
+            .ok()
+    })
 }

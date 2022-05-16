@@ -1,17 +1,17 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines the structure representing an entry in the FinalLedger
+//! This file defines the structure representing an entry in the `FinalLedger`
 
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::{array_from_slice, Amount, DeserializeVarInt, ModelsError, SerializeVarInt};
 use massa_models::{DeserializeCompact, SerializeCompact};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// Structure defining an entry associated to an address in the FinalLedger
+/// Structure defining an entry associated to an address in the `FinalLedger`
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct LedgerEntry {
     /// The parallel balance of that entry.
@@ -25,7 +25,7 @@ pub struct LedgerEntry {
     pub datastore: BTreeMap<Hash, Vec<u8>>,
 }
 
-/// A LedgerEntryUpdate can be applied to a LedgerEntry
+/// A `LedgerEntryUpdate` can be applied to a `LedgerEntry`
 impl Applicable<LedgerEntryUpdate> for LedgerEntry {
     fn apply(&mut self, update: LedgerEntryUpdate) {
         // apply updates to the parallel balance
@@ -54,7 +54,7 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntry {
     }
 }
 
-/// Allow serializing the LedgerEntry into a compact binary representation
+/// Allow serializing the `LedgerEntry` into a compact binary representation
 impl SerializeCompact for LedgerEntry {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -96,7 +96,7 @@ impl SerializeCompact for LedgerEntry {
     }
 }
 
-/// Allow deserializing a LedgerEntry from its compact binary representation
+/// Allow deserializing a `LedgerEntry` from its compact binary representation
 impl DeserializeCompact for LedgerEntry {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
         let mut cursor = 0usize;

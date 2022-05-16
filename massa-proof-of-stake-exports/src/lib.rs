@@ -1,6 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! proof of stake exports
 #![feature(int_roundings)]
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
+/// proof of stake errors
 pub mod error;
 mod export_pos;
 mod settings;
@@ -50,6 +54,7 @@ impl OperationRollInterface for Operation {
                 )?;
             }
             OperationType::ExecuteSC { .. } => {}
+            OperationType::CallSC { .. } => {}
         }
         Ok(res)
     }

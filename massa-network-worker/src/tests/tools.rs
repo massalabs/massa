@@ -5,17 +5,22 @@ use super::tools;
 use crate::handshake_worker::HandshakeWorker;
 use crate::messages::Message;
 use crate::start_network_controller;
+use crate::NetworkError;
+use crate::NetworkEvent;
+use crate::NetworkSettings;
 
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::Signed;
-use massa_models::{Address, Amount, BlockId, Operation, OperationType, SignedOperation, Version};
+use massa_models::{
+    Address, Amount, BlockId, Operation, OperationType, SerializeCompact, SignedOperation, Version,
+};
 use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
 use massa_network_exports::{
-    ConnectionId, NetworkCommandSender, NetworkError, NetworkEvent, NetworkEventReceiver,
-    NetworkManager, NetworkSettings, PeerInfo,
+    ConnectionId, NetworkCommandSender, NetworkEventReceiver, NetworkManager, PeerInfo,
 };
 use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::str::FromStr;
 use std::{
@@ -50,10 +55,10 @@ pub fn generate_peers_file(peer_vec: &[PeerInfo]) -> NamedTempFile {
 ///
 /// * establishes connection
 /// * performs handshake
-/// * waits for NetworkEvent::NewConnection with returned node
+/// * waits for `NetworkEvent::NewConnection` with returned node
 ///
 /// Returns:
-/// * nodeid we just connected to
+/// * `NodeId` we just connected to
 /// * binders used to communicate with that node
 pub async fn full_connection_to_controller(
     network_event_receiver: &mut NetworkEventReceiver,
@@ -112,7 +117,7 @@ pub async fn full_connection_to_controller(
 }
 
 /// try to establish a connection to the controller and expect rejection.
-/// Return the `NetworkError` that spawned from the HanshakeWorker.
+/// Return the `NetworkError` that spawned from the `HandshakeWorker`.
 pub async fn rejected_connection_to_controller(
     network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
@@ -186,15 +191,15 @@ pub async fn rejected_connection_to_controller(
     ret
 }
 
-/// establish a full alive connection from the network controller
+/// Establish a full alive connection from the network controller
 /// note: fails if the controller attempts a connection to another IP first
 
 /// * wait for the incoming connection attempt, check address and accept
 /// * perform handshake
-/// * wait for a NetworkEvent::NewConnection event
+/// * wait for a `NetworkEvent::NewConnection` event
 ///
 /// Returns:
-/// * nodeid we just connected to
+/// * `NodeId` we just connected to
 /// * binders used to communicate with that node
 pub async fn full_connection_from_controller(
     network_event_receiver: &mut NetworkEventReceiver,
@@ -301,7 +306,11 @@ pub async fn incoming_message_drain_start(
 
 pub async fn advertise_peers_in_connection(write_binder: &mut WriteBinder, peer_list: Vec<IpAddr>) {
     write_binder
-        .send(&Message::PeerList(peer_list))
+        .send(
+            &Message::PeerList(peer_list)
+                .to_bytes_compact()
+                .expect("Fail to serialize message"),
+        )
         .await
         .expect("could not send peer list");
 }
@@ -361,7 +370,7 @@ pub async fn network_test<F, V>(
 {
     // create establisher
     let (establisher, mock_interface) = mock_establisher::new();
-
+    let storage: Storage = Default::default();
     // launch network controller
     let (network_event_sender, network_event_receiver, network_manager, _private_key, _node_id) =
         start_network_controller(
@@ -369,6 +378,7 @@ pub async fn network_test<F, V>(
             establisher,
             0,
             None,
+            storage,
             Version::from_str("TEST.1.2").unwrap(),
         )
         .await

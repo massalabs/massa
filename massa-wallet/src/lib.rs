@@ -1,15 +1,17 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Standalone massa wallet
+//! private key management
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
 pub use error::WalletError;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::address::Address;
-use massa_models::amount::Amount;
 use massa_models::composite::PubkeySig;
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signed;
 use massa_models::{Operation, SignedOperation};
 use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
-use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -18,12 +20,14 @@ mod error;
 /// Contains the private keys created in the wallet.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Wallet {
+    /// Private keys and derived public keys and addresses
     pub keys: Map<Address, (PublicKey, PrivateKey)>,
+    /// Path to the file containing the private keys (not encrypted)
     pub wallet_path: PathBuf,
 }
 
 impl Wallet {
-    /// Generates a new wallet initialized with the provided json file content
+    /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf) -> Result<Wallet, WalletError> {
         let keys = if path.is_file() {
             serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(&path)?)?
@@ -43,6 +47,9 @@ impl Wallet {
         })
     }
 
+    /// Sign arbitrary message with the associated private key
+    /// returns none if the address isn't in the wallet or if an error occurred during the signature
+    /// else returns the public key that signed the message and the signature
     pub fn sign_message(&self, address: Address, msg: Vec<u8>) -> Option<PubkeySig> {
         if let Some((public_key, key)) = self.keys.get(&address) {
             if let Ok(signature) = sign(&Hash::compute_from(&msg), key) {
@@ -59,6 +66,7 @@ impl Wallet {
     }
 
     /// Adds a new private key to wallet, if it was missing
+    /// returns corresponding address
     pub fn add_private_key(&mut self, key: PrivateKey) -> Result<Address, WalletError> {
         if !self.keys.iter().any(|(_, (_, file_key))| file_key == &key) {
             let pub_key = derive_public_key(&key);
@@ -77,6 +85,8 @@ impl Wallet {
         }
     }
 
+    /// Remove a wallet entry (keys and address) given the address
+    /// The file is overwritten
     pub fn remove_address(&mut self, address: Address) -> Result<(), WalletError> {
         self.keys
             .remove(&address)
@@ -94,11 +104,13 @@ impl Wallet {
         self.keys.get(&address).map(|(pub_key, _priv_key)| pub_key)
     }
 
+    /// Get all addresses in the wallet
     pub fn get_wallet_address_list(&self) -> Set<Address> {
         self.keys.keys().copied().collect()
     }
 
     /// Save the wallet in json format in a file
+    /// Only the private keys are dumped
     fn save(&self) -> Result<(), WalletError> {
         std::fs::write(
             &self.wallet_path,
@@ -109,11 +121,12 @@ impl Wallet {
         Ok(())
     }
 
-    /// Export keys to json string
+    /// Export keys and addresses
     pub fn get_full_wallet(&self) -> &Map<Address, (PublicKey, PrivateKey)> {
         &self.keys
     }
 
+    /// Signs an operation with the private key corresponding to the given address
     pub fn create_operation(
         &self,
         content: Operation,
@@ -129,27 +142,11 @@ impl Wallet {
 impl std::fmt::Display for Wallet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f)?;
-        for k in &self.keys {
-            let private_key = k.1 .1; // TODO: why not taking other fields of this struct?
-            let public_key = derive_public_key(&private_key);
-            let addr = Address::from_public_key(&public_key);
-            writeln!(f)?;
+        for (addr, (public_key, private_key)) in &self.keys {
             writeln!(f, "Private key: {}", private_key)?;
             writeln!(f, "Public key: {}", public_key)?;
             writeln!(f, "Address: {}", addr)?;
         }
         Ok(())
     }
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct ConsensusConfigData {
-    pub t0: MassaTime,
-    pub thread_count: u8,
-    pub genesis_timestamp: MassaTime,
-    pub delta_f0: u64,
-    pub max_block_size: u32,
-    pub operation_validity_periods: u64,
-    pub periods_per_cycle: u64,
-    pub roll_price: Amount,
 }

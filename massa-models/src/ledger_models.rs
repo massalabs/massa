@@ -9,8 +9,10 @@ use core::usize;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map;
 
+/// a consensus ledger entry
 #[derive(Debug, Default, Deserialize, Clone, Copy, Serialize)]
 pub struct LedgerData {
+    /// the balance in coins
     pub balance: Amount,
 }
 
@@ -36,12 +38,15 @@ impl DeserializeCompact for LedgerData {
 }
 
 impl LedgerData {
+    /// new `LedgerData` from an initial balance
     pub fn new(starting_balance: Amount) -> LedgerData {
         LedgerData {
             balance: starting_balance,
         }
     }
 
+    /// apply a `LedgerChange` for an entry
+    /// Can fail in overflow or underflow occur
     pub fn apply_change(&mut self, change: &LedgerChange) -> Result<()> {
         if change.balance_increment {
             self.balance = self
@@ -74,9 +79,9 @@ impl LedgerData {
 /// A balance change that can be applied to an address
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LedgerChange {
-    /// Amount to add or substract
+    /// Amount to add or subtract
     pub balance_delta: Amount,
-    /// whether to increment or decrement balance of delta
+    /// whether to increment or decrements balance of delta
     pub balance_increment: bool,
 }
 
@@ -121,6 +126,7 @@ impl LedgerChange {
         Ok(())
     }
 
+    /// true if the change is 0
     pub fn is_nil(&self) -> bool {
         self.balance_delta == Amount::default()
     }
@@ -169,16 +175,17 @@ impl DeserializeCompact for LedgerChange {
     }
 }
 
-/// Map an address to a LedgerChange
+/// Map an address to a `LedgerChange`
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LedgerChanges(pub Map<Address, LedgerChange>);
 
 impl LedgerChanges {
+    /// addresses that are impacted by these ledger changes
     pub fn get_involved_addresses(&self) -> Set<Address> {
         self.0.keys().copied().collect()
     }
 
-    /// applies a LedgerChange
+    /// applies a `LedgerChange`
     pub fn apply(&mut self, addr: &Address, change: &LedgerChange) -> Result<()> {
         match self.0.entry(*addr) {
             hash_map::Entry::Occupied(mut occ) => {
@@ -198,7 +205,7 @@ impl LedgerChanges {
         Ok(())
     }
 
-    /// chain with another LedgerChange
+    /// chain with another `LedgerChange`
     pub fn chain(&mut self, other: &LedgerChanges) -> Result<()> {
         for (addr, change) in other.0.iter() {
             self.apply(addr, change)?;
@@ -207,7 +214,7 @@ impl LedgerChanges {
     }
 
     /// merge another ledger changes into self, overwriting existing data
-    /// addrs that are in not other are removed from self
+    /// addresses that are in not other are removed from self
     pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerChanges) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {

@@ -9,12 +9,16 @@ use crate::{
 
 use std::collections::{btree_map, BTreeMap};
 
+/// just a `u64` to keep track of the roll sells and buys during a cycle
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct RollCompensation(pub u64);
 
+/// roll sales and purchases
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RollUpdate {
+    /// roll purchases
     pub roll_purchases: u64,
+    /// roll sales
     pub roll_sales: u64,
     // Here is space for registering any denunciations/resets
 }
@@ -56,20 +60,23 @@ impl RollUpdate {
         RollCompensation(compensation)
     }
 
+    /// true if the update has no effect
     pub fn is_nil(&self) -> bool {
         self.roll_purchases == 0 && self.roll_sales == 0
     }
 }
 
+/// maps addresses to roll updates
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RollUpdates(pub Map<Address, RollUpdate>);
 
 impl RollUpdates {
+    /// the addresses impacted by the updates
     pub fn get_involved_addresses(&self) -> Set<Address> {
         self.0.keys().copied().collect()
     }
 
-    /// chains with another RollUpdates, compensates and returns compensations
+    /// chains with another `RollUpdates`, compensates and returns compensations
     pub fn chain(&mut self, updates: &RollUpdates) -> Result<Map<Address, RollCompensation>> {
         let mut res = Map::default();
         for (addr, update) in updates.0.iter() {
@@ -84,7 +91,7 @@ impl RollUpdates {
         Ok(res)
     }
 
-    /// applies a RollUpdate, compensates and returns compensation
+    /// applies a `RollUpdate`, compensates and returns compensation
     pub fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<RollCompensation> {
         if update.is_nil() {
             return Ok(RollCompensation(0));
@@ -112,7 +119,7 @@ impl RollUpdates {
     }
 
     /// merge another roll updates into self, overwriting existing data
-    /// addrs that are in not other are removed from self
+    /// addresses that are in not other are removed from self
     pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: RollUpdates) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
@@ -160,23 +167,27 @@ impl DeserializeCompact for RollUpdate {
     }
 }
 
+/// counts the roll for each address
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RollCounts(pub BTreeMap<Address, u64>);
 
 impl RollCounts {
+    /// Makes a new, empty `RollCounts`.
     pub fn new() -> Self {
         RollCounts(BTreeMap::new())
     }
 
+    /// Returns the number of elements in the `RollCounts`.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Returns true if the `RollCounts` contains no elements.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    /// applies RollUpdates to self with compensations
+    /// applies `RollUpdates` to self with compensations
     pub fn apply_updates(&mut self, updates: &RollUpdates) -> Result<()> {
         for (addr, update) in updates.0.iter() {
             match self.0.entry(*addr) {
@@ -233,7 +244,7 @@ impl RollCounts {
     }
 
     /// merge another roll counts into self, overwriting existing data
-    /// addrs that are in not other are removed from self
+    /// addresses that are in not other are removed from self
     pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: RollCounts) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {

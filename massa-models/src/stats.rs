@@ -4,12 +4,18 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
 
+/// stats produced by network module
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NetworkStats {
+    /// in connections count
     pub in_connection_count: u64,
+    /// out connections count
     pub out_connection_count: u64,
+    /// total known peers count
     pub known_peer_count: u64,
+    /// banned node count
     pub banned_peer_count: u64,
+    /// active node count
     pub active_node_count: u64,
 }
 
@@ -25,14 +31,22 @@ impl std::fmt::Display for NetworkStats {
     }
 }
 
+/// stats produced by consensus module
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusStats {
+    /// start of the time span for stats
     pub start_timespan: MassaTime,
+    /// end of the time span for stats
     pub end_timespan: MassaTime,
+    /// number of final blocks
     pub final_block_count: u64,
+    /// number of final operations
     pub final_operation_count: u64,
+    /// number of stale blocks in memory
     pub stale_block_count: u64,
+    ///  number of actives cliques
     pub clique_count: u64,
+    /// total number of stakers
     pub staker_count: u64,
 }
 
@@ -58,9 +72,12 @@ impl std::fmt::Display for ConsensusStats {
     }
 }
 
+/// stats produced by pool module
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PoolStats {
+    /// number of operations in the pool
     pub operation_count: u64,
+    /// number of endorsement in the pool
     pub endorsement_count: u64,
 }
 

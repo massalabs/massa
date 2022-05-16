@@ -10,11 +10,14 @@ use tokio::time::timeout;
 
 const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
 
+/// read half of the duplex stream
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
+/// write half of the duplex stream
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
 
 type AddrSender = (SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>);
 
+/// new mock establisher with interface
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
         mpsc::channel::<AddrSender>(CHANNEL_SIZE);
@@ -34,12 +37,14 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     )
 }
 
+/// mock connection listener
 #[derive(Debug)]
 pub struct MockListener {
     connection_listener_rx: mpsc::Receiver<AddrSender>, // (controller, mock)
 }
 
 impl MockListener {
+    /// accept connection
     pub async fn accept(&mut self) -> std::io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
         let (addr, sender) = self.connection_listener_rx.recv().await.ok_or_else(|| {
             io::Error::new(
@@ -63,6 +68,7 @@ impl MockListener {
     }
 }
 
+/// mock connector
 #[derive(Debug)]
 pub struct MockConnector {
     connection_connector_tx: mpsc::Sender<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
@@ -70,6 +76,7 @@ pub struct MockConnector {
 }
 
 impl MockConnector {
+    /// connect
     pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<(ReadHalf, WriteHalf)> {
         // task the controller connection if exist.
         let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
@@ -109,6 +116,7 @@ impl MockConnector {
     }
 }
 
+/// mock connection establisher
 #[derive(Debug)]
 pub struct MockEstablisher {
     connection_listener_rx: Option<mpsc::Receiver<AddrSender>>,
@@ -116,11 +124,13 @@ pub struct MockEstablisher {
 }
 
 impl MockEstablisher {
+    /// place holder
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         unreachable!("place holder")
     }
 
+    /// get connection listener
     pub async fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<MockListener> {
         Ok(MockListener {
             connection_listener_rx: self
@@ -130,6 +140,7 @@ impl MockEstablisher {
         })
     }
 
+    /// get connector
     pub async fn get_connector(
         &mut self,
         timeout_duration: MassaTime,
@@ -143,6 +154,7 @@ impl MockEstablisher {
     }
 }
 
+/// mock connection establisher
 pub struct MockEstablisherInterface {
     connection_listener_tx: Option<mpsc::Sender<AddrSender>>,
     connection_connector_rx:
@@ -150,6 +162,7 @@ pub struct MockEstablisherInterface {
 }
 
 impl MockEstablisherInterface {
+    /// connect address to controller
     pub async fn connect_to_controller(
         &self,
         addr: &SocketAddr,
@@ -177,6 +190,7 @@ impl MockEstablisherInterface {
         Ok((duplex_mock_read, duplex_mock_write))
     }
 
+    /// wait connection attempt from controller
     pub async fn wait_connection_attempt_from_controller(
         &mut self,
     ) -> io::Result<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)> {
@@ -187,13 +201,4 @@ impl MockEstablisherInterface {
             )
         })
     }
-
-    /*
-    // purges/refuses all pending connection attempts from controller
-    pub async fn purge_connection_attempts_from_controller(&mut self) {
-        while let Ok((_, _, _, resp_tx)) = self.connection_connector_rx.try_recv() {
-            let _ = resp_tx.send(false);
-        }
-    }
-    */
 }

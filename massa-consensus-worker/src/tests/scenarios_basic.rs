@@ -3,7 +3,7 @@
 use super::tools;
 use crate::tests::block_factory::BlockFactory;
 use massa_consensus_exports::ConsensusConfig;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use serial_test::serial;

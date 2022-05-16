@@ -5,9 +5,10 @@ use crate::{
     ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::{Signable, Signed};
+use massa_models::SerializeCompact;
 use massa_models::{
     Address, Amount, Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
 };
@@ -18,18 +19,24 @@ use massa_time::MassaTime;
 use std::collections::HashMap;
 use tokio::time::sleep;
 
+/// test utility structures
+/// keeps private key and associated node id
 #[derive(Debug, Clone)]
 pub struct NodeInfo {
+    /// private key
     pub private_key: PrivateKey,
+    /// node id
     pub id: NodeId,
 }
 
+/// create node info
 pub fn create_node() -> NodeInfo {
     let private_key = generate_random_private_key();
     let id = NodeId(derive_public_key(&private_key));
     NodeInfo { private_key, id }
 }
 
+/// create number of nodes and connect them with protocol
 pub async fn create_and_connect_nodes(
     num: usize,
     network_controller: &mut MockNetworkController,
@@ -69,6 +76,12 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
     }
 }
 
+/// create a block with no endorsement
+///
+/// * `private_key`: key that sign the block
+/// * `public_key`: creator's key TODO could be derived from the private key
+/// * `slot`
+/// * `operations`
 pub fn create_block_with_operations(
     private_key: &PrivateKey,
     public_key: &PublicKey,
@@ -98,6 +111,12 @@ pub fn create_block_with_operations(
     Block { header, operations }
 }
 
+/// create a block with no operation
+///
+/// * `private_key`: key that sign the block
+/// * `public_key`: creator's key TODO could be derived from the private key
+/// * `slot`
+/// * `endorsements`
 pub fn create_block_with_endorsements(
     private_key: &PrivateKey,
     public_key: &PublicKey,
@@ -125,6 +144,7 @@ pub fn create_block_with_endorsements(
     }
 }
 
+/// send a block and assert it has been propagate (or not)
 pub async fn send_and_propagate_block(
     network_controller: &mut MockNetworkController,
     block: Block,
@@ -133,9 +153,12 @@ pub async fn send_and_propagate_block(
     protocol_event_receiver: &mut ProtocolEventReceiver,
 ) {
     let expected_hash = block.header.content.compute_id().unwrap();
+    let serialized = block.to_bytes_compact().unwrap();
 
     // Send block to protocol.
-    network_controller.send_block(source_node_id, block).await;
+    network_controller
+        .send_block(source_node_id, block, serialized)
+        .await;
 
     // Check protocol sends block to consensus.
     let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {
@@ -149,10 +172,7 @@ pub async fn send_and_propagate_block(
         _ => panic!("Unexpected or no protocol event."),
     };
     if valid {
-        assert_eq!(
-            expected_hash,
-            hash.expect("block not propagated before timeout")
-        );
+        assert_eq!(expected_hash, hash.unwrap());
     } else {
         assert!(hash.is_none(), "unexpected protocol event")
     }
@@ -173,7 +193,7 @@ pub fn create_endorsement() -> SignedEndorsement {
     Signed::new_signed(content, &sender_priv).unwrap().1
 }
 
-// Create an operation, from a specific sender, and with a specific expire period.
+/// Create an operation, from a specific sender, and with a specific expire period.
 pub fn create_operation_with_expire_period(
     sender_priv: &PrivateKey,
     expire_period: u64,
@@ -197,10 +217,11 @@ pub fn create_operation_with_expire_period(
 }
 
 lazy_static::lazy_static! {
+    /// protocol settings
     pub static ref PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
 }
 
-// create a ProtocolConfig with typical values
+/// create a `ProtocolConfig` with typical values
 pub fn create_protocol_settings() -> ProtocolSettings {
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
@@ -231,9 +252,14 @@ pub fn create_protocol_settings() -> ProtocolSettings {
         max_send_wait: MassaTime::from(100),
         max_known_ops_size: 1000,
         max_known_endorsements_size: 1000,
+        operation_batch_buffer_capacity: 1000,
+        operation_batch_proc_period: 200.into(),
+        asked_operations_pruning_period: 500.into(),
+        max_operations_per_message: 1024,
     }
 }
 
+/// wait protocol event
 pub async fn wait_protocol_event<F>(
     protocol_event_receiver: &mut ProtocolEventReceiver,
     timeout: MassaTime,
@@ -255,6 +281,7 @@ where
     }
 }
 
+/// wait protocol pool event
 pub async fn wait_protocol_pool_event<F>(
     protocol_event_receiver: &mut ProtocolPoolEventReceiver,
     timeout: MassaTime,
@@ -276,6 +303,7 @@ where
     }
 }
 
+/// assert block id has been asked to node
 pub async fn assert_hash_asked_to_node(
     hash_1: BlockId,
     node_id: NodeId,
@@ -293,6 +321,7 @@ pub async fn assert_hash_asked_to_node(
     assert!(list.get(&node_id).unwrap().contains(&hash_1));
 }
 
+/// retrieve what blocks where asked to which nodes
 pub async fn asked_list(
     network_controller: &mut MockNetworkController,
 ) -> HashMap<NodeId, Vec<BlockId>> {
@@ -306,17 +335,7 @@ pub async fn asked_list(
         .expect("Hash not asked for before timer.")
 }
 
-pub async fn assert_banned_node(node_id: NodeId, network_controller: &mut MockNetworkController) {
-    let banned_node = network_controller
-        .wait_command(1000.into(), |cmd| match cmd {
-            NetworkCommand::Ban(node) => Some(node),
-            _ => None,
-        })
-        .await
-        .expect("Node not banned before timeout.");
-    assert_eq!(banned_node, node_id);
-}
-
+/// assert a list of node(s) has been banned
 pub async fn assert_banned_nodes(
     mut nodes: Vec<NodeId>,
     network_controller: &mut MockNetworkController,
@@ -327,12 +346,12 @@ pub async fn assert_banned_nodes(
         tokio::select! {
             msg = network_controller
                    .wait_command(1000.into(), |cmd| match cmd {
-                       NetworkCommand::Ban(node) => Some(node),
+                       NetworkCommand::NodeBanByIds(node) => Some(node),
                        _ => None,
                    })
              =>  {
-                 let banned_node = msg.expect("Nodes not banned before timeout.");
-                 nodes.drain_filter(|id| *id == banned_node);
+                 let banned_nodes = msg.expect("Nodes not banned before timeout.");
+                 nodes.drain_filter(|id| banned_nodes.contains(id));
                  if nodes.is_empty() {
                      break;
                  }

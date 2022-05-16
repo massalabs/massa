@@ -8,7 +8,7 @@ use std::{convert::TryInto, fmt, str::FromStr};
 /// Application version, checked during handshakes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Version {
-    /// ascii uppercase alpha
+    /// ASCII uppercase alpha
     instance: [char; 4],
     major: u32,
     minor: u32,
@@ -86,7 +86,7 @@ impl DeserializeCompact for Version {
             .iter()
             .any(|c| !c.is_ascii() || !c.is_ascii_alphabetic() || !c.is_ascii_uppercase())
         {
-            return Err(ModelsError::InavalidVersionError(
+            return Err(ModelsError::InvalidVersionError(
                 "invalid instance value in version identifier during compact deserialization"
                     .into(),
             ));
@@ -118,6 +118,7 @@ impl DeserializeCompact for Version {
 }
 
 impl Version {
+    /// true if instance and major are the same
     pub fn is_compatible(&self, other: &Version) -> bool {
         self.instance == other.instance && self.major == other.major
     }
@@ -142,7 +143,7 @@ impl FromStr for Version {
     fn from_str(str_version: &str) -> Result<Self, Self::Err> {
         let parts: Vec<String> = str_version.split('.').map(|v| v.to_string()).collect();
         if parts.len() != 3 {
-            return Err(ModelsError::InavalidVersionError(
+            return Err(ModelsError::InvalidVersionError(
                 "version identifier is not in 3 parts separates by a dot".into(),
             ));
         }
@@ -152,16 +153,16 @@ impl FromStr for Version {
                 .chars()
                 .any(|c| !c.is_ascii_alphabetic() || !c.is_ascii_uppercase())
         {
-            return Err(ModelsError::InavalidVersionError(
+            return Err(ModelsError::InvalidVersionError(
                 "version identifier instance part is not 4-char uppercase alphabetic ASCII".into(),
             ));
         }
         let instance: [char; 4] = parts[0].chars().collect::<Vec<char>>().try_into().unwrap(); // will not panic as the length and type were checked above
         let major: u32 = u32::from_str(&parts[1]).map_err(|_| {
-            ModelsError::InavalidVersionError("version identifier major number invalid".into())
+            ModelsError::InvalidVersionError("version identifier major number invalid".into())
         })?;
         let minor: u32 = u32::from_str(&parts[2]).map_err(|_| {
-            ModelsError::InavalidVersionError("version identifier minor number invalid".into())
+            ModelsError::InvalidVersionError("version identifier minor number invalid".into())
         })?;
         Ok(Version {
             instance,

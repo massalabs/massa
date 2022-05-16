@@ -1,10 +1,9 @@
-use std::array::TryFromSliceError;
-
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use displaydoc::Display;
 use massa_execution_exports::ExecutionError;
 use massa_models::ModelsError;
 use massa_proof_of_stake_exports::error::ProofOfStakeError;
+use std::array::TryFromSliceError;
 use thiserror::Error;
 
 /// Result used in the graph
@@ -13,6 +12,7 @@ pub type GraphResult<T, E = GraphError> = core::result::Result<T, E>;
 /// Result used in the ledger
 pub type LedgerResult<T, E = LedgerError> = core::result::Result<T, E>;
 
+/// Graph error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum GraphError {
@@ -22,8 +22,8 @@ pub enum GraphError {
     ModelsError(#[from] ModelsError),
     /// Could not create genesis block {0}
     GenesisCreationError(String),
-    /// missing block
-    MissingBlock,
+    /// missing block {0}
+    MissingBlock(String),
     /// there was an inconsistency between containers {0}
     ContainerInconsistency(String),
     /// fitness overflow
@@ -44,6 +44,7 @@ pub enum GraphError {
     TransactionError(String),
 }
 
+/// Internal error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum InternalError {
@@ -51,6 +52,7 @@ pub enum InternalError {
     TransactionError(String),
 }
 
+/// Ledger error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum LedgerError {

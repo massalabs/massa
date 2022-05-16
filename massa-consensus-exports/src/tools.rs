@@ -21,6 +21,7 @@ pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedT
     ledger_file_named
 }
 
+/// generate staking key temp file from private keys
 pub fn generate_staking_keys_file(staking_keys: &[PrivateKey]) -> NamedTempFile {
     use std::io::prelude::*;
     let file_named = NamedTempFile::new().expect("cannot create temp file");
@@ -47,7 +48,7 @@ pub fn generate_roll_counts_file(roll_counts: &RollCounts) -> NamedTempFile {
 }
 
 /// generate a default named temporary JSON initial rolls file,
-/// asuming two threads.
+/// assuming two threads.
 pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempFile {
     let mut roll_counts = RollCounts::default();
     for key in stakers.iter() {

@@ -2,28 +2,36 @@
 
 //! This module represents the context in which the VM executes bytecode.
 //! It provides information such as the current call stack.
-//! It also maintians a "speculative" ledger state which is a virtual ledger
+//! It also maintains a "speculative" ledger state which is a virtual ledger
 //! as seen after applying everything that happened so far in the context.
 //! More generally, the context acts only on its own state
-//! and does not write anything persistent to the conensus state.
+//! and does not write anything persistent to the consensus state.
 
+use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
-use massa_execution_exports::{
-    EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
+use massa_async_pool::{AsyncMessage, AsyncMessageId};
+use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
+use massa_final_state::{FinalState, StateChanges};
+use massa_hash::Hash;
+use massa_ledger::LedgerChanges;
+use massa_models::{
+    output_event::{EventExecutionContext, SCOutputEvent},
+    Address, Amount, BlockId, OperationId, Slot,
 };
-use massa_hash::hash::Hash;
-use massa_ledger::{FinalLedger, LedgerChanges};
-use massa_models::{Address, Amount, BlockId, OperationId, Slot};
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::Arc;
+use tracing::debug;
 
-/// A snapshot taken from an ExecutionContext and that represents its current state.
-/// The ExecutionContext state can then be restored later from this snapshot.
+/// A snapshot taken from an `ExecutionContext` and that represents its current state.
+/// The `ExecutionContext` state can then be restored later from this snapshot.
 pub(crate) struct ExecutionContextSnapshot {
-    // speculative ledger changes caused so far in the context
+    /// speculative ledger changes caused so far in the context
     pub ledger_changes: LedgerChanges,
+
+    /// speculative asynchronous pool messages emitted so far in the context
+    pub async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
 
     /// counter of newly created addresses so far at this slot during this execution
     pub created_addr_index: u64,
@@ -37,7 +45,7 @@ pub(crate) struct ExecutionContextSnapshot {
     /// generated events during this execution, with multiple indexes
     pub events: EventStore,
 
-    /// Unsafe RNG state
+    /// Unsafe random state
     pub unsafe_rng: Xoshiro256PlusPlus,
 }
 
@@ -48,6 +56,10 @@ pub(crate) struct ExecutionContext {
     /// speculative ledger state,
     /// as seen after everything that happened so far in the context
     speculative_ledger: SpeculativeLedger,
+
+    /// speculative asynchronous pool state,
+    /// as seen after everything that happened so far in the context
+    speculative_async_pool: SpeculativeAsyncPool,
 
     /// max gas for this execution
     pub max_gas: u64,
@@ -64,6 +76,9 @@ pub(crate) struct ExecutionContext {
     /// counter of newly created events so far during this execution
     pub created_event_index: u64,
 
+    /// counter of newly created messages so far during this execution
+    pub created_message_index: u64,
+
     /// block ID, if one is present at the execution slot
     pub opt_block_id: Option<BlockId>,
 
@@ -76,7 +91,7 @@ pub(crate) struct ExecutionContext {
     /// generated events during this execution, with multiple indexes
     pub events: EventStore,
 
-    /// Unsafe RNG state (can be predicted and manipulated)
+    /// Unsafe random state (can be predicted and manipulated)
     pub unsafe_rng: Xoshiro256PlusPlus,
 
     /// operation id that originally caused this execution (if any)
@@ -84,28 +99,36 @@ pub(crate) struct ExecutionContext {
 }
 
 impl ExecutionContext {
-    /// Create a new empty ExecutionContext
+    /// Create a new empty `ExecutionContext`
     /// This should only be used as a placeholder.
     /// Further initialization is required before running bytecode
-    /// (see readonly and active_slot methods).
+    /// (see read-only and `active_slot` methods).
     ///
     /// # arguments
-    /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
-    /// * previous_changes: list of ledger changes that happened since the final ledger state and before the current execution
+    /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
+    /// * `previous_changes`: list of ledger changes that happened since the final ledger state and before the current execution
     ///
     /// # returns
-    /// A new (empty) ExecutionContext instance
+    /// A new (empty) `ExecutionContext` instance
     pub(crate) fn new(
-        final_ledger: Arc<RwLock<FinalLedger>>,
-        previous_changes: LedgerChanges,
+        final_state: Arc<RwLock<FinalState>>,
+        previous_changes: StateChanges,
     ) -> Self {
         ExecutionContext {
-            speculative_ledger: SpeculativeLedger::new(final_ledger, previous_changes),
+            speculative_ledger: SpeculativeLedger::new(
+                final_state.clone(),
+                previous_changes.ledger_changes,
+            ),
+            speculative_async_pool: SpeculativeAsyncPool::new(
+                final_state.read().async_pool.clone(),
+                previous_changes.async_pool_changes,
+            ),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
+            created_message_index: Default::default(),
             opt_block_id: Default::default(),
             stack: Default::default(),
             read_only: Default::default(),
@@ -120,6 +143,7 @@ impl ExecutionContext {
     pub(crate) fn get_snapshot(&self) -> ExecutionContextSnapshot {
         ExecutionContextSnapshot {
             ledger_changes: self.speculative_ledger.get_snapshot(),
+            async_pool_changes: self.speculative_async_pool.get_snapshot(),
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
             stack: self.stack.clone(),
@@ -133,6 +157,8 @@ impl ExecutionContext {
     pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot) {
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
+        self.speculative_async_pool
+            .reset_to_snapshot(snapshot.async_pool_changes);
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.stack = snapshot.stack;
@@ -140,22 +166,24 @@ impl ExecutionContext {
         self.unsafe_rng = snapshot.unsafe_rng;
     }
 
-    /// Create a new ExecutionContext for readonly execution
-    /// This should be used before performing a readonly execution.
+    /// Create a new `ExecutionContext` for read-only execution
+    /// This should be used before performing a read-only execution.
     ///
     /// # arguments
-    /// * slot: slot at which the execution will happen
-    /// * req: parameters of the read only execution
-    /// * previous_changes: list of ledger changes that happened since the final ledger state and before this execution
-    /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
+    /// * `slot`: slot at which the execution will happen
+    /// * `req`: parameters of the read only execution
+    /// * `previous_changes`: list of state changes that happened since the `final_state` state and before this execution
+    /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
-    /// A ExecutionContext instance ready for a read-only execution
+    /// A `ExecutionContext` instance ready for a read-only execution
     pub(crate) fn readonly(
         slot: Slot,
-        req: ReadOnlyExecutionRequest,
-        previous_changes: LedgerChanges,
-        final_ledger: Arc<RwLock<FinalLedger>>,
+        max_gas: u64,
+        gas_price: Amount,
+        call_stack: Vec<ExecutionStackElement>,
+        previous_changes: StateChanges,
+        final_state: Arc<RwLock<FinalState>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -165,7 +193,7 @@ impl ExecutionContext {
         // Add a marker to the seed indicating that we are in read-only mode
         // to prevent random draw collisions with active executions
         seed.push(0u8); // 0u8 = read-only
-        let seed = massa_hash::hash::Hash::compute_from(&seed).into_bytes();
+        let seed = massa_hash::Hash::compute_from(&seed).into_bytes();
         // We use Xoshiro256PlusPlus because it is very fast,
         // has a period long enough to ensure no repetitions will ever happen,
         // of decent quality (given the unsafe constraints)
@@ -174,32 +202,52 @@ impl ExecutionContext {
 
         // return readonly context
         ExecutionContext {
-            max_gas: req.max_gas,
-            gas_price: req.simulated_gas_price,
+            max_gas,
+            gas_price,
             slot,
-            stack: req.call_stack,
+            stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(final_ledger, previous_changes)
+            ..ExecutionContext::new(final_state, previous_changes)
         }
     }
 
-    /// Create a new ExecutionContext for executing an active slot.
+    /// This function takes a batch of asynchronous operations to execute, removing them from the speculative pool.
+    ///
+    /// # Arguments
+    /// * `max_gas`: maximal amount of asynchronous gas available
+    ///
+    /// # Returns
+    /// A vector of `(Option<Vec<u8>>, AsyncMessage)` pairs where:
+    /// * `Option<Vec<u8>>` is the bytecode to execute (or `None` if not found)
+    /// * `AsyncMessage` is the asynchronous message to execute
+    pub(crate) fn take_async_batch(
+        &mut self,
+        max_gas: u64,
+    ) -> Vec<(Option<Vec<u8>>, AsyncMessage)> {
+        self.speculative_async_pool
+            .take_batch_to_execute(self.slot, max_gas)
+            .into_iter()
+            .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
+            .collect()
+    }
+
+    /// Create a new `ExecutionContext` for executing an active slot.
     /// This should be used before performing any executions at that slot.
     ///
     /// # arguments
-    /// * slot: slot at which the execution will happen
-    /// * opt_block_id: optional ID of the block at that slot
-    /// * previous_changes: list of ledger changes that happened since the final ledger state and before this execution
-    /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
+    /// * `slot`: slot at which the execution will happen
+    /// * `opt_block_id`: optional ID of the block at that slot
+    /// * `previous_changes`: list of state changes that happened since the final state state and before this execution
+    /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
-    /// A ExecutionContext instance ready for a read-only execution
+    /// A `ExecutionContext` instance
     pub(crate) fn active_slot(
         slot: Slot,
         opt_block_id: Option<BlockId>,
-        previous_changes: LedgerChanges,
-        final_ledger: Arc<RwLock<FinalLedger>>,
+        previous_changes: StateChanges,
+        final_state: Arc<RwLock<FinalState>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -213,7 +261,7 @@ impl ExecutionContext {
         if let Some(block_id) = &opt_block_id {
             seed.extend(block_id.to_bytes()); // append block ID
         }
-        let seed = massa_hash::hash::Hash::compute_from(&seed).into_bytes();
+        let seed = massa_hash::Hash::compute_from(&seed).into_bytes();
         let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
 
         // return active slot execution context
@@ -221,21 +269,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_ledger, previous_changes)
-        }
-    }
-
-    /// Moves the output of the execution out of the context,
-    /// resetting some context fields in the process.
-    ///
-    /// This is used to get the output of an execution before discarding the context.
-    /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn take_execution_output(&mut self) -> ExecutionOutput {
-        ExecutionOutput {
-            slot: self.slot,
-            block_id: std::mem::take(&mut self.opt_block_id),
-            ledger_changes: self.speculative_ledger.take(),
-            events: std::mem::take(&mut self.events),
+            ..ExecutionContext::new(final_state, previous_changes)
         }
     }
 
@@ -306,7 +340,7 @@ impl ExecutionContext {
             data.push(1u8);
         }
         // hash the seed to get a unique address
-        let address = Address(massa_hash::hash::Hash::compute_from(&data));
+        let address = Address(massa_hash::Hash::compute_from(&data));
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger
@@ -348,7 +382,7 @@ impl ExecutionContext {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
-    /// gets the bytecode of an address if it exists in the speculative ledger, or returns None
+    /// gets the effective parallel balance of an address
     pub fn get_parallel_balance(&self, address: &Address) -> Option<Amount> {
         self.speculative_ledger.get_parallel_balance(address)
     }
@@ -381,12 +415,12 @@ impl ExecutionContext {
 
     /// Transfers parallel coins from one address to another.
     /// No changes are retained in case of failure.
-    /// Spending is only allowed from existing addresses we have write acess on
+    /// Spending is only allowed from existing addresses we have write access on
     ///
-    /// # parameters
-    /// * from_addr: optional spending address (use None for pure coin creation)
-    /// * to_addr: optional crediting address (use None for pure coin destruction)
-    /// * amount: amount of coins to transfer
+    /// # Arguments
+    /// * `from_addr`: optional spending address (use None for pure coin creation)
+    /// * `to_addr`: optional crediting address (use None for pure coin destruction)
+    /// * `amount`: amount of coins to transfer
     pub fn transfer_parallel_coins(
         &mut self,
         from_addr: Option<Address>,
@@ -405,5 +439,103 @@ impl ExecutionContext {
         // do the transfer
         self.speculative_ledger
             .transfer_parallel_coins(from_addr, to_addr, amount)
+    }
+
+    /// Add a new asynchronous message to speculative pool
+    ///
+    /// # Arguments
+    /// * `msg`: asynchronous message to add
+    pub fn push_new_message(&mut self, msg: AsyncMessage) {
+        self.speculative_async_pool.push_new_message(msg);
+    }
+
+    /// Cancels an asynchronous message, reimbursing `msg.coins` to the sender
+    ///
+    /// # Arguments
+    /// * `msg`: the asynchronous message to cancel
+    pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
+        if let Err(e) = self.transfer_parallel_coins(None, Some(msg.sender), msg.coins) {
+            debug!(
+                "async message cancel: reimbursement of {} failed: {}",
+                msg.sender, e
+            );
+        }
+    }
+
+    /// Finishes a slot and generates the execution output.
+    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
+    /// Moves the output of the execution out of the context,
+    /// resetting some context fields in the process.
+    ///
+    /// This is used to get the output of an execution before discarding the context.
+    /// Note that we are not taking self by value to consume it because the context is shared.
+    pub fn settle_slot(&mut self) -> ExecutionOutput {
+        // settle emitted async messages and reimburse the senders of deleted messages
+        let deleted_messages = self.speculative_async_pool.settle_slot(self.slot);
+        for (_msg_id, msg) in deleted_messages {
+            self.cancel_async_message(&msg);
+        }
+
+        // generate the execution output
+        let state_changes = StateChanges {
+            ledger_changes: self.speculative_ledger.take(),
+            async_pool_changes: self.speculative_async_pool.take(),
+        };
+        ExecutionOutput {
+            slot: self.slot,
+            block_id: std::mem::take(&mut self.opt_block_id),
+            state_changes,
+            events: std::mem::take(&mut self.events),
+        }
+    }
+
+    /// Sets a bytecode for an address in the speculative ledger.
+    /// Fail if the address is absent from the ledger.
+    ///
+    /// # Arguments
+    /// * address: the address of the ledger entry
+    /// * data: the bytecode to set
+    pub fn set_bytecode(
+        &mut self,
+        address: &Address,
+        bytecode: Vec<u8>,
+    ) -> Result<(), ExecutionError> {
+        // check access right
+        if !self.has_write_rights_on(address) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "setting the bytecode of address {} is not allowed in this context",
+                address
+            )));
+        }
+
+        // set data entry
+        self.speculative_ledger.set_bytecode(address, bytecode)
+    }
+
+    /// Emits an execution event to be stored.
+    ///
+    /// # Arguments:
+    /// data: the string data that is the payload of the event
+    pub fn generate_event(&mut self, data: String) -> Result<(), ExecutionError> {
+        // Gather contextual information from the execution context
+        let context = EventExecutionContext {
+            slot: self.slot,
+            block: self.opt_block_id,
+            call_stack: self.stack.iter().map(|e| e.address).collect(),
+            read_only: self.read_only,
+            index_in_slot: self.created_event_index,
+            origin_operation_id: self.origin_operation_id,
+        };
+
+        // Generate the event
+        let event = SCOutputEvent { context, data };
+
+        // Increment the event counter fot this slot
+        self.created_event_index += 1;
+
+        // Add the event to the context store
+        self.events.push(event);
+
+        Ok(())
     }
 }

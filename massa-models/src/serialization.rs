@@ -7,9 +7,16 @@ use massa_time::MassaTime;
 use std::convert::TryInto;
 use std::net::IpAddr;
 
+/// varint serialization
 pub trait SerializeVarInt {
     /// Serialize as varint bytes
     fn to_varint_bytes(self) -> Vec<u8>;
+}
+
+impl SerializeVarInt for u16 {
+    fn to_varint_bytes(self) -> Vec<u8> {
+        self.encode_var_vec()
+    }
 }
 
 impl SerializeVarInt for u32 {
@@ -24,6 +31,7 @@ impl SerializeVarInt for u64 {
     }
 }
 
+/// var int deserialization
 pub trait DeserializeVarInt: Sized {
     /// Deserialize variable size integer to Self from the provided buffer.
     /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
@@ -37,6 +45,26 @@ pub trait DeserializeVarInt: Sized {
         buffer: &[u8],
         max_value: Self,
     ) -> Result<(Self, usize), ModelsError>;
+}
+
+impl DeserializeVarInt for u16 {
+    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        u16::decode_var(buffer)
+            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
+    }
+
+    fn from_varint_bytes_bounded(
+        buffer: &[u8],
+        max_value: Self,
+    ) -> Result<(Self, usize), ModelsError> {
+        let (res, res_size) = Self::from_varint_bytes(buffer)?;
+        if res > max_value {
+            return Err(ModelsError::DeserializeError(
+                "deserialized varint u16 out of bounds".into(),
+            ));
+        }
+        Ok((res, res_size))
+    }
 }
 
 impl DeserializeVarInt for u32 {
@@ -79,6 +107,7 @@ impl DeserializeVarInt for u64 {
     }
 }
 
+/// Serialize min big endian integer
 pub trait SerializeMinBEInt {
     /// serializes with the minimal amount of big endian bytes
     fn to_be_bytes_min(self, max_value: Self) -> Result<Vec<u8>, ModelsError>;
@@ -104,7 +133,9 @@ impl SerializeMinBEInt for u64 {
     }
 }
 
+/// Deserialize min big endian
 pub trait DeserializeMinBEInt: Sized {
+    /// min big endian integer base size
     const MIN_BE_INT_BASE_SIZE: usize;
 
     /// Compute the minimal big endian deserialization size
@@ -165,6 +196,7 @@ impl DeserializeMinBEInt for u64 {
     }
 }
 
+/// array from slice
 pub fn array_from_slice<const ARRAY_SIZE: usize>(
     buffer: &[u8],
 ) -> Result<[u8; ARRAY_SIZE], ModelsError> {
@@ -178,6 +210,7 @@ pub fn array_from_slice<const ARRAY_SIZE: usize>(
     })
 }
 
+/// `u8` from slice
 pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
     if buffer.is_empty() {
         return Err(ModelsError::BufferError(
@@ -187,16 +220,20 @@ pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
     Ok(buffer[0])
 }
 
+/// custom serialization trait
 pub trait SerializeCompact {
+    /// serialization
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError>;
 }
 
+/// custom deserialization trait
 pub trait DeserializeCompact: Sized {
+    /// deserialization
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError>;
 }
 
 /// Checks performed:
-/// - Buffer contains a valid u8(implicit check).
+/// - Buffer contains a valid `u8`(implicit check).
 impl SerializeCompact for IpAddr {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         Ok(match self {
@@ -217,7 +254,7 @@ impl SerializeCompact for IpAddr {
 }
 
 /// Checks performed:
-/// - Buffer contains a valid u8.
+/// - Buffer contains a valid `u8`.
 impl DeserializeCompact for IpAddr {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         match u8_from_slice(buffer)? {
@@ -237,7 +274,7 @@ impl SerializeCompact for MassaTime {
 }
 
 /// Checks performed:
-/// - Buffer contains a valid u64.
+/// - Buffer contains a valid `u64`.
 impl DeserializeCompact for MassaTime {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
@@ -252,7 +289,7 @@ impl SerializeCompact for Amount {
 }
 
 /// Checks performed:
-/// - Buffer contains a valid u8.
+/// - Buffer contains a valid `u8`.
 impl DeserializeCompact for Amount {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (res_u64, delta) = u64::from_varint_bytes(buffer)?;

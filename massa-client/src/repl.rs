@@ -10,6 +10,7 @@ use glob::glob;
 use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
 use massa_models::{Address, OperationId};
 use massa_sdk::Client;
@@ -147,7 +148,7 @@ fn expand_path(partial_path: &str) -> Vec<u8> {
 }
 
 impl Completion for CommandCompletion {
-    /// Simple completion implementation based on substring
+    /// Simple completion implementation based on sub-string
     fn get(&self, input: &str) -> Option<String> {
         let input = input.to_string();
         if input.contains(' ') {
@@ -288,6 +289,14 @@ impl Output for Vec<OperationId> {
 }
 
 impl Output for Vec<Address> {
+    fn pretty_print(&self) {
+        for addr in self {
+            println!("{}", addr);
+        }
+    }
+}
+
+impl Output for Vec<SCOutputEvent> {
     fn pretty_print(&self) {
         for addr in self {
             println!("{}", addr);

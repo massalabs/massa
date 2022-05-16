@@ -9,16 +9,19 @@ use crate::{
     },
     with_serialization_context, BlockId, ModelsError, Slot,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 
 const ENDORSEMENT_ID_STRING_PREFIX: &str = "END";
+
+/// endorsement id
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct EndorsementId(Hash);
 
 impl PreHashed for EndorsementId {}
+
 impl Id for EndorsementId {
     fn new(hash: Hash) -> Self {
         EndorsementId(hash)
@@ -67,15 +70,19 @@ impl EndorsementId {
         self.0.to_bytes()
     }
 
+    /// endorsement ids into bytes
     pub fn into_bytes(self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
+    /// endorsement id from bytes
     pub fn from_bytes(
         data: &[u8; ENDORSEMENT_ID_SIZE_BYTES],
     ) -> Result<EndorsementId, ModelsError> {
         Ok(EndorsementId(Hash::from_bytes(data)))
     }
+
+    /// endorsement id from `bs58` check
     pub fn from_bs58_check(data: &str) -> Result<EndorsementId, ModelsError> {
         Ok(EndorsementId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
@@ -100,6 +107,7 @@ impl Display for Endorsement {
     }
 }
 
+/// an endorsement, as sent in the network
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Endorsement {
     /// Public key of the endorser.
@@ -114,6 +122,7 @@ pub struct Endorsement {
 
 impl Signable<EndorsementId> for Endorsement {}
 
+/// Signed endorsement
 pub type SignedEndorsement = Signed<Endorsement, EndorsementId>;
 
 /// Checks performed:

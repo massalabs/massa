@@ -2,9 +2,7 @@
 
 //! The network worker actually does the job of managing connections
 use super::{
-    handshake_worker::HandshakeReturnType,
-    node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
-    peer_info_database::*,
+    handshake_worker::HandshakeReturnType, node_worker::NodeWorker, peer_info_database::*,
 };
 use crate::{
     binders::{ReadBinder, WriteBinder},
@@ -14,13 +12,15 @@ use crate::{
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
+use massa_models::{constants::CHANNEL_SIZE, node::NodeId, SerializeCompact, Version};
 use massa_network_exports::{
-    ConnectionClosureReason, ConnectionId, Establisher, Listener, NetworkCommand, NetworkError,
-    NetworkEvent, NetworkManagementCommand, NetworkSettings, ReadHalf, WriteHalf,
+    ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
+    NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
+    NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
+    WriteHalf,
 };
-use massa_network_exports::{HandshakeErrorType, NetworkConnectionErrorType};
 use massa_signature::{derive_public_key, PrivateKey};
+use massa_storage::Storage;
 use std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
@@ -60,8 +60,10 @@ pub struct NetworkWorker {
     /// Node worker handles
     node_worker_handles:
         FuturesUnordered<JoinHandle<(NodeId, Result<ConnectionClosureReason, NetworkError>)>>,
-    /// Map of connection to ip, is_outgoing.
+    /// Map of connection to ip, `is_outgoing`.
     pub(crate) active_connections: HashMap<ConnectionId, (IpAddr, bool)>,
+    /// Shared storage.
+    storage: Storage,
     /// Node version
     version: Version,
     /// Event sender
@@ -75,16 +77,17 @@ pub struct NetworkWorkerChannels {
 }
 
 impl NetworkWorker {
-    /// Creates a new NetworkWorker
+    /// Creates a new `NetworkWorker`
     ///
     /// # Arguments
-    /// * cfg: Network configuration.
-    /// * listener: Listener part of the establisher.
-    /// * establisher: The connection establisher.
-    /// * peer_info_db: Database with peer information.
-    /// * controller_command_rx: Channel receiving network commands.
-    /// * controller_event_tx: Channel sending out network events.
-    /// * controller_manager_rx: Channel receiving network management commands.
+    /// * `cfg`: Network configuration.
+    /// * `listener`: Listener part of the establisher.
+    /// * `establisher`: The connection establisher.
+    /// * `peer_info_db`: Database with peer information.
+    /// * `controller_command_rx`: Channel receiving network commands.
+    /// * `controller_event_tx`: Channel sending out network events.
+    /// * `controller_manager_rx`: Channel receiving network management commands.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         cfg: NetworkSettings,
         private_key: PrivateKey,
@@ -96,6 +99,7 @@ impl NetworkWorker {
             controller_event_tx,
             controller_manager_rx,
         }: NetworkWorkerChannels,
+        storage: Storage,
         version: Version,
     ) -> NetworkWorker {
         let public_key = derive_public_key(&private_key);
@@ -120,12 +124,13 @@ impl NetworkWorker {
             active_nodes: HashMap::new(),
             node_worker_handles: FuturesUnordered::new(),
             active_connections: HashMap::new(),
+            storage,
             version,
         }
     }
 
-    /// Runs the main loop of the network_worker
-    /// There is a tokio::select! inside the loop
+    /// Runs the main loop of the network worker
+    /// There is a `tokio::select!` inside the loop
     pub async fn run_loop(mut self) -> Result<(), NetworkError> {
         let mut out_connecting_futures = FuturesUnordered::new();
         let mut cur_connection_id = ConnectionId::default();
@@ -316,8 +321,8 @@ impl NetworkWorker {
     /// Only used by the worker.
     ///
     /// # Arguments
-    /// * new_connection_id: connection id of the connection that should be established here.
-    /// * outcome: result returned by a handshake.
+    /// * `new_connection_id`: connection id of the connection that should be established here.
+    /// * `outcome`: result returned by a handshake.
     async fn on_handshake_finished(
         &mut self,
         new_connection_id: ConnectionId,
@@ -386,6 +391,7 @@ impl NetworkWorker {
                             mpsc::channel::<NodeCommand>(CHANNEL_SIZE);
                         let node_event_tx_clone = self.event.clone_node_sender();
                         let cfg_copy = self.cfg.clone();
+                        let storage = self.storage.clone();
                         let node_fn_handle = tokio::spawn(async move {
                             let res = NodeWorker::new(
                                 cfg_copy,
@@ -394,6 +400,7 @@ impl NetworkWorker {
                                 socket_writer,
                                 node_command_rx,
                                 node_event_tx_clone,
+                                storage,
                             )
                             .run_loop()
                             .await;
@@ -487,28 +494,35 @@ impl NetworkWorker {
     }
 
     /// Manages network commands
-    /// Only used inside worker's run_loop
+    /// Only used inside worker's `run_loop`
     ///
     /// # Arguments
-    /// * cmd : command to process.
-    /// * peer_info_db: Database with peer information.
-    /// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)
-    /// * event_tx: channel to send network events out.
+    /// * `cmd` : command to process.
+    /// * `peer_info_db`: Database with peer information.
+    /// * `active_connections`: hashmap linking connection id to `ÌpAddr` to
+    ///   whether connection is outgoing (true)
+    /// * `event_tx`: channel to send network events out.
     ///
     /// # Command implementation
-    /// The network commands are root to functions in `network_cmd_impl`
-    /// ex: NetworkCommand::AskForBlocks => on_ask_bfor_block_cmd(...)
+    /// Some of the commands are just forwarded to the `NodeWorker` that manage
+    /// the real connection between nodes. Some other commands has an impact on
+    /// the current worker.
+    ///
+    /// Whatever the behavior of the command, we better have to look at
+    /// `network_cmd_impl.rs` where the commands are implemented.
+    ///
+    /// ex: `NetworkCommand::AskForBlocks` => `on_ask_bfor_block_cmd(...)`
     async fn manage_network_command(&mut self, cmd: NetworkCommand) -> Result<(), NetworkError> {
         use crate::network_cmd_impl::*;
         match cmd {
-            NetworkCommand::BanIp(ips) => on_ban_ip_cmd(self, ips).await?,
-            NetworkCommand::Ban(node) => on_ban_cmd(self, node).await?,
-            NetworkCommand::SendBlockHeader { node, header } => {
-                on_send_block_header_cmd(self, node, header).await?
+            NetworkCommand::NodeBanByIps(ips) => on_node_ban_by_ips_cmd(self, ips).await?,
+            NetworkCommand::NodeBanByIds(ids) => on_node_ban_by_ids_cmd(self, ids).await?,
+            NetworkCommand::SendBlockHeader { node, block_id } => {
+                on_send_block_header_cmd(self, node, block_id).await?
             }
-            NetworkCommand::AskForBlocks { list } => on_ask_bfor_block_cmd(self, list).await,
-            NetworkCommand::SendBlock { node, block } => {
-                on_send_block_cmd(self, node, block).await?
+            NetworkCommand::AskForBlocks { list } => on_ask_for_block_cmd(self, list).await,
+            NetworkCommand::SendBlock { node, block_id } => {
+                on_send_block_cmd(self, node, block_id).await?
             }
             NetworkCommand::GetPeers(response_tx) => on_get_peers_cmd(self, response_tx).await,
             NetworkCommand::GetBootstrapPeers(response_tx) => {
@@ -518,7 +532,13 @@ impl NetworkWorker {
                 on_block_not_found_cmd(self, node, block_id).await
             }
             NetworkCommand::SendOperations { node, operations } => {
-                on_send_operation_cmd(self, node, operations).await
+                on_send_operations_cmd(self, node, operations).await
+            }
+            NetworkCommand::SendOperationAnnouncements { to_node, batch } => {
+                on_send_operation_batches_cmd(self, to_node, batch).await
+            }
+            NetworkCommand::AskForOperations { to_node, wishlist } => {
+                on_ask_for_operations_cmd(self, to_node, wishlist).await
             }
             NetworkCommand::SendEndorsements { node, endorsements } => {
                 on_send_endorsements_cmd(self, node, endorsements).await
@@ -526,19 +546,24 @@ impl NetworkWorker {
             NetworkCommand::NodeSignMessage { msg, response_tx } => {
                 on_node_sign_message_cmd(self, msg, response_tx).await?
             }
-            NetworkCommand::Unban(ip) => on_unban_cmd(self, ip).await?,
+            NetworkCommand::NodeUnbanByIds(ids) => on_node_unban_by_ids_cmd(self, ids).await?,
+            NetworkCommand::NodeUnbanByIps(ips) => on_node_unban_by_ips_cmd(self, ips).await?,
             NetworkCommand::GetStats { response_tx } => on_get_stats_cmd(self, response_tx).await,
+            NetworkCommand::Whitelist(ips) => on_whitelist_cmd(self, ips).await?,
+            NetworkCommand::RemoveFromWhitelist(ips) => {
+                on_remove_from_whitelist_cmd(self, ips).await?
+            }
         };
         Ok(())
     }
 
     /// Manages out connection
-    /// Only used inside worker's run_loop
+    /// Only used inside worker's `run_loop`
     ///
     /// # Arguments
-    /// * res : (reader, writer) in a result coming out of out_connecting_futures
-    /// * ip_addr: distant address we are trying to reach.
-    /// * cur_connection_id : connection id of the node we are trying to reach
+    /// * `res`: `(reader, writer)` in a result coming out of `out_connecting_futures`
+    /// * `ip_addr`: distant address we are trying to reach.
+    /// * `cur_connection_id`: connection id of the node we are trying to reach
     async fn manage_out_connections(
         &mut self,
         res: tokio::io::Result<(ReadHalf, WriteHalf)>,
@@ -564,7 +589,7 @@ impl NetworkWorker {
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (ip_addr, true));
-                    self.manage_successfull_connection(connection_id, reader, writer)?;
+                    self.manage_successful_connection(connection_id, reader, writer)?;
                 } else {
                     debug!("out connection towards ip={} refused", ip_addr);
                     massa_trace!("out_connection_refused", { "ip": ip_addr });
@@ -586,18 +611,18 @@ impl NetworkWorker {
     }
 
     /// Manages in connection
-    /// Only used inside worker's run_loop
+    /// Only used inside worker's `run_loop`
     ///
-    /// Try a connection with an incomming node, if success insert the remote
+    /// Try a connection with an incoming node, if success insert the remote
     /// address at the index `connection_id` inside `self.active_connections`
-    /// and call `self.manage_successfull_connection`
+    /// and call `self.manage_successful_connection`
     ///
     /// If the connection failed with `MaxPeersConnectionReached`, mock the
     /// handshake and send a list of advertisable peer ips.
     ///
     /// # Arguments
-    /// * res : (reader, writer, socketAddr) in a result coming out of the listener
-    /// * cur_connection_id : connection id of the node we are trying to reach
+    /// * `re` : `(reader, writer, socketAddr)` in a result coming out of the listener
+    /// * `cur_connection_id`: connection id of the node we are trying to reach
     async fn manage_in_connections(
         &mut self,
         res: std::io::Result<(ReadHalf, WriteHalf, SocketAddr)>,
@@ -619,7 +644,7 @@ impl NetworkWorker {
                         cur_connection_id.0 += 1;
                         self.active_connections
                             .insert(connection_id, (remote_addr.ip(), false));
-                        self.manage_successfull_connection(connection_id, reader, writer)?;
+                        self.manage_successful_connection(connection_id, reader, writer)?;
                     }
                     Err(NetworkError::PeerConnectionError(
                         NetworkConnectionErrorType::MaxPeersConnectionReached(_),
@@ -655,12 +680,12 @@ impl NetworkWorker {
     ///        |                          |      : Connection success anyway
     ///        |                          |        and the in connection enter
     ///        |<------------------------>|        in `HandshakeWorker::run()`
-    ///        |  symetric read & write   |
+    ///        |  symmetric read & write   |
     ///```
     ///
-    /// In the `symetric read & write` the current node simulate a handshake
+    /// In the `symmetric read & write` the current node simulate a handshake
     /// managed by the *connection node* in `HandshakeWorker::run()`, the
-    /// current node send a ListPeer as a message.
+    /// current node send a `ListPeer` as a message.
     ///
     /// Spawn a future in `self.handshake_peer_list_futures` managed by the
     /// main loop.
@@ -683,7 +708,10 @@ impl NetworkWorker {
                     let mut reader = ReadBinder::new(reader);
                     match tokio::time::timeout(
                         timeout,
-                        futures::future::try_join(writer.send(&msg), reader.next()),
+                        futures::future::try_join(
+                            writer.send(&msg.to_bytes_compact().unwrap()),
+                            reader.next(),
+                        ),
                     )
                     .await
                     {
@@ -695,13 +723,13 @@ impl NetworkWorker {
         }
     }
 
-    /// Manage a successful incomming and outgoing connection,
+    /// Manage a successful incoming and outgoing connection,
     /// Check if we're not already running an handshake for `connection_id` by inserting the connection id in
     /// `self.running_handshakes`
     /// Add a new handshake to perform in `self.handshake_futures` to be handle in the main loop.
     ///
-    /// Return an hanshake error if connection already running/waiting
-    fn manage_successfull_connection(
+    /// Return an handshake error if connection already running/waiting
+    fn manage_successful_connection(
         &mut self,
         connection_id: ConnectionId,
         reader: ReadHalf,
@@ -728,7 +756,7 @@ impl NetworkWorker {
     /// Only used by the worker.
     ///
     /// # Argument
-    /// * evt: optional node event to process.
+    /// * `evt`: optional node event to process.
     async fn on_node_event(&mut self, evt: NodeEvent) -> Result<(), NetworkError> {
         use crate::network_event::*;
         match evt {
@@ -736,8 +764,8 @@ impl NetworkWorker {
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
                 event_impl::on_received_peer_list(self, from_node_id, &lst)?
             }
-            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {
-                event_impl::on_received_block(self, from_node_id, data).await?
+            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block, serialized)) => {
+                event_impl::on_received_block(self, from_node_id, block, serialized).await?
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) => {
                 event_impl::on_received_ask_for_blocks(self, from_node_id, list).await
@@ -756,6 +784,12 @@ impl NetworkWorker {
             }
             NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) => {
                 event_impl::on_received_endorsements(self, node, endorsements).await
+            }
+            NodeEvent(node, NodeEventType::ReceivedOperationAnnouncements(operation_ids)) => {
+                event_impl::on_received_operations_annoncement(self, node, operation_ids).await
+            }
+            NodeEvent(node, NodeEventType::ReceivedAskForOperations(operation_ids)) => {
+                event_impl::on_received_ask_for_operations(self, node, operation_ids).await
             }
         }
         Ok(())

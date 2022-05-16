@@ -2,19 +2,29 @@
 
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
+use crate::messages::Message;
+use crate::node_worker::NodeWorker;
+use crate::tests::tools::{get_dummy_block_id, get_transaction};
+use crate::NetworkError;
+use crate::NetworkEvent;
 use crate::{
     binders::{ReadBinder, WriteBinder},
-    messages::Message,
-    node_worker::{NodeCommand, NodeEvent, NodeWorker},
-    NetworkError, NetworkEvent, NetworkSettings,
+    NetworkSettings,
 };
-use massa_hash::{self, hash::Hash};
+use enum_map::enum_map;
+use enum_map::EnumMap;
+use massa_hash::Hash;
+use massa_models::SerializeCompact;
 use massa_models::{
     node::NodeId,
     signed::{Signable, Signed},
 };
 use massa_models::{BlockId, Endorsement, Slot};
-use massa_network_exports::{ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo};
+use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
+use massa_network_exports::{
+    ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
+};
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -24,8 +34,27 @@ use std::{
 };
 use tokio::sync::mpsc;
 use tokio::time::sleep;
-use tools::{get_dummy_block_id, get_transaction};
 use tracing::trace;
+
+fn default_testing_peer_type_enum_map() -> EnumMap<PeerType, PeerTypeConnectionConfig> {
+    enum_map! {
+        PeerType::Bootstrap => PeerTypeConnectionConfig {
+            target_out_connections: 1,
+            max_out_attempts: 1,
+            max_in_connections: 1,
+        },
+        PeerType::WhiteListed => PeerTypeConnectionConfig {
+            target_out_connections: 2,
+            max_out_attempts: 2,
+            max_in_connections: 3,
+        },
+        PeerType::Standard => PeerTypeConnectionConfig {
+            target_out_connections: 0,
+            max_out_attempts: 0,
+            max_in_connections: 2,
+        }
+    }
+}
 
 /// Test that a node worker can shutdown even if the event channel is full,
 /// and that sending additional node commands during shutdown does not deadlock.
@@ -47,6 +76,8 @@ async fn test_node_worker_shutdown() {
     let private_key = massa_signature::generate_random_private_key();
     let public_key = massa_signature::derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
+    let storage: Storage = Default::default();
+
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
             network_conf,
@@ -55,6 +86,7 @@ async fn test_node_worker_shutdown() {
             writer,
             node_command_rx,
             node_event_tx,
+            storage,
         )
         .run_loop()
         .await
@@ -98,7 +130,7 @@ async fn test_multiple_connections_to_controller() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
     let network_conf = NetworkSettings {
-        max_in_nonbootstrap_connections: 2,
+        peer_types_config: default_testing_peer_type_enum_map(),
         max_in_connections_per_ip: 1,
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
@@ -214,17 +246,7 @@ async fn test_peer_ban() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
-        ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: false,
-        last_alive: None,
-        last_failure: None,
-        advertised: true,
-        active_out_connection_attempts: 0,
-        active_out_connections: 0,
-        active_in_connections: 0,
-    }]);
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
     let network_conf = NetworkSettings {
         wakeup_interval: 1000.into(),
@@ -269,7 +291,7 @@ async fn test_peer_ban() {
 
             // ban connection1.
             network_command_sender
-                .ban(conn1_id)
+                .node_ban_by_ids(vec![conn1_id])
                 .await
                 .expect("error during send ban command.");
 
@@ -303,7 +325,7 @@ async fn test_peer_ban() {
 
             // unban connection1.
             network_command_sender
-                .unban(vec![mock_addr.ip()])
+                .node_unban_ips(vec![mock_addr.ip()])
                 .await
                 .expect("error during send unban command.");
 
@@ -359,17 +381,7 @@ async fn test_peer_ban_by_ip() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
-        ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: false,
-        last_alive: None,
-        last_failure: None,
-        advertised: true,
-        active_out_connection_attempts: 0,
-        active_out_connections: 0,
-        active_in_connections: 0,
-    }]);
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
     let network_conf = NetworkSettings {
         wakeup_interval: 1000.into(),
@@ -414,7 +426,7 @@ async fn test_peer_ban_by_ip() {
 
             // ban connection1.
             network_command_sender
-                .ban_ip(vec![mock_addr.ip()])
+                .node_ban_by_ips(vec![mock_addr.ip()])
                 .await
                 .expect("error during send ban command.");
 
@@ -448,7 +460,7 @@ async fn test_peer_ban_by_ip() {
 
             // unban connection1.
             network_command_sender
-                .unban(vec![mock_addr.ip()])
+                .node_unban_ips(vec![mock_addr.ip()])
                 .await
                 .expect("error during send unban command.");
 
@@ -504,14 +516,14 @@ async fn test_advertised_and_wakeup_interval() {
     let mock_ignore_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 13)), bind_port);
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_ignore_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: false,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
     let network_conf = NetworkSettings {
         wakeup_interval: MassaTime::from(500),
@@ -639,18 +651,17 @@ async fn test_block_not_found() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
-
     let network_conf = NetworkSettings {
-        target_bootstrap_connections: 1,
+        peer_types_config: default_testing_peer_type_enum_map(),
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -682,7 +693,11 @@ async fn test_block_not_found() {
             // Send ask for block message from connected peer
             let wanted_hash = get_dummy_block_id("default_val");
             conn1_w
-                .send(&Message::AskForBlocks(vec![wanted_hash]))
+                .send(
+                    &Message::AskForBlocks(vec![wanted_hash])
+                        .to_bytes_compact()
+                        .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
 
@@ -776,12 +791,16 @@ async fn test_block_not_found() {
             let wanted_hash3 = get_dummy_block_id("default_val3");
             let wanted_hash4 = get_dummy_block_id("default_val4");
             conn1_w
-                .send(&Message::AskForBlocks(vec![
-                    wanted_hash1,
-                    wanted_hash2,
-                    wanted_hash3,
-                    wanted_hash4,
-                ]))
+                .send(
+                    &Message::AskForBlocks(vec![
+                        wanted_hash1,
+                        wanted_hash2,
+                        wanted_hash3,
+                        wanted_hash4,
+                    ])
+                    .to_bytes_compact()
+                    .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
             // assert it is sent to protocol
@@ -827,18 +846,17 @@ async fn test_retry_connection_closed() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
-
     let network_conf = NetworkSettings {
-        target_bootstrap_connections: 1,
+        peer_types_config: default_testing_peer_type_enum_map(),
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -862,7 +880,7 @@ async fn test_retry_connection_closed() {
 
             // Ban the node.
             network_command_sender
-                .ban(node_id)
+                .node_ban_by_ids(vec![node_id])
                 .await
                 .expect("error during send ban command.");
 
@@ -927,18 +945,17 @@ async fn test_operation_messages() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
-
     let network_conf = NetworkSettings {
-        target_bootstrap_connections: 1,
+        peer_types_config: default_testing_peer_type_enum_map(),
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -971,7 +988,11 @@ async fn test_operation_messages() {
             let (transaction, _) = get_transaction(50, 10);
             let ref_id = transaction.verify_integrity().unwrap();
             conn1_w
-                .send(&Message::Operations(vec![transaction.clone()]))
+                .send(
+                    &Message::Operations(vec![transaction.clone()])
+                        .to_bytes_compact()
+                        .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
 
@@ -987,8 +1008,8 @@ async fn test_operation_messages() {
                 .await
             {
                 assert_eq!(operations.len(), 1);
-                let res_id = operations[0].verify_integrity().unwrap();
-                assert_eq!(ref_id, res_id);
+                assert!(operations[0].verify_integrity().is_ok());
+                assert_eq!(operations[0].verify_integrity().unwrap(), ref_id);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for asked for block event");
@@ -1013,8 +1034,8 @@ async fn test_operation_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Operations(op) = evt {
                             assert_eq!(op.len(), 1);
-                            let res_id = op[0].verify_integrity().unwrap();
-                            assert_eq!(ref_id2, res_id);
+                            assert!(op[0].verify_integrity().is_ok());
+                            assert_eq!(op[0].verify_integrity().unwrap(), ref_id2);
                             break;
                         }
                     },
@@ -1050,18 +1071,17 @@ async fn test_endorsements_messages() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
-
     let network_conf = NetworkSettings {
-        target_bootstrap_connections: 1,
+        peer_types_config: default_testing_peer_type_enum_map(),
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -1102,7 +1122,11 @@ async fn test_endorsements_messages() {
             let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
             let ref_id = endorsement.content.compute_id().unwrap();
             conn1_w
-                .send(&Message::Endorsements(vec![endorsement]))
+                .send(
+                    &Message::Endorsements(vec![endorsement])
+                        .to_bytes_compact()
+                        .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
 

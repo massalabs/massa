@@ -13,9 +13,17 @@ use massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
 use massa_models::{constants::CHANNEL_SIZE, prehash::Map, Address};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ProofOfStake, ProofOfStakeConfig};
 use massa_signature::{derive_public_key, PrivateKey, PublicKey};
+use massa_storage::Storage;
 use std::path::Path;
 use tokio::sync::mpsc;
 
+/// Load staking keys from file
+/// and derive public keys and addresses
+///
+/// Returns default map if path isn't a file
+/// Maybe it would be worth considering returning the default map
+/// when the read to string or the parse is failing
+/// but eh that's left for another refactor
 async fn load_initial_staking_keys(path: &Path) -> Result<Map<Address, (PublicKey, PrivateKey)>> {
     if !std::path::Path::is_file(path) {
         return Ok(Map::default());
@@ -35,14 +43,15 @@ async fn load_initial_staking_keys(path: &Path) -> Result<Map<Address, (PublicKe
 /// Creates a new consensus controller.
 ///
 /// # Arguments
-/// * cfg: consensus configuration
-/// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.
-/// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.
+/// * `cfg`: consensus configuration
+/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.
+/// * `protocol_event_receiver`: a `ProtocolEventReceiver` instance to receive events from Protocol.
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
     channels: ConsensusChannels,
     boot_pos: Option<ExportProofOfStake>,
     boot_graph: Option<BootstrapableGraph>,
+    storage: Storage,
     clock_compensation: i64,
 ) -> Result<(
     ConsensusCommandSender,
@@ -59,12 +68,12 @@ pub async fn start_consensus_controller(
     // ensure that the parameters are sane
     if cfg.thread_count == 0 {
         return Err(ConsensusError::ConfigError(
-            "thread_count shoud be strictly more than 0".to_string(),
+            "thread_count should be strictly more than 0".to_string(),
         ));
     }
     if cfg.t0 == 0.into() {
         return Err(ConsensusError::ConfigError(
-            "t0 shoud be strictly more than 0".to_string(),
+            "t0 should be strictly more than 0".to_string(),
         ));
     }
     if cfg.t0.checked_rem_u64(cfg.thread_count as u64)? != 0.into() {
@@ -75,7 +84,7 @@ pub async fn start_consensus_controller(
     let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
 
     // start worker
-    let block_db = BlockGraph::new(GraphConfig::from(&cfg), boot_graph).await?;
+    let block_db = BlockGraph::new(GraphConfig::from(&cfg), boot_graph, storage).await?;
     let mut pos = ProofOfStake::new(
         ProofOfStakeConfig::from(&cfg),
         block_db.get_genesis_block_ids(),

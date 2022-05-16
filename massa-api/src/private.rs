@@ -1,18 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ApiError;
+use crate::settings::APISettings;
 use crate::{Endpoints, Private, RpcServer, StopHandle, API};
 use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
-    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
-    OperationInfo, ReadOnlyExecution, TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
@@ -21,6 +23,7 @@ use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Private> {
+    /// generate a new private API
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         network_command_sender: NetworkCommandSender,
@@ -74,11 +77,18 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn execute_read_only_request(
+    fn execute_read_only_bytecode(
         &self,
-        _: Vec<ReadOnlyExecution>,
+        _reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
-        crate::wrong_api::<Vec<ExecuteReadOnlyResponse>>()
+        crate::wrong_api::<_>()
+    }
+
+    fn execute_read_only_call(
+        &self,
+        _reqs: Vec<ReadOnlyCall>,
+    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
+        crate::wrong_api::<_>()
     }
 
     fn remove_staking_addresses(&self, keys: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {
@@ -97,15 +107,27 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn ban(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    fn node_ban_by_ip(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
         let network_command_sender = self.0.network_command_sender.clone();
-        let closure = async move || Ok(network_command_sender.ban_ip(ips).await?);
+        let closure = async move || Ok(network_command_sender.node_ban_by_ips(ips).await?);
         Box::pin(closure())
     }
 
-    fn unban(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    fn node_ban_by_id(&self, ids: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
         let network_command_sender = self.0.network_command_sender.clone();
-        let closure = async move || Ok(network_command_sender.unban(ips).await?);
+        let closure = async move || Ok(network_command_sender.node_ban_by_ids(ids).await?);
+        Box::pin(closure())
+    }
+
+    fn node_unban_by_id(&self, ids: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.node_unban_by_ids(ids).await?);
+        Box::pin(closure())
+    }
+
+    fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.node_unban_ips(ips).await?);
         Box::pin(closure())
     }
 
@@ -162,5 +184,17 @@ impl Endpoints for API<Private> {
         _: EventFilter,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
         crate::wrong_api::<Vec<SCOutputEvent>>()
+    }
+
+    fn node_whitelist(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.whitelist(ips).await?);
+        Box::pin(closure())
+    }
+
+    fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.remove_from_whitelist(ips).await?);
+        Box::pin(closure())
     }
 }

@@ -3,10 +3,12 @@
 use displaydoc::Display;
 use thiserror::Error;
 
+/// models error
 pub type ModelsResult<T, E = ModelsError> = core::result::Result<T, E>;
 
+/// models error
 #[non_exhaustive]
-#[derive(Display, Error, Debug)]
+#[derive(Display, Error, Debug, Clone)]
 pub enum ModelsError {
     /// hashing error
     HashError,
@@ -16,7 +18,7 @@ pub enum ModelsError {
     DeserializeError(String),
     /// buffer error: {0}
     BufferError(String),
-    /// massa_hash error: {0}
+    /// `MassaHash` error: {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
     /// massa_signature error: {0}
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
@@ -29,7 +31,7 @@ pub enum ModelsError {
     /// checked operation error
     CheckedOperationError(String),
     /// invalid version identifier: {0}
-    InavalidVersionError(String),
+    InvalidVersionError(String),
     /// invalid ledger change: {0}
     InvalidLedgerChange(String),
     /// Time overflow error

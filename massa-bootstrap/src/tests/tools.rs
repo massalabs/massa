@@ -4,11 +4,15 @@ use super::mock_establisher::Duplex;
 use crate::settings::BootstrapSettings;
 use bitvec::prelude::*;
 use massa_consensus_exports::commands::ConsensusCommand;
+use massa_final_state::{
+    test_exports::make_bootstrap_state as make_final_state_bootstrap, FinalStateBootstrap,
+};
 use massa_graph::{
     export_active_block::ExportActiveBlock, ledger::LedgerSubset, BootstrapableGraph,
 };
-use massa_hash::hash::Hash;
-use massa_ledger::{test_exports::make_bootstrap_state, FinalLedgerBootstrapState, LedgerEntry};
+use massa_hash::Hash;
+use massa_ledger::LedgerEntry;
+use massa_models::signed::Signable;
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
@@ -61,18 +65,21 @@ fn get_random_ledger_entry() -> LedgerEntry {
     }
 }
 
-/// generates a rendom bootstrap state for a final ledger
-pub fn get_random_ledger_bootstrap_state(thread_count: u8) -> FinalLedgerBootstrapState {
+/// generates a random bootstrap state for the final state
+pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalStateBootstrap {
     let mut rng = rand::thread_rng();
 
     let mut sorted_ledger = BTreeMap::new();
+    let messages = Vec::new();
+
     for _ in 0usize..rng.gen_range(0..10) {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    make_bootstrap_state(
+    make_final_state_bootstrap(
         Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count)),
         sorted_ledger,
+        messages,
     )
 }
 
@@ -125,6 +132,8 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         max_ping: MassaTime::from(500),
         read_timeout: 1000.into(),
         write_timeout: 1000.into(),
+        read_error_timeout: 200.into(),
+        write_error_timeout: 200.into(),
         bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 16), bootstrap_public_key)],
         enable_clock_synchronization: true,
         cache_duration: 10000.into(),
@@ -182,7 +191,7 @@ where
     }
 }
 
-/// asserts that two ExportProofOfStake are equal
+/// asserts that two `ExportProofOfStake` are equal
 pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOfStake) {
     assert_eq!(
         v1.cycle_states.len(),
@@ -235,7 +244,7 @@ pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOf
     }
 }
 
-/// asserts that two BootstrapableGraph are equal
+/// asserts that two `BootstrapableGraph` are equal
 pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
     assert_eq!(
         v1.active_blocks.len(),
@@ -372,84 +381,94 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
-    let block1 = ExportActiveBlock {
-        block: Block {
-            header: Signed::new_signed(
-                BlockHeader {
-                    creator: get_random_public_key(),
-                    slot: Slot::new(1, 1),
-                    parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
-                    operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
-                    endorsements: vec![
-                        Signed::new_signed(
-                            Endorsement {
-                                sender_public_key: get_random_public_key(),
-                                slot: Slot::new(1, 0),
-                                index: 1,
-                                endorsed_block: get_dummy_block_id("p1"),
-                            },
-                            &generate_random_private_key(),
-                        )
-                        .unwrap()
-                        .1,
-                        Signed::new_signed(
-                            Endorsement {
-                                sender_public_key: get_random_public_key(),
-                                slot: Slot::new(4, 1),
-                                index: 3,
-                                endorsed_block: get_dummy_block_id("p1"),
-                            },
-                            &generate_random_private_key(),
-                        )
-                        .unwrap()
-                        .1,
-                    ],
+    let block = Block {
+        header: Signed::new_signed(
+            BlockHeader {
+                creator: get_random_public_key(),
+                slot: Slot::new(1, 1),
+                parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
+                operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
+                endorsements: vec![
+                    Signed::new_signed(
+                        Endorsement {
+                            sender_public_key: get_random_public_key(),
+                            slot: Slot::new(1, 0),
+                            index: 1,
+                            endorsed_block: get_dummy_block_id("p1"),
+                        },
+                        &generate_random_private_key(),
+                    )
+                    .unwrap()
+                    .1,
+                    Signed::new_signed(
+                        Endorsement {
+                            sender_public_key: get_random_public_key(),
+                            slot: Slot::new(4, 1),
+                            index: 3,
+                            endorsed_block: get_dummy_block_id("p1"),
+                        },
+                        &generate_random_private_key(),
+                    )
+                    .unwrap()
+                    .1,
+                ],
+            },
+            &generate_random_private_key(),
+        )
+        .unwrap()
+        .1,
+        operations: vec![
+            Signed::new_signed(
+                Operation {
+                    sender_public_key: get_random_public_key(),
+                    fee: Amount::from_str("1524878").unwrap(),
+                    expire_period: 5787899,
+                    op: massa_models::OperationType::Transaction {
+                        recipient_address: get_random_address(),
+                        amount: Amount::from_str("1259787").unwrap(),
+                    },
                 },
                 &generate_random_private_key(),
             )
             .unwrap()
             .1,
-            operations: vec![
-                Signed::new_signed(
-                    Operation {
-                        sender_public_key: get_random_public_key(),
-                        fee: Amount::from_str("1524878").unwrap(),
-                        expire_period: 5787899,
-                        op: massa_models::OperationType::Transaction {
-                            recipient_address: get_random_address(),
-                            amount: Amount::from_str("1259787").unwrap(),
-                        },
+            Signed::new_signed(
+                Operation {
+                    sender_public_key: get_random_public_key(),
+                    fee: Amount::from_str("878763222").unwrap(),
+                    expire_period: 4557887,
+                    op: massa_models::OperationType::RollBuy { roll_count: 45544 },
+                },
+                &generate_random_private_key(),
+            )
+            .unwrap()
+            .1,
+            Signed::new_signed(
+                Operation {
+                    sender_public_key: get_random_public_key(),
+                    fee: Amount::from_str("4545").unwrap(),
+                    expire_period: 452524,
+                    op: massa_models::OperationType::RollSell {
+                        roll_count: 4888787,
                     },
-                    &generate_random_private_key(),
-                )
-                .unwrap()
-                .1,
-                Signed::new_signed(
-                    Operation {
-                        sender_public_key: get_random_public_key(),
-                        fee: Amount::from_str("878763222").unwrap(),
-                        expire_period: 4557887,
-                        op: massa_models::OperationType::RollBuy { roll_count: 45544 },
-                    },
-                    &generate_random_private_key(),
-                )
-                .unwrap()
-                .1,
-                Signed::new_signed(
-                    Operation {
-                        sender_public_key: get_random_public_key(),
-                        fee: Amount::from_str("4545").unwrap(),
-                        expire_period: 452524,
-                        op: massa_models::OperationType::RollSell {
-                            roll_count: 4888787,
-                        },
-                    },
-                    &generate_random_private_key(),
-                )
-                .unwrap()
-                .1,
-            ],
-        },
+                },
+                &generate_random_private_key(),
+            )
+            .unwrap()
+            .1,
+        ],
+    };
+
+    let block_id = block
+        .header
+        .content
+        .compute_id()
+        .expect("Fail to compute block id");
+
+    //TODO: We currently lost information. Need to use shared storage
+    let block1 = ExportActiveBlock {
+        block,
+        block_id,
         parents: vec![
             (get_dummy_block_id("b1"), 4777),
             (get_dummy_block_id("b2"), 8870),
@@ -522,7 +541,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
-    // check reserialization
+    // check re-serialization
     assert_eq_thread_cycle_states(
         &ExportProofOfStake::from_bytes_compact(&boot_pos.to_bytes_compact().unwrap())
             .unwrap()

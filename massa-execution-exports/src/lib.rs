@@ -9,12 +9,12 @@
 //! # Usage
 //!
 //! When an execution worker is launched to run in a separate thread for the whole duration of the process,
-//! an instance of ExecutionManager is returned (see the documentation of start_execution_worker in massa-execution-worker),
-//! as well as an instance of ExecutionController.
+//! an instance of `ExecutionManager` is returned (see the documentation of `start_execution_worker` in `massa-execution-worker`),
+//! as well as an instance of `ExecutionController`.
 //!
-//! The non-clonable ExecutionManager allows stopping the execution worker thread.
+//! The non-clonable `ExecutionManager` allows stopping the execution worker thread.
 //!
-//! The clonable ExecutionController allows sending updates on the latest blockclique changes to the execution worker
+//! The clonable `ExecutionController` allows sending updates on the latest blockclique changes to the execution worker
 //! for it to keep track of them and execute the operations present in blocks.
 //! It also allows various read-only queries such as executing bytecode
 //! while ignoring all the changes it would cause to the consensus state (read-only execution),
@@ -22,37 +22,42 @@
 //!
 //! # Architecture
 //!
-//! ## config.rs
+//! ## `config.rs`
 //! Contains configuration parameters for the execution system.
 //!
-//! ## controller_traits.rs
-//! Defines the ExecutionManager and ExecutionController traits for interacting with the execution worker.
+//! ## `controller_traits.rs`
+//! Defines the `ExecutionManager` and `ExecutionController` traits for interacting with the execution worker.
 //!
-//! ## erorrs.rs
+//! ## `errors.rs`
 //! Defines error types for the crate.
 //!
-//! ## event_store.rs
+//! ## `event_store.rs`
 //! Defines an indexed, finite-size storage system for execution events.
 //!
-//! ## types.rs
+//! ## `types.rs`
 //! Defines useful shared structures.
 //!
 //! ## Test exports
 //!
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
-//! See test_exports/mod.rs for details.
+//! See `test_exports/mod.rs` for details.
 
-mod config;
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 mod controller_traits;
 mod error;
 mod event_store;
+mod settings;
 mod types;
 
-pub use config::ExecutionConfig;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::ExecutionError;
 pub use event_store::EventStore;
-pub use types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};
+pub use settings::ExecutionConfig;
+pub use types::{
+    ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget,
+};
 
 #[cfg(feature = "testing")]
 pub mod test_exports;

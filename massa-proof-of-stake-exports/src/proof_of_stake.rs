@@ -1,7 +1,7 @@
 use std::collections::{hash_map, BTreeMap, HashMap, VecDeque};
 
 use bitvec::{order::Lsb0, prelude::BitVec};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
     prehash::{Map, Set},
@@ -20,18 +20,20 @@ use crate::{
 };
 type DrawCache = HashMap<u64, (usize, HashMap<Slot, (Address, Vec<Address>)>)>;
 
+/// Proof of stake management
 pub struct ProofOfStake {
-    /// Config
+    /// Configuration
     cfg: ProofOfStakeConfig,
     /// Index by thread and cycle number
     pub(crate) cycle_states: Vec<VecDeque<ThreadCycleState>>,
-    /// Cycle draw cache: cycle_number => (counter, map(slot => (block_creator_addr, vec<endorsement_creator_addr>)))
+    /// Cycle draw cache: `cycle_number => (counter, map(slot => (block_creator_addr, Vec<endorsement_creator_addr>)))`
     draw_cache: DrawCache,
+    /// how many cycle are kept in memory
     draw_cache_counter: usize,
     /// Initial rolls: we keep them as long as negative cycle draws are needed
     initial_rolls: Option<Vec<RollCounts>>,
     /// Initial seeds: they are lightweight, we always keep them
-    /// the seed for cycle -N is obtained by hashing N times the value ConsensusConfig.initial_draw_seed
+    /// the seed for cycle -N is obtained by hashing N times the value `ConsensusConfig.initial_draw_seed`
     /// the seeds are indexed from -1 to -N
     initial_seeds: Vec<Vec<u8>>,
     /// watched addresses
@@ -39,6 +41,7 @@ pub struct ProofOfStake {
 }
 
 impl ProofOfStake {
+    /// new proof of stake component
     pub async fn new(
         cfg: ProofOfStakeConfig,
         genesis_block_ids: &[BlockId],
@@ -101,6 +104,7 @@ impl ProofOfStake {
         })
     }
 
+    /// set watched addresses
     pub fn set_watched_addresses(&mut self, addrs: Set<Address>) {
         self.watched_addresses = addrs;
     }
@@ -135,6 +139,7 @@ impl ProofOfStake {
         initial_seeds
     }
 
+    /// next slot at which address is selected to produce a block
     pub fn get_next_selected_slot(&mut self, from_slot: Slot, address: Address) -> Option<Slot> {
         let mut cur_cycle = from_slot.get_cycle(self.cfg.periods_per_cycle);
         loop {
@@ -203,7 +208,7 @@ impl ProofOfStake {
                     })?;
                 if !final_data.is_complete(self.cfg.periods_per_cycle) {
                     // the target cycle is not final yet
-                    return Err(ProofOfStakeError::PosCycleUnavailable(format!("tryign to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet", target_cycle, scan_thread)));
+                    return Err(ProofOfStakeError::PosCycleUnavailable(format!("trying to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet", target_cycle, scan_thread)));
                 }
                 rng_seed_bits.extend(&final_data.rng_seed);
                 for (addr, &n_rolls) in final_data.roll_count.0.iter() {
@@ -316,15 +321,17 @@ impl ProofOfStake {
             .1)
     }
 
+    /// draw endorsement producer at slot
     pub fn draw_endorsement_producers(&mut self, slot: Slot) -> POSResult<Vec<Address>> {
         Ok(self.draw(slot)?.1)
     }
 
+    /// draw block producer at slot
     pub fn draw_block_producer(&mut self, slot: Slot) -> POSResult<Address> {
         Ok(self.draw(slot)?.0)
     }
 
-    /// returns (block producers, vec<endorsement producers>)
+    /// returns `(block producers, Vec<endorsement producers>)`
     fn draw(&mut self, slot: Slot) -> POSResult<(Address, Vec<Address>)> {
         let cycle = slot.get_cycle(self.cfg.periods_per_cycle);
         let cycle_draws = self.get_cycle_draws(cycle)?;
@@ -340,15 +347,12 @@ impl ProofOfStake {
     }
 
     /// Update internal states after a set of blocks become final
-    /// see /consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final
+    /// see `/consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final`
     pub fn note_final_blocks(&mut self, blocks: Map<BlockId, &ActiveBlock>) -> POSResult<()> {
         // Update internal states after a set of blocks become final.
 
         // process blocks by increasing slot number
-        let mut indices: Vec<(Slot, BlockId)> = blocks
-            .iter()
-            .map(|(k, v)| (v.block.header.content.slot, *k))
-            .collect();
+        let mut indices: Vec<(Slot, BlockId)> = blocks.iter().map(|(k, v)| (v.slot, *k)).collect();
         indices.sort_unstable();
         for (block_slot, block_id) in indices.into_iter() {
             let a_block = &blocks[&block_id];
@@ -463,6 +467,7 @@ impl ProofOfStake {
         Ok(())
     }
 
+    /// get production stats for addresses
     pub fn get_stakers_production_stats(
         &self,
         addrs: &Set<Address>,
@@ -512,10 +517,17 @@ impl ProofOfStake {
         res.into_values().collect()
     }
 
+    /// get cycle at last final block
     pub fn get_last_final_block_cycle(&self, thread: u8) -> u64 {
         self.cycle_states[thread as usize][0].cycle
     }
 
+    /// Returns the latest final block slot known by PoS in a given thread
+    pub fn get_last_final_block_slot(&self, thread: u8) -> Slot {
+        self.cycle_states[thread as usize][0].last_final_slot
+    }
+
+    /// get roll data at latest final blocks
     pub fn get_final_roll_data(&self, cycle: u64, thread: u8) -> Option<&ThreadCycleState> {
         let last_final_block_cycle = self.get_last_final_block_cycle(thread);
         if let Some(neg_relative_cycle) = last_final_block_cycle.checked_sub(cycle) {
@@ -648,7 +660,7 @@ impl ProofOfStake {
         res
     }
 
-    /// Gets cycle in which we are drawing at source_cycle
+    /// Gets cycle in which we are drawing at `source_cycle`
     pub fn get_lookback_roll_count(&self, source_cycle: u64, thread: u8) -> POSResult<&RollCounts> {
         if source_cycle > self.cfg.pos_lookback_cycles {
             // nominal case: lookback after or at cycle 0

@@ -3,8 +3,8 @@
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
 use massa_models::{
-    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, OperationType,
-    SerializeCompact, SignedOperation, Slot,
+    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, SerializeCompact,
+    SignedOperation, Slot,
 };
 use num::rational::Ratio;
 use std::{collections::BTreeSet, usize};
@@ -55,16 +55,12 @@ impl WrappedOperation {
     /// Gets the priority of the operation based on how much it profits the block producer
     /// vs how much space it takes in the block
     fn get_fee_density(&self) -> Ratio<u64> {
-        // add inclusion fee
-        let mut total_return = self.op.content.fee;
-
-        // add gas fees
-        if let OperationType::ExecuteSC {
-            max_gas, gas_price, ..
-        } = self.op.content.op
-        {
-            total_return = total_return.saturating_add(gas_price.saturating_mul_u64(max_gas));
-        }
+        // add inclusion fee and gas fees
+        let total_return = self
+            .op
+            .content
+            .fee
+            .saturating_add(self.op.content.get_gas_coins());
 
         // return ratio with size
         Ratio::new(total_return.to_raw(), self.byte_count)
@@ -73,16 +69,16 @@ impl WrappedOperation {
 
 pub struct OperationPool {
     ops: Map<OperationId, WrappedOperation>,
-    /// one vec per thread
+    /// one vector per thread
     ops_by_thread_and_interest:
         Vec<BTreeSet<(std::cmp::Reverse<num::rational::Ratio<u64>>, OperationId)>>, // [thread][order by: (rev rentability, OperationId)]
-    /// Maps Addres -> Op id
+    /// Maps Address -> Op id
     ops_by_address: OperationIndex,
     /// latest final blocks periods
     last_final_periods: Vec<u64>,
     /// current slot
     current_slot: Option<Slot>,
-    /// config
+    /// configuration
     cfg: &'static PoolConfig,
     /// ids of operations that are final with expire period and thread
     final_operations: Map<OperationId, (u64, u8)>,
@@ -278,8 +274,8 @@ impl OperationPool {
         Ok(())
     }
 
-    /// Get max_count operation for thread block_slot.thread
-    /// if vec is not full that means that there is no more interesting transactions left
+    /// Get `max_count` operation for thread `block_slot.thread`
+    /// if vector is not full that means that there is no more interesting transactions left
     pub fn get_operation_batch(
         &mut self,
         block_slot: Slot,
@@ -298,7 +294,10 @@ impl OperationPool {
                         .contains(&block_slot.period) || w_op.byte_count > max_size {
                             massa_trace!("pool get_operation_batch not added to batch w_op.op.content.get_validity_range incorrect not added", {
                                 "range": w_op.op.content.get_validity_range(self.cfg.operation_validity_periods),
-                                "block_slot.period": block_slot.period
+                                "block_slot.period": block_slot.period,
+                                "operation_id": id,
+                                "max_size_overflow": w_op.byte_count > max_size,
+                                "byte_count": w_op.byte_count,
                             });
                         return None;
                     }

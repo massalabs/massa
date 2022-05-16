@@ -1,22 +1,23 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 use crate::error::ApiError;
+use crate::settings::APISettings;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
-    ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest,
+    ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_graph::{DiscardReason, ExportBlockStatus};
-use massa_models::api::SCELedgerInfo;
+use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall, SCELedgerInfo};
 use massa_models::execution::ReadOnlyResult;
 use massa_models::SignedOperation;
 
 use massa_models::{
     api::{
-        APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
-        EventFilter, IndexedSlot, NodeStatus, OperationInfo, ReadOnlyExecution, TimeInterval,
+        AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
+        IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
     },
     clique::Clique,
     composite::PubkeySig,
@@ -34,6 +35,7 @@ use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
+    /// generate a new public API
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         execution_controller: Box<dyn ExecutionController>,
@@ -81,9 +83,9 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<()>()
     }
 
-    fn execute_read_only_request(
+    fn execute_read_only_bytecode(
         &self,
-        reqs: Vec<ReadOnlyExecution>,
+        reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
         if reqs.len() > self.0.api_settings.max_arguments as usize {
             let closure =
@@ -92,7 +94,7 @@ impl Endpoints for API<Public> {
         }
 
         let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
-        for ReadOnlyExecution {
+        for ReadOnlyBytecodeExecution {
             max_gas,
             address,
             simulated_gas_price,
@@ -113,7 +115,7 @@ impl Endpoints for API<Public> {
             let req = ReadOnlyExecutionRequest {
                 max_gas,
                 simulated_gas_price,
-                bytecode,
+                target: ReadOnlyExecutionTarget::BytecodeExecution(bytecode),
                 call_stack: vec![ExecutionStackElement {
                     address,
                     coins: Default::default(),
@@ -131,7 +133,81 @@ impl Endpoints for API<Public> {
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                output_events: result.map_or_else(|_| Default::default(), |v| v.events.export()),
+                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
+            };
+
+            res.push(result);
+        }
+
+        // return result
+        let closure = async move || Ok(res);
+        Box::pin(closure())
+    }
+
+    fn execute_read_only_call(
+        &self,
+        reqs: Vec<ReadOnlyCall>,
+    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
+        if reqs.len() > self.0.api_settings.max_arguments as usize {
+            let closure =
+                async move || Err(ApiError::TooManyArguments("too many arguments".into()));
+            return Box::pin(closure());
+        }
+
+        let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
+        for ReadOnlyCall {
+            max_gas,
+            simulated_gas_price,
+            target_address,
+            target_function,
+            parameter,
+            caller_address,
+        } in reqs
+        {
+            let caller_address = caller_address.unwrap_or_else(|| {
+                // if no addr provided, use a random one
+                Address::from_public_key(&derive_public_key(&generate_random_private_key()))
+            });
+
+            // TODO:
+            // * set a maximum gas value for read-only executions to prevent attacks
+            // * stop mapping request and result, reuse execution's structures
+            // * remove async stuff
+
+            // translate request
+            let req = ReadOnlyExecutionRequest {
+                max_gas,
+                simulated_gas_price,
+                target: ReadOnlyExecutionTarget::FunctionCall {
+                    target_func: target_function,
+                    target_addr: target_address,
+                    parameter,
+                },
+                call_stack: vec![
+                    ExecutionStackElement {
+                        address: caller_address,
+                        coins: Default::default(),
+                        owned_addresses: vec![caller_address],
+                    },
+                    ExecutionStackElement {
+                        address: target_address,
+                        coins: Default::default(),
+                        owned_addresses: vec![target_address],
+                    },
+                ],
+            };
+
+            // run
+            let result = self.0.execution_controller.execute_readonly_request(req);
+
+            // map result
+            let result = ExecuteReadOnlyResponse {
+                executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
+                result: result.as_ref().map_or_else(
+                    |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
+                    |_| ReadOnlyResult::Ok,
+                ),
+                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
             };
 
             res.push(result);
@@ -150,11 +226,19 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<Set<Address>>()
     }
 
-    fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    fn node_ban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
     }
 
-    fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    fn node_ban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
+
+    fn node_unban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
+
+    fn node_unban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
     }
 
@@ -620,7 +704,7 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    /// Get events optionnally filtered by:
+    /// Get events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address
@@ -628,25 +712,23 @@ impl Endpoints for API<Public> {
     /// * operation id
     fn get_filtered_sc_output_event(
         &self,
-        EventFilter {
-            start,
-            end,
-            emitter_address,
-            original_caller_address,
-            original_operation_id,
-        }: EventFilter,
+        filter: EventFilter,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        // get events
-        let events = self.0.execution_controller.get_filtered_sc_output_event(
-            start,
-            end,
-            emitter_address,
-            original_caller_address,
-            original_operation_id,
-        );
+        let events = self
+            .0
+            .execution_controller
+            .get_filtered_sc_output_event(filter);
 
-        // TODO get rid of the async part
+        // TODO: get rid of the async part
         let closure = async move || Ok(events);
         Box::pin(closure())
+    }
+
+    fn node_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
+
+    fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
     }
 }

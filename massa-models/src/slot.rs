@@ -8,13 +8,17 @@ use super::{
 };
 use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
 
+/// a point in time where a block is expected
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Slot {
+    /// period
     pub period: u64,
+    /// thread
     pub thread: u8,
 }
 
@@ -37,7 +41,27 @@ impl std::fmt::Display for Slot {
     }
 }
 
+impl FromStr for Slot {
+    type Err = ModelsError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let v: Vec<_> = s.split(',').collect();
+        if v.len() != 2 {
+            Err(ModelsError::DeserializeError(
+                "invalid slot format".to_string(),
+            ))
+        } else {
+            Ok(Slot::new(
+                v[0].parse::<u64>()
+                    .map_err(|_| ModelsError::DeserializeError("invalid period".to_string()))?,
+                v[1].parse::<u8>()
+                    .map_err(|_| ModelsError::DeserializeError("invalid thread".to_string()))?,
+            ))
+        }
+    }
+}
+
 impl Slot {
+    /// new slot from period and thread
     pub fn new(period: u64, thread: u8) -> Slot {
         Slot { period, thread }
     }
@@ -58,10 +82,12 @@ impl Slot {
         }
     }
 
+    /// first bit of the slot, for seed purpose
     pub fn get_first_bit(&self) -> bool {
         Hash::compute_from(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
     }
 
+    /// cycle associated to that slot
     pub fn get_cycle(&self, periods_per_cycle: u64) -> u64 {
         self.period / periods_per_cycle
     }

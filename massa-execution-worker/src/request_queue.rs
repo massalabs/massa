@@ -18,8 +18,8 @@ impl<T, R> RequestWithResponseSender<T, R> {
     /// Create a new request with response sender
     ///
     /// # Arguments
-    /// * request: the underlying request of type T
-    /// * response_tx an std::mpsc::Sender to later send the execution output R (or an error)
+    /// * `request`: the underlying request of type T
+    /// * `response_tx`: an `std::mpsc::Sender` to later send the execution output R (or an error)
     pub fn new(request: T, response_tx: Sender<Result<R, ExecutionError>>) -> Self {
         RequestWithResponseSender {
             request,
@@ -45,8 +45,8 @@ impl<T, R> RequestWithResponseSender<T, R> {
 }
 
 /// Structure representing an execution request queue with maximal length.
-/// Each request is a RequestWithResponseSender that comes with an MPSC sender
-/// to return the exection result when the execution is over (or an error).
+/// Each request is a `RequestWithResponseSender` that comes with an MPSC sender
+/// to return the execution result when the execution is over (or an error).
 pub(crate) struct RequestQueue<T, R> {
     /// Max number of item in the queue.
     /// When the queue is full, extra new items are cancelled and dropped.
@@ -60,7 +60,7 @@ impl<T, R> RequestQueue<T, R> {
     /// Create a new request queue
     ///
     /// # Arguments
-    /// * max_items: the maximal number of items in the queue. When full, extra new elements are cancelled and dropped.
+    /// * `max_items`: the maximal number of items in the queue. When full, extra new elements are cancelled and dropped.
     pub fn new(max_items: usize) -> Self {
         RequestQueue {
             max_items,
@@ -68,9 +68,9 @@ impl<T, R> RequestQueue<T, R> {
         }
     }
 
-    /// Extends Self with the contents of another RequestQueue.
+    /// Extends Self with the contents of another `RequestQueue`.
     /// The contents of the incoming queue are appended last.
-    /// Excess items with respect to self.max_items are cancelled and dropped.
+    /// Excess items with respect to `self.max_items` are canceled and dropped.
     pub fn extend(&mut self, mut other: RequestQueue<T, R>) {
         // compute the number of available item slots
         let free_slots = self.max_items.saturating_sub(self.queue.len());
@@ -114,7 +114,7 @@ impl<T, R> RequestQueue<T, R> {
 
     /// Push a new element at the end of the queue.
     /// May fail if maximum capacity is reached,
-    /// in which case the request is cancelled and dropped.
+    /// in which case the request is canceled and dropped.
     ///
     /// # Returns
     /// The oldest element of the queue, or None if the queue is empty

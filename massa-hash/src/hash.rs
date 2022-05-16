@@ -37,18 +37,18 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// ```
     pub fn compute_from(data: &[u8]) -> Self {
         Hash(blake3::hash(data))
     }
 
-    /// Serialize a Hash using bs58 encoding with checksum.
+    /// Serialize a Hash using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// ```
@@ -60,7 +60,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized = hash.to_bytes();
     /// ```
@@ -72,7 +72,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized = hash.into_bytes();
     /// ```
@@ -80,12 +80,12 @@ impl Hash {
         *self.0.as_bytes()
     }
 
-    /// Deserialize using bs58 encoding with checksum.
+    /// Deserialize using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
@@ -108,7 +108,7 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized = hash.into_bytes();
     /// let deserialized: Hash = Hash::from_bytes(&serialized);
@@ -119,17 +119,17 @@ impl Hash {
 }
 
 impl ::serde::Serialize for Hash {
-    /// ::serde::Serialize trait for Hash
+    /// `::serde::Serialize` trait for Hash
     /// if the serializer is human readable,
-    /// serialization is done using serialize_bs58_check
-    /// else, it uses serialize_binary
+    /// serialization is done using `serialize_bs58_check`
+    /// else, it uses `serialize_binary`
     ///
     /// # Example
     ///
     /// Human readable serialization :
     /// ```
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = serde_json::to_string(&hash).unwrap();
     /// ```
@@ -144,16 +144,16 @@ impl ::serde::Serialize for Hash {
 }
 
 impl<'de> ::serde::Deserialize<'de> for Hash {
-    /// ::serde::Deserialize trait for Hash
+    /// `::serde::Deserialize` trait for Hash
     /// if the deserializer is human readable,
-    /// deserialization is done using deserialize_bs58_check
-    /// else, it uses deserialize_binary
+    /// deserialization is done using `deserialize_bs58_check`
+    /// else, it uses `deserialize_binary`
     ///
     /// # Example
     ///
     /// Human readable deserialization :
     /// ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = serde_json::to_string(&hash).unwrap();
