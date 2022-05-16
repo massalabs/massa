@@ -3,8 +3,8 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-mod signature_impl;
 mod error;
+mod signature_impl;
 
 pub use error::MassaSignatureError;
 pub use signature_impl::{

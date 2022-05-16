@@ -130,9 +130,9 @@ impl Hash {
     /// ```
     pub fn from_bs58_check_with_version(data: &str) -> Result<(u8, Hash), MassaHashError> {
         let bytes = data.as_bytes();
-        let version = bytes
-            .first()
-            .ok_or(MassaHashError::ParsingError("Invalid hash format".to_string()))?;
+        let version = bytes.first().ok_or(MassaHashError::ParsingError(
+            "Invalid hash format".to_string(),
+        ))?;
         let decoded_bs58_check = bs58::decode(bytes)
             .with_check(None)
             .into_vec()
