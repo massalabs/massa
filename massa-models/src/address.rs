@@ -132,8 +132,11 @@ impl Address {
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn from_bs58_check(data: &str) -> Result<Address, ModelsError> {
+        // HERE 2
         Ok(Address(
-            Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
+            Hash::from_bs58_check_with_version(data)
+                .map_err(|_| ModelsError::HashError)?
+                .1,
         ))
     }
 
@@ -152,7 +155,8 @@ impl Address {
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn to_bs58_check(&self) -> String {
-        self.0.to_bs58_check()
+        // HERE 1
+        format!("{}", self.0.to_bs58_check_with_version())
     }
 }
 
