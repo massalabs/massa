@@ -129,12 +129,12 @@ impl<
         match value {
             SetUpdateOrDelete::Set(value) => {
                 res.extend(0u32.to_varint_bytes());
-                res.extend(self.inner_serializer_set.serialize(&value)?);
+                res.extend(self.inner_serializer_set.serialize(value)?);
                 Ok(res)
             }
             SetUpdateOrDelete::Update(value) => {
                 res.extend(1u32.to_varint_bytes());
-                res.extend(self.inner_serializer_update.serialize(&value)?);
+                res.extend(self.inner_serializer_update.serialize(value)?);
                 Ok(res)
             }
             SetUpdateOrDelete::Delete => {
@@ -244,7 +244,7 @@ impl<T: Clone, ST: Serializer<T>> Serializer<SetOrDelete<T>> for SetOrDeleteSeri
         match value {
             SetOrDelete::Set(value) => {
                 res.extend(0u32.to_varint_bytes());
-                res.extend(self.inner_serializer.serialize(&value)?);
+                res.extend(self.inner_serializer.serialize(value)?);
                 Ok(res)
             }
             SetOrDelete::Delete => {
@@ -325,7 +325,7 @@ impl<T: Clone, ST: Serializer<T>> Serializer<SetOrKeep<T>> for SetOrKeepSerializ
         match value {
             SetOrKeep::Set(value) => {
                 res.extend(0u32.to_varint_bytes());
-                res.extend(self.inner_serializer.serialize(&value)?);
+                res.extend(self.inner_serializer.serialize(value)?);
                 Ok(res)
             }
             SetOrKeep::Keep => {

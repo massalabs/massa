@@ -127,6 +127,12 @@ impl AmountSerializer {
     }
 }
 
+impl Default for AmountSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<Amount> for AmountSerializer {
     fn serialize(&self, value: &Amount) -> Result<Vec<u8>, ModelsError> {
         Ok(value.0.to_varint_bytes())
@@ -140,6 +146,12 @@ impl AmountDeserializer {
     /// Create a new `AmountDeserializer`
     pub fn new() -> Self {
         Self
+    }
+}
+
+impl Default for AmountDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

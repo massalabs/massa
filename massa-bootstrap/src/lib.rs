@@ -191,7 +191,7 @@ async fn bootstrap_from_server(
     loop {
         match next_message_bootstrap {
             Some(BootstrapMessageClient::AskExecutionLedgerPart { .. }) => {
-                let (ledger_part, last_slot, ledger_changes) = match send_message_client(
+                let (ledger_data, cursor, last_slot, ledger_changes) = match send_message_client(
                     next_message_bootstrap.as_ref().unwrap(),
                     client,
                     write_timeout,
@@ -200,10 +200,11 @@ async fn bootstrap_from_server(
                 .await?
                 {
                     BootstrapMessageServer::ExecutionLedgerPart {
-                        ledger,
+                        data,
+                        cursor,
                         slot,
                         ledger_changes,
-                    } => (ledger, slot, ledger_changes),
+                    } => (data, cursor, slot, ledger_changes),
                     BootstrapMessageServer::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
                     }
@@ -213,10 +214,8 @@ async fn bootstrap_from_server(
                     }
                     other => return Err(BootstrapError::UnexpectedMessageServer(other)),
                 };
-                debug!("Execution ledger part = {:#?}", ledger_part);
                 *next_message_bootstrap = Some(BootstrapMessageClient::AskExecutionLedgerPart {
-                    // TODO: Aurelien change
-                    cursor: None,
+                    cursor: Some(cursor),
                     slot: Some(last_slot),
                 });
             }
@@ -716,16 +715,17 @@ async fn manage_bootstrap(
                     }?;
                 }
                 BootstrapMessageClient::AskExecutionLedgerPart { cursor, slot } => {
-                    let ledger_part = final_state.ledger.get_ledger_part(cursor).map_err(|_| {
-                        BootstrapError::GeneralError(
-                            "Error on fetching ledger part of execution".to_string(),
-                        )
-                    })?;
-                    debug!("Execution ledger part = {:#?}", ledger_part);
+                    let (data, cursor) =
+                        final_state.ledger.get_ledger_part(cursor).map_err(|_| {
+                            BootstrapError::GeneralError(
+                                "Error on fetching ledger part of execution".to_string(),
+                            )
+                        })?;
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(messages::BootstrapMessageServer::ExecutionLedgerPart {
-                            ledger: ledger_part,
+                            data,
+                            cursor,
                             slot: Slot::new(1, 0),
                             ledger_changes: ExecutionLedgerChanges::default(),
                         }),

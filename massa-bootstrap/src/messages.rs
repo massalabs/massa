@@ -3,7 +3,7 @@
 use massa_final_state::FinalStateBootstrap;
 use massa_graph::BootstrapableGraph;
 use massa_ledger::{
-    ExecutionLedgerSubset, LedgerChanges as ExecutionLedgerChanges,
+    LedgerChanges as ExecutionLedgerChanges,
     LedgerChangesDeserializer as ExecutionLedgerChangesDeserializer,
     LedgerChangesSerializer as ExecutionLedgerChangesSerializer, LedgerCursor,
     LedgerCursorDeserializer, LedgerCursorSerializer,
@@ -46,8 +46,10 @@ pub enum BootstrapMessageServer {
     },
     /// Part of the ledger of execution
     ExecutionLedgerPart {
-        /// Part of the execution ledger sent
-        ledger: ExecutionLedgerSubset,
+        /// Part of the execution ledger sent in a serialized way
+        data: Vec<u8>,
+        /// The next state of the cursor
+        cursor: LedgerCursor,
         /// Slot the ledger changes are attached to
         slot: Slot,
         /// Ledger change for addresses inferior to `address` of the client message.
@@ -98,15 +100,19 @@ impl SerializeCompact for BootstrapMessageServer {
                 res.extend(&final_state.to_bytes_compact()?);
             }
             BootstrapMessageServer::ExecutionLedgerPart {
-                ledger,
+                data,
+                cursor,
                 slot,
                 ledger_changes,
             } => {
+                let cursor_serializer = LedgerCursorSerializer::new();
+                let ledger_execution_serializer = ExecutionLedgerChangesSerializer::new();
                 res.extend(u32::from(MessageServerTypeId::ExecutionLedgerPart).to_varint_bytes());
-                res.extend(ledger.to_bytes_compact()?);
+                res.extend(u64::from(data.len() as u64).to_varint_bytes());
+                res.extend(data);
+                res.extend(&cursor_serializer.serialize(cursor)?);
                 res.extend(slot.to_bytes_compact()?);
-                let serializer = ExecutionLedgerChangesSerializer::new();
-                res.extend(serializer.serialize(ledger_changes)?);
+                res.extend(ledger_execution_serializer.serialize(ledger_changes)?);
             }
             BootstrapMessageServer::ExecutionLedgerFinished => {
                 res.extend(
@@ -168,17 +174,27 @@ impl DeserializeCompact for BootstrapMessageServer {
                 BootstrapMessageServer::FinalState { final_state }
             }
             MessageServerTypeId::ExecutionLedgerPart => {
-                let (ledger, delta) = ExecutionLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
+                let cursor_deserializer = LedgerCursorDeserializer::new();
+                let ledger_execution_deserializer = ExecutionLedgerChangesDeserializer::new();
+
+                let (data_len, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+
+                let data = &buffer[cursor..cursor + data_len as usize];
+                cursor += data_len as usize;
+
+                let (ledger_cursor, delta) = cursor_deserializer.deserialize(&buffer[cursor..])?;
                 cursor += delta;
 
                 let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                let deserializer = ExecutionLedgerChangesDeserializer::new();
-                let (ledger_changes, delta) = deserializer.deserialize(&buffer[cursor..])?;
+                let (ledger_changes, delta) =
+                    ledger_execution_deserializer.deserialize(&buffer[cursor..])?;
                 cursor += delta;
 
                 BootstrapMessageServer::ExecutionLedgerPart {
-                    ledger,
+                    data: data.to_vec(),
+                    cursor: ledger_cursor,
                     slot,
                     ledger_changes,
                 }

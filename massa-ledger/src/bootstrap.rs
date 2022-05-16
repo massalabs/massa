@@ -2,13 +2,20 @@
 
 //! Provides serializable structures for bootstrapping the `FinalLedger`
 
-use crate::{cursor::LedgerCursor, ExecutionLedgerSubset, LedgerEntry, LedgerError};
+use crate::{
+    cursor::{LedgerCursor, LedgerCursorStep},
+    LedgerEntry,
+};
 use massa_models::{
-    array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, DeserializeCompact,
-    DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
+    amount::AmountSerializer,
+    array_from_slice,
+    constants::{default::MAXIMUM_BYTES_MESSAGE_BOOTSTRAP, ADDRESS_SIZE_BYTES},
+    Address, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
+    Serializer,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::ops::Bound::{Excluded, Unbounded};
 
 /// Represents a snapshot of the ledger state,
 /// which is enough to fully bootstrap a `FinalLedger`
@@ -74,17 +81,69 @@ impl FinalLedgerBootstrapState {
     /// Get a part of the ledger
     /// Used for bootstrap
     /// Parameters:
-    /// * address: Address to start fetching
-    /// * batch_size: Size of the batch of address to return
+    /// * cursor: Where we stopped in the ledger
     ///
     /// Returns:
-    /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
+    /// A subset of the ledger starting at `cursor` and of size `MAXIMUM_BYTES_MESSAGE_BOOTSTRAP` bytes.
     pub fn get_ledger_part(
         &self,
         cursor: Option<LedgerCursor>,
-    ) -> Result<ExecutionLedgerSubset, LedgerError> {
+    ) -> Result<(Vec<u8>, LedgerCursor), ModelsError> {
+        let mut next_cursor = cursor.unwrap_or((
+            *self
+                .sorted_ledger
+                .first_key_value()
+                .ok_or_else(|| ModelsError::BufferError("Ledger empty".into()))?
+                .0,
+            LedgerCursorStep::Start,
+        ));
+        let mut data = Vec::new();
+        let amount_serializer = AmountSerializer::new();
+        for (addr, entry) in self.sorted_ledger.range(next_cursor.0..) {
+            // No match because we want to be able to pass in all if in one loop
+            if let LedgerCursorStep::Finish = next_cursor.1 {
+                next_cursor.1 = LedgerCursorStep::Start;
+                next_cursor.0 = *addr;
+            }
+            if let LedgerCursorStep::Start = next_cursor.1 {
+                data.extend(addr.to_bytes());
+                next_cursor.1 = LedgerCursorStep::Balance;
+                if data.len() as u32 > MAXIMUM_BYTES_MESSAGE_BOOTSTRAP {
+                    return Ok((data, next_cursor));
+                }
+            }
+            if let LedgerCursorStep::Balance = next_cursor.1 {
+                data.extend(amount_serializer.serialize(&entry.parallel_balance)?);
+                next_cursor.1 = LedgerCursorStep::StartDatastore;
+                if data.len() as u32 > MAXIMUM_BYTES_MESSAGE_BOOTSTRAP {
+                    return Ok((data, next_cursor));
+                }
+            }
+            if let LedgerCursorStep::StartDatastore = next_cursor.1 {
+                for (key, value) in &entry.datastore {
+                    data.extend(key.to_bytes());
+                    data.extend((value.len() as u64).to_varint_bytes());
+                    data.extend(value);
+                    next_cursor.1 = LedgerCursorStep::Datastore(*key);
+                    if data.len() as u32 > MAXIMUM_BYTES_MESSAGE_BOOTSTRAP {
+                        return Ok((data, next_cursor));
+                    }
+                }
+            }
+            if let LedgerCursorStep::Datastore(key) = next_cursor.1 {
+                for (key, value) in entry.datastore.range((Excluded(key), Unbounded)) {
+                    data.extend(key.to_bytes());
+                    data.extend((value.len() as u64).to_varint_bytes());
+                    data.extend(value);
+                    next_cursor.1 = LedgerCursorStep::Datastore(*key);
+                    if data.len() as u32 > MAXIMUM_BYTES_MESSAGE_BOOTSTRAP {
+                        return Ok((data, next_cursor));
+                    }
+                }
+            }
+        }
         // Need to dereference because Prehashed trait is not implemented for &Address
         // TODO: Reimplement it
-        Err(LedgerError::ContainerInconsistency("wip".into()))
+        Err(ModelsError::SerializeError("wip".into()))
     }
 }

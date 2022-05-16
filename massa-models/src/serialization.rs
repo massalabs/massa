@@ -318,6 +318,12 @@ impl VecU8Serializer {
     }
 }
 
+impl Default for VecU8Serializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<Vec<u8>> for VecU8Serializer {
     fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, ModelsError> {
         let mut res = Vec::new();
@@ -337,6 +343,12 @@ impl VecU8Deserializer {
     /// Creates a new `VecU8Deserializer`
     pub fn new() -> Self {
         Self
+    }
+}
+
+impl Default for VecU8Deserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

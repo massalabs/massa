@@ -201,6 +201,12 @@ impl LedgerChangesSerializer {
     }
 }
 
+impl Default for LedgerChangesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     fn serialize(&self, value: &LedgerChanges) -> Result<Vec<u8>, ModelsError> {
         let mut res = Vec::new();
@@ -235,6 +241,12 @@ impl LedgerChangesDeserializer {
                 LedgerEntryUpdateDeserializer::new(),
             ),
         }
+    }
+}
+
+impl Default for LedgerChangesDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
