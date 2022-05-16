@@ -413,6 +413,61 @@ impl ExecutionContext {
         self.speculative_ledger.set_data_entry(address, key, data)
     }
 
+    /// Appends data to a datastore entry for an address in the speculative ledger.
+    /// Fail if the address is absent from the ledger.
+    /// Fails if the datastore entry is absent for that address.
+    ///
+    /// # Arguments
+    /// * address: the address of the ledger entry
+    /// * key: the datastore key
+    /// * data: the data to append
+    pub fn append_data_entry(
+        &mut self,
+        address: &Address,
+        key: Hash,
+        data: Vec<u8>,
+    ) -> Result<(), ExecutionError> {
+        // check access right
+        if !self.has_write_rights_on(address) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "appending to the datastore of address {} is not allowed in this context",
+                address
+            )));
+        }
+
+        // get current data entry
+        let mut res_data = match self.speculative_ledger.get_data_entry(address, &key) {
+            Some(v) => v,
+            None => {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "appending to the datastore of address {} failed: entry {} not found",
+                    address, key
+                )))
+            }
+        };
+
+        // append data
+        res_data.extend(data);
+
+        // set data entry
+        self.speculative_ledger
+            .set_data_entry(address, key, res_data)
+    }
+
+    /// Deletes a datastore entry for an address.
+    /// Fails if the address or the entry does not exist.
+    ///
+    /// # Arguments
+    /// * address: the address of the ledger entry
+    /// * key: the datastore key
+    pub fn delete_data_entry(
+        &mut self,
+        address: &Address,
+        key: &Hash,
+    ) -> Result<(), ExecutionError> {
+        self.speculative_ledger.delete_data_entry(address, key)
+    }
+
     /// Transfers parallel coins from one address to another.
     /// No changes are retained in case of failure.
     /// Spending is only allowed from existing addresses we have write access on
