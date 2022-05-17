@@ -55,7 +55,7 @@ impl FromStr for PrivateKey {
 }
 
 impl PrivateKey {
-    /// Serialize a PrivateKey using bs58 encoding with checksum.
+    /// Serialize a `PrivateKey` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -69,7 +69,7 @@ impl PrivateKey {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
-    /// Serialize a PrivateKey as bytes.
+    /// Serialize a `PrivateKey` as bytes.
     ///
     /// # Example
     ///  ```
@@ -85,7 +85,7 @@ impl PrivateKey {
         self.0.secret_bytes()
     }
 
-    /// Serialize a PrivateKey into bytes.
+    /// Serialize a `PrivateKey` into bytes.
     ///
     /// # Example
     ///  ```
@@ -99,7 +99,7 @@ impl PrivateKey {
         self.0.secret_bytes()
     }
 
-    /// Deserialize a PrivateKey using bs58 encoding with checksum.
+    /// Deserialize a `PrivateKey` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -130,7 +130,7 @@ impl PrivateKey {
             })
     }
 
-    /// Deserialize a PrivateKey from bytes.
+    /// Deserialize a `PrivateKey` from bytes.
     ///
     /// # Example
     ///  ```
@@ -156,10 +156,10 @@ impl PrivateKey {
 }
 
 impl ::serde::Serialize for PrivateKey {
-    /// ::serde::Serialize trait for PrivateKey
+    /// `::serde::Serialize` trait for `PrivateKey`
     /// if the serializer is human readable,
-    /// serialization is done using serialize_bs58_check
-    /// else, it uses serialize_binary
+    /// serialization is done using `serialize_bs58_check`
+    /// else, it uses `serialize_binary`
     ///
     /// # Example
     ///
@@ -181,10 +181,10 @@ impl ::serde::Serialize for PrivateKey {
 }
 
 impl<'de> ::serde::Deserialize<'de> for PrivateKey {
-    /// ::serde::Deserialize trait for PrivateKey
+    /// `::serde::Deserialize` trait for `PrivateKey`
     /// if the deserializer is human readable,
-    /// deserialization is done using deserialize_bs58_check
-    /// else, it uses deserialize_binary
+    /// deserialization is done using `deserialize_bs58_check`
+    /// else, it uses `deserialize_binary`
     ///
     /// # Example
     ///
@@ -251,8 +251,8 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
 }
 
 /// Public key used to check if a message was encoded
-/// by the corresponding PublicKey.
-/// Generated from the PrivateKey using SignatureEngine
+/// by the corresponding `PublicKey`.
+/// Generated from the `PrivateKey` using `SignatureEngine`
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PublicKey(secp256k1::XOnlyPublicKey);
 
@@ -289,7 +289,7 @@ impl FromStr for PublicKey {
 }
 
 impl PublicKey {
-    /// Serialize a PublicKey using bs58 encoding with checksum.
+    /// Serialize a `PublicKey` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -304,7 +304,7 @@ impl PublicKey {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
-    /// Serialize a PublicKey as bytes.
+    /// Serialize a `PublicKey` as bytes.
     ///
     /// # Example
     ///  ```
@@ -334,7 +334,7 @@ impl PublicKey {
         self.0.serialize()
     }
 
-    /// Deserialize a PublicKey using bs58 encoding with checksum.
+    /// Deserialize a `PublicKey` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -366,7 +366,7 @@ impl PublicKey {
             })
     }
 
-    /// Deserialize a PublicKey from bytes.
+    /// Deserialize a `PublicKey` from bytes.
     ///
     /// # Example
     ///  ```
@@ -393,10 +393,10 @@ impl PublicKey {
 }
 
 impl ::serde::Serialize for PublicKey {
-    /// ::serde::Serialize trait for PublicKey
+    /// `::serde::Serialize` trait for `PublicKey`
     /// if the serializer is human readable,
-    /// serialization is done using serialize_bs58_check
-    /// else, it uses serialize_binary
+    /// serialization is done using `serialize_bs58_check`
+    /// else, it uses `serialize_binary`
     ///
     /// # Example
     ///
@@ -420,10 +420,10 @@ impl ::serde::Serialize for PublicKey {
 }
 
 impl<'de> ::serde::Deserialize<'de> for PublicKey {
-    /// ::serde::Deserialize trait for PublicKey
+    /// `::serde::Deserialize` trait for `PublicKey`
     /// if the deserializer is human readable,
-    /// deserialization is done using deserialize_bs58_check
-    /// else, it uses deserialize_binary
+    /// deserialization is done using `deserialize_bs58_check`
+    /// else, it uses `deserialize_binary`
     ///
     /// # Example
     ///
@@ -491,7 +491,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     }
 }
 
-/// Signature generated from a message and a privateKey.
+/// Signature generated from a message and a `PrivateKey`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Signature(schnorr::Signature);
 
@@ -528,7 +528,7 @@ impl FromStr for Signature {
 }
 
 impl Signature {
-    /// Serialize a Signature using bs58 encoding with checksum.
+    /// Serialize a `Signature` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -579,7 +579,7 @@ impl Signature {
         *self.0.as_ref()
     }
 
-    /// Deserialize a Signature using bs58 encoding with checksum.
+    /// Deserialize a `Signature` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -637,10 +637,10 @@ impl Signature {
 }
 
 impl ::serde::Serialize for Signature {
-    /// ::serde::Serialize trait for Signature
+    /// `::serde::Serialize` trait for `Signature`
     /// if the serializer is human readable,
-    /// serialization is done using to_bs58_check
-    /// else, it uses to_bytes
+    /// serialization is done using `to_bs58_check`
+    /// else, it uses `to_bytes`
     ///
     /// # Example
     ///
@@ -666,10 +666,10 @@ impl ::serde::Serialize for Signature {
 }
 
 impl<'de> ::serde::Deserialize<'de> for Signature {
-    /// ::serde::Deserialize trait for Signature
+    /// `::serde::Deserialize` trait for `Signature`
     /// if the deserializer is human readable,
-    /// deserialization is done using from_bs58_check
-    /// else, it uses from_bytes
+    /// deserialization is done using `from_bs58_check`
+    /// else, it uses `from_bytes`
     ///
     /// # Example
     ///
@@ -770,8 +770,8 @@ pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaSig
     Ok(Signature(SECP256K1.sign_schnorr(&message, &private_key.0)))
 }
 
-/// Checks if the Signature associated with data bytes
-/// was produced with the PrivateKey associated to given PublicKey
+/// Checks if the `Signature` associated with data bytes
+/// was produced with the `PrivateKey` associated to given `PublicKey`
 ///
 /// # Example
 ///  ```
