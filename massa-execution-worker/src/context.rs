@@ -436,15 +436,15 @@ impl ExecutionContext {
         }
 
         // get current data entry
-        let mut res_data = match self.speculative_ledger.get_data_entry(address, &key) {
-            Some(v) => v,
-            None => {
-                return Err(ExecutionError::RuntimeError(format!(
+        let mut res_data = self
+            .speculative_ledger
+            .get_data_entry(address, &key)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(format!(
                     "appending to the datastore of address {} failed: entry {} not found",
                     address, key
-                )))
-            }
-        };
+                ))
+            })?;
 
         // append data
         res_data.extend(data);
