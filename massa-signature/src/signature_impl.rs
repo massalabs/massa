@@ -9,14 +9,13 @@ use std::{convert::TryInto, str::FromStr};
 pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
 /// Size of a public key
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
-/// S size of a signature
+/// Size of a signature
 pub const SIGNATURE_SIZE_BYTES: usize = 64;
 const PRIVATE_KEY_STRING_PREFIX: &str = "PRI";
 const PUBLIC_KEY_STRING_PREFIX: &str = "PUB";
 const SIGNATURE_STRING_PREFIX: &str = "SIG";
 
-/// Private Key used to sign messages.
-/// Generated using SignatureEngine.
+/// `PrivateKey` used to sign messages.
 /// Schnorr signatures require a [KeyPair](secp256k1::KeyPair) to be signed.
 /// The KeyPair is generated when deserializing a private key.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
