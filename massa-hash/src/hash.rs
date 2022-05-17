@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use nom::IResult;
+
 use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
 use std::{convert::TryInto, str::FromStr};
@@ -109,6 +111,27 @@ impl Hash {
         Ok(Hash(
             bitcoin_hashes::sha256::Hash::from_slice(&data[..])
                 .map_err(|err| MassaHashError::ParsingError(format!("{}", err)))?,
+        ))
+    }
+
+    /// nom combinator to deserialize a hash
+    pub fn nom_deserialize(buffer: &[u8]) -> IResult<&[u8], Hash> {
+        if buffer.len() < HASH_SIZE_BYTES {
+            return Err(nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::LengthValue,
+            )));
+        }
+        use bitcoin_hashes::Hash;
+        Ok((
+            &buffer[HASH_SIZE_BYTES..],
+            Hash(
+                bitcoin_hashes::sha256::Hash::from_slice(&buffer[..HASH_SIZE_BYTES]).map_err(
+                    |_| {
+                        nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::Fail))
+                    },
+                )?,
+            ),
         ))
     }
 }

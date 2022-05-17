@@ -3,7 +3,6 @@
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
 use crate::serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use crate::{Deserializer, ModelsError, Serializer};
-use nom::error::ErrorKind;
 use nom::IResult;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
@@ -201,7 +200,7 @@ impl Serializer<Amount> for AmountSerializer {
     fn serialize(&self, value: &Amount) -> Result<Vec<u8>, ModelsError> {
         let amount_serializer =
             U64VarIntSerializer::new(Bound::Included(0), Bound::Included(u64::MAX));
-        Ok(amount_serializer.serialize(&value.0)?)
+        amount_serializer.serialize(&value.0)
     }
 }
 
@@ -222,10 +221,7 @@ impl Default for AmountDeserializer {
 }
 
 impl Deserializer<Amount> for AmountDeserializer {
-    fn deserialize<'a>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Amount, (&'a [u8], ErrorKind)> {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Amount> {
         let u64_deserializer =
             U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX));
         let (rest, raw) = u64_deserializer.deserialize(buffer)?;

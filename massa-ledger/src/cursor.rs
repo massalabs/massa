@@ -1,7 +1,6 @@
-use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_models::{
-    array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, Deserializer, ModelsError, Serializer,
-};
+use massa_hash::Hash;
+use massa_models::{Address, Deserializer, ModelsError, Serializer};
+use nom::IResult;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LedgerCursorStep {
@@ -46,22 +45,20 @@ impl LedgerCursorStepDeserializer {
 }
 
 impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
-    fn deserialize(&self, bytes: &[u8]) -> Result<(LedgerCursorStep, usize), ModelsError> {
-        let mut cursor = 0;
-        match bytes[cursor] {
-            0 => Ok((LedgerCursorStep::Start, cursor + 1)),
-            1 => Ok((LedgerCursorStep::Balance, cursor + 1)),
-            2 => Ok((LedgerCursorStep::Bytecode, cursor + 1)),
+    fn deserialize<'a>(&self, bytes: &'a [u8]) -> IResult<&'a [u8], LedgerCursorStep> {
+        match bytes[0] {
+            0 => Ok((&bytes[1..], LedgerCursorStep::Start)),
+            1 => Ok((&bytes[1..], LedgerCursorStep::Balance)),
+            2 => Ok((&bytes[1..], LedgerCursorStep::Bytecode)),
             3 => {
-                cursor += 1;
-                let key = Hash::from_bytes(&array_from_slice(&bytes[cursor..])?)?;
-                cursor += HASH_SIZE_BYTES;
-                Ok((LedgerCursorStep::Datastore(key), cursor))
+                let (rest, key) = Hash::nom_deserialize(&bytes[1..])?;
+                Ok((rest, LedgerCursorStep::Datastore(key)))
             }
-            4 => Ok((LedgerCursorStep::Finish, cursor + 1)),
-            _ => Err(ModelsError::DeserializeError(
-                "Unknown cursor step".to_string(),
-            )),
+            4 => Ok((&bytes[1..], LedgerCursorStep::Finish)),
+            _ => Err(nom::Err::Error(nom::error::Error::new(
+                bytes,
+                nom::error::ErrorKind::Digit,
+            ))),
         }
     }
 }
@@ -120,14 +117,9 @@ impl Default for LedgerCursorDeserializer {
 }
 
 impl Deserializer<LedgerCursor> for LedgerCursorDeserializer {
-    fn deserialize(&self, bytes: &[u8]) -> Result<(LedgerCursor, usize), ModelsError> {
-        let mut cursor = 0;
-        let address = Address::from_bytes(&array_from_slice(&bytes[cursor..])?)?;
-        cursor += ADDRESS_SIZE_BYTES;
-        let (step, delta) = self
-            .bootstrap_cursor_step_deserializer
-            .deserialize(&bytes[cursor..])?;
-        cursor += delta;
-        Ok((LedgerCursor(address, step), cursor))
+    fn deserialize<'a>(&self, bytes: &'a [u8]) -> IResult<&'a [u8], LedgerCursor> {
+        let (rest, address) = Address::nom_deserialize(bytes)?;
+        let (rest, step) = self.bootstrap_cursor_step_deserializer.deserialize(&rest)?;
+        Ok((rest, LedgerCursor(address, step)))
     }
 }

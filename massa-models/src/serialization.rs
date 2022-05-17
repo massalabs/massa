@@ -4,7 +4,6 @@ use crate::error::ModelsError;
 use crate::Amount;
 use integer_encoding::VarInt;
 use massa_time::MassaTime;
-use nom::error::ErrorKind;
 use nom::IResult;
 use std::convert::TryInto;
 use std::net::IpAddr;
@@ -12,7 +11,7 @@ use std::net::IpAddr;
 /// TODO: Doc
 pub trait Deserializer<T> {
     /// TODO: Doc
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], T, (&'a [u8], ErrorKind)>;
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], T>;
 }
 
 /// TODO: Doc
@@ -47,6 +46,9 @@ macro_rules! gen_varint {
                 }
 
                 impl $s {
+                    #[doc = "Create a basic serializer for "]
+                    #[doc = $d]
+                    #[doc = " in a varint form."]
                     #[allow(dead_code)]
                     pub fn new(min: Bound<$type>, max: Bound<$type>) -> Self {
                         Self {
@@ -72,6 +74,9 @@ macro_rules! gen_varint {
                 }
 
                 impl $ds {
+                    #[doc = "Create a basic deserializer for "]
+                    #[doc = $d]
+                    #[doc = " in a varint form."]
                     #[allow(dead_code)]
                     pub fn new(min: Bound<$type>, max: Bound<$type>) -> Self {
                         Self {
@@ -81,11 +86,10 @@ macro_rules! gen_varint {
                 }
 
                 impl Deserializer<$type> for $ds {
-                    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], $type, (&'a [u8], ErrorKind)> {
+                    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], $type> {
                         let (rest, value) = unsigned_nom::$type(buffer)?;
                         if !self.range.contains(&value) {
-                            //TODO: Change value
-                            return Err(nom::Err::Failure((buffer, nom::error::ErrorKind::LengthValue)));
+                            return Err(nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::TooLarge)));
                         }
                         Ok((rest, value))
                     }
@@ -424,15 +428,12 @@ impl Default for VecU8Deserializer {
 }
 
 impl Deserializer<Vec<u8>> for VecU8Deserializer {
-    fn deserialize<'a>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Vec<u8>, (&'a [u8], ErrorKind)> {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Vec<u8>> {
         let len_deserializer =
             U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX));
         let (buffer, len) = len_deserializer.deserialize(buffer)?;
         if (buffer.len() as u64) < len {
-            return Err(nom::Err::Failure((
+            return Err(nom::Err::Failure(nom::error::Error::new(
                 buffer,
                 nom::error::ErrorKind::LengthValue,
             )));

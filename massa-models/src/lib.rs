@@ -18,7 +18,8 @@ pub use operation::{Operation, OperationId, OperationType, SignedOperation};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
     Deserializer, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Serializer,
-    VecU8Deserializer, VecU8Serializer,
+    U16VarIntDeserializer, U16VarIntSerializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer, VecU8Deserializer, VecU8Serializer,
 };
 pub use serialization_context::{
     get_serialization_context, init_serialization_context, with_serialization_context,

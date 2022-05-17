@@ -8,6 +8,7 @@ use crate::{
 };
 use massa_hash::Hash;
 use massa_signature::PublicKey;
+use nom::IResult;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -155,6 +156,14 @@ impl Address {
     /// ```
     pub fn to_bs58_check(&self) -> String {
         self.0.to_bs58_check()
+    }
+
+    /// Nom combinator to deserialize hash
+    pub fn nom_deserialize(buffer: &[u8]) -> IResult<&[u8], Address> {
+        Ok((
+            &buffer[ADDRESS_SIZE_BYTES..],
+            Address(Hash::nom_deserialize(buffer)?.1),
+        ))
     }
 }
 
