@@ -455,7 +455,7 @@ impl ExecutionContext {
     }
 
     /// Deletes a datastore entry for an address.
-    /// Fails if the address or the entry does not exist.
+    /// Fails if the address or the entry does not exist or if write access rights are missing.
     ///
     /// # Arguments
     /// * address: the address of the ledger entry
@@ -465,6 +465,15 @@ impl ExecutionContext {
         address: &Address,
         key: &Hash,
     ) -> Result<(), ExecutionError> {
+        // check access right
+        if !self.has_write_rights_on(address) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "appending to the datastore of address {} is not allowed in this context",
+                address
+            )));
+        }
+
+        // delete entry
         self.speculative_ledger.delete_data_entry(address, key)
     }
 
