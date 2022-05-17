@@ -8,7 +8,6 @@ pub enum LedgerCursorStep {
     Start,
     Balance,
     Bytecode,
-    StartDatastore,
     Datastore(Hash),
     Finish,
 }
@@ -28,13 +27,12 @@ impl Serializer<LedgerCursorStep> for LedgerCursorStepSerializer {
             LedgerCursorStep::Start => Ok(vec![0]),
             LedgerCursorStep::Balance => Ok(vec![1]),
             LedgerCursorStep::Bytecode => Ok(vec![2]),
-            LedgerCursorStep::StartDatastore => Ok(vec![3]),
             LedgerCursorStep::Datastore(key) => {
-                let mut bytes = vec![4];
+                let mut bytes = vec![3];
                 bytes.extend(key.to_bytes());
                 Ok(bytes)
             }
-            LedgerCursorStep::Finish => Ok(vec![5]),
+            LedgerCursorStep::Finish => Ok(vec![4]),
         }
     }
 }
@@ -54,14 +52,13 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
             0 => Ok((LedgerCursorStep::Start, cursor + 1)),
             1 => Ok((LedgerCursorStep::Balance, cursor + 1)),
             2 => Ok((LedgerCursorStep::Bytecode, cursor + 1)),
-            3 => Ok((LedgerCursorStep::StartDatastore, cursor + 1)),
-            4 => {
+            3 => {
                 cursor += 1;
                 let key = Hash::from_bytes(&array_from_slice(&bytes[cursor..])?)?;
                 cursor += HASH_SIZE_BYTES;
                 Ok((LedgerCursorStep::Datastore(key), cursor))
             }
-            5 => Ok((LedgerCursorStep::Finish, cursor + 1)),
+            4 => Ok((LedgerCursorStep::Finish, cursor + 1)),
             _ => Err(ModelsError::DeserializeError(
                 "Unknown cursor step".to_string(),
             )),
