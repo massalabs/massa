@@ -66,7 +66,7 @@ impl Hash {
     /// ```
     pub fn to_bs58_check(&self) -> String {
         let mut bytes: Vec<u8> = Vec::with_capacity(HASH_SIZE_BYTES + 1);
-        bytes = self.to_bytes().to_vec();
+        bytes.append(&mut self.to_bytes().to_vec());
         bytes.push(HASH_VERSION);
         bs58::encode(bytes).with_check().into_string()
     }
