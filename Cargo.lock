@@ -1655,6 +1655,7 @@ dependencies = [
 name = "massa_models"
 version = "0.1.0"
 dependencies = [
+ "bs58",
  "config",
  "directories",
  "displaydoc",

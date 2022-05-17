@@ -170,7 +170,7 @@ impl Interface for InterfaceImpl {
     /// The string representation of the newly created address
     fn create_module(&self, bytecode: &[u8]) -> Result<String> {
         match context_guard!(self).create_new_sc_address(bytecode.to_vec()) {
-            Ok(addr) => Ok(addr.to_bs58_check()),
+            Ok(addr) => Ok(addr.to_string()),
             Err(err) => bail!("couldn't create new SC address: {}", err),
         }
     }
@@ -184,7 +184,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
-        let addr = &massa_models::Address::from_bs58_check(address)?;
+        let addr = &massa_models::Address::from_str(address)?;
         let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         match context.get_data_entry(addr, &key) {
@@ -359,7 +359,7 @@ impl Interface for InterfaceImpl {
         Ok(context_guard!(self)
             .get_current_owned_addresses()?
             .into_iter()
-            .map(|addr| addr.to_bs58_check())
+            .map(|addr| addr.to_string())
             .collect())
     }
 
@@ -371,7 +371,7 @@ impl Interface for InterfaceImpl {
         Ok(context_guard!(self)
             .get_call_stack()
             .into_iter()
-            .map(|addr| addr.to_bs58_check())
+            .map(|addr| addr.to_string())
             .collect())
     }
 

@@ -28,6 +28,8 @@ pub enum ModelsError {
     PeriodOverflowError,
     /// amount parse error
     AmountParseError(String),
+    /// address par error
+    AddressParseError,
     /// checked operation error
     CheckedOperationError(String),
     /// invalid version identifier: {0}

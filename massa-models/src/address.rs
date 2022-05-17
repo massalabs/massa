@@ -1,11 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::prehash::PreHashed;
-use crate::ModelsError;
 use crate::{
     api::{LedgerInfo, RollsInfo},
     constants::ADDRESS_SIZE_BYTES,
 };
+use crate::{DeserializeVarInt, ModelsError, SerializeVarInt};
 use massa_hash::Hash;
 use massa_signature::PublicKey;
 use serde::{Deserialize, Serialize};
@@ -14,38 +14,60 @@ use std::str::FromStr;
 /// Derived from a public key
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Address(pub Hash);
-const ADDRESS_STRING_PREFIX: &str = "ADR";
+
+const ADDRESS_PREFIX: char = 'A';
+const ADDRESS_VERSION: u64 = 0;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(f, "{}-{}", ADDRESS_STRING_PREFIX, self.0.to_bs58_check())
-        } else {
-            write!(f, "{}", self.0.to_bs58_check())
-        }
+        // note: might want to allocate the vector with capacity
+        // in order to avoid re-allocation
+        let mut bytes: Vec<u8> = ADDRESS_VERSION.to_varint_bytes();
+        bytes.extend(self.0.to_bytes());
+        write!(
+            f,
+            "{}{}",
+            ADDRESS_PREFIX,
+            bs58::encode(bytes).with_check().into_string()
+        )
     }
 }
 
 impl FromStr for Address {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if cfg!(feature = "hash-prefix") {
-            let v: Vec<_> = s.split('-').collect();
-            if v.len() != 2 {
-                // assume there is no prefix
-                Ok(Address(Hash::from_str(s)?))
-            } else if v[0] != ADDRESS_STRING_PREFIX {
-                Err(ModelsError::WrongPrefix(
-                    ADDRESS_STRING_PREFIX.to_string(),
-                    v[0].to_string(),
-                ))
-            } else {
-                Ok(Address(Hash::from_str(v[1])?))
+        let mut chars = s.chars();
+        match chars.next() {
+            Some(prefix) if prefix == ADDRESS_PREFIX => {
+                let data = chars.collect::<String>();
+                let mut decoded_bs58_check = bs58::decode(data)
+                    .with_check(None)
+                    .into_vec()
+                    .map_err(|_| ModelsError::AddressParseError)?;
+                let (_version, size) = u64::from_varint_bytes(&decoded_bs58_check[..])
+                    .map_err(|_| ModelsError::AddressParseError)?;
+                decoded_bs58_check.drain(0..size);
+                Ok(Address(Hash::from_bytes(
+                    &decoded_bs58_check
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| ModelsError::AddressParseError)?,
+                )))
             }
-        } else {
-            Ok(Address(Hash::from_str(s)?))
+            _ => Err(ModelsError::AddressParseError),
         }
     }
+}
+
+#[test]
+fn test_address_str_format() {
+    use massa_signature::{derive_public_key, generate_random_private_key};
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
+    let address = Address::from_public_key(&public_key);
+    let a = address.to_string();
+    let b = Address::from_str(&a).unwrap();
+    assert!(address == b);
 }
 
 impl PreHashed for Address {}
