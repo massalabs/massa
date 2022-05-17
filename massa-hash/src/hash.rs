@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::MassaHashError;
-use crate::settings::{HASH_SIZE_BYTES};
+use crate::settings::HASH_SIZE_BYTES;
 use std::{cmp::Ordering, convert::TryInto, str::FromStr};
 
 /// Hash wrapper, the underlying hash type is Blake3
