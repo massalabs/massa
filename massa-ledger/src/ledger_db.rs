@@ -28,7 +28,7 @@ macro_rules! data_key {
     };
 }
 
-// note: 1 cf for ledger 1 cf for ledger_metadata
+// IMPORTANT TODO: 1 cf for ledger 1 cf for ledger_metadata
 
 impl LedgerDB {
     pub fn new() -> Self {

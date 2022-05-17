@@ -10,9 +10,9 @@ use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_graph::{DiscardReason, ExportBlockStatus};
-use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall, SCELedgerInfo};
+use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::execution::ReadOnlyResult;
-use massa_models::SignedOperation;
+use massa_models::{Amount, SignedOperation};
 
 use massa_models::{
     api::{
@@ -542,9 +542,9 @@ impl Endpoints for API<Public> {
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
             let mut endorsements: Map<Address, Set<EndorsementId>> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut final_sce_ledger_info: Map<Address, SCELedgerInfo> =
+            let mut final_balances: Map<Address, Amount> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut candidate_sce_ledger_info: Map<Address, SCELedgerInfo> =
+            let mut candidates_balances: Map<Address, Amount> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
 
             let mut concurrent_getters = FuturesUnordered::new();
@@ -577,39 +577,8 @@ impl Endpoints for API<Public> {
                         .chain(get_consensus_eds?.into_keys())
                         .collect();
 
-                    let (final_sce, candidate_sce) =
-                        // note: here 3 = résumé = balance, taille datastore
-                        match exec_snd.get_final_and_active_ledger_entry(&address) {
-                            (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
-                            (None, Some(candidate)) => (
-                                SCELedgerInfo::default(),
-                                SCELedgerInfo {
-                                    balance: candidate.parallel_balance,
-                                    module: candidate.bytecode,
-                                    datastore: candidate.datastore.into_iter().collect(),
-                                },
-                            ),
-                            (Some(final_entry), None) => (
-                                SCELedgerInfo {
-                                    balance: final_entry.parallel_balance,
-                                    module: final_entry.bytecode,
-                                    datastore: final_entry.datastore.into_iter().collect(),
-                                },
-                                SCELedgerInfo::default(),
-                            ),
-                            (Some(final_entry), Some(candidate)) => (
-                                SCELedgerInfo {
-                                    balance: final_entry.parallel_balance,
-                                    module: final_entry.bytecode,
-                                    datastore: final_entry.datastore.into_iter().collect(),
-                                },
-                                SCELedgerInfo {
-                                    balance: candidate.parallel_balance,
-                                    module: candidate.bytecode,
-                                    datastore: candidate.datastore.into_iter().collect(),
-                                },
-                            ),
-                        };
+                    let (final_balance, candidate_balance) =
+                        exec_snd.get_final_and_active_parallel_balance(&address);
 
                     Result::<
                         (
@@ -617,8 +586,8 @@ impl Endpoints for API<Public> {
                             Set<BlockId>,
                             Set<OperationId>,
                             Set<EndorsementId>,
-                            SCELedgerInfo,
-                            SCELedgerInfo,
+                            Option<Amount>,
+                            Option<Amount>,
                         ),
                         ApiError,
                     >::Ok((
@@ -626,18 +595,18 @@ impl Endpoints for API<Public> {
                         blocks,
                         gathered,
                         gathered_ed,
-                        final_sce,
-                        candidate_sce,
+                        final_balance,
+                        candidate_balance,
                     ))
                 });
             }
             while let Some(res) = concurrent_getters.next().await {
-                let (a, bl_set, op_set, ed_set, final_sce, candidate_sce) = res?;
+                let (a, bl_set, op_set, ed_set, final_b, candidate_b) = res?;
                 operations.insert(a, op_set);
                 blocks.insert(a, bl_set);
                 endorsements.insert(a, ed_set);
-                final_sce_ledger_info.insert(a, final_sce);
-                candidate_sce_ledger_info.insert(a, candidate_sce);
+                final_balances.insert(a, final_b.unwrap_or_default());
+                candidates_balances.insert(a, candidate_b.unwrap_or_default());
             }
 
             // compile everything per address
@@ -673,10 +642,8 @@ impl Endpoints for API<Public> {
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                     production_stats: state.production_stats,
-                    final_sce_ledger_info: final_sce_ledger_info
-                        .remove(&address)
-                        .ok_or(ApiError::NotFound)?,
-                    candidate_sce_ledger_info: candidate_sce_ledger_info
+                    final_balance: final_balances.remove(&address).ok_or(ApiError::NotFound)?,
+                    candidate_balance: candidates_balances
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                 })

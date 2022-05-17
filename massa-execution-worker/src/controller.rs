@@ -9,10 +9,9 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
-use massa_ledger::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::Address;
+use massa_models::{Address, Amount};
 use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::HashMap;
@@ -94,18 +93,14 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_filtered_sc_output_event(filter)
     }
 
-    /// gets a copy of a full ledger entry
-    ///
-    /// # return value
-    /// * `(final_entry, active_entry)`
-    fn get_final_and_active_ledger_entry(
+    /// TODO: documentation
+    fn get_final_and_active_parallel_balance(
         &self,
-        addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        // note: here 2
+        address: &Address,
+    ) -> (Option<Amount>, Option<Amount>) {
         self.execution_state
             .read()
-            .get_final_and_active_ledger_entry(addr)
+            .get_final_and_active_parallel_balance(address)
     }
 
     /// Executes a read-only request

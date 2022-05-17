@@ -20,8 +20,8 @@ use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
-use massa_models::Slot;
 use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
+use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
@@ -769,18 +769,27 @@ impl ExecutionState {
         Ok(context_guard!(self).settle_slot())
     }
 
+    /// TODO: Documentation
+    /// TODO: Add active value handling once it is implemented in speculative ledger
+    pub fn get_final_and_active_parallel_balance(
+        &self,
+        address: &Address,
+    ) -> (Option<Amount>, Option<Amount>) {
+        let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
+        (final_balance, None)
+    }
+
     /// Gets a full ledger entry both at the latest final and active executed slots
     /// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`
     ///
     /// # returns
     /// `(final_entry, active_entry)`
-    pub fn get_final_and_active_ledger_entry(
+    pub fn get_final_and_active_ledger_entry_legacy(
         &self,
         addr: &Address,
     ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        // note: here 1
         // get the full entry from the final ledger
-        let final_entry = self.final_state.read().ledger.get_full_entry(addr);
+        let final_entry = self.final_state.read().ledger.get_full_entry_legacy(addr);
 
         // get cumulative active changes and apply them
         // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
