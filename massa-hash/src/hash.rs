@@ -52,7 +52,7 @@ impl Hash {
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// ```
-    pub fn to_bs58_check_legacy(&self) -> String {
+    pub fn to_bs58_check(&self) -> String {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
@@ -64,7 +64,7 @@ impl Hash {
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check_with_version();
     /// ```
-    pub fn to_bs58_check(&self) -> String {
+    pub fn to_bs58_check_with_version(&self) -> String {
         let mut bytes: Vec<u8> = Vec::with_capacity(HASH_SIZE_BYTES + 1);
         bytes.append(&mut self.to_bytes().to_vec());
         bytes.push(HASH_VERSION);
@@ -105,7 +105,7 @@ impl Hash {
     /// let serialized: String = hash.to_bs58_check();
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check_legacy(data: &str) -> Result<Hash, MassaHashError> {
+    pub fn from_bs58_check(data: &str) -> Result<Hash, MassaHashError> {
         let decoded_bs58_check = bs58::decode(data)
             .with_check(None)
             .into_vec()
@@ -128,7 +128,7 @@ impl Hash {
     /// let serialized: String = hash.to_bs58_check();
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Hash, MassaHashError> {
+    pub fn from_bs58_check_with_version(data: &str) -> Result<Hash, MassaHashError> {
         let mut decoded_bs58_check = bs58::decode(data)
             .with_check(None)
             .into_vec()
