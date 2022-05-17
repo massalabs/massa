@@ -1,10 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
-use crate::{DeserializeVarInt, Deserializer, ModelsError, SerializeVarInt, Serializer};
+use crate::serialization::{U64VarIntDeserializer, U64VarIntSerializer};
+use crate::{Deserializer, ModelsError, Serializer};
+use nom::error::ErrorKind;
+use nom::IResult;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
+use std::ops::Bound;
 use std::str::FromStr;
 
 /// A structure representing a decimal Amount of coins with safe operations
@@ -195,7 +199,9 @@ impl Default for AmountSerializer {
 
 impl Serializer<Amount> for AmountSerializer {
     fn serialize(&self, value: &Amount) -> Result<Vec<u8>, ModelsError> {
-        Ok(value.0.to_varint_bytes())
+        let amount_serializer =
+            U64VarIntSerializer::new(Bound::Included(0), Bound::Included(u64::MAX));
+        Ok(amount_serializer.serialize(&value.0)?)
     }
 }
 
@@ -216,11 +222,14 @@ impl Default for AmountDeserializer {
 }
 
 impl Deserializer<Amount> for AmountDeserializer {
-    fn deserialize(&self, bytes: &[u8]) -> Result<(Amount, usize), ModelsError> {
-        let mut cursor = 0;
-        let (raw, delta) = u64::from_varint_bytes(bytes)?;
-        cursor += delta;
-        Ok((Amount::from_raw(raw), cursor))
+    fn deserialize<'a>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Amount, (&'a [u8], ErrorKind)> {
+        let u64_deserializer =
+            U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX));
+        let (rest, raw) = u64_deserializer.deserialize(buffer)?;
+        Ok((rest, Amount::from_raw(raw)))
     }
 }
 
