@@ -53,7 +53,7 @@ impl Hash {
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// ```
-    pub fn to_bs58_check(&self) -> String {
+    pub fn to_bs58_check_legacy(&self) -> String {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
@@ -65,11 +65,10 @@ impl Hash {
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check_with_version();
     /// ```
-    pub fn to_bs58_check_with_version(&self) -> String {
-        // note: this function does not work as expected
+    pub fn to_bs58_check(&self) -> String {
         let mut bytes: Vec<u8> = Vec::with_capacity(HASH_SIZE_BYTES + 1);
+        bytes = self.to_bytes().to_vec();
         bytes.push(HASH_VERSION);
-        bytes.append(&mut self.to_bytes().to_vec());
         bs58::encode(bytes).with_check().into_string()
     }
 
@@ -107,7 +106,7 @@ impl Hash {
     /// let serialized: String = hash.to_bs58_check();
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Hash, MassaHashError> {
+    pub fn from_bs58_check_legacy(data: &str) -> Result<Hash, MassaHashError> {
         let decoded_bs58_check = bs58::decode(data)
             .with_check(None)
             .into_vec()
@@ -130,16 +129,16 @@ impl Hash {
     /// let serialized: String = hash.to_bs58_check();
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check_with_version(data: &str) -> Result<Hash, MassaHashError> {
-        // note: this function does not work as expected
-        let bytes = data.as_bytes();
-        let _version = bytes.first().ok_or(MassaHashError::ParsingError(
-            "Invalid hash format".to_string(),
-        ))?;
-        let decoded_bs58_check = bs58::decode(bytes)
+    pub fn from_bs58_check(data: &str) -> Result<Hash, MassaHashError> {
+        let mut decoded_bs58_check = bs58::decode(data)
             .with_check(None)
             .into_vec()
             .map_err(|err| MassaHashError::ParsingError(format!("{}", err)))?;
+        let _version = decoded_bs58_check
+            .pop()
+            .ok_or(MassaHashError::ParsingError(
+                "Invalid hash format".to_string(),
+            ))?;
         Ok(Hash::from_bytes(
             &decoded_bs58_check
                 .as_slice()
