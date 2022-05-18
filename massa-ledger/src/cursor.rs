@@ -8,7 +8,7 @@ pub enum LedgerCursorStep {
     Start,
     Balance,
     Bytecode,
-    Datastore(Hash),
+    Datastore(Option<Hash>),
     Finish,
 }
 
@@ -29,7 +29,9 @@ impl Serializer<LedgerCursorStep> for LedgerCursorStepSerializer {
             LedgerCursorStep::Bytecode => Ok(vec![2]),
             LedgerCursorStep::Datastore(key) => {
                 let mut bytes = vec![3];
-                bytes.extend(key.to_bytes());
+                if let Some(key) = key {
+                    bytes.extend(key.to_bytes());
+                }
                 Ok(bytes)
             }
             LedgerCursorStep::Finish => Ok(vec![4]),
@@ -54,8 +56,12 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
             2 => Ok((&bytes[1..], LedgerCursorStep::Bytecode)),
             3 => {
                 let hash_deserializer = HashDeserializer::new();
-                let (rest, key) = hash_deserializer.deserialize(&bytes[1..])?;
-                Ok((rest, LedgerCursorStep::Datastore(key)))
+                if bytes[1..].is_empty() {
+                    Ok((&bytes[1..], LedgerCursorStep::Datastore(None)))
+                } else {
+                    let (rest, key) = hash_deserializer.deserialize(&bytes[1..])?;
+                    Ok((rest, LedgerCursorStep::Datastore(Some(key))))
+                }
             }
             4 => Ok((&bytes[1..], LedgerCursorStep::Finish)),
             _ => Err(nom::Err::Error(nom::error::Error::new(
@@ -66,7 +72,7 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 /// A cursor to iterate through the ledger with different granularity.
 pub struct LedgerCursor(pub Address, pub LedgerCursorStep);
 
@@ -124,7 +130,7 @@ impl Deserializer<LedgerCursor> for LedgerCursorDeserializer {
         // Refactor better use of nom
         let address_deserializer = AddressDeserializer::new();
         let (rest, address) = address_deserializer.deserialize(bytes)?;
-        let (rest, step) = self.bootstrap_cursor_step_deserializer.deserialize(&rest)?;
+        let (rest, step) = self.bootstrap_cursor_step_deserializer.deserialize(rest)?;
         Ok((rest, LedgerCursor(address, step)))
     }
 }
