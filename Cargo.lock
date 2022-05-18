@@ -1681,6 +1681,7 @@ dependencies = [
  "displaydoc",
  "massa_hash",
  "massa_models",
+ "massa_signature",
  "rocksdb",
  "serde 1.0.136",
  "serde_json",

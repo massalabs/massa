@@ -166,8 +166,9 @@ impl FinalLedger {
     /// # Returns
     /// true if it exists, false otherwise.
     pub fn entry_exists(&self, addr: &Address) -> bool {
+        // TODO: document the "may"
         self.sorted_ledger
-            .entry_exists(addr, LedgerDBEntry::Balance)
+            .entry_may_exist(addr, LedgerDBEntry::Balance)
     }
 
     /// Gets a copy of the value of a datastore entry for a given address.
@@ -192,7 +193,8 @@ impl FinalLedger {
     /// # Returns
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
     pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
+        // TODO: document the "may"
         self.sorted_ledger
-            .entry_exists(addr, LedgerDBEntry::Datastore(*key))
+            .entry_may_exist(addr, LedgerDBEntry::Datastore(*key))
     }
 }
