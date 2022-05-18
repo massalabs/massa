@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 /// Derived from a public key
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Address(pub Hash);
 
 const ADDRESS_PREFIX: char = 'A';
@@ -20,8 +20,7 @@ const ADDRESS_VERSION: u64 = 0;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // note: might want to allocate the vector with capacity
-        // in order to avoid re-allocation
+        // might want to allocate the vector with capacity in order to avoid re-allocation
         let mut bytes: Vec<u8> = ADDRESS_VERSION.to_varint_bytes();
         bytes.extend(self.0.to_bytes());
         write!(
@@ -30,6 +29,76 @@ impl std::fmt::Display for Address {
             ADDRESS_PREFIX,
             bs58::encode(bytes).with_check().into_string()
         )
+    }
+}
+
+impl std::fmt::Debug for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl ::serde::Serialize for Address {
+    fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        if s.is_human_readable() {
+            s.collect_str(&self.to_string())
+        } else {
+            s.serialize_bytes(self.to_bytes())
+        }
+    }
+}
+
+impl<'de> ::serde::Deserialize<'de> for Address {
+    fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Address, D::Error> {
+        if d.is_human_readable() {
+            struct AddressVisitor;
+
+            impl<'de> ::serde::de::Visitor<'de> for AddressVisitor {
+                type Value = Address;
+
+                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    formatter.write_str("A + base58::encode(version + hash)")
+                }
+
+                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+                where
+                    E: ::serde::de::Error,
+                {
+                    if let Ok(v_str) = std::str::from_utf8(v) {
+                        Address::from_str(v_str).map_err(E::custom)
+                    } else {
+                        Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
+                    }
+                }
+
+                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                where
+                    E: ::serde::de::Error,
+                {
+                    Address::from_str(v).map_err(E::custom)
+                }
+            }
+            d.deserialize_str(AddressVisitor)
+        } else {
+            struct BytesVisitor;
+
+            impl<'de> ::serde::de::Visitor<'de> for BytesVisitor {
+                type Value = Address;
+
+                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    formatter.write_str("a bytestring")
+                }
+
+                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+                where
+                    E: ::serde::de::Error,
+                {
+                    Ok(Address::from_bytes(v.try_into().map_err(E::custom)?))
+                }
+            }
+
+            d.deserialize_bytes(BytesVisitor)
+        }
     }
 }
 
