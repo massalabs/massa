@@ -404,6 +404,7 @@ mod tests {
     fn test_part_ledger() {
         let mut ledger: FinalLedger =
             FinalLedger::new(LedgerConfig::sample(&BTreeMap::new()).0).unwrap();
+        ledger.sorted_ledger.clear();
         let mut datastore = BTreeMap::new();
         datastore.insert(Hash::compute_from(&"hello".as_bytes()), vec![4, 5, 6]);
         datastore.insert(Hash::compute_from(&"world".as_bytes()), vec![4, 5, 6]);
