@@ -22,4 +22,4 @@ tempfile = "3.2"
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 instrument = [ "massa_models/instrument"]
-testing = ["tempfile"]
+testing = ["tempfile", "massa_models/testing"]

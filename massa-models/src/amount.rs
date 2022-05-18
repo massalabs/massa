@@ -182,18 +182,13 @@ impl FromStr for Amount {
 }
 
 /// Serializer for amount
+#[derive(Default)]
 pub struct AmountSerializer;
 
 impl AmountSerializer {
     /// Create a new `AmountSerializer`
     pub fn new() -> Self {
         Self
-    }
-}
-
-impl Default for AmountSerializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -206,18 +201,13 @@ impl Serializer<Amount> for AmountSerializer {
 }
 
 /// Deserializer for amount
+#[derive(Default)]
 pub struct AmountDeserializer;
 
 impl AmountDeserializer {
     /// Create a new `AmountDeserializer`
     pub fn new() -> Self {
         Self
-    }
-}
-
-impl Default for AmountDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

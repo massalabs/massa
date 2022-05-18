@@ -372,18 +372,13 @@ impl DeserializeCompact for Amount {
 }
 
 /// Basic `Vec<u8>` serializer
+#[derive(Default)]
 pub struct VecU8Serializer;
 
 impl VecU8Serializer {
     /// Creates a new `VecU8Serializer`
     pub fn new() -> Self {
         Self
-    }
-}
-
-impl Default for VecU8Serializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -401,18 +396,13 @@ impl Serializer<Vec<u8>> for VecU8Serializer {
 }
 
 /// Basic `Vec<u8>` deserializer
+#[derive(Default)]
 pub struct VecU8Deserializer;
 
 impl VecU8Deserializer {
     /// Creates a new `VecU8Deserializer`
     pub fn new() -> Self {
         Self
-    }
-}
-
-impl Default for VecU8Deserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

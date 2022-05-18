@@ -219,7 +219,6 @@ impl FinalLedger {
         let mut data = Vec::new();
         let amount_serializer = AmountSerializer::new();
         for (addr, entry) in self.sorted_ledger.range(next_cursor.0..) {
-            println!("Send address = {:#?}", next_cursor.0);
             while (data.len() as u64) < LEDGER_PART_SIZE_MESSAGE_BYTES {
                 match next_cursor.1 {
                     LedgerCursorStep::Start => {
@@ -393,7 +392,7 @@ impl FinalLedger {
     }
 }
 
-#[cfg(all(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
@@ -417,9 +416,9 @@ mod tests {
             Address::from_bs58_check("xh1fXpp7VuciaCwejMF7ufF19SWv7dFPJ7U6HiTQaeNEFBiV3").unwrap(),
             ledger_entry,
         );
-        println!("initial ledger = {:#?}", ledger.sorted_ledger);
         let (part, cursor) = ledger.get_ledger_part(None).unwrap();
         let (part2, cursor2) = ledger.get_ledger_part(Some(cursor.clone())).unwrap();
+        let (part3, cursor3) = ledger.get_ledger_part(Some(cursor2.clone())).unwrap();
         let mut new_ledger: FinalLedger = FinalLedger::new(LedgerConfig {
             initial_sce_ledger_path: "../massa-node/base_config/initial_sce_ledger.json".into(),
         })
@@ -427,11 +426,12 @@ mod tests {
         new_ledger
             .set_ledger_part(None, cursor.clone(), part)
             .unwrap();
-        //println!("new ledger = {:#?}, cursor = {:#?}", new_ledger.sorted_ledger, cursor);
-        //println!("next cursor = {:#?}", cursor2);
         new_ledger
             .set_ledger_part(Some(cursor), cursor2.clone(), part2)
             .unwrap();
-        //println!("new ledger2 = {:#?},  cursor2 = {:#?}", new_ledger.sorted_ledger, cursor2);
+        new_ledger
+            .set_ledger_part(Some(cursor2), cursor3.clone(), part3)
+            .unwrap();
+        assert_eq!(ledger.sorted_ledger, new_ledger.sorted_ledger);
     }
 }
