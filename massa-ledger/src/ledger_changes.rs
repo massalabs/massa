@@ -440,4 +440,46 @@ impl LedgerChanges {
             }
         }
     }
+
+    /// Deletes a datastore entry for a given address.
+    /// Does nothing if the entry is missing.
+    ///
+    /// # Arguments
+    /// * `addr`: target address
+    /// * `key`: datastore key
+    pub fn delete_data_entry(&mut self, addr: Address, key: Hash) {
+        // Get the changes being applied to the ledger entry associated to that address
+        match self.0.entry(addr) {
+            // There are changes currently being applied to the ledger entry
+            hash_map::Entry::Occupied(mut occ) => {
+                match occ.get_mut() {
+                    // The ledger entry is being replaced by a new one
+                    SetUpdateOrDelete::Set(v) => {
+                        // Delete the entry in the datastore of the replacement entry
+                        v.datastore.remove(&key);
+                    }
+
+                    // The ledger entry is being updated
+                    SetUpdateOrDelete::Update(u) => {
+                        // Ensure that the update includes deleting the datastore entry
+                        u.datastore.insert(key, SetOrDelete::Delete);
+                    }
+
+                    // The ledger entry is being deleted
+                    SetUpdateOrDelete::Delete => {
+                        // Do nothing because the whole ledger entry is being deleted
+                    }
+                }
+            }
+
+            // This ledger entry is not being changed
+            hash_map::Entry::Vacant(vac) => {
+                // Induce an Update to the ledger entry that deletes the datastore entry
+                vac.insert(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    datastore: vec![(key, SetOrDelete::Delete)].into_iter().collect(),
+                    ..Default::default()
+                }));
+            }
+        }
+    }
 }
