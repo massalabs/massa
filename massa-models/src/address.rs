@@ -165,7 +165,7 @@ impl Address {
     /// # let public_key = derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key);
     /// let bytes = address.to_bytes();
-    /// let res_addr = Address::from_bytes(&bytes).unwrap();
+    /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn to_bytes(&self) -> &[u8; ADDRESS_SIZE_BYTES] {
@@ -183,7 +183,7 @@ impl Address {
     /// # let public_key = derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key);
     /// let bytes = address.clone().into_bytes();
-    /// let res_addr = Address::from_bytes(&bytes).unwrap();
+    /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn into_bytes(self) -> [u8; ADDRESS_SIZE_BYTES] {
@@ -201,7 +201,7 @@ impl Address {
     /// # let public_key = derive_public_key(&private_key);
     /// # let address = Address::from_public_key(&public_key);
     /// let bytes = address.to_bytes();
-    /// let res_addr = Address::from_bytes(&bytes).unwrap();
+    /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Address {

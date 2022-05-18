@@ -93,24 +93,21 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
             block_ledger_changes: LedgerChanges(
                 vec![
                     (
-                        Address::from_bytes(&Hash::compute_from("addr01".as_bytes()).into_bytes())
-                            .unwrap(),
+                        Address::from_bytes(&Hash::compute_from("addr01".as_bytes()).into_bytes()),
                         LedgerChange {
                             balance_delta: Amount::from_str("1").unwrap(),
                             balance_increment: true, // whether to increment or decrement balance of delta
                         },
                     ),
                     (
-                        Address::from_bytes(&Hash::compute_from("addr02".as_bytes()).into_bytes())
-                            .unwrap(),
+                        Address::from_bytes(&Hash::compute_from("addr02".as_bytes()).into_bytes()),
                         LedgerChange {
                             balance_delta: Amount::from_str("2").unwrap(),
                             balance_increment: false, // whether to increment or decrement balance of delta
                         },
                     ),
                     (
-                        Address::from_bytes(&Hash::compute_from("addr11".as_bytes()).into_bytes())
-                            .unwrap(),
+                        Address::from_bytes(&Hash::compute_from("addr11".as_bytes()).into_bytes()),
                         LedgerChange {
                             balance_delta: Amount::from_str("3").unwrap(),
                             balance_increment: false, // whether to increment or decrement balance of delta
