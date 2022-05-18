@@ -270,7 +270,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b1b9d958c2b1368a663f05538fc1b5975adce1e19f435acceae987aceeeb369"
 dependencies = [
  "lazy_static",
- "nom",
+ "nom 5.1.2",
  "rust-ini",
  "serde 1.0.136",
  "serde-hjson",
@@ -1573,6 +1573,7 @@ dependencies = [
  "bitcoin_hashes",
  "bs58",
  "displaydoc",
+ "nom 7.1.1",
  "secp256k1",
  "serde 1.0.136",
  "serde_json",
@@ -1587,6 +1588,8 @@ dependencies = [
  "displaydoc",
  "massa_hash",
  "massa_models",
+ "massa_serialization",
+ "nom 7.1.1",
  "serde 1.0.136",
  "serde_json",
  "tempfile",
@@ -1613,14 +1616,17 @@ dependencies = [
  "integer-encoding",
  "lazy_static",
  "massa_hash",
+ "massa_serialization",
  "massa_signature",
  "massa_time",
+ "nom 7.1.1",
  "num",
  "num_enum",
  "rust_decimal",
  "serde 1.0.136",
  "serial_test",
  "thiserror",
+ "unsigned-varint",
 ]
 
 [[package]]
@@ -1756,6 +1762,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_serialization"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "nom 7.1.1",
+ "thiserror",
+ "unsigned-varint",
+]
+
+[[package]]
 name = "massa_signature"
 version = "0.1.0"
 dependencies = [
@@ -1834,6 +1850,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "minimal-lexical"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
+
+[[package]]
 name = "miniz_oxide"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1910,6 +1932,16 @@ dependencies = [
  "lexical-core",
  "memchr",
  "version_check",
+]
+
+[[package]]
+name = "nom"
+version = "7.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8903e5a29a317527874d0402f867152a3d21c908bb0b933e416c65e301d4c36"
+dependencies = [
+ "memchr",
+ "minimal-lexical",
 ]
 
 [[package]]
@@ -3331,6 +3363,14 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "unsigned-varint"
+version = "0.7.1"
+source = "git+https://github.com/cyphar/unsigned-varint.git?branch=nom6-errors#ad577035fc09d2b8351efa14f5812920b9216a9d"
+dependencies = [
+ "nom 7.1.1",
+]
 
 [[package]]
 name = "url"
