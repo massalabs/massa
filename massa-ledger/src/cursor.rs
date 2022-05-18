@@ -12,11 +12,11 @@ pub enum LedgerCursorStep {
     Finish,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct LedgerCursorStepSerializer;
 
 impl LedgerCursorStepSerializer {
-    fn new() -> Self {
+    fn _new() -> Self {
         Self
     }
 }
@@ -39,10 +39,11 @@ impl Serializer<LedgerCursorStep> for LedgerCursorStepSerializer {
     }
 }
 
+#[derive(Default)]
 pub struct LedgerCursorStepDeserializer;
 
 impl LedgerCursorStepDeserializer {
-    fn new() -> Self {
+    fn _new() -> Self {
         Self
     }
 }
@@ -76,22 +77,17 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
 pub struct LedgerCursor(pub Address, pub LedgerCursorStep);
 
 /// A serializer for the ledger cursor.
+#[derive(Default)]
 pub struct LedgerCursorSerializer {
     bootstrap_cursor_step_serializer: LedgerCursorStepSerializer,
 }
 
 impl LedgerCursorSerializer {
     /// Creates a new ledger cursor serializer.
-    pub fn new() -> Self {
+    pub fn _new() -> Self {
         Self {
-            bootstrap_cursor_step_serializer: LedgerCursorStepSerializer::new(),
+            bootstrap_cursor_step_serializer: LedgerCursorStepSerializer::_new(),
         }
-    }
-}
-
-impl Default for LedgerCursorSerializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -105,22 +101,17 @@ impl Serializer<LedgerCursor> for LedgerCursorSerializer {
 }
 
 /// A deserializer for the ledger cursor.
+#[derive(Default)]
 pub struct LedgerCursorDeserializer {
     bootstrap_cursor_step_deserializer: LedgerCursorStepDeserializer,
 }
 
 impl LedgerCursorDeserializer {
     /// Creates a new ledger cursor deserializer.
-    pub fn new() -> Self {
+    pub fn _new() -> Self {
         Self {
-            bootstrap_cursor_step_deserializer: LedgerCursorStepDeserializer::new(),
+            bootstrap_cursor_step_deserializer: LedgerCursorStepDeserializer::_new(),
         }
-    }
-}
-
-impl Default for LedgerCursorDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
