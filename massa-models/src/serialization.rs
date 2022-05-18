@@ -3,11 +3,11 @@
 use crate::error::ModelsError;
 use crate::Amount;
 use integer_encoding::VarInt;
+use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_time::MassaTime;
 use nom::IResult;
 use std::convert::TryInto;
 use std::net::IpAddr;
-use massa_serialization::{Serializer, Deserializer, SerializeError};
 
 /// varint serialization
 pub trait SerializeVarInt {

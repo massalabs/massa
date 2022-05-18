@@ -3,7 +3,7 @@
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
 use crate::serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use crate::ModelsError;
-use massa_serialization::{Deserializer, Serializer, SerializeError};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::IResult;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;

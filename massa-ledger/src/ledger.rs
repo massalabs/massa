@@ -7,12 +7,11 @@ use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
-use massa_hash::Hash;
+use massa_hash::{Hash, HashDeserializer};
+use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
-use massa_models::{
-    Address, Amount, ModelsError, SerializeVarInt, U64VarIntDeserializer,
-};
+use massa_models::{Address, Amount, ModelsError, SerializeVarInt, U64VarIntDeserializer};
 use massa_serialization::{Deserializer, Serializer};
 use nom::AsBytes;
 use std::collections::BTreeMap;
@@ -215,50 +214,52 @@ impl FinalLedger {
         let mut data = Vec::new();
         let amount_serializer = AmountSerializer::new();
         for (addr, entry) in self.sorted_ledger.range(next_cursor.0..) {
-            // No match because we want to be able to pass in all if in one loop
-            if let LedgerCursorStep::Finish = next_cursor.1 {
-                data.push(0);
-                next_cursor.1 = LedgerCursorStep::Start;
-                next_cursor.0 = *addr;
-            }
-            if let LedgerCursorStep::Start = next_cursor.1 {
-                data.extend(addr.to_bytes());
-                next_cursor.1 = LedgerCursorStep::Balance;
-                if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
-                    return Ok((data, next_cursor));
-                }
-            }
-            if let LedgerCursorStep::Balance = next_cursor.1 {
-                data.extend(amount_serializer.serialize(&entry.parallel_balance)?);
-                next_cursor.1 = LedgerCursorStep::Bytecode;
-                if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
-                    return Ok((data, next_cursor));
-                }
-            }
-            if let LedgerCursorStep::Bytecode = next_cursor.1 {
-                data.extend((entry.bytecode.len() as u64).to_varint_bytes());
-                data.extend(&entry.bytecode);
-                if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
-                    return Ok((data, next_cursor));
-                }
-                if let Some((key, _)) = entry.datastore.first_key_value() {
-                    next_cursor.1 = LedgerCursorStep::Datastore(*key);
-                } else {
-                    next_cursor.1 = LedgerCursorStep::Finish;
-                }
-            }
-            if let LedgerCursorStep::Datastore(key) = next_cursor.1 {
-                for (key, value) in entry.datastore.range(key..) {
-                    next_cursor.1 = LedgerCursorStep::Datastore(*key);
-                    if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
-                        return Ok((data, next_cursor));
+            // No match because we want to be able to pass in multiple if in one turn of the loop.
+            while data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
+                match next_cursor.1 {
+                    LedgerCursorStep::Finish => {
+                        data.push(0);
+                        next_cursor.1 = LedgerCursorStep::Start;
+                        next_cursor.0 = *addr;
+                        break;
                     }
-                    data.push(1);
-                    data.extend(key.to_bytes());
-                    data.extend((value.len() as u64).to_varint_bytes());
-                    data.extend(value);
+                    LedgerCursorStep::Start => {
+                        data.extend(addr.to_bytes());
+                        next_cursor.1 = LedgerCursorStep::Balance;
+                    }
+                    LedgerCursorStep::Balance => {
+                        data.extend(amount_serializer.serialize(&entry.parallel_balance)?);
+                        next_cursor.1 = LedgerCursorStep::Bytecode;
+                    }
+                    LedgerCursorStep::Bytecode => {
+                        data.extend((entry.bytecode.len() as u64).to_varint_bytes());
+                        data.extend(&entry.bytecode);
+                        if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
+                            return Ok((data, next_cursor));
+                        }
+                        if let Some((key, _)) = entry.datastore.first_key_value() {
+                            next_cursor.1 = LedgerCursorStep::Datastore(*key);
+                        } else {
+                            next_cursor.1 = LedgerCursorStep::Finish;
+                        }
+                    }
+                    LedgerCursorStep::Datastore(key) => {
+                        for (key, value) in entry.datastore.range(key..) {
+                            next_cursor.1 = LedgerCursorStep::Datastore(*key);
+                            if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
+                                return Ok((data, next_cursor));
+                            }
+                            data.push(1);
+                            data.extend(key.to_bytes());
+                            data.extend((value.len() as u64).to_varint_bytes());
+                            data.extend(value);
+                        }
+                        next_cursor.1 = LedgerCursorStep::Finish;
+                    }
                 }
-                next_cursor.1 = LedgerCursorStep::Finish;
+                if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
+                    return Ok((data, next_cursor));
+                }
             }
         }
         Ok((data, next_cursor))
@@ -278,10 +279,12 @@ impl FinalLedger {
         data: Vec<u8>,
     ) -> Result<(), ModelsError> {
         let mut data = data.as_bytes();
+        let address_deserializer = AddressDeserializer::new();
+        let hash_deserializer = HashDeserializer::new();
         let mut cursor = if let Some(old_cursor) = old_cursor {
             old_cursor
         } else {
-            let (rest, address) = Address::nom_deserialize(&data).map_err(|_| {
+            let (rest, address) = address_deserializer.deserialize(&data).map_err(|_| {
                 ModelsError::DeserializeError("Fail to deserialize address".to_string())
             })?;
             data = rest;
@@ -299,9 +302,10 @@ impl FinalLedger {
             // We want to make one check per loop to check that the cursor isn't finish each loop turn.
             match cursor.1 {
                 LedgerCursorStep::Start => {
-                    let (rest, address) = Address::nom_deserialize(&data).map_err(|_| {
-                        ModelsError::DeserializeError("Fail to deserialize address".to_string())
-                    })?;
+                    let (rest, address) =
+                        address_deserializer.deserialize(&data).map_err(|_| {
+                            ModelsError::DeserializeError("Fail to deserialize address".to_string())
+                        })?;
                     data = rest;
                     self.sorted_ledger
                         .entry(address)
@@ -352,7 +356,7 @@ impl FinalLedger {
                         continue;
                     }
                     data = &data[1..];
-                    let (rest, key) = Hash::nom_deserialize(data).map_err(|_| {
+                    let (rest, key) = hash_deserializer.deserialize(data).map_err(|_| {
                         ModelsError::DeserializeError(
                             "Fail to deserialize key datastore".to_string(),
                         )

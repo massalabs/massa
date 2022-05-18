@@ -6,6 +6,8 @@ use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
 use std::{convert::TryInto, str::FromStr};
 
+use massa_serialization::{Deserializer, SerializeError, Serializer};
+
 /// SHA256 hash
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
 pub struct Hash(bitcoin_hashes::sha256::Hash);
@@ -113,9 +115,21 @@ impl Hash {
                 .map_err(|err| MassaHashError::ParsingError(format!("{}", err)))?,
         ))
     }
+}
 
-    /// nom combinator to deserialize a hash
-    pub fn nom_deserialize(buffer: &[u8]) -> IResult<&[u8], Hash> {
+/// Deserializer for `Hash`
+#[derive(Default)]
+pub struct HashDeserializer;
+
+impl HashDeserializer {
+    /// Creates a deserializer for `Hash`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Deserializer<Hash> for HashDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Hash> {
         if buffer.len() < HASH_SIZE_BYTES {
             return Err(nom::Err::Error(nom::error::Error::new(
                 buffer,

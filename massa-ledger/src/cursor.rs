@@ -1,6 +1,6 @@
-use massa_hash::Hash;
-use massa_models::Address;
-use massa_serialization::{Serializer, Deserializer, SerializeError};
+use massa_hash::{Hash, HashDeserializer};
+use massa_models::{address::AddressDeserializer, Address};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::IResult;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,12 +47,14 @@ impl LedgerCursorStepDeserializer {
 
 impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
     fn deserialize<'a>(&self, bytes: &'a [u8]) -> IResult<&'a [u8], LedgerCursorStep> {
+        // Refactor better use of nom
         match bytes[0] {
             0 => Ok((&bytes[1..], LedgerCursorStep::Start)),
             1 => Ok((&bytes[1..], LedgerCursorStep::Balance)),
             2 => Ok((&bytes[1..], LedgerCursorStep::Bytecode)),
             3 => {
-                let (rest, key) = Hash::nom_deserialize(&bytes[1..])?;
+                let hash_deserializer = HashDeserializer::new();
+                let (rest, key) = hash_deserializer.deserialize(&bytes[1..])?;
                 Ok((rest, LedgerCursorStep::Datastore(key)))
             }
             4 => Ok((&bytes[1..], LedgerCursorStep::Finish)),
@@ -119,7 +121,9 @@ impl Default for LedgerCursorDeserializer {
 
 impl Deserializer<LedgerCursor> for LedgerCursorDeserializer {
     fn deserialize<'a>(&self, bytes: &'a [u8]) -> IResult<&'a [u8], LedgerCursor> {
-        let (rest, address) = Address::nom_deserialize(bytes)?;
+        // Refactor better use of nom
+        let address_deserializer = AddressDeserializer::new();
+        let (rest, address) = address_deserializer.deserialize(bytes)?;
         let (rest, step) = self.bootstrap_cursor_step_deserializer.deserialize(&rest)?;
         Ok((rest, LedgerCursor(address, step)))
     }
