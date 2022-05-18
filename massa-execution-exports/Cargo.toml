@@ -16,7 +16,6 @@ massa_time = { path = "../massa-time" }
 massa_final_state = { path = "../massa-final-state" }
 massa_ledger = { path = "../massa-ledger" }
 
-
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 testing = ["massa_ledger/testing", "massa_models/testing"]

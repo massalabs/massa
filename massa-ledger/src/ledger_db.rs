@@ -108,7 +108,7 @@ impl LedgerDB {
     }
 
     pub fn delete(&self, _addr: &Address) {
-        // note: missing delete
+        // note: define how we want to handle this first
     }
 
     pub fn entry_may_exist(&self, addr: &Address, ty: LedgerDBEntry) -> bool {
@@ -143,7 +143,7 @@ impl LedgerDB {
 }
 
 #[test]
-// note: test datastore as well
+// note: test datastore handling as well
 fn ledger_db_test() {
     use massa_models::Amount;
     use massa_signature::{derive_public_key, generate_random_private_key};
@@ -178,5 +178,6 @@ fn ledger_db_test() {
         Amount::from_raw(21)
     );
     assert_eq!(db.get_entry(&b, LedgerDBEntry::Balance), None);
-    // note: add a delete after assert
+
+    // note: add a delete after assert when it is implemented
 }

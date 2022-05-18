@@ -229,15 +229,8 @@ impl ExecutionState {
         }
     }
 
-    /// Returns the state changes accumulated from the beginning of the output history,
-    /// up until a provided slot (excluded).
-    /// Only used in the VM main loop because the lock on the final ledger
-    /// carried by the returned `SpeculativeLedger` is not held.
-    /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry
-    /// by scanning through history from end to beginning
-    /// `https://github.com/massalabs/massa/issues/2343`
-    pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> StateChanges {
-        // check that the slot is within the reach of history
+    /// Check that the slot is within the reach of history
+    fn verify_active_slot(&self, slot: Slot) {
         if slot <= self.final_cursor {
             panic!("cannot execute at a slot before finality");
         }
@@ -248,7 +241,33 @@ impl ExecutionState {
         if slot > max_slot {
             panic!("cannot execute at a slot beyond active cursor + 1");
         }
+    }
 
+    /// Lazily query the active balance (from end to beginning) of an address at a given slot.
+    /// Returns None if the address balance could not be determined from the active history.
+    pub fn get_active_balance_at_slot(&self, addr: &Address, slot: Slot) -> Option<Amount> {
+        self.verify_active_slot(slot);
+        self.active_history
+            .iter()
+            .rev()
+            .skip_while(|output| output.slot >= slot)
+            .find_map(|output| {
+                output
+                    .state_changes
+                    .ledger_changes
+                    .get_parallel_balance_or_else(&addr, || None)
+            })
+    }
+
+    /// Returns the state changes accumulated from the beginning of the output history,
+    /// up until a provided slot (excluded).
+    /// Only used in the VM main loop because the lock on the final ledger
+    /// carried by the returned `SpeculativeLedger` is not held.
+    /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry
+    /// by scanning through history from end to beginning
+    /// `https://github.com/massalabs/massa/issues/2343`
+    pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> StateChanges {
+        self.verify_active_slot(slot);
         // gather the history of state changes in the relevant history range
         let mut accumulated_changes = StateChanges::default();
         for previous_output in &self.active_history {
@@ -769,14 +788,18 @@ impl ExecutionState {
         Ok(context_guard!(self).settle_slot())
     }
 
-    /// TODO: Documentation
-    /// TODO: Add active value handling once it is implemented in speculative ledger
+    /// Gets a parallel balance both at the latest final and active executed slots
     pub fn get_final_and_active_parallel_balance(
         &self,
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
         let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
-        (final_balance, None)
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
+        let active_balance = self.get_active_balance_at_slot(address, next_slot);
+        (final_balance, active_balance)
     }
 
     /// Gets a full ledger entry both at the latest final and active executed slots
@@ -784,12 +807,13 @@ impl ExecutionState {
     ///
     /// # returns
     /// `(final_entry, active_entry)`
+    #[allow(dead_code)]
     pub fn get_final_and_active_ledger_entry_legacy(
         &self,
         addr: &Address,
     ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
         // get the full entry from the final ledger
-        let final_entry = self.final_state.read().ledger.get_full_entry_legacy(addr);
+        // let final_entry = self.final_state.read().ledger.get_full_entry(addr);
 
         // get cumulative active changes and apply them
         // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
@@ -807,7 +831,7 @@ impl ExecutionState {
             .ledger_changes
             .get(addr)
             .cloned();
-        let active_entry = match (&final_entry, active_change) {
+        let active_entry = match (None, active_change) {
             (final_v, None) => final_v.clone(),
             (_, Some(SetUpdateOrDelete::Set(v))) => Some(v),
             (_, Some(SetUpdateOrDelete::Delete)) => None,
@@ -823,7 +847,7 @@ impl ExecutionState {
             }
         };
 
-        (final_entry, active_entry)
+        (None, active_entry)
     }
 
     /// Gets execution events optionally filtered by:

@@ -15,8 +15,6 @@ use std::collections::BTreeMap;
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
 /// The ledger size can be very high: it can exceed 1 terabyte.
 /// To allow for storage on disk, the ledger uses trees and has `O(log(N))` access, insertion and deletion complexity.
-///
-/// Note: currently the ledger is stored in RAM. TODO put it on the hard drive with cache.
 pub struct FinalLedger {
     /// ledger configuration
     _config: LedgerConfig,
@@ -124,17 +122,6 @@ impl FinalLedger {
         FinalLedgerBootstrapState {
             sorted_ledger: BTreeMap::new(),
         }
-    }
-
-    /// Gets a copy of a full ledger entry.
-    ///
-    /// # Returns
-    /// A clone of the whole `LedgerEntry`, or None if not found.
-    ///
-    /// TODO: in the future, never manipulate full ledger entries because their datastore can be huge
-    /// `https://github.com/massalabs/massa/issues/2342`
-    pub fn get_full_entry_legacy(&self, _addr: &Address) -> Option<LedgerEntry> {
-        None
     }
 
     /// Gets the parallel balance of a ledger entry

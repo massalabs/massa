@@ -181,7 +181,6 @@ impl SpeculativeLedger {
     /// # Arguments
     /// * `addr`: target address
     /// * `bytecode`: bytecode to set for that address
-    #[allow(dead_code)] // TODO remove when it is used
     pub fn set_bytecode(
         &mut self,
         addr: &Address,
