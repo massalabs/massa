@@ -49,7 +49,6 @@ impl LedgerCursorStepDeserializer {
 
 impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
     fn deserialize<'a>(&self, bytes: &'a [u8]) -> IResult<&'a [u8], LedgerCursorStep> {
-        // Refactor better use of nom
         match bytes[0] {
             0 => Ok((&bytes[1..], LedgerCursorStep::Start)),
             1 => Ok((&bytes[1..], LedgerCursorStep::Balance)),
@@ -127,7 +126,6 @@ impl Default for LedgerCursorDeserializer {
 
 impl Deserializer<LedgerCursor> for LedgerCursorDeserializer {
     fn deserialize<'a>(&self, bytes: &'a [u8]) -> IResult<&'a [u8], LedgerCursor> {
-        // Refactor better use of nom
         let address_deserializer = AddressDeserializer::new();
         let (rest, address) = address_deserializer.deserialize(bytes)?;
         let (rest, step) = self.bootstrap_cursor_step_deserializer.deserialize(rest)?;
