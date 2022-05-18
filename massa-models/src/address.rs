@@ -135,8 +135,8 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Result<Address, ModelsError> {
-        Ok(Address(Hash::from_bytes(data)))
+    pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Address {
+        Address(Hash::from_bytes(data))
     }
 
     /// ## Example

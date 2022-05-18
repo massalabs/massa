@@ -85,8 +85,8 @@ impl BlockId {
     }
 
     /// block id from bytes
-    pub fn from_bytes(data: &[u8; BLOCK_ID_SIZE_BYTES]) -> Result<BlockId, ModelsError> {
-        Ok(BlockId(Hash::from_bytes(data)))
+    pub fn from_bytes(data: &[u8; BLOCK_ID_SIZE_BYTES]) -> BlockId {
+        BlockId(Hash::from_bytes(data))
     }
 
     /// block id fro `bs58` check
@@ -423,7 +423,7 @@ impl DeserializeCompact for BlockHeader {
         let parents = if has_parents == 1 {
             let mut parents: Vec<BlockId> = Vec::with_capacity(parent_count as usize);
             for _ in 0..parent_count {
-                let parent_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let parent_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
                 cursor += BLOCK_ID_SIZE_BYTES;
                 parents.push(parent_id);
             }

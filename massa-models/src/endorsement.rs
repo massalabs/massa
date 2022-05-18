@@ -77,10 +77,8 @@ impl EndorsementId {
     }
 
     /// endorsement id from bytes
-    pub fn from_bytes(
-        data: &[u8; ENDORSEMENT_ID_SIZE_BYTES],
-    ) -> Result<EndorsementId, ModelsError> {
-        Ok(EndorsementId(Hash::from_bytes(data)))
+    pub fn from_bytes(data: &[u8; ENDORSEMENT_ID_SIZE_BYTES]) -> EndorsementId {
+        EndorsementId(Hash::from_bytes(data))
     }
 
     /// endorsement id from `bs58` check
@@ -180,7 +178,7 @@ impl DeserializeCompact for Endorsement {
         cursor += delta;
 
         // id of endorsed block
-        let endorsed_block = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        let endorsed_block = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
         cursor += BLOCK_ID_SIZE_BYTES;
 
         Ok((

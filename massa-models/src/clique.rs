@@ -92,7 +92,7 @@ impl DeserializeCompact for Clique {
         let mut block_ids =
             Set::<BlockId>::with_capacity_and_hasher(block_count as usize, BuildMap::default());
         for _ in 0..block_count {
-            let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += BLOCK_ID_SIZE_BYTES;
             block_ids.insert(b_id);
         }

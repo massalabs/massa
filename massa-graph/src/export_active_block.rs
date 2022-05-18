@@ -230,7 +230,7 @@ impl DeserializeCompact for ExportActiveBlock {
         cursor += delta;
 
         // block id
-        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
         cursor += BLOCK_ID_SIZE_BYTES;
 
         // parents
@@ -239,7 +239,7 @@ impl DeserializeCompact for ExportActiveBlock {
         let parents = if has_parents == 1 {
             let mut parents: Vec<(BlockId, u64)> = Vec::with_capacity(parent_count as usize);
             for _ in 0..parent_count {
-                let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
                 cursor += BLOCK_ID_SIZE_BYTES;
                 let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
@@ -276,7 +276,7 @@ impl DeserializeCompact for ExportActiveBlock {
             let mut map: Map<BlockId, u64> =
                 Map::with_capacity_and_hasher(map_count as usize, BuildMap::default());
             for _ in 0..(map_count as usize) {
-                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
                 cursor += BLOCK_ID_SIZE_BYTES;
                 let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
@@ -298,7 +298,7 @@ impl DeserializeCompact for ExportActiveBlock {
             BuildMap::default(),
         );
         for _ in 0..(dependencies_count as usize) {
-            let dep = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let dep = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += BLOCK_ID_SIZE_BYTES;
             dependencies.insert(dep);
         }
@@ -312,7 +312,7 @@ impl DeserializeCompact for ExportActiveBlock {
             BuildMap::default(),
         ));
         for _ in 0..block_ledger_change_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
             let (change, delta) = LedgerChange::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
@@ -332,7 +332,7 @@ impl DeserializeCompact for ExportActiveBlock {
             BuildMap::default(),
         ));
         for _ in 0..roll_updates_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
             let (roll_update, delta) = RollUpdate::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
@@ -348,7 +348,7 @@ impl DeserializeCompact for ExportActiveBlock {
         for _ in 0..production_events_count {
             let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
             let has_created = match u8_from_slice(&buffer[cursor..])? {
                 0u8 => false,

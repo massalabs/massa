@@ -95,8 +95,8 @@ impl OperationId {
     }
 
     /// op id from bytes
-    pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> Result<OperationId, ModelsError> {
-        Ok(OperationId(Hash::from_bytes(data)))
+    pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> OperationId {
+        OperationId(Hash::from_bytes(data))
     }
 
     /// op id from `bs58` check
@@ -381,7 +381,7 @@ impl DeserializeCompact for OperationType {
         let res = match type_id {
             OperationTypeId::Transaction => {
                 // recipient_address
-                let recipient_address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let recipient_address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
                 cursor += ADDRESS_SIZE_BYTES;
 
                 // amount
@@ -461,7 +461,7 @@ impl DeserializeCompact for OperationType {
                 cursor += delta;
 
                 // Target address
-                let target_addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let target_addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
                 cursor += ADDRESS_SIZE_BYTES;
 
                 // Target function name
@@ -687,7 +687,7 @@ impl DeserializeCompact for OperationIds {
         let mut list: OperationIds =
             Set::with_capacity_and_hasher(length as usize, BuildMap::default());
         for _ in 0..length {
-            let b_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let b_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += OPERATION_ID_SIZE_BYTES;
             list.insert(b_id);
         }

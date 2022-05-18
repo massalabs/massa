@@ -428,7 +428,7 @@ impl Ledger {
         for tree in self.ledger_per_thread.iter() {
             for element in tree.iter() {
                 let (addr, data) = element?;
-                let address = Address::from_bytes(addr.as_ref().try_into()?)?;
+                let address = Address::from_bytes(addr.as_ref().try_into()?);
                 let (ledger_data, _) = LedgerData::from_bytes_compact(&data)?;
                 if let Some(val) = res.0.insert(address, ledger_data) {
                     return Err(LedgerError::LedgerInconsistency(format!(
@@ -626,7 +626,7 @@ impl DeserializeCompact for LedgerSubset {
             BuildMap::default(),
         ));
         for _ in 0..entry_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
 
             let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..])?;
