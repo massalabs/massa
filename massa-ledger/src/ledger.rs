@@ -11,8 +11,9 @@ use massa_hash::Hash;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
 use massa_models::{
-    Address, Amount, Deserializer, ModelsError, SerializeVarInt, Serializer, U64VarIntDeserializer,
+    Address, Amount, ModelsError, SerializeVarInt, U64VarIntDeserializer,
 };
+use massa_serialization::{Deserializer, Serializer};
 use nom::AsBytes;
 use std::collections::BTreeMap;
 use std::ops::Bound;

@@ -2,7 +2,7 @@
 
 use displaydoc::Display;
 use thiserror::Error;
-
+use massa_serialization::SerializeError;
 /// models error
 pub type ModelsResult<T, E = ModelsError> = core::result::Result<T, E>;
 
@@ -14,6 +14,8 @@ pub enum ModelsError {
     HashError,
     /// Serialization error: {0}
     SerializeError(String),
+    /// Serialization error: {0}
+    SerializationError( #[from] SerializeError),
     /// Deserialization error: {0}
     DeserializeError(String),
     /// buffer error: {0}

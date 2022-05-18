@@ -7,18 +7,7 @@ use massa_time::MassaTime;
 use nom::IResult;
 use std::convert::TryInto;
 use std::net::IpAddr;
-
-/// TODO: Doc
-pub trait Deserializer<T> {
-    /// TODO: Doc
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], T>;
-}
-
-/// TODO: Doc
-pub trait Serializer<T> {
-    /// TODO: Doc
-    fn serialize(&self, value: &T) -> Result<Vec<u8>, ModelsError>;
-}
+use massa_serialization::{Serializer, Deserializer, SerializeError};
 
 /// varint serialization
 pub trait SerializeVarInt {
@@ -58,9 +47,9 @@ macro_rules! gen_varint {
                 }
 
                 impl Serializer<$type> for $s {
-                    fn serialize(&self, value: &$type) -> Result<Vec<u8>, ModelsError> {
+                    fn serialize(&self, value: &$type) -> Result<Vec<u8>, SerializeError> {
                         if !self.range.contains(value) {
-                            return Err(ModelsError::DeserializeError(format!("Value {:#?} is not in range {:#?}", value, self.range)));
+                            return Err(SerializeError::NumberTooBig(format!("Value {:#?} is not in range {:#?}", value, self.range)));
                         }
                         Ok($type(*value, &mut $bs()).to_vec())
                     }
@@ -399,9 +388,9 @@ impl Default for VecU8Serializer {
 }
 
 impl Serializer<Vec<u8>> for VecU8Serializer {
-    fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, SerializeError> {
         let len: u64 = value.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many entries data in VecU8: {}", err))
+            SerializeError::NumberTooBig(format!("too many entries data in VecU8: {}", err))
         })?;
         let varint_u64_serializer =
             U64VarIntSerializer::new(Bound::Included(0), Bound::Included(u64::MAX));

@@ -20,6 +20,7 @@ unsigned-varint = {version = "0.7.1", features = ["nom"], git = "https://github.
 
 # custom modules
 massa_hash = { path = "../massa-hash" }
+massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 

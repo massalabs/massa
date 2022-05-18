@@ -1,5 +1,6 @@
 use massa_hash::Hash;
-use massa_models::{Address, Deserializer, ModelsError, Serializer};
+use massa_models::Address;
+use massa_serialization::{Serializer, Deserializer, SerializeError};
 use nom::IResult;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,7 +22,7 @@ impl LedgerCursorStepSerializer {
 }
 
 impl Serializer<LedgerCursorStep> for LedgerCursorStepSerializer {
-    fn serialize(&self, value: &LedgerCursorStep) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &LedgerCursorStep) -> Result<Vec<u8>, SerializeError> {
         match value {
             LedgerCursorStep::Start => Ok(vec![0]),
             LedgerCursorStep::Balance => Ok(vec![1]),
@@ -88,7 +89,7 @@ impl Default for LedgerCursorSerializer {
 }
 
 impl Serializer<LedgerCursor> for LedgerCursorSerializer {
-    fn serialize(&self, value: &LedgerCursor) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &LedgerCursor) -> Result<Vec<u8>, SerializeError> {
         let mut bytes = vec![];
         bytes.extend(value.0.to_bytes());
         bytes.extend(self.bootstrap_cursor_step_serializer.serialize(&value.1)?);

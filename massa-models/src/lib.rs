@@ -17,7 +17,7 @@ pub use error::ModelsError;
 pub use operation::{Operation, OperationId, OperationType, SignedOperation};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
-    Deserializer, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Serializer,
+    SerializeCompact, SerializeMinBEInt, SerializeVarInt,
     U16VarIntDeserializer, U16VarIntSerializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer, VecU8Deserializer, VecU8Serializer,
 };
