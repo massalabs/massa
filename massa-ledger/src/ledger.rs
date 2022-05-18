@@ -214,8 +214,7 @@ impl FinalLedger {
         let mut data = Vec::new();
         let amount_serializer = AmountSerializer::new();
         for (addr, entry) in self.sorted_ledger.range(next_cursor.0..) {
-            // No match because we want to be able to pass in multiple if in one turn of the loop.
-            while data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
+            while (data.len() as u64) < LEDGER_PART_SIZE_MESSAGE_BYTES {
                 match next_cursor.1 {
                     LedgerCursorStep::Finish => {
                         data.push(0);
@@ -279,6 +278,7 @@ impl FinalLedger {
         data: Vec<u8>,
     ) -> Result<(), ModelsError> {
         let mut data = data.as_bytes();
+        println!("data = {:#?}", data);
         let address_deserializer = AddressDeserializer::new();
         let hash_deserializer = HashDeserializer::new();
         let mut cursor = if let Some(old_cursor) = old_cursor {
@@ -295,10 +295,7 @@ impl FinalLedger {
         };
         let u64_deserializer =
             U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX));
-        loop {
-            if cursor == new_cursor {
-                break;
-            }
+        while cursor != new_cursor {
             // We want to make one check per loop to check that the cursor isn't finish each loop turn.
             match cursor.1 {
                 LedgerCursorStep::Start => {
@@ -306,6 +303,7 @@ impl FinalLedger {
                         address_deserializer.deserialize(&data).map_err(|_| {
                             ModelsError::DeserializeError("Fail to deserialize address".to_string())
                         })?;
+                    println!("Found address: {:#?}", address);
                     data = rest;
                     self.sorted_ledger
                         .entry(address)

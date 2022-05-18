@@ -6,7 +6,7 @@ use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
 use std::{convert::TryInto, str::FromStr};
 
-use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::Deserializer;
 
 /// SHA256 hash
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
