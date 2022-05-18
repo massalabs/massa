@@ -230,7 +230,7 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to delete
     fn raw_delete_data_for(&self, address: &str, key: &str) -> Result<()> {
-        let addr = &massa_models::Address::from_bs58_check(address)?;
+        let addr = &massa_models::Address::from_str(address)?;
         let key = massa_hash::Hash::compute_from(key.as_bytes());
         context_guard!(self).delete_data_entry(addr, &key)?;
         Ok(())
@@ -347,7 +347,7 @@ impl Interface for InterfaceImpl {
     fn address_from_public_key(&self, public_key: &str) -> Result<String> {
         let public_key = massa_signature::PublicKey::from_bs58_check(public_key)?;
         let addr = massa_models::Address::from_public_key(&public_key);
-        Ok(addr.to_bs58_check())
+        Ok(addr.to_string())
     }
 
     /// Verifies a signature
