@@ -142,15 +142,14 @@ impl FinalLedger {
     /// # Returns
     /// The parallel balance, or None if the ledger entry was not found
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
-        // note: think twice about this conversion
-        // note: this could be handled better
-        if let Some(bytes) = self.sorted_ledger.get_entry(addr, LedgerDBEntry::Balance) {
-            Some(Amount::from_raw(u64::from_be_bytes(
-                bytes.try_into().expect("critical: invalid balance format"),
-            )))
-        } else {
-            None
-        }
+        // note: can a balance ever have a invalid format?
+        self.sorted_ledger
+            .get_entry(addr, LedgerDBEntry::Balance)
+            .map(|bytes| {
+                Amount::from_raw(u64::from_be_bytes(
+                    bytes.try_into().expect("critical: invalid balance format"),
+                ))
+            })
     }
 
     /// Gets a copy of the bytecode of a ledger entry
@@ -166,7 +165,7 @@ impl FinalLedger {
     /// # Returns
     /// true if it exists, false otherwise.
     pub fn entry_exists(&self, addr: &Address) -> bool {
-        // TODO: document the "may"
+        // note: document the "may"
         self.sorted_ledger
             .entry_may_exist(addr, LedgerDBEntry::Balance)
     }
@@ -193,7 +192,7 @@ impl FinalLedger {
     /// # Returns
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
     pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
-        // TODO: document the "may"
+        // note: document the "may"
         self.sorted_ledger
             .entry_may_exist(addr, LedgerDBEntry::Datastore(*key))
     }
