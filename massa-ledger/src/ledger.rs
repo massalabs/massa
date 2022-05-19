@@ -286,6 +286,8 @@ impl FinalLedger {
         let mut data = data.as_bytes();
         let address_deserializer = AddressDeserializer::new();
         let hash_deserializer = HashDeserializer::new();
+        let amount_deserializer = AmountDeserializer::new();
+        let vecu8_deserializer = VecU8Deserializer::new();
         let mut cursor = if let Some(old_cursor) = old_cursor {
             old_cursor
         } else {
@@ -298,9 +300,6 @@ impl FinalLedger {
                 .or_insert_with(LedgerEntry::default);
             LedgerCursor(address, LedgerCursorStep::Balance)
         };
-        let u64_deserializer =
-            U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX));
-        let vecu8_deserializer = VecU8Deserializer::new();
         while cursor != new_cursor {
             // We want to make one check per loop to check that the cursor isn't finish each loop turn.
             match cursor.1 {
@@ -315,7 +314,6 @@ impl FinalLedger {
                     cursor.1 = LedgerCursorStep::Balance;
                 }
                 LedgerCursorStep::Balance => {
-                    let amount_deserializer = AmountDeserializer::new();
                     let (rest, balance) = amount_deserializer.deserialize(data).map_err(|_| {
                         ModelsError::DeserializeError("Fail to deserialize amount".to_string())
                     })?;
@@ -332,14 +330,10 @@ impl FinalLedger {
                     cursor.1 = LedgerCursorStep::Bytecode;
                 }
                 LedgerCursorStep::Bytecode => {
-                    let (rest, bytecode_len) =
-                        u64_deserializer.deserialize(data).map_err(|_| {
-                            ModelsError::DeserializeError(
-                                "Fail to deserialize len bytecode".to_string(),
-                            )
-                        })?;
+                    let (rest, bytecode) = vecu8_deserializer.deserialize(data).map_err(|_| {
+                        ModelsError::DeserializeError("Fail to deserialize bytecode".to_string())
+                    })?;
                     data = rest;
-                    let bytecode = data[..bytecode_len as usize].to_vec();
                     self.sorted_ledger
                         .get_mut(&cursor.0)
                         .ok_or_else(|| {
@@ -349,7 +343,6 @@ impl FinalLedger {
                             ))
                         })?
                         .bytecode = bytecode;
-                    data = &data[bytecode_len as usize..];
                     cursor.1 = LedgerCursorStep::Datastore(None);
                 }
                 LedgerCursorStep::Datastore(_) => {
