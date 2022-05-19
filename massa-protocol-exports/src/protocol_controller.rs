@@ -11,7 +11,7 @@ use massa_models::{
 };
 
 use massa_models::{
-    BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
+    Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
 };
 use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;
@@ -24,8 +24,12 @@ use tracing::debug;
 pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
-        /// corresponding id
+        /// corresponding Id.
         block_id: BlockId,
+        /// corresponding block
+        block: Block,
+        /// The serialized form of the block
+        serialized: Vec<u8>,
         /// the slot
         slot: Slot,
         /// operations in the block by (index, validity end period)
