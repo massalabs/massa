@@ -1596,7 +1596,6 @@ dependencies = [
  "displaydoc",
  "massa_final_state",
  "massa_hash",
- "massa_ledger",
  "massa_models",
  "massa_time",
  "thiserror",
