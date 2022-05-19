@@ -15,7 +15,7 @@ pub struct LedgerEntryUpdate {
     pub parallel_balance: SetOrKeep<Amount>,
     /// change the executable bytecode
     pub bytecode: SetOrKeep<Vec<u8>>,
-    // change datastore entries
+    /// change datastore entries
     pub datastore: Map<Hash, SetOrDelete<Vec<u8>>>,
 }
 

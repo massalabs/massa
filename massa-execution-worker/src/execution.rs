@@ -16,7 +16,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
-use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
+use massa_ledger::{Applicable, LedgerEntry, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
@@ -25,6 +25,7 @@ use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
+use std::process::Output;
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -247,16 +248,24 @@ impl ExecutionState {
     /// Returns None if the address balance could not be determined from the active history.
     pub fn get_active_balance_at_slot(&self, addr: &Address, slot: Slot) -> Option<Amount> {
         self.verify_active_slot(slot);
-        self.active_history
+
+        let iter = self
+            .active_history
             .iter()
             .rev()
-            .skip_while(|output| output.slot >= slot)
-            .find_map(|output| {
-                output
-                    .state_changes
-                    .ledger_changes
-                    .get_parallel_balance_or_else(&addr, || None)
-            })
+            .skip_while(|output| output.slot >= slot);
+
+        for output in iter {
+            match output.state_changes.ledger_changes.0.get(addr) {
+                Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
+                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    parallel_balance, ..
+                })) if let SetOrKeep::Set(v) = parallel_balance =>  return Some(*v),
+                Some(SetUpdateOrDelete::Delete) => return None,
+                _ => (),
+            }
+        }
+        None
     }
 
     /// Returns the state changes accumulated from the beginning of the output history,
