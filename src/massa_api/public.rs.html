@@ -739,6 +739,10 @@
 <span id="732">732</span>
 <span id="733">733</span>
 <span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -1016,7 +1020,11 @@
                 <span class="ident">connected_nodes</span>: <span class="ident">peers</span><span class="question-mark">?</span>
                     .<span class="ident">peers</span>
                     .<span class="ident">iter</span>()
-                    .<span class="ident">flat_map</span>(<span class="op">|</span>(<span class="ident">ip</span>, <span class="ident">peer</span>)<span class="op">|</span> <span class="ident">peer</span>.<span class="ident">active_nodes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span>(<span class="ident">id</span>, <span class="kw">_</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">id</span>, <span class="kw-2">*</span><span class="ident">ip</span>)))
+                    .<span class="ident">flat_map</span>(<span class="op">|</span>(<span class="ident">ip</span>, <span class="ident">peer</span>)<span class="op">|</span> {
+                        <span class="ident">peer</span>.<span class="ident">active_nodes</span>
+                            .<span class="ident">iter</span>()
+                            .<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span>(<span class="ident">id</span>, <span class="ident">is_outgoing</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">id</span>, (<span class="kw-2">*</span><span class="ident">ip</span>, <span class="kw-2">*</span><span class="ident">is_outgoing</span>)))
+                    })
                     .<span class="ident">collect</span>(),
                 <span class="ident">last_slot</span>,
                 <span class="ident">next_slot</span>: <span class="ident">last_slot</span>
@@ -1474,5 +1482,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4c5f6e627 2022-05-17)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (cd282d7f7 2022-05-18)" ></div>
 </body></html>
