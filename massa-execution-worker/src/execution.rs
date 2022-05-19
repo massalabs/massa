@@ -274,35 +274,9 @@ impl ExecutionState {
         None
     }
 
-    /// Lazily query (from end to beginning) the active bytecode of an address at a given slot.
-    /// Returns None if the address bytecode could not be determined from the active history.
-    pub fn get_active_bytecode_at_slot(&self, slot: Slot, addr: &Address) -> Option<Vec<u8>> {
-        self.verify_active_slot(slot);
-
-        let iter = self
-            .active_history
-            .iter()
-            .rev()
-            .skip_while(|output| output.slot >= slot);
-
-        for output in iter {
-            match output.state_changes.ledger_changes.0.get(addr) {
-                Some(SetUpdateOrDelete::Set(v)) => return Some(v.bytecode.clone()),
-                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { bytecode, .. })) => {
-                    if let SetOrKeep::Set(v) = bytecode {
-                        return Some(v.clone());
-                    }
-                }
-                Some(SetUpdateOrDelete::Delete) => return None,
-                None => (),
-            }
-        }
-        None
-    }
-
     /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
     /// Returns None if the datastore entry could not be determined from the active history.
-    pub fn get_active_datastore_entry_at_slot(
+    pub fn get_active_data_entry_at_slot(
         &self,
         slot: Slot,
         addr: &Address,
@@ -876,52 +850,20 @@ impl ExecutionState {
         (final_balance, active_balance)
     }
 
-    /// Gets a full ledger entry both at the latest final and active executed slots
-    /// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`
-    ///
-    /// # returns
-    /// `(final_entry, active_entry)`
+    /// Gets a data entry both at the latest final and active executed slots
     #[allow(dead_code)]
-    pub fn get_final_and_active_ledger_entry_legacy(
+    pub fn get_final_and_active_data_entry(
         &self,
-        addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        // get the full entry from the final ledger
-        // let final_entry = self.final_state.read().ledger.get_full_entry(addr);
-
-        // get cumulative active changes and apply them
-        // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
-        // also we should proceed backwards through history for performance
-        // https://github.com/massalabs/massa/issues/2343
-        // Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one
-        // in order to take all available active slots into account (and not forget the last one)
-        // and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.
+        address: &Address,
+        key: &Hash,
+    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+        let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
         let next_slot = self
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow when getting speculative ledger");
-        let active_change = self
-            .get_accumulated_active_changes_at_slot(next_slot)
-            .ledger_changes
-            .get(addr)
-            .cloned();
-        let active_entry = match (None, active_change) {
-            (final_v, None) => final_v.clone(),
-            (_, Some(SetUpdateOrDelete::Set(v))) => Some(v),
-            (_, Some(SetUpdateOrDelete::Delete)) => None,
-            (None, Some(SetUpdateOrDelete::Update(u))) => {
-                let mut v = LedgerEntry::default();
-                v.apply(u);
-                Some(v)
-            }
-            (Some(final_v), Some(SetUpdateOrDelete::Update(u))) => {
-                let mut v = final_v.clone();
-                v.apply(u);
-                Some(v)
-            }
-        };
-
-        (None, active_entry)
+        let active_entry = self.get_active_data_entry_at_slot(next_slot, address, key);
+        (final_entry, active_entry)
     }
 
     /// Gets execution events optionally filtered by:
