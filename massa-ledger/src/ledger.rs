@@ -3,7 +3,7 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_changes::LedgerChanges;
-use crate::ledger_db::{LedgerDB, LedgerDBEntry};
+use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
@@ -131,7 +131,7 @@ impl FinalLedger {
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
         // note: can a balance ever have a invalid format?
         self.sorted_ledger
-            .get_entry(addr, LedgerDBEntry::Balance)
+            .get_entry(addr, LedgerSubEntry::Balance)
             .map(|bytes| {
                 Amount::from_raw(u64::from_be_bytes(
                     bytes.try_into().expect("critical: invalid balance format"),
@@ -144,7 +144,7 @@ impl FinalLedger {
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
-        self.sorted_ledger.get_entry(addr, LedgerDBEntry::Bytecode)
+        self.sorted_ledger.get_entry(addr, LedgerSubEntry::Bytecode)
     }
 
     /// Checks if a ledger entry exists
@@ -154,7 +154,7 @@ impl FinalLedger {
     pub fn entry_exists(&self, addr: &Address) -> bool {
         // note: document the "may"
         self.sorted_ledger
-            .entry_may_exist(addr, LedgerDBEntry::Balance)
+            .entry_may_exist(addr, LedgerSubEntry::Balance)
     }
 
     /// Gets a copy of the value of a datastore entry for a given address.
@@ -167,7 +167,7 @@ impl FinalLedger {
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
     pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         self.sorted_ledger
-            .get_entry(addr, LedgerDBEntry::Datastore(*key))
+            .get_entry(addr, LedgerSubEntry::Datastore(*key))
     }
 
     /// Checks for the existence of a datastore entry for a given address.
@@ -181,6 +181,6 @@ impl FinalLedger {
     pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
         // note: document the "may"
         self.sorted_ledger
-            .entry_may_exist(addr, LedgerDBEntry::Datastore(*key))
+            .entry_may_exist(addr, LedgerSubEntry::Datastore(*key))
     }
 }

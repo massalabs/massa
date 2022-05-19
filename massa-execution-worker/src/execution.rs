@@ -16,7 +16,9 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
-use massa_ledger::{Applicable, LedgerEntry, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete};
+use massa_ledger::{
+    Applicable, LedgerEntry, LedgerEntryUpdate, LedgerSubEntry, SetOrKeep, SetUpdateOrDelete,
+};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
@@ -243,9 +245,14 @@ impl ExecutionState {
         }
     }
 
-    /// Lazily query the active balance (from end to beginning) of an address at a given slot.
-    /// Returns None if the address balance could not be determined from the active history.
-    pub fn get_active_balance_at_slot(&self, addr: &Address, slot: Slot) -> Option<Amount> {
+    /// Lazily query (from end to beginning) the active entry of an address at a given slot.
+    /// Returns None if the address entry could not be determined from the active history.
+    pub fn get_active_entry_at_slot(
+        &self,
+        addr: &Address,
+        slot: Slot,
+        entry_type: LedgerSubEntry,
+    ) -> Option<Amount> {
         self.verify_active_slot(slot);
 
         let iter = self
@@ -254,19 +261,26 @@ impl ExecutionState {
             .rev()
             .skip_while(|output| output.slot >= slot);
 
-        for output in iter {
-            match output.state_changes.ledger_changes.0.get(addr) {
-                Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
-                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    parallel_balance, ..
-                })) => {
-                    if let SetOrKeep::Set(v) = parallel_balance {
-                        return Some(*v);
+        match entry_type {
+            LedgerSubEntry::Balance => {
+                for output in iter {
+                    match output.state_changes.ledger_changes.0.get(addr) {
+                        Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
+                        Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                            parallel_balance,
+                            ..
+                        })) => {
+                            if let SetOrKeep::Set(v) = parallel_balance {
+                                return Some(*v);
+                            }
+                        }
+                        Some(SetUpdateOrDelete::Delete) => return None,
+                        _ => (),
                     }
                 }
-                Some(SetUpdateOrDelete::Delete) => return None,
-                _ => (),
             }
+            LedgerSubEntry::Bytecode => (),
+            LedgerSubEntry::Datastore(_) => (),
         }
         None
     }
@@ -810,7 +824,8 @@ impl ExecutionState {
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow when getting speculative ledger");
-        let active_balance = self.get_active_balance_at_slot(address, next_slot);
+        let active_balance =
+            self.get_active_entry_at_slot(address, next_slot, LedgerSubEntry::Balance);
         (final_balance, active_balance)
     }
 

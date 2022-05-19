@@ -13,9 +13,13 @@ const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 
-pub(crate) enum LedgerDBEntry {
+/// Ledger sub entry enum
+pub enum LedgerSubEntry {
+    /// Balance
     Balance,
+    /// Bytecode
     Bytecode,
+    /// Datastore entry
     Datastore(Hash),
 }
 
@@ -111,30 +115,30 @@ impl LedgerDB {
         // note: define how we want to handle this first
     }
 
-    pub fn entry_may_exist(&self, addr: &Address, ty: LedgerDBEntry) -> bool {
+    pub fn entry_may_exist(&self, addr: &Address, ty: LedgerSubEntry) -> bool {
         let key = addr.to_bytes();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         match ty {
-            LedgerDBEntry::Balance => self.0.key_may_exist_cf(handle, key),
-            LedgerDBEntry::Bytecode => self.0.key_may_exist_cf(handle, bytecode_key!(addr)),
-            LedgerDBEntry::Datastore(hash) => {
+            LedgerSubEntry::Balance => self.0.key_may_exist_cf(handle, key),
+            LedgerSubEntry::Bytecode => self.0.key_may_exist_cf(handle, bytecode_key!(addr)),
+            LedgerSubEntry::Datastore(hash) => {
                 self.0.key_may_exist_cf(handle, data_key!(addr, hash))
             }
         }
     }
 
-    pub fn get_entry(&self, addr: &Address, ty: LedgerDBEntry) -> Option<Vec<u8>> {
+    pub fn get_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
         let key = addr.to_bytes();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         match ty {
-            LedgerDBEntry::Balance => self.0.get_cf(handle, key).expect(CRUD_ERROR),
-            LedgerDBEntry::Bytecode => self
+            LedgerSubEntry::Balance => self.0.get_cf(handle, key).expect(CRUD_ERROR),
+            LedgerSubEntry::Bytecode => self
                 .0
                 .get_cf(handle, bytecode_key!(addr))
                 .expect(CRUD_ERROR),
-            LedgerDBEntry::Datastore(hash) => self
+            LedgerSubEntry::Datastore(hash) => self
                 .0
                 .get_cf(handle, data_key!(addr, hash))
                 .expect(CRUD_ERROR),
@@ -167,17 +171,17 @@ fn ledger_db_test() {
     db.put(&a, entry);
     db.update(&a, entry_update);
 
-    assert!(db.entry_may_exist(&a, LedgerDBEntry::Balance));
+    assert!(db.entry_may_exist(&a, LedgerSubEntry::Balance));
     assert_eq!(
         Amount::from_raw(u64::from_be_bytes(
-            db.get_entry(&a, LedgerDBEntry::Balance)
+            db.get_entry(&a, LedgerSubEntry::Balance)
                 .unwrap()
                 .try_into()
                 .unwrap()
         )),
         Amount::from_raw(21)
     );
-    assert_eq!(db.get_entry(&b, LedgerDBEntry::Balance), None);
+    assert_eq!(db.get_entry(&b, LedgerSubEntry::Balance), None);
 
     // note: add a delete after assert when it is implemented
 }
