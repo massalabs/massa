@@ -11,13 +11,10 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
-use massa_models::{
-    Address, Amount, ModelsError, SerializeVarInt, U64VarIntDeserializer, VecU8Deserializer,
-};
+use massa_models::{Address, Amount, ModelsError, SerializeVarInt, VecU8Deserializer};
 use massa_serialization::{Deserializer, Serializer};
 use nom::AsBytes;
 use std::collections::BTreeMap;
-use std::ops::Bound;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
