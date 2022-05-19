@@ -25,7 +25,7 @@ pub enum LedgerSubEntry {
 
 pub(crate) struct LedgerDB(DB);
 
-// note: still handle separate bytecode for now to avoid too many refactoring at once
+// NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
     ($addr:ident) => {
         format!("b:{}", $addr).as_bytes()
@@ -112,7 +112,7 @@ impl LedgerDB {
     }
 
     pub fn delete(&self, _addr: &Address) {
-        // note: define how we want to handle this first
+        // TODO: define how we want to handle this first
     }
 
     pub fn entry_may_exist(&self, addr: &Address, ty: LedgerSubEntry) -> bool {
@@ -147,7 +147,7 @@ impl LedgerDB {
 }
 
 #[test]
-// note: test datastore handling as well
+// TODO: test datastore handling as well
 fn ledger_db_test() {
     use massa_models::Amount;
     use massa_signature::{derive_public_key, generate_random_private_key};
@@ -183,5 +183,5 @@ fn ledger_db_test() {
     );
     assert_eq!(db.get_entry(&b, LedgerSubEntry::Balance), None);
 
-    // note: add a delete after assert when it is implemented
+    // TODO: add a delete after assert when it is implemented
 }
