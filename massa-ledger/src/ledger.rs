@@ -424,6 +424,7 @@ mod tests {
             initial_sce_ledger_path: "../massa-node/base_config/initial_sce_ledger.json".into(),
         })
         .unwrap();
+        new_ledger.sorted_ledger.clear();
         new_ledger
             .set_ledger_part(None, cursor.clone(), part)
             .unwrap();
