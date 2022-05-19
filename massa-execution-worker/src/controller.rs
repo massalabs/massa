@@ -93,7 +93,12 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_filtered_sc_output_event(filter)
     }
 
-    /// TODO: documentation
+    /// Get the final and active parallel balance of an address
+    ///
+    /// # returns
+    /// (final_balance, active_balance)
+    ///
+    /// TODO: add equivalent for datastore
     fn get_final_and_active_parallel_balance(
         &self,
         address: &Address,
