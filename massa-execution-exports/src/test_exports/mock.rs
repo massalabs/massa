@@ -3,8 +3,7 @@
 //! This file defines utilities to mock the crate for testing purposes
 
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
-use massa_ledger::LedgerEntry;
-use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, BlockId, Slot};
+use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, BlockId, Slot, Amount};
 use std::{
     collections::HashMap,
     sync::{
@@ -35,11 +34,11 @@ pub enum MockExecutionControllerMessage {
         response_tx: mpsc::Sender<Vec<SCOutputEvent>>,
     },
     /// get full ledger entry
-    GetFullLedgerEntry {
+    GetBalance {
         /// address
         addr: Address,
         /// response channel
-        response_tx: mpsc::Sender<(Option<LedgerEntry>, Option<LedgerEntry>)>,
+        response_tx: mpsc::Sender<(Option<Amount>, Option<Amount>)>,
     },
     /// read only execution request
     ExecuteReadonlyRequest {
@@ -106,15 +105,15 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn get_final_and_active_ledger_entry(
+    fn get_final_and_active_parallel_balance(
         &self,
         addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+    ) -> (Option<Amount>, Option<Amount>) {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
             .unwrap()
-            .send(MockExecutionControllerMessage::GetFullLedgerEntry {
+            .send(MockExecutionControllerMessage::GetBalance {
                 addr: *addr,
                 response_tx,
             })

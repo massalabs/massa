@@ -68,6 +68,7 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(is_sorted)]
 
 mod context;
 mod controller;
