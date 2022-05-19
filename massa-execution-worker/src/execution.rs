@@ -259,12 +259,9 @@ impl ExecutionState {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    parallel_balance, ..
-                })) => {
-                    if let SetOrKeep::Set(v) = parallel_balance {
-                        return Some(*v);
-                    }
-                }
+                    parallel_balance: SetOrKeep::Set(v),
+                    ..
+                })) => return Some(*v),
                 Some(SetUpdateOrDelete::Delete) => return None,
                 _ => (),
             }
