@@ -16,8 +16,9 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
+use massa_hash::Hash;
 use massa_ledger::{
-    Applicable, LedgerEntry, LedgerEntryUpdate, LedgerSubEntry, SetOrKeep, SetUpdateOrDelete,
+    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
@@ -245,14 +246,9 @@ impl ExecutionState {
         }
     }
 
-    /// Lazily query (from end to beginning) the active entry of an address at a given slot.
-    /// Returns None if the address entry could not be determined from the active history.
-    pub fn get_active_entry_at_slot(
-        &self,
-        addr: &Address,
-        slot: Slot,
-        entry_type: LedgerSubEntry,
-    ) -> Option<Amount> {
+    /// Lazily query (from end to beginning) the active balance of an address at a given slot.
+    /// Returns None if the address balance could not be determined from the active history.
+    pub fn get_active_balance_at_slot(&self, slot: Slot, addr: &Address) -> Option<Amount> {
         self.verify_active_slot(slot);
 
         let iter = self
@@ -261,26 +257,78 @@ impl ExecutionState {
             .rev()
             .skip_while(|output| output.slot >= slot);
 
-        match entry_type {
-            LedgerSubEntry::Balance => {
-                for output in iter {
-                    match output.state_changes.ledger_changes.0.get(addr) {
-                        Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
-                        Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                            parallel_balance,
-                            ..
-                        })) => {
-                            if let SetOrKeep::Set(v) = parallel_balance {
-                                return Some(*v);
-                            }
-                        }
-                        Some(SetUpdateOrDelete::Delete) => return None,
-                        _ => (),
+        for output in iter {
+            match output.state_changes.ledger_changes.0.get(addr) {
+                Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
+                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    parallel_balance, ..
+                })) => {
+                    if let SetOrKeep::Set(v) = parallel_balance {
+                        return Some(*v);
                     }
                 }
+                Some(SetUpdateOrDelete::Delete) => return None,
+                _ => (),
             }
-            LedgerSubEntry::Bytecode => (),
-            LedgerSubEntry::Datastore(_) => (),
+        }
+        None
+    }
+
+    /// Lazily query (from end to beginning) the active bytecode of an address at a given slot.
+    /// Returns None if the address bytecode could not be determined from the active history.
+    pub fn get_active_bytecode_at_slot(&self, slot: Slot, addr: &Address) -> Option<Vec<u8>> {
+        self.verify_active_slot(slot);
+
+        let iter = self
+            .active_history
+            .iter()
+            .rev()
+            .skip_while(|output| output.slot >= slot);
+
+        for output in iter {
+            match output.state_changes.ledger_changes.0.get(addr) {
+                Some(SetUpdateOrDelete::Set(v)) => return Some(v.bytecode.clone()),
+                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { bytecode, .. })) => {
+                    if let SetOrKeep::Set(v) = bytecode {
+                        return Some(v.clone());
+                    }
+                }
+                Some(SetUpdateOrDelete::Delete) => return None,
+                None => (),
+            }
+        }
+        None
+    }
+
+    /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
+    /// Returns None if the datastore entry could not be determined from the active history.
+    pub fn get_active_datastore_entry_at_slot(
+        &self,
+        slot: Slot,
+        addr: &Address,
+        key: &Hash,
+    ) -> Option<Vec<u8>> {
+        self.verify_active_slot(slot);
+
+        let iter = self
+            .active_history
+            .iter()
+            .rev()
+            .skip_while(|output| output.slot >= slot);
+
+        for output in iter {
+            match output.state_changes.ledger_changes.0.get(addr) {
+                Some(SetUpdateOrDelete::Set(v)) => return v.datastore.get(key).cloned(),
+                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
+                    match datastore.get(key) {
+                        Some(SetOrDelete::Set(v)) => return Some(v.clone()),
+                        Some(SetOrDelete::Delete) => return None,
+                        None => (),
+                    }
+                }
+                Some(SetUpdateOrDelete::Delete) => return None,
+                None => (),
+            }
         }
         None
     }
@@ -824,8 +872,7 @@ impl ExecutionState {
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow when getting speculative ledger");
-        let active_balance =
-            self.get_active_entry_at_slot(address, next_slot, LedgerSubEntry::Balance);
+        let active_balance = self.get_active_balance_at_slot(next_slot, address);
         (final_balance, active_balance)
     }
 
