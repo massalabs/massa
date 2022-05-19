@@ -3,7 +3,7 @@
 //! This file defines utilities to mock the crate for testing purposes
 
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
-use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, BlockId, Slot, Amount};
+use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, Amount, BlockId, Slot};
 use std::{
     collections::HashMap,
     sync::{
