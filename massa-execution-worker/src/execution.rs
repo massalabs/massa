@@ -260,7 +260,7 @@ impl ExecutionState {
                 Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
                     parallel_balance, ..
-                })) if let SetOrKeep::Set(v) = parallel_balance =>  return Some(*v),
+                })) if let SetOrKeep::Set(v) = parallel_balance => return Some(*v),
                 Some(SetUpdateOrDelete::Delete) => return None,
                 _ => (),
             }
