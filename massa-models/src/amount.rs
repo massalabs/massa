@@ -8,7 +8,6 @@ use nom::IResult;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
-use std::ops::Bound;
 use std::str::FromStr;
 
 /// A structure representing a decimal Amount of coins with safe operations
@@ -183,39 +182,43 @@ impl FromStr for Amount {
 
 /// Serializer for amount
 #[derive(Default)]
-pub struct AmountSerializer;
+pub struct AmountSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
 
 impl AmountSerializer {
     /// Create a new `AmountSerializer`
     pub fn new() -> Self {
-        Self
+        Self {
+            u64_serializer: U64VarIntSerializer::default(),
+        }
     }
 }
 
 impl Serializer<Amount> for AmountSerializer {
     fn serialize(&self, value: &Amount) -> Result<Vec<u8>, SerializeError> {
-        let amount_serializer =
-            U64VarIntSerializer::new(Bound::Included(0), Bound::Included(u64::MAX));
-        amount_serializer.serialize(&value.0)
+        self.u64_serializer.serialize(&value.0)
     }
 }
 
 /// Deserializer for amount
 #[derive(Default)]
-pub struct AmountDeserializer;
+pub struct AmountDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+}
 
 impl AmountDeserializer {
     /// Create a new `AmountDeserializer`
     pub fn new() -> Self {
-        Self
+        Self {
+            u64_deserializer: U64VarIntDeserializer::default(),
+        }
     }
 }
 
 impl Deserializer<Amount> for AmountDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Amount> {
-        let u64_deserializer =
-            U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX));
-        let (rest, raw) = u64_deserializer.deserialize(buffer)?;
+        let (rest, raw) = self.u64_deserializer.deserialize(buffer)?;
         Ok((rest, Amount::from_raw(raw)))
     }
 }

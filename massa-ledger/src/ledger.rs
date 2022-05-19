@@ -13,6 +13,8 @@ use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
 use massa_models::{Address, Amount, ModelsError, SerializeVarInt, VecU8Deserializer};
 use massa_serialization::{Deserializer, Serializer};
+use nom::error::context;
+use nom::sequence::tuple;
 use nom::AsBytes;
 use std::collections::BTreeMap;
 
@@ -299,22 +301,20 @@ impl FinalLedger {
         };
         while cursor != new_cursor {
             // We want to make one check per loop to check that the cursor isn't finish each loop turn.
-            match cursor.1 {
+            let (new_state, rest) = match cursor.1 {
                 LedgerCursorStep::Start => {
                     let (rest, address) = address_deserializer.deserialize(data).map_err(|_| {
                         ModelsError::DeserializeError("Fail to deserialize address".to_string())
                     })?;
-                    data = rest;
                     self.sorted_ledger
                         .entry(address)
                         .or_insert_with(LedgerEntry::default);
-                    cursor.1 = LedgerCursorStep::Balance;
+                    (LedgerCursorStep::Balance, rest)
                 }
                 LedgerCursorStep::Balance => {
                     let (rest, balance) = amount_deserializer.deserialize(data).map_err(|_| {
                         ModelsError::DeserializeError("Fail to deserialize amount".to_string())
                     })?;
-                    data = rest;
                     self.sorted_ledger
                         .get_mut(&cursor.0)
                         .ok_or_else(|| {
@@ -324,13 +324,12 @@ impl FinalLedger {
                             ))
                         })?
                         .parallel_balance = balance;
-                    cursor.1 = LedgerCursorStep::Bytecode;
+                    (LedgerCursorStep::Bytecode, rest)
                 }
                 LedgerCursorStep::Bytecode => {
                     let (rest, bytecode) = vecu8_deserializer.deserialize(data).map_err(|_| {
                         ModelsError::DeserializeError("Fail to deserialize bytecode".to_string())
                     })?;
-                    data = rest;
                     self.sorted_ledger
                         .get_mut(&cursor.0)
                         .ok_or_else(|| {
@@ -340,7 +339,7 @@ impl FinalLedger {
                             ))
                         })?
                         .bytecode = bytecode;
-                    cursor.1 = LedgerCursorStep::Datastore(None);
+                    (LedgerCursorStep::Datastore(None), rest)
                 }
                 LedgerCursorStep::Datastore(_) => {
                     if data[0] == DATASTORE_END_IDENTIFIER {
@@ -348,19 +347,16 @@ impl FinalLedger {
                         continue;
                     }
                     data = &data[1..];
-                    let (rest, key) = hash_deserializer.deserialize(data).map_err(|_| {
-                        ModelsError::DeserializeError(
-                            "Fail to deserialize key datastore".to_string(),
-                        )
-                    })?;
-                    data = rest;
-                    let (rest, value) = vecu8_deserializer.deserialize(data).map_err(|_| {
-                        ModelsError::DeserializeError(format!(
-                            "Fail to deserialize value of address {:#?}",
-                            key
-                        ))
-                    })?;
-                    data = rest;
+                    let mut entry_parser = tuple((
+                        context("Key of datastore deserialization", |input| {
+                            hash_deserializer.deserialize(input)
+                        }),
+                        context("Value of a key of datastore deserialization", |input| {
+                            vecu8_deserializer.deserialize(input)
+                        }),
+                    ));
+                    let (rest, (key, value)) = entry_parser(data)
+                        .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
                     self.sorted_ledger
                         .get_mut(&cursor.0)
                         .ok_or_else(|| {
@@ -371,12 +367,12 @@ impl FinalLedger {
                         })?
                         .datastore
                         .insert(key, value);
-                    cursor.1 = LedgerCursorStep::Datastore(Some(key));
+                    (LedgerCursorStep::Datastore(Some(key)), rest)
                 }
-                LedgerCursorStep::Finish => {
-                    cursor.1 = LedgerCursorStep::Start;
-                }
-            }
+                LedgerCursorStep::Finish => (LedgerCursorStep::Start, data),
+            };
+            cursor.1 = new_state;
+            data = rest;
         }
         Ok(())
     }

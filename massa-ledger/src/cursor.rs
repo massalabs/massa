@@ -1,7 +1,7 @@
 use massa_hash::{Hash, HashDeserializer};
 use massa_models::{address::AddressDeserializer, Address};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::IResult;
+use nom::{sequence::tuple, IResult};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LedgerCursorStep {
@@ -40,11 +40,15 @@ impl Serializer<LedgerCursorStep> for LedgerCursorStepSerializer {
 }
 
 #[derive(Default)]
-pub struct LedgerCursorStepDeserializer;
+pub struct LedgerCursorStepDeserializer {
+    hash_deserializer: HashDeserializer,
+}
 
 impl LedgerCursorStepDeserializer {
     fn _new() -> Self {
-        Self
+        Self {
+            hash_deserializer: HashDeserializer::new(),
+        }
     }
 }
 
@@ -55,11 +59,10 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
             1 => Ok((&bytes[1..], LedgerCursorStep::Balance)),
             2 => Ok((&bytes[1..], LedgerCursorStep::Bytecode)),
             3 => {
-                let hash_deserializer = HashDeserializer::new();
                 if bytes[1..].is_empty() {
                     Ok((&bytes[1..], LedgerCursorStep::Datastore(None)))
                 } else {
-                    let (rest, key) = hash_deserializer.deserialize(&bytes[1..])?;
+                    let (rest, key) = self.hash_deserializer.deserialize(&bytes[1..])?;
                     Ok((rest, LedgerCursorStep::Datastore(Some(key))))
                 }
             }
@@ -79,14 +82,14 @@ pub struct LedgerCursor(pub Address, pub LedgerCursorStep);
 /// A serializer for the ledger cursor.
 #[derive(Default)]
 pub struct LedgerCursorSerializer {
-    bootstrap_cursor_step_serializer: LedgerCursorStepSerializer,
+    cursor_step_serializer: LedgerCursorStepSerializer,
 }
 
 impl LedgerCursorSerializer {
     /// Creates a new ledger cursor serializer.
     pub fn _new() -> Self {
         Self {
-            bootstrap_cursor_step_serializer: LedgerCursorStepSerializer::_new(),
+            cursor_step_serializer: LedgerCursorStepSerializer::_new(),
         }
     }
 }
@@ -95,7 +98,7 @@ impl Serializer<LedgerCursor> for LedgerCursorSerializer {
     fn serialize(&self, value: &LedgerCursor) -> Result<Vec<u8>, SerializeError> {
         let mut bytes = vec![];
         bytes.extend(value.0.to_bytes());
-        bytes.extend(self.bootstrap_cursor_step_serializer.serialize(&value.1)?);
+        bytes.extend(self.cursor_step_serializer.serialize(&value.1)?);
         Ok(bytes)
     }
 }
@@ -103,23 +106,27 @@ impl Serializer<LedgerCursor> for LedgerCursorSerializer {
 /// A deserializer for the ledger cursor.
 #[derive(Default)]
 pub struct LedgerCursorDeserializer {
-    bootstrap_cursor_step_deserializer: LedgerCursorStepDeserializer,
+    cursor_step_deserializer: LedgerCursorStepDeserializer,
+    address_deserializer: AddressDeserializer,
 }
 
 impl LedgerCursorDeserializer {
     /// Creates a new ledger cursor deserializer.
     pub fn _new() -> Self {
         Self {
-            bootstrap_cursor_step_deserializer: LedgerCursorStepDeserializer::_new(),
+            cursor_step_deserializer: LedgerCursorStepDeserializer::_new(),
+            address_deserializer: AddressDeserializer::new(),
         }
     }
 }
 
 impl Deserializer<LedgerCursor> for LedgerCursorDeserializer {
-    fn deserialize<'a>(&self, bytes: &'a [u8]) -> IResult<&'a [u8], LedgerCursor> {
-        let address_deserializer = AddressDeserializer::new();
-        let (rest, address) = address_deserializer.deserialize(bytes)?;
-        let (rest, step) = self.bootstrap_cursor_step_deserializer.deserialize(rest)?;
-        Ok((rest, LedgerCursor(address, step)))
+    fn deserialize<'a>(&self, input: &'a [u8]) -> IResult<&'a [u8], LedgerCursor> {
+        let mut parser = tuple((
+            |input| self.address_deserializer.deserialize(input),
+            |input| self.cursor_step_deserializer.deserialize(input),
+        ));
+        let (rest, (address, cursor)) = parser(input)?;
+        Ok((rest, LedgerCursor(address, cursor)))
     }
 }
