@@ -68,10 +68,6 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(map_first_last)]
-#![feature(unzip_option)]
-#![feature(is_sorted)]
-#![feature(if_let_guard)]
 
 mod context;
 mod controller;

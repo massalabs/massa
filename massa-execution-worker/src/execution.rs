@@ -25,7 +25,6 @@ use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
-use std::process::Output;
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -260,7 +259,11 @@ impl ExecutionState {
                 Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
                     parallel_balance, ..
-                })) if let SetOrKeep::Set(v) = parallel_balance => return Some(*v),
+                })) => {
+                    if let SetOrKeep::Set(v) = parallel_balance {
+                        return Some(*v);
+                    }
+                }
                 Some(SetUpdateOrDelete::Delete) => return None,
                 _ => (),
             }
