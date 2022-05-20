@@ -53,6 +53,19 @@ macro_rules! data_prefix {
     };
 }
 
+pub fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
+    let mut end_range = prefix.to_vec();
+    while let Some(0xff) = end_range.last() {
+        end_range.pop();
+    }
+    if let Some(byte) = end_range.last_mut() {
+        *byte += 1;
+        Some(end_range)
+    } else {
+        None
+    }
+}
+
 impl LedgerDB {
     pub fn new() -> Self {
         // db options
@@ -99,13 +112,12 @@ impl LedgerDB {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
-    pub fn get_complete_entry(&mut self, addr: &Address) {
-        let key = addr.to_bytes();
+    pub fn get_entire_datastore(&mut self, addr: &Address) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound("a");
-        let iter = self
+        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
+        let raw_datastore = self
             .0
             .iterator_cf_opt(
                 handle,
@@ -114,7 +126,8 @@ impl LedgerDB {
             )
             .collect::<Vec<_>>();
 
-        for (_, v) in iter {
+        for (key, v) in raw_datastore {
+            println!("{:#?}", std::str::from_utf8(&key));
             println!("{:#?}", v);
         }
     }
@@ -223,7 +236,9 @@ fn ledger_db_test() {
         Amount::from_raw(21)
     );
     assert_eq!(db.get_entry(&b, LedgerSubEntry::Balance), None);
-    db.get_complete_entry(&a);
+
+    println!("addr = {}", &a);
+    db.get_entire_datastore(&a);
 
     // TODO: add a delete after assert when it is implemented
 }
