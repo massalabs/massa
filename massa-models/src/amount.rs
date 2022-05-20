@@ -1,7 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
-use crate::{DeserializeVarInt, Deserializer, ModelsError, SerializeVarInt, Serializer};
+use crate::serialization::{U64VarIntDeserializer, U64VarIntSerializer};
+use crate::ModelsError;
+use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::IResult;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
@@ -117,53 +120,6 @@ impl Amount {
     }
 }
 
-/// Serializer for amount
-pub struct AmountSerializer;
-
-impl AmountSerializer {
-    /// Create a new `AmountSerializer`
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for AmountSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Serializer<Amount> for AmountSerializer {
-    fn serialize(&self, value: &Amount) -> Result<Vec<u8>, ModelsError> {
-        Ok(value.0.to_varint_bytes())
-    }
-}
-
-/// Deserializer for amount
-pub struct AmountDeserializer;
-
-impl AmountDeserializer {
-    /// Create a new `AmountDeserializer`
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for AmountDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Deserializer<Amount> for AmountDeserializer {
-    fn deserialize(&self, bytes: &[u8]) -> Result<(Amount, usize), ModelsError> {
-        let mut cursor = 0;
-        let (raw, delta) = u64::from_varint_bytes(bytes)?;
-        cursor += delta;
-        Ok((Amount::from_raw(raw), cursor))
-    }
-}
-
 /// display an Amount in decimal string form (like "10.33")
 ///
 /// ```
@@ -221,6 +177,49 @@ impl FromStr for Amount {
             )
         })?;
         Ok(Amount(res))
+    }
+}
+
+/// Serializer for amount
+#[derive(Default)]
+pub struct AmountSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
+
+impl AmountSerializer {
+    /// Create a new `AmountSerializer`
+    pub fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::default(),
+        }
+    }
+}
+
+impl Serializer<Amount> for AmountSerializer {
+    fn serialize(&self, value: &Amount) -> Result<Vec<u8>, SerializeError> {
+        self.u64_serializer.serialize(&value.0)
+    }
+}
+
+/// Deserializer for amount
+#[derive(Default)]
+pub struct AmountDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl AmountDeserializer {
+    /// Create a new `AmountDeserializer`
+    pub fn new() -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::default(),
+        }
+    }
+}
+
+impl Deserializer<Amount> for AmountDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Amount> {
+        let (rest, raw) = self.u64_deserializer.deserialize(buffer)?;
+        Ok((rest, Amount::from_raw(raw)))
     }
 }
 

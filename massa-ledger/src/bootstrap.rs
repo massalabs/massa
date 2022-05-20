@@ -11,7 +11,6 @@ use massa_models::{
     array_from_slice,
     constants::{default::MAXIMUM_BYTES_MESSAGE_BOOTSTRAP, ADDRESS_SIZE_BYTES},
     Address, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
-    Serializer,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

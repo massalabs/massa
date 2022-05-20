@@ -2,7 +2,8 @@
 
 //! Provides various tools to manipulate ledger entries and changes happening on them.
 
-use massa_models::{DeserializeVarInt, Deserializer, ModelsError, SerializeVarInt, Serializer};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::IResult;
 
 /// Trait marking a structure that supports another one (V) being applied to it
 pub trait Applicable<V> {
@@ -63,26 +64,21 @@ impl<
         DV: Deserializer<V>,
     > Deserializer<SetUpdateOrDelete<T, V>> for SetUpdateOrDeleteDeserializer<T, V, DT, DV>
 {
-    fn deserialize(&self, buffer: &[u8]) -> Result<(SetUpdateOrDelete<T, V>, usize), ModelsError> {
-        let mut cursor = 0;
-        let (update_type, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-
-        match update_type {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], SetUpdateOrDelete<T, V>> {
+        match buffer[0] {
             0 => {
-                let (value, delta) = self.inner_deserializer_set.deserialize(&buffer[cursor..])?;
-                cursor += delta;
-                Ok((SetUpdateOrDelete::Set(value), cursor))
+                let (rest, value) = self.inner_deserializer_set.deserialize(&buffer[1..])?;
+                Ok((rest, SetUpdateOrDelete::Set(value)))
             }
             1 => {
-                let (value, delta) = self
-                    .inner_deserializer_update
-                    .deserialize(&buffer[cursor..])?;
-                cursor += delta;
-                Ok((SetUpdateOrDelete::Update(value), cursor))
+                let (rest, value) = self.inner_deserializer_update.deserialize(&buffer[1..])?;
+                Ok((rest, SetUpdateOrDelete::Update(value)))
             }
-            2 => Ok((SetUpdateOrDelete::Delete, cursor)),
-            _ => Err(ModelsError::DeserializeError("unknown update type".into())),
+            2 => Ok((&buffer[1..], SetUpdateOrDelete::Delete)),
+            _ => Err(nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            ))),
         }
     }
 }
@@ -123,22 +119,22 @@ impl<
         SV: Serializer<V>,
     > Serializer<SetUpdateOrDelete<T, V>> for SetUpdateOrDeleteSerializer<T, V, ST, SV>
 {
-    fn serialize(&self, value: &SetUpdateOrDelete<T, V>) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &SetUpdateOrDelete<T, V>) -> Result<Vec<u8>, SerializeError> {
         let mut res = Vec::new();
 
         match value {
             SetUpdateOrDelete::Set(value) => {
-                res.extend(0u32.to_varint_bytes());
+                res.push(0);
                 res.extend(self.inner_serializer_set.serialize(value)?);
                 Ok(res)
             }
             SetUpdateOrDelete::Update(value) => {
-                res.extend(1u32.to_varint_bytes());
+                res.push(1);
                 res.extend(self.inner_serializer_update.serialize(value)?);
                 Ok(res)
             }
             SetUpdateOrDelete::Delete => {
-                res.extend(2u32.to_varint_bytes());
+                res.push(2);
                 Ok(res)
             }
         }
@@ -206,19 +202,17 @@ impl<T: Clone, DT: Deserializer<T>> SetOrDeleteDeserializer<T, DT> {
 impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrDelete<T>>
     for SetOrDeleteDeserializer<T, DT>
 {
-    fn deserialize(&self, buffer: &[u8]) -> Result<(SetOrDelete<T>, usize), ModelsError> {
-        let mut cursor = 0;
-        let (update_type, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-
-        match update_type {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], SetOrDelete<T>> {
+        match buffer[0] {
             0 => {
-                let (value, delta) = self.inner_deserializer.deserialize(&buffer[cursor..])?;
-                cursor += delta;
-                Ok((SetOrDelete::Set(value), cursor))
+                let (rest, value) = self.inner_deserializer.deserialize(&buffer[1..])?;
+                Ok((rest, SetOrDelete::Set(value)))
             }
-            1 => Ok((SetOrDelete::Delete, cursor)),
-            _ => Err(ModelsError::DeserializeError("unknown update type".into())),
+            1 => Ok((&buffer[1..], SetOrDelete::Delete)),
+            _ => Err(nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            ))),
         }
     }
 }
@@ -238,17 +232,17 @@ impl<T: Clone, ST: Serializer<T>> SetOrDeleteSerializer<T, ST> {
 }
 
 impl<T: Clone, ST: Serializer<T>> Serializer<SetOrDelete<T>> for SetOrDeleteSerializer<T, ST> {
-    fn serialize(&self, value: &SetOrDelete<T>) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &SetOrDelete<T>) -> Result<Vec<u8>, SerializeError> {
         let mut res = Vec::new();
 
         match value {
             SetOrDelete::Set(value) => {
-                res.extend(0u32.to_varint_bytes());
+                res.push(0);
                 res.extend(self.inner_serializer.serialize(value)?);
                 Ok(res)
             }
             SetOrDelete::Delete => {
-                res.extend(1u32.to_varint_bytes());
+                res.push(1);
                 Ok(res)
             }
         }
@@ -287,19 +281,17 @@ impl<T: Clone, DT: Deserializer<T>> SetOrKeepDeserializer<T, DT> {
 }
 
 impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrKeep<T>> for SetOrKeepDeserializer<T, DT> {
-    fn deserialize(&self, buffer: &[u8]) -> Result<(SetOrKeep<T>, usize), ModelsError> {
-        let mut cursor = 0;
-        let (update_type, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-
-        match update_type {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], SetOrKeep<T>> {
+        match buffer[0] {
             0 => {
-                let (value, delta) = self.inner_deserializer.deserialize(&buffer[cursor..])?;
-                cursor += delta;
-                Ok((SetOrKeep::Set(value), cursor))
+                let (rest, value) = self.inner_deserializer.deserialize(&buffer[1..])?;
+                Ok((rest, SetOrKeep::Set(value)))
             }
-            1 => Ok((SetOrKeep::Keep, cursor)),
-            _ => Err(ModelsError::DeserializeError("unknown update type".into())),
+            1 => Ok((&buffer[1..], SetOrKeep::Keep)),
+            _ => Err(nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            ))),
         }
     }
 }
@@ -319,17 +311,17 @@ impl<T: Clone, ST: Serializer<T>> SetOrKeepSerializer<T, ST> {
 }
 
 impl<T: Clone, ST: Serializer<T>> Serializer<SetOrKeep<T>> for SetOrKeepSerializer<T, ST> {
-    fn serialize(&self, value: &SetOrKeep<T>) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &SetOrKeep<T>) -> Result<Vec<u8>, SerializeError> {
         let mut res = Vec::new();
 
         match value {
             SetOrKeep::Set(value) => {
-                res.extend(0u32.to_varint_bytes());
+                res.push(0);
                 res.extend(self.inner_serializer.serialize(value)?);
                 Ok(res)
             }
             SetOrKeep::Keep => {
-                res.extend(1u32.to_varint_bytes());
+                res.push(1);
                 Ok(res)
             }
         }

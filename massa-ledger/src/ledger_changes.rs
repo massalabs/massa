@@ -8,14 +8,15 @@ use crate::types::{
     SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
     SetUpdateOrDeleteSerializer,
 };
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HashDeserializer};
+use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::constants::ADDRESS_SIZE_BYTES;
-use massa_models::{
-    array_from_slice, DeserializeVarInt, Deserializer, ModelsError, SerializeVarInt, Serializer,
-    VecU8Deserializer, VecU8Serializer,
-};
 use massa_models::{prehash::Map, Address, Amount};
+use massa_models::{SerializeVarInt, U64VarIntDeserializer, VecU8Deserializer, VecU8Serializer};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::multi::length_count;
+use nom::sequence::tuple;
+use nom::IResult;
 use std::collections::hash_map;
 
 /// represents an update to one or more fields of a `LedgerEntry`
@@ -42,11 +43,14 @@ impl DatastoreSerializer {
 }
 
 impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreSerializer {
-    fn serialize(&self, value: &Map<Hash, SetOrDelete<Vec<u8>>>) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(
+        &self,
+        value: &Map<Hash, SetOrDelete<Vec<u8>>>,
+    ) -> Result<Vec<u8>, SerializeError> {
         let mut res = Vec::new();
 
         let entry_count: u64 = value.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
+            SerializeError::GeneralError(format!(
                 "too many entries in ConsensusLedgerSubset: {}",
                 err
             ))
@@ -63,39 +67,36 @@ impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreSerializer {
 }
 
 struct DatastoreDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    hash_deserializer: HashDeserializer,
     value_deserializer: SetOrDeleteDeserializer<Vec<u8>, VecU8Deserializer>,
 }
 
 impl DatastoreDeserializer {
     pub fn new() -> Self {
         Self {
+            u64_deserializer: U64VarIntDeserializer::default(),
+            hash_deserializer: HashDeserializer::default(),
             value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new()),
         }
     }
 }
 
 impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreDeserializer {
-    fn deserialize(
+    fn deserialize<'a>(
         &self,
-        buffer: &[u8],
-    ) -> Result<(Map<Hash, SetOrDelete<Vec<u8>>>, usize), ModelsError> {
-        let mut cursor = 0usize;
-        let mut res = Map::default();
-        let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        // TODO: add entry_count checks ... see #1200
-        cursor += delta;
-
-        for _ in 0..entry_count {
-            let hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-            cursor += HASH_SIZE_BYTES;
-
-            let (data, delta) = self.value_deserializer.deserialize(&buffer[cursor..])?;
-            cursor += delta;
-
-            res.insert(hash, data);
-        }
-
-        Ok((res, cursor))
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Map<Hash, SetOrDelete<Vec<u8>>>> {
+        let mut parser = length_count(
+            |input| self.u64_deserializer.deserialize(input),
+            |input| {
+                let (rest, hash) = self.hash_deserializer.deserialize(input)?;
+                let (rest, data) = self.value_deserializer.deserialize(&rest)?;
+                Ok((rest, (hash, data)))
+            },
+        );
+        let (rest, res) = parser(buffer)?;
+        Ok((rest, res.into_iter().collect()))
     }
 }
 
@@ -116,7 +117,7 @@ impl LedgerEntryUpdateSerializer {
 }
 
 impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
-    fn serialize(&self, value: &LedgerEntryUpdate) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &LedgerEntryUpdate) -> Result<Vec<u8>, SerializeError> {
         let mut res = Vec::new();
         res.extend(
             self.parallel_balance_serializer
@@ -145,23 +146,20 @@ impl LedgerEntryUpdateDeserializer {
 }
 
 impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
-    fn deserialize(&self, buffer: &[u8]) -> Result<(LedgerEntryUpdate, usize), ModelsError> {
-        let mut cursor = 0usize;
-        let (parallel_balance, delta) = self
-            .parallel_balance_deserializer
-            .deserialize(&buffer[cursor..])?;
-        cursor += delta;
-        let (bytecode, delta) = self.bytecode_deserializer.deserialize(&buffer[cursor..])?;
-        cursor += delta;
-        let (datastore, delta) = self.datastore_deserializer.deserialize(&buffer[cursor..])?;
-        cursor += delta;
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], LedgerEntryUpdate> {
+        let mut parser = tuple((
+            |input| self.parallel_balance_deserializer.deserialize(input),
+            |input| self.bytecode_deserializer.deserialize(input),
+            |input| self.datastore_deserializer.deserialize(input),
+        ));
+        let (rest, (parallel_balance, bytecode, datastore)) = parser(buffer)?;
         Ok((
+            rest,
             LedgerEntryUpdate {
                 parallel_balance,
                 bytecode,
                 datastore,
             },
-            cursor,
         ))
     }
 }
@@ -208,10 +206,10 @@ impl Default for LedgerChangesSerializer {
 }
 
 impl Serializer<LedgerChanges> for LedgerChangesSerializer {
-    fn serialize(&self, value: &LedgerChanges) -> Result<Vec<u8>, ModelsError> {
+    fn serialize(&self, value: &LedgerChanges) -> Result<Vec<u8>, SerializeError> {
         let mut res = Vec::new();
         let entry_count: u64 = value.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many entries in LedgerChanges: {}", err))
+            SerializeError::GeneralError(format!("too many entries in LedgerChanges: {}", err))
         })?;
         res.extend(entry_count.to_varint_bytes());
         for (address, data) in value.0.iter() {
@@ -224,6 +222,8 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
 
 /// `LedgerChanges` deserializer
 pub struct LedgerChangesDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    address_deserializer: AddressDeserializer,
     entry_deserializer: SetUpdateOrDeleteDeserializer<
         LedgerEntry,
         LedgerEntryUpdate,
@@ -236,6 +236,8 @@ impl LedgerChangesDeserializer {
     /// Creates a new `LedgerChangesDeserializer`
     pub fn new() -> Self {
         Self {
+            u64_deserializer: U64VarIntDeserializer::default(),
+            address_deserializer: AddressDeserializer::default(),
             entry_deserializer: SetUpdateOrDeleteDeserializer::new(
                 LedgerEntryDeserializer::new(),
                 LedgerEntryUpdateDeserializer::new(),
@@ -251,19 +253,17 @@ impl Default for LedgerChangesDeserializer {
 }
 
 impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
-    fn deserialize(&self, buffer: &[u8]) -> Result<(LedgerChanges, usize), ModelsError> {
-        let mut cursor = 0usize;
-        let mut res = LedgerChanges(Map::default());
-        let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-        for _ in 0..entry_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-            cursor += ADDRESS_SIZE_BYTES;
-            let (data, delta) = self.entry_deserializer.deserialize(&buffer[cursor..])?;
-            cursor += delta;
-            res.0.insert(address, data);
-        }
-        Ok((res, cursor))
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], LedgerChanges> {
+        let mut parser = length_count(
+            |input| self.u64_deserializer.deserialize(input),
+            |input| {
+                let (rest, address) = self.address_deserializer.deserialize(input)?;
+                let (rest, data) = self.entry_deserializer.deserialize(&rest)?;
+                Ok((rest, (address, data)))
+            },
+        );
+        let (rest, res) = parser(buffer)?;
+        Ok((rest, LedgerChanges(res.into_iter().collect())))
     }
 }
 

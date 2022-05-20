@@ -1,8 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
+use massa_serialization::SerializeError;
 use thiserror::Error;
-
 /// models error
 pub type ModelsResult<T, E = ModelsError> = core::result::Result<T, E>;
 
@@ -14,6 +14,8 @@ pub enum ModelsError {
     HashError,
     /// Serialization error: {0}
     SerializeError(String),
+    /// Serialization error: {0}
+    SerializationError(#[from] SerializeError),
     /// Deserialization error: {0}
     DeserializeError(String),
     /// buffer error: {0}
@@ -42,4 +44,10 @@ pub enum ModelsError {
     AmountOverflowError,
     /// Wrong prefix for hash: expected {0}, got {1}
     WrongPrefix(String, String),
+}
+
+impl From<nom::Err<nom::error::Error<&[u8]>>> for ModelsError {
+    fn from(err: nom::Err<nom::error::Error<&[u8]>>) -> Self {
+        ModelsError::DeserializeError(err.to_string())
+    }
 }

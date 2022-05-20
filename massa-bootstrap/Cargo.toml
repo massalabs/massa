@@ -28,6 +28,7 @@ massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_network_exports = { path = "../massa-network-exports" }
 massa_proof_of_stake_exports = { path = "../massa-proof-of-stake-exports" }
+massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 

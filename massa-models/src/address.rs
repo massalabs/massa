@@ -6,8 +6,10 @@ use crate::{
     api::{LedgerInfo, RollsInfo},
     constants::ADDRESS_SIZE_BYTES,
 };
-use massa_hash::Hash;
+use massa_hash::{Hash, HashDeserializer};
+use massa_serialization::Deserializer;
 use massa_signature::PublicKey;
+use nom::IResult;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -155,6 +157,30 @@ impl Address {
     /// ```
     pub fn to_bs58_check(&self) -> String {
         self.0.to_bs58_check()
+    }
+}
+
+/// Deserializer for `Address`
+#[derive(Default)]
+pub struct AddressDeserializer {
+    hash_deserializer: HashDeserializer,
+}
+
+impl AddressDeserializer {
+    /// Creates a new deserializer for `Address`
+    pub fn new() -> Self {
+        Self {
+            hash_deserializer: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<Address> for AddressDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Address> {
+        Ok((
+            &buffer[ADDRESS_SIZE_BYTES..],
+            Address(self.hash_deserializer.deserialize(buffer)?.1),
+        ))
     }
 }
 

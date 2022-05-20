@@ -8,11 +8,12 @@ use massa_ledger::{
     LedgerCursorDeserializer, LedgerCursorSerializer,
 };
 use massa_models::{
-    DeserializeCompact, DeserializeVarInt, Deserializer, ModelsError, SerializeCompact,
-    SerializeVarInt, Serializer, Slot, Version,
+    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Slot,
+    Version,
 };
 use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
+use massa_serialization::{Deserializer, Serializer};
 use massa_time::MassaTime;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
@@ -165,14 +166,14 @@ impl DeserializeCompact for BootstrapMessageServer {
                 let data = &buffer[cursor..cursor + data_len as usize];
                 cursor += data_len as usize;
 
-                let (ledger_cursor, delta) = cursor_deserializer.deserialize(&buffer[cursor..])?;
-                cursor += delta;
+                let (rest, ledger_cursor) = cursor_deserializer.deserialize(&buffer[cursor..])?;
+                cursor += rest.len();
 
                 let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                let (ledger_changes, delta) =
+                let (rest, ledger_changes) =
                     ledger_execution_deserializer.deserialize(&buffer[cursor..])?;
-                cursor += delta;
+                cursor += rest.len();
 
                 BootstrapMessageServer::ExecutionLedgerPart {
                     data: data.to_vec(),
@@ -280,9 +281,9 @@ impl DeserializeCompact for BootstrapMessageClient {
                     }
                 } else {
                     let cursor_deserializer = LedgerCursorDeserializer::new();
-                    let (bootstrap_cursor, delta) =
+                    let (rest, bootstrap_cursor) =
                         cursor_deserializer.deserialize(&buffer[cursor..])?;
-                    cursor += delta;
+                    cursor += rest.len();
 
                     let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
                     cursor += delta;
