@@ -2,15 +2,13 @@
 
 use std::collections::BTreeMap;
 
-use massa_models::Address;
-
 use crate::{FinalLedgerBootstrapState, LedgerEntry};
 
 /// This file defines tools to test the ledger bootstrap
 
 /// creates a ledger bootstrap state from components
 pub fn make_bootstrap_state(
-    sorted_ledger: BTreeMap<Address, LedgerEntry>,
+    sorted_ledger: BTreeMap<Vec<u8>, Vec<u8>>,
 ) -> FinalLedgerBootstrapState {
     FinalLedgerBootstrapState { sorted_ledger }
 }
@@ -47,6 +45,6 @@ pub fn assert_eq_ledger_bootstrap_state(
     for k in v1.sorted_ledger.keys() {
         let itm1 = v1.sorted_ledger.get(k).unwrap();
         let itm2 = v2.sorted_ledger.get(k).expect("ledger key mismatch");
-        assert_eq_ledger_entry(itm1, itm2);
+        assert_eq!(itm1, itm2);
     }
 }

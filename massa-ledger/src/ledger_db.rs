@@ -6,11 +6,12 @@ use rocksdb::{ColumnFamilyDescriptor, Options, WriteBatch, DB};
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
-const DB_PATH: &str = "../.db";
+// TODO: remove rocks_db dir when sled is cut out
+const DB_PATH: &str = "../massa-node/storage/ledger/rocks_db";
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
-const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
+pub const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 
 /// Ledger sub entry enum
@@ -23,7 +24,7 @@ pub enum LedgerSubEntry {
     Datastore(Hash),
 }
 
-pub(crate) struct LedgerDB(DB);
+pub(crate) struct LedgerDB(pub(crate) DB);
 
 // NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {

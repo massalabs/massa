@@ -2,10 +2,9 @@
 
 //! Provides serializable structures for bootstrapping the `FinalLedger`
 
-use crate::LedgerEntry;
 use massa_models::{
-    array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, DeserializeCompact,
-    DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
+    constants::ADDRESS_SIZE_BYTES, DeserializeCompact, DeserializeVarInt, ModelsError,
+    SerializeCompact, SerializeVarInt,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -15,7 +14,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FinalLedgerBootstrapState {
     /// sorted ledger
-    pub(crate) sorted_ledger: BTreeMap<Address, LedgerEntry>,
+    pub(crate) sorted_ledger: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 /// Allows serializing the `FinalLedgerBootstrapState` to a compact binary representation
@@ -30,12 +29,18 @@ impl SerializeCompact for FinalLedgerBootstrapState {
         res.extend(ledger_size.to_varint_bytes());
 
         // ledger elements
-        for (addr, entry) in &self.sorted_ledger {
+        for (key, entry) in &self.sorted_ledger {
             // address
-            res.extend(addr.to_bytes());
+            res.extend(key);
+
+            // entry size
+            let entry_size: u64 = self.sorted_ledger.len().try_into().map_err(|_| {
+                ModelsError::SerializeError("could not represent entry size as u64".into())
+            })?;
+            res.extend(entry_size.to_varint_bytes());
 
             // entry
-            res.extend(entry.to_bytes_compact()?);
+            res.extend(entry);
         }
 
         Ok(res)
@@ -48,22 +53,26 @@ impl DeserializeCompact for FinalLedgerBootstrapState {
         let mut cursor = 0usize;
 
         // ledger size
-        let (ledger_size, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         // TODO cap the ledger size https://github.com/massalabs/massa/issues/1200
+        let (ledger_size, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
 
         // final ledger
-        let mut sorted_ledger: BTreeMap<Address, LedgerEntry> = BTreeMap::new();
+        let mut sorted_ledger: BTreeMap<Vec<u8>, Vec<u8>> = BTreeMap::new();
         for _ in 0..ledger_size {
-            // address
-            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            // key
+            let key = &buffer[cursor..];
             cursor += ADDRESS_SIZE_BYTES;
 
-            // entry
-            let (entry, delta) = LedgerEntry::from_bytes_compact(&buffer[cursor..])?;
+            // entry size
+            let (entry_size, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
 
-            sorted_ledger.insert(addr, entry);
+            // entry
+            let entry = &buffer[cursor..];
+            cursor += entry_size as usize;
+
+            sorted_ledger.insert(key.to_vec(), entry.to_vec());
         }
 
         Ok((FinalLedgerBootstrapState { sorted_ledger }, cursor))

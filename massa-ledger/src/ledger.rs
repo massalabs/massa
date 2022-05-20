@@ -3,7 +3,7 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_changes::LedgerChanges;
-use crate::ledger_db::{LedgerDB, LedgerSubEntry};
+use crate::ledger_db::{LedgerDB, LedgerSubEntry, CRUD_ERROR};
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
@@ -68,9 +68,6 @@ pub(crate) use init_file_error;
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
-        // open db with default options
-        // and use only single threaded mode
-        // should explore these options before review
         let mut sorted_ledger = LedgerDB::new();
 
         // load the ledger tree from file
@@ -80,8 +77,7 @@ impl FinalLedger {
         )
         .map_err(init_file_error!("parsing", config))?;
 
-        // parsing from json to rust types, then types to bytes, maybe
-        // there is a better way to do this
+        // put initial ledger values in the disk db
         for (address, amount) in &initial_ledger {
             sorted_ledger.put(
                 address,
@@ -99,6 +95,21 @@ impl FinalLedger {
         })
     }
 
+    /// Used only for temporary testing while waiting for streaming
+    pub fn from_previous_bootstrap_state(
+        config: LedgerConfig,
+        state: BTreeMap<Address, LedgerEntry>,
+    ) -> Self {
+        let mut db = LedgerDB::new();
+        for (addr, entry) in state {
+            db.put(&addr, entry);
+        }
+        FinalLedger {
+            sorted_ledger: db,
+            _config: config,
+        }
+    }
+
     /// Initialize a `FinalLedger` from a bootstrap state
     ///
     /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
@@ -106,10 +117,14 @@ impl FinalLedger {
     /// # Arguments
     /// * configuration: ledger configuration
     /// * state: bootstrap state
-    pub fn from_bootstrap_state(config: LedgerConfig, _state: FinalLedgerBootstrapState) -> Self {
-        // dummy implementation since bootstrap streaming is currently developed
+    pub fn from_bootstrap_state(config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
+        // temporary implementation while waiting for streaming
+        let db = LedgerDB::new();
+        for (key, entry) in state.sorted_ledger {
+            db.0.put(&key, entry).expect(CRUD_ERROR);
+        }
         FinalLedger {
-            sorted_ledger: LedgerDB::new(),
+            sorted_ledger: db,
             _config: config,
         }
     }
@@ -118,9 +133,14 @@ impl FinalLedger {
     ///
     /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
     pub fn get_bootstrap_state(&self) -> FinalLedgerBootstrapState {
-        // dummy implementation since bootstrap streaming is currently developed
+        // temporary implementation while waiting for streaming
+        let mut b_ledger = BTreeMap::new();
+        let iter = self.sorted_ledger.0.iterator(rocksdb::IteratorMode::Start);
+        for (key, value) in iter {
+            b_ledger.insert(key.to_vec(), value.to_vec());
+        }
         FinalLedgerBootstrapState {
-            sorted_ledger: BTreeMap::new(),
+            sorted_ledger: b_ledger,
         }
     }
 

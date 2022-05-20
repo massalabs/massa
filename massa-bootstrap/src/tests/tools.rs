@@ -73,6 +73,7 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalStateBootstrap
     let messages = Vec::new();
 
     for _ in 0usize..rng.gen_range(0..10) {
+        // HERE
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
