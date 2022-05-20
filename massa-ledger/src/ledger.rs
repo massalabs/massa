@@ -284,7 +284,7 @@ impl FinalLedger {
     ) -> Result<(), ModelsError> {
         let mut data = data.as_bytes();
         let address_deserializer = AddressDeserializer::new();
-        let hash_deserializer = HashDeserializer::new();
+        let hash_deserializer = HashDeserializer::default();
         let amount_deserializer = AmountDeserializer::new();
         let vecu8_deserializer = VecU8Deserializer::new();
         let mut cursor = if let Some(old_cursor) = old_cursor {

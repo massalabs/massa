@@ -1,12 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use nom::IResult;
-
 use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
-use std::{convert::TryInto, str::FromStr};
-
 use massa_serialization::Deserializer;
+use nom::IResult;
+use std::{convert::TryInto, str::FromStr};
 
 /// SHA256 hash
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
