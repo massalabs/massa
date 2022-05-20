@@ -102,7 +102,7 @@ impl FinalLedger {
     /// # Arguments
     /// * configuration: ledger configuration
     /// * state: bootstrap state
-    pub fn from_bootstrap_state(config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
+    pub fn from_bootstrap_state(_config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
         // temporary implementation while waiting for streaming
         let mut db = LedgerDB::new();
         for (key, entry) in state.sorted_ledger {
@@ -110,7 +110,7 @@ impl FinalLedger {
         }
         FinalLedger {
             sorted_ledger: db,
-            _config: config,
+            _config,
         }
     }
 

@@ -113,7 +113,7 @@ impl LedgerDB {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
-    pub fn get_entire_datastore(&mut self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+    pub fn get_datastore_for(&mut self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
@@ -205,22 +205,24 @@ impl LedgerDB {
 
 #[test]
 // TODO: test datastore handling as well
-fn ledger_db_test() {
+fn test_ledger_db() {
     use massa_models::Amount;
     use massa_signature::{derive_public_key, generate_random_private_key};
 
+    // addresses
     let pub_a = derive_public_key(&generate_random_private_key());
     let pub_b = derive_public_key(&generate_random_private_key());
     let a = Address::from_public_key(&pub_a);
     let b = Address::from_public_key(&pub_b);
 
+    // data
     let mut data = BTreeMap::new();
     data.insert(Hash::compute_from(b"1"), b"a".to_vec());
     data.insert(Hash::compute_from(b"2"), b"b".to_vec());
     data.insert(Hash::compute_from(b"3"), b"c".to_vec());
     let entry = LedgerEntry {
         parallel_balance: Amount::from_raw(42),
-        datastore: data,
+        datastore: data.clone(),
         ..Default::default()
     };
     let entry_update = LedgerEntryUpdate {
@@ -229,10 +231,12 @@ fn ledger_db_test() {
         ..Default::default()
     };
 
+    // db operations
     let mut db = LedgerDB::new();
     db.put(&a, entry);
     db.update(&a, entry_update);
 
+    // asserts
     assert!(db.entry_may_exist(&a, LedgerSubEntry::Balance));
     assert_eq!(
         Amount::from_raw(u64::from_be_bytes(
@@ -244,9 +248,7 @@ fn ledger_db_test() {
         Amount::from_raw(21)
     );
     assert_eq!(db.get_entry(&b, LedgerSubEntry::Balance), None);
-
-    println!("addr = {}", &a);
-    println!("{:#?}", db.get_entire_datastore(&a));
+    assert_eq!(data, db.get_datastore_for(&a));
 
     // TODO: add a delete after assert when it is implemented
 }
