@@ -177,10 +177,8 @@ impl AddressDeserializer {
 
 impl Deserializer<Address> for AddressDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Address> {
-        Ok((
-            &buffer[ADDRESS_SIZE_BYTES..],
-            Address(self.hash_deserializer.deserialize(buffer)?.1),
-        ))
+        let (rest, hash) = self.hash_deserializer.deserialize(buffer)?;
+        Ok((rest, Address(hash)))
     }
 }
 

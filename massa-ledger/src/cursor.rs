@@ -3,6 +3,13 @@ use massa_models::{address::AddressDeserializer, Address};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{sequence::tuple, IResult};
 
+/// When sending the ledger we need to split the messages so that we don't send the whole ledger or a huge part of the datastore in one message.
+/// We have 5 different state where the cursor can stop that define 5 different positions in the ledger:
+/// `Start`: At the start of a new address
+/// `Balance`: Before the balance of an address
+/// `Bytecode`: Before the bytecode of an address
+/// `Datastore`: If `Hash` is None then it's before the datastore otherwise it's after the key represented by the `Hash``
+/// `Finish`: After the encoding of the whole data of an address
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LedgerCursorStep {
     Start,
@@ -54,11 +61,11 @@ impl LedgerCursorStepDeserializer {
 
 impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
     fn deserialize<'a>(&self, bytes: &'a [u8]) -> IResult<&'a [u8], LedgerCursorStep> {
-        match bytes[0] {
-            0 => Ok((&bytes[1..], LedgerCursorStep::Start)),
-            1 => Ok((&bytes[1..], LedgerCursorStep::Balance)),
-            2 => Ok((&bytes[1..], LedgerCursorStep::Bytecode)),
-            3 => {
+        match bytes.get(0) {
+            Some(0) => Ok((&bytes[1..], LedgerCursorStep::Start)),
+            Some(1) => Ok((&bytes[1..], LedgerCursorStep::Balance)),
+            Some(2) => Ok((&bytes[1..], LedgerCursorStep::Bytecode)),
+            Some(3) => {
                 if bytes[1..].is_empty() {
                     Ok((&bytes[1..], LedgerCursorStep::Datastore(None)))
                 } else {
@@ -66,7 +73,7 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
                     Ok((rest, LedgerCursorStep::Datastore(Some(key))))
                 }
             }
-            4 => Ok((&bytes[1..], LedgerCursorStep::Finish)),
+            Some(4) => Ok((&bytes[1..], LedgerCursorStep::Finish)),
             _ => Err(nom::Err::Error(nom::error::Error::new(
                 bytes,
                 nom::error::ErrorKind::Digit,

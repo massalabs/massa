@@ -206,15 +206,19 @@ impl FinalLedger {
     pub fn get_ledger_part(
         &self,
         cursor: Option<LedgerCursor>,
-    ) -> Result<(Vec<u8>, LedgerCursor), ModelsError> {
-        let mut next_cursor = cursor.unwrap_or(LedgerCursor {
-            address: *self
-                .sorted_ledger
+    ) -> Result<(Vec<u8>, Option<LedgerCursor>), ModelsError> {
+        let mut next_cursor = if let Some(cursor) = cursor.or_else(|| {
+            self.sorted_ledger
                 .first_key_value()
-                .ok_or_else(|| ModelsError::BufferError("Ledger empty".into()))?
-                .0,
-            step: LedgerCursorStep::Start,
-        });
+                .map(|(&address, _)| LedgerCursor {
+                    address,
+                    step: LedgerCursorStep::Start,
+                })
+        }) {
+            cursor
+        } else {
+            return Ok((vec![], None));
+        };
         let mut data = Vec::new();
         let amount_serializer = AmountSerializer::new();
         for (addr, entry) in self.sorted_ledger.range(next_cursor.address..) {
@@ -249,7 +253,7 @@ impl FinalLedger {
                             data.extend(value);
                             next_cursor.step = LedgerCursorStep::Datastore(Some(*key));
                             if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
-                                return Ok((data, next_cursor));
+                                return Ok((data, Some(next_cursor)));
                             }
                         }
                         next_cursor.step = LedgerCursorStep::Finish;
@@ -262,11 +266,11 @@ impl FinalLedger {
                     }
                 }
                 if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
-                    return Ok((data, next_cursor));
+                    return Ok((data, Some(next_cursor)));
                 }
             }
         }
-        Ok((data, next_cursor))
+        Ok((data, Some(next_cursor)))
     }
 
     /// Set a part of the ledger
@@ -280,7 +284,7 @@ impl FinalLedger {
         &mut self,
         old_cursor: Option<LedgerCursor>,
         data: Vec<u8>,
-    ) -> Result<LedgerCursor, ModelsError> {
+    ) -> Result<Option<LedgerCursor>, ModelsError> {
         let mut data = data.as_bytes();
         let address_deserializer = AddressDeserializer::new();
         let hash_deserializer = HashDeserializer::default();
@@ -289,6 +293,9 @@ impl FinalLedger {
         let mut cursor = if let Some(old_cursor) = old_cursor {
             old_cursor
         } else {
+            if data.is_empty() {
+                return Ok(None);
+            }
             let (rest, address) = address_deserializer.deserialize(data).map_err(|_| {
                 ModelsError::DeserializeError("Fail to deserialize address".to_string())
             })?;
@@ -345,11 +352,26 @@ impl FinalLedger {
                     (LedgerCursorStep::Datastore(None), rest)
                 }
                 LedgerCursorStep::Datastore(_) => {
-                    if data[0] == DATASTORE_END_IDENTIFIER {
-                        cursor.step = LedgerCursorStep::Finish;
-                        continue;
-                    }
-                    data = &data[1..];
+                    match data.get(0) {
+                        Some(&DATASTORE_END_IDENTIFIER) => {
+                            cursor.step = LedgerCursorStep::Finish;
+                            continue;
+                        }
+                        Some(_) => (),
+                        None => {
+                            return Err(ModelsError::DeserializeError(
+                                "No identifier for datastore key when excepted".to_string(),
+                            ))
+                        }
+                    };
+                    data = match data.get(1..) {
+                        Some(data) => data,
+                        None => {
+                            return Err(ModelsError::DeserializeError(
+                                "No datastore key when excepted".to_string(),
+                            ))
+                        }
+                    };
                     let mut entry_parser = tuple((
                         context("Key of datastore deserialization", |input| {
                             hash_deserializer.deserialize(input)
@@ -382,7 +404,7 @@ impl FinalLedger {
             cursor.step = new_state;
             data = rest;
         }
-        Ok(cursor)
+        Ok(Some(cursor))
     }
 }
 
@@ -412,16 +434,34 @@ mod tests {
             ledger_entry,
         );
         let (part, cursor) = ledger.get_ledger_part(None).unwrap();
-        let (part2, cursor2) = ledger.get_ledger_part(Some(cursor.clone())).unwrap();
-        let (part3, _) = ledger.get_ledger_part(Some(cursor2.clone())).unwrap();
+        let (part2, cursor2) = ledger.get_ledger_part(cursor.clone()).unwrap();
+        let (part3, _) = ledger.get_ledger_part(cursor2.clone()).unwrap();
         let mut new_ledger: FinalLedger = FinalLedger::new(LedgerConfig {
             initial_sce_ledger_path: "../massa-node/base_config/initial_sce_ledger.json".into(),
         })
         .unwrap();
         new_ledger.sorted_ledger.clear();
         let cursor = new_ledger.set_ledger_part(None, part).unwrap();
-        let cursor = new_ledger.set_ledger_part(Some(cursor), part2).unwrap();
-        new_ledger.set_ledger_part(Some(cursor), part3).unwrap();
+        let cursor = new_ledger.set_ledger_part(cursor, part2).unwrap();
+        new_ledger.set_ledger_part(cursor, part3).unwrap();
+        assert_eq!(ledger.sorted_ledger, new_ledger.sorted_ledger);
+    }
+
+    #[test]
+    fn test_part_ledger_empty() {
+        let mut ledger: FinalLedger =
+            FinalLedger::new(LedgerConfig::sample(&BTreeMap::new()).0).unwrap();
+        ledger.sorted_ledger.clear();
+        let (part, old_cursor) = ledger.get_ledger_part(None).unwrap();
+        assert!(old_cursor.is_none());
+        let mut new_ledger: FinalLedger = FinalLedger::new(LedgerConfig {
+            initial_sce_ledger_path: "../massa-node/base_config/initial_sce_ledger.json".into(),
+        })
+        .unwrap();
+        new_ledger.sorted_ledger.clear();
+        let cursor = new_ledger.set_ledger_part(None, part).unwrap();
+        assert!(cursor.is_none());
+        assert_eq!(old_cursor, cursor);
         assert_eq!(ledger.sorted_ledger, new_ledger.sorted_ledger);
     }
 }
