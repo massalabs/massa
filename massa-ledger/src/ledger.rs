@@ -95,21 +95,6 @@ impl FinalLedger {
         })
     }
 
-    /// Used only for temporary testing while waiting for streaming
-    pub fn from_previous_bootstrap_state(
-        config: LedgerConfig,
-        state: BTreeMap<Address, LedgerEntry>,
-    ) -> Self {
-        let mut db = LedgerDB::new();
-        for (addr, entry) in state {
-            db.put(&addr, entry);
-        }
-        FinalLedger {
-            sorted_ledger: db,
-            _config: config,
-        }
-    }
-
     /// Initialize a `FinalLedger` from a bootstrap state
     ///
     /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future

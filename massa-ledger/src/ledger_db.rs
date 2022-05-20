@@ -2,7 +2,9 @@
 
 use massa_hash::Hash;
 use massa_models::Address;
-use rocksdb::{ColumnFamilyDescriptor, Options, WriteBatch, DB};
+use rocksdb::{
+    ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
+};
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
@@ -35,13 +37,19 @@ pub fn destroy_ledger_db() {
 // NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
     ($addr:ident) => {
-        format!("b:{}", $addr).as_bytes()
+        format!("{}b", $addr).as_bytes()
     };
 }
 
 macro_rules! data_key {
     ($addr:ident, $key:ident) => {
         format!("{}:{}", $addr, $key).as_bytes()
+    };
+}
+
+macro_rules! data_prefix {
+    ($addr:ident) => {
+        format!("{}:", $addr).as_bytes()
     };
 }
 
@@ -89,6 +97,26 @@ impl LedgerDB {
 
         // write batch
         self.0.write(batch).expect(CRUD_ERROR);
+    }
+
+    pub fn get_complete_entry(&mut self, addr: &Address) {
+        let key = addr.to_bytes();
+        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+
+        let mut opt = ReadOptions::default();
+        opt.set_iterate_upper_bound("a");
+        let iter = self
+            .0
+            .iterator_cf_opt(
+                handle,
+                opt,
+                IteratorMode::From(data_prefix!(addr), Direction::Forward),
+            )
+            .collect::<Vec<_>>();
+
+        for (_, v) in iter {
+            println!("{:#?}", v);
+        }
     }
 
     pub fn update(&mut self, addr: &Address, entry_update: LedgerEntryUpdate) {
@@ -158,14 +186,20 @@ impl LedgerDB {
 fn ledger_db_test() {
     use massa_models::Amount;
     use massa_signature::{derive_public_key, generate_random_private_key};
+    use std::collections::BTreeMap;
 
     let pub_a = derive_public_key(&generate_random_private_key());
     let pub_b = derive_public_key(&generate_random_private_key());
     let a = Address::from_public_key(&pub_a);
     let b = Address::from_public_key(&pub_b);
 
+    let mut data = BTreeMap::new();
+    data.insert(Hash::compute_from(b"1"), b"a".to_vec());
+    data.insert(Hash::compute_from(b"2"), b"b".to_vec());
+    data.insert(Hash::compute_from(b"3"), b"c".to_vec());
     let entry = LedgerEntry {
         parallel_balance: Amount::from_raw(42),
+        datastore: data,
         ..Default::default()
     };
     let entry_update = LedgerEntryUpdate {
@@ -189,6 +223,7 @@ fn ledger_db_test() {
         Amount::from_raw(21)
     );
     assert_eq!(db.get_entry(&b, LedgerSubEntry::Balance), None);
+    db.get_complete_entry(&a);
 
     // TODO: add a delete after assert when it is implemented
 }
