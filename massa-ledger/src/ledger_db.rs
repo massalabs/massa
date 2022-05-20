@@ -5,6 +5,7 @@ use massa_models::Address;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
+use std::{collections::BTreeMap, str::FromStr};
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
@@ -112,11 +113,12 @@ impl LedgerDB {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
-    pub fn get_entire_datastore(&mut self, addr: &Address) {
+    pub fn get_entire_datastore(&mut self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
+
         let raw_datastore = self
             .0
             .iterator_cf_opt(
@@ -125,11 +127,18 @@ impl LedgerDB {
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
             .collect::<Vec<_>>();
-
-        for (key, v) in raw_datastore {
-            println!("{:#?}", std::str::from_utf8(&key));
-            println!("{:#?}", v);
-        }
+        raw_datastore
+            .iter()
+            .map(|(key, data)| {
+                (
+                    Hash::from_str(
+                        std::str::from_utf8(key.split(|x| x == &b':').last().unwrap()).unwrap(),
+                    )
+                    .unwrap(),
+                    data.to_vec(),
+                )
+            })
+            .collect()
     }
 
     pub fn update(&mut self, addr: &Address, entry_update: LedgerEntryUpdate) {
@@ -199,7 +208,6 @@ impl LedgerDB {
 fn ledger_db_test() {
     use massa_models::Amount;
     use massa_signature::{derive_public_key, generate_random_private_key};
-    use std::collections::BTreeMap;
 
     let pub_a = derive_public_key(&generate_random_private_key());
     let pub_b = derive_public_key(&generate_random_private_key());
@@ -238,7 +246,7 @@ fn ledger_db_test() {
     assert_eq!(db.get_entry(&b, LedgerSubEntry::Balance), None);
 
     println!("addr = {}", &a);
-    db.get_entire_datastore(&a);
+    println!("{:#?}", db.get_entire_datastore(&a));
 
     // TODO: add a delete after assert when it is implemented
 }
