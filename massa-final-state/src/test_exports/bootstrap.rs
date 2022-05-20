@@ -4,16 +4,16 @@
 
 use crate::FinalStateBootstrap;
 use massa_async_pool::AsyncMessage;
-use massa_models::Slot;
+use massa_ledger::LedgerEntry;
+use massa_models::{Address, Slot};
 use std::collections::BTreeMap;
 
 /// creates a final state bootstrap from components
 pub fn make_bootstrap_state(
     slot: Slot,
-    sorted_ledger: BTreeMap<Vec<u8>, Vec<u8>>,
+    sorted_ledger: BTreeMap<Address, LedgerEntry>,
     messages: Vec<AsyncMessage>,
 ) -> FinalStateBootstrap {
-    // HERE
     FinalStateBootstrap {
         slot,
         ledger: massa_ledger::test_exports::make_bootstrap_state(sorted_ledger),

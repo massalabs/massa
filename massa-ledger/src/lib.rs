@@ -65,7 +65,7 @@ pub use error::LedgerError;
 pub use ledger::FinalLedger;
 pub use ledger_changes::LedgerChanges;
 pub use ledger_changes::LedgerEntryUpdate;
-pub use ledger_db::LedgerSubEntry;
+pub use ledger_db::{destroy_ledger_db, LedgerSubEntry};
 pub use ledger_entry::LedgerEntry;
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 

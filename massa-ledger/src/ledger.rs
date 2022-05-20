@@ -3,7 +3,7 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_changes::LedgerChanges;
-use crate::ledger_db::{LedgerDB, LedgerSubEntry, CRUD_ERROR};
+use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
@@ -119,9 +119,9 @@ impl FinalLedger {
     /// * state: bootstrap state
     pub fn from_bootstrap_state(config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
         // temporary implementation while waiting for streaming
-        let db = LedgerDB::new();
+        let mut db = LedgerDB::new();
         for (key, entry) in state.sorted_ledger {
-            db.0.put(&key, entry).expect(CRUD_ERROR);
+            db.put(&key, entry);
         }
         FinalLedger {
             sorted_ledger: db,
@@ -134,11 +134,11 @@ impl FinalLedger {
     /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
     pub fn get_bootstrap_state(&self) -> FinalLedgerBootstrapState {
         // temporary implementation while waiting for streaming
-        let mut b_ledger = BTreeMap::new();
-        let iter = self.sorted_ledger.0.iterator(rocksdb::IteratorMode::Start);
-        for (key, value) in iter {
-            b_ledger.insert(key.to_vec(), value.to_vec());
-        }
+        let b_ledger = BTreeMap::new();
+        // let iter = self.sorted_ledger.0.iterator(rocksdb::IteratorMode::Start);
+        // for (key, value) in iter {
+        //     b_ledger.insert(key.to_vec(), value.to_vec());
+        // }
         FinalLedgerBootstrapState {
             sorted_ledger: b_ledger,
         }

@@ -11,7 +11,7 @@ const DB_PATH: &str = "../massa-node/storage/ledger/rocks_db";
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
-pub const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
+const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 
 /// Ledger sub entry enum
@@ -25,6 +25,12 @@ pub enum LedgerSubEntry {
 }
 
 pub(crate) struct LedgerDB(pub(crate) DB);
+
+/// Destroy the disk ledger db and return the lock
+pub fn destroy_ledger_db() {
+    println!("DESTROYED");
+    DB::destroy(&Options::default(), DB_PATH).expect(OPEN_ERROR);
+}
 
 // NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
