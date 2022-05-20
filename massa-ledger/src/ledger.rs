@@ -17,6 +17,7 @@ use nom::error::context;
 use nom::sequence::tuple;
 use nom::AsBytes;
 use std::collections::BTreeMap;
+use std::ops::Bound::Included;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -220,7 +221,7 @@ impl FinalLedger {
             return Ok((vec![], None));
         };
         let mut data = Vec::new();
-        let amount_serializer = AmountSerializer::new();
+        let amount_serializer = AmountSerializer::new(Included(u64::MIN), Included(u64::MAX));
         for (addr, entry) in self.sorted_ledger.range(next_cursor.address..) {
             while (data.len() as u64) < LEDGER_PART_SIZE_MESSAGE_BYTES {
                 match next_cursor.step {
@@ -288,8 +289,8 @@ impl FinalLedger {
         let mut data = data.as_bytes();
         let address_deserializer = AddressDeserializer::new();
         let hash_deserializer = HashDeserializer::default();
-        let amount_deserializer = AmountDeserializer::new();
-        let vecu8_deserializer = VecU8Deserializer::new();
+        let amount_deserializer = AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX));
+        let vecu8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let mut cursor = if let Some(old_cursor) = old_cursor {
             old_cursor
         } else {
