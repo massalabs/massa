@@ -77,7 +77,10 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// A cursor to iterate through the ledger with different granularity.
-pub struct LedgerCursor(pub Address, pub LedgerCursorStep);
+pub struct LedgerCursor {
+    pub address: Address,
+    pub step: LedgerCursorStep,
+}
 
 /// A serializer for the ledger cursor.
 #[derive(Default)]
@@ -97,8 +100,8 @@ impl LedgerCursorSerializer {
 impl Serializer<LedgerCursor> for LedgerCursorSerializer {
     fn serialize(&self, value: &LedgerCursor) -> Result<Vec<u8>, SerializeError> {
         let mut bytes = vec![];
-        bytes.extend(value.0.to_bytes());
-        bytes.extend(self.cursor_step_serializer.serialize(&value.1)?);
+        bytes.extend(value.address.to_bytes());
+        bytes.extend(self.cursor_step_serializer.serialize(&value.step)?);
         Ok(bytes)
     }
 }
@@ -126,7 +129,7 @@ impl Deserializer<LedgerCursor> for LedgerCursorDeserializer {
             |input| self.address_deserializer.deserialize(input),
             |input| self.cursor_step_deserializer.deserialize(input),
         ));
-        let (rest, (address, cursor)) = parser(input)?;
-        Ok((rest, LedgerCursor(address, cursor)))
+        let (rest, (address, step)) = parser(input)?;
+        Ok((rest, LedgerCursor { address, step }))
     }
 }
