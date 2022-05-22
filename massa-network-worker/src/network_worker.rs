@@ -717,7 +717,7 @@ impl NetworkWorker {
                     {
                         Ok(Err(e)) => {
                             massa_trace!("Ignored network error when sending peer list", {
-                                "error": e
+                                "error": format!("{:?}", e)
                             })
                         }
                         Err(_) => massa_trace!("Ignored timeout error when sending peer list", {}),
