@@ -29,7 +29,7 @@ use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 /// the order they are defined is the order they are displayed in so be careful
 /// Maybe it would be worth renaming some of them for consistency
 #[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
+#[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
     #[strum(ascii_case_insensitive, message = "exit the client gracefully")]
     exit,
