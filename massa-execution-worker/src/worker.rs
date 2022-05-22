@@ -122,7 +122,7 @@ impl ExecutionThread {
                 continue;
             }
 
-            // no final block found at this slot: it's a miss
+            // no final block found at this slot: it's a miss or active block
 
             // check if the miss is final by searching for final blocks later in the same thread
             let mut miss_final = false;
