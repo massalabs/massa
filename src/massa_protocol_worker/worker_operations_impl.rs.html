@@ -236,6 +236,7 @@
 <span id="229">229</span>
 <span id="230">230</span>
 <span id="231">231</span>
+<span id="232">232</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Implement the propagation algorithm written here [redirect to GitHub]</span>
@@ -249,6 +250,7 @@
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::protocol_worker::ProtocolWorker</span>;
+<span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">node::NodeId</span>,
     <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
@@ -258,7 +260,7 @@
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolError</span>, <span class="ident">ProtocolPoolEvent</span>};
 <span class="kw">use</span> <span class="ident">massa_time::TimeError</span>;
 <span class="kw">use</span> <span class="ident">tokio::time</span>::{<span class="ident">sleep_until</span>, <span class="ident">Instant</span>, <span class="ident">Sleep</span>};
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">warn</span>};
+<span class="kw">use</span> <span class="ident">tracing::warn</span>;
 
 <span class="doccomment">/// Structure containing a Batch of `operation_ids` we would like to ask</span>
 <span class="doccomment">/// to a `node_id` now or later. Mainly used in protocol and translated into</span>
@@ -343,7 +345,7 @@
             }
         } <span class="comment">// EndOf for op_id in op_batch:</span>
         <span class="kw">if</span> <span class="ident">count_reask</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="macro">debug!</span>(<span class="string">&quot;re-ask {:#?} operations.&quot;</span>, <span class="ident">count_reask</span>);
+            <span class="macro">massa_trace!</span>(<span class="string">&quot;re-ask operations.&quot;</span>, { <span class="string">&quot;count&quot;</span>: <span class="ident">count_reask</span> });
         }
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">operation_batch_buffer_capacity</span>
             <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">future_set</span>.<span class="ident">is_empty</span>()

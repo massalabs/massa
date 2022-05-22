@@ -802,6 +802,10 @@
 <span id="795">795</span>
 <span id="796">796</span>
 <span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
@@ -1499,9 +1503,9 @@
         <span class="ident">writer</span>: <span class="ident">WriteHalf</span>,
         <span class="ident">remote_addr</span>: <span class="ident">SocketAddr</span>,
     ) {
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;Maximum connection reached. Inbound connection from addr={} refused, try to send a list of peers&quot;</span>,
-            <span class="ident">remote_addr</span>
+        <span class="macro">massa_trace!</span>(
+            <span class="string">&quot;Maximum connection count reached. Inbound connection refused, trying to send a list of peers&quot;</span>,
+            {<span class="string">&quot;address&quot;</span>: <span class="ident">remote_addr</span>}
         );
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_in_connection_overflow</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">handshake_peer_list_futures</span>.<span class="ident">len</span>() {
             <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="ident">Message::PeerList</span>(<span class="self">self</span>.<span class="ident">peer_info_db</span>.<span class="ident">get_advertisable_peer_ips</span>());
@@ -1519,8 +1523,12 @@
                     )
                     .<span class="kw">await</span>
                     {
-                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;Ignored network error on send peerlist={}&quot;</span>, <span class="ident">e</span>),
-                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;Ignored timeout error on send peerlist&quot;</span>),
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; {
+                            <span class="macro">massa_trace!</span>(<span class="string">&quot;Ignored network error when sending peer list&quot;</span>, {
+                                <span class="string">&quot;error&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>)
+                            })
+                        }
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">massa_trace!</span>(<span class="string">&quot;Ignored timeout error when sending peer list&quot;</span>, {}),
                         <span class="kw">_</span> =&gt; (),
                     }
                 }));
