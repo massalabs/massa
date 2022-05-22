@@ -128,9 +128,13 @@ impl ExecutionThread {
             let mut miss_final = false;
             let mut search_slot = slot;
             while search_slot < max_final_slot {
-                search_slot = search_slot
-                    .get_next_slot(self.config.thread_count)
-                    .expect("final slot overflow in VM");
+                search_slot = Slot::new(
+                    search_slot
+                        .period
+                        .checked_add(1)
+                        .expect("final slot overflow in VM"),
+                    search_slot.thread,
+                );
                 if self.pending_final_blocks.contains_key(&search_slot) {
                     // A final block was found later in the same thread.
                     // The missed slot is therefore final.
