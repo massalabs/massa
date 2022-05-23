@@ -191,6 +191,8 @@
 <span id="184">184</span>
 <span id="185">185</span>
 <span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//!</span>
@@ -305,6 +307,8 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_LOOKBACK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">2</span>;
 <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_LOCK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
+<span class="doccomment">/// Maximum size batch of data in a part of the ledger</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_PART_SIZE_MESSAGE_BYTES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">30000000</span>;
 
 <span class="comment">// ***********************</span>
 <span class="comment">// Bootstrap constants</span>

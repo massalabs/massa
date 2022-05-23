@@ -192,7 +192,7 @@
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
 <span class="doccomment">/// Structure defining an entry associated to an address in the `FinalLedger`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerEntry</span> {
     <span class="doccomment">/// The parallel balance of that entry.</span>
     <span class="doccomment">/// See lib.rs for an explanation on parallel vs sequential balances.</span>

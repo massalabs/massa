@@ -78,6 +78,7 @@
 <span id="71">71</span>
 <span id="72">72</span>
 <span id="73">73</span>
+<span id="74">74</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! # General description</span>
@@ -131,6 +132,7 @@
 
 <span class="kw">mod</span> <span class="ident">bootstrap</span>;
 <span class="kw">mod</span> <span class="ident">config</span>;
+<span class="kw">mod</span> <span class="ident">cursor</span>;
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">ledger</span>;
 <span class="kw">mod</span> <span class="ident">ledger_changes</span>;
@@ -148,7 +150,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">test</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
 <span class="doccomment">/// test exports</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
 </code></pre></div>

@@ -79,6 +79,8 @@
 <span id="72">72</span>
 <span id="73">73</span>
 <span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! All the structures that are used everywhere</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
@@ -98,7 +100,9 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">operation</span>::{<span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">SignedOperation</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">serialization</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">u8_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeMinBEInt</span>, <span class="ident">DeserializeVarInt</span>,
-    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeMinBEInt</span>, <span class="ident">SerializeVarInt</span>,
+    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeMinBEInt</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">U16VarIntDeserializer</span>,
+    <span class="ident">U16VarIntSerializer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="ident">U32VarIntSerializer</span>, <span class="ident">U64VarIntDeserializer</span>,
+    <span class="ident">U64VarIntSerializer</span>, <span class="ident">VecU8Deserializer</span>, <span class="ident">VecU8Serializer</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">serialization_context</span>::{
     <span class="ident">get_serialization_context</span>, <span class="ident">init_serialization_context</span>, <span class="ident">with_serialization_context</span>,

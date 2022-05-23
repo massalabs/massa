@@ -50,11 +50,13 @@
 <span id="43">43</span>
 <span id="44">44</span>
 <span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
+<span class="kw">use</span> <span class="ident">massa_serialization::SerializeError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
-
 <span class="doccomment">/// models error</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ModelsResult</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span> <span class="op">=</span> <span class="ident">ModelsError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">core::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>;
 
@@ -66,6 +68,8 @@
     <span class="ident">HashError</span>,
     <span class="doccomment">/// Serialization error: {0}</span>
     <span class="ident">SerializeError</span>(<span class="ident">String</span>),
+    <span class="doccomment">/// Serialization error: {0}</span>
+    <span class="ident">SerializationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SerializeError</span>),
     <span class="doccomment">/// Deserialization error: {0}</span>
     <span class="ident">DeserializeError</span>(<span class="ident">String</span>),
     <span class="doccomment">/// buffer error: {0}</span>

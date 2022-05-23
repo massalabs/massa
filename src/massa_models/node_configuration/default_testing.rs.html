@@ -208,6 +208,8 @@
 <span id="201">201</span>
 <span id="202">202</span>
 <span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES</span>
 <span class="doccomment">//! Same as default constants but in testing mode. You can access to them with</span>
 <span class="doccomment">//! the `testing` feature activated.</span>
@@ -299,6 +301,8 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BLOCK_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3145728</span>;
 <span class="doccomment">/// max asynchronous pool length</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_POOL_LENGTH</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10_000</span>;
+<span class="doccomment">/// Maximum size batch of data in a part of the ledger</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_PART_SIZE_MESSAGE_BYTES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">50</span>;
 <span class="doccomment">/// max bootstrapped blocks</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_BLOCKS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">100</span>;
 <span class="doccomment">/// max bootstrapped children per block</span>

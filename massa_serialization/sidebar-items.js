@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["SerializeError",""]],"trait":[["Deserializer","Trait that define the deserialize method that must be implemented for all types have serialize form in Massa."],["Serializer","This trait must be implemented to serializes all data in Massa."]]});
