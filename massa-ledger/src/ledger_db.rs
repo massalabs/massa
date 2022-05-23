@@ -36,12 +36,14 @@ pub fn destroy_ledger_db() {
     DB::destroy(&Options::default(), DB_PATH).expect(OPEN_ERROR);
 }
 
+// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
 macro_rules! balance_key {
     ($addr:ident) => {
         [&[BALANCE_IDENT], &$addr.to_bytes()[..]].concat()
     };
 }
 
+// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
 // NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
     ($addr:ident) => {
