@@ -5,7 +5,7 @@ use massa_models::{Address, Amount, DeserializeVarInt, SerializeVarInt};
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
@@ -36,26 +36,26 @@ pub fn destroy_ledger_db() {
 
 macro_rules! balance_key {
     ($addr:ident) => {
-        format!("1:{}", $addr).as_bytes()
+        [&[1u8], &$addr.to_bytes()[..]].concat()
     };
 }
 
 // NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
     ($addr:ident) => {
-        format!("2:{}", $addr).as_bytes()
+        [&[2u8], &$addr.to_bytes()[..]].concat()
     };
 }
 
 macro_rules! data_key {
     ($addr:ident, $key:ident) => {
-        format!("{}:{}", $addr, $key).as_bytes()
+        [&$addr.to_bytes()[..], &[0u8], &$key.to_bytes()[..]].concat()
     };
 }
 
 macro_rules! data_prefix {
     ($addr:ident) => {
-        format!("{}:", $addr).as_bytes()
+        [&$addr.to_bytes()[..], &[0u8]].concat()
     };
 }
 
@@ -120,16 +120,15 @@ impl LedgerDB {
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        let iter = self
+        let ledger = self
             .0
             .iterator_cf(handle, IteratorMode::Start)
             .collect::<Vec<_>>();
 
         let mut addresses = BTreeMap::new();
-        for (a, b) in iter {
-            if &a[..2] == b"1:" && let Ok(v) = u64::from_varint_bytes(&b) {
-                addresses.insert(Address::from_str(
-                    std::str::from_utf8(&a[2..]).unwrap()).unwrap(), Amount::from_raw(v.0));
+        for (key, entry) in ledger {
+            if &key[0] == &1u8 && let Ok(v) = u64::from_varint_bytes(&entry) {
+                addresses.insert(Address::from_bytes(&key[1..].try_into().unwrap()).unwrap(), Amount::from_raw(v.0));
             }
         }
         addresses
@@ -139,24 +138,20 @@ impl LedgerDB {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
+        opt.set_iterate_upper_bound(end_prefix(&data_prefix!(addr)).unwrap());
 
-        let raw_datastore = self
-            .0
+        self.0
             .iterator_cf_opt(
                 handle,
                 opt,
-                IteratorMode::From(data_prefix!(addr), Direction::Forward),
+                IteratorMode::From(&data_prefix!(addr), Direction::Forward),
             )
-            .collect::<Vec<_>>();
-        raw_datastore
+            .collect::<Vec<_>>()
             .iter()
             .map(|(key, data)| {
                 (
-                    Hash::from_str(
-                        std::str::from_utf8(key.split(|x| x == &b':').last().unwrap()).unwrap(),
-                    )
-                    .unwrap(),
+                    Hash::from_bytes(key.split(|b| b == &0u8).last().unwrap().try_into().unwrap())
+                        .unwrap(),
                     data.to_vec(),
                 )
             })
@@ -227,7 +222,6 @@ impl LedgerDB {
 }
 
 #[test]
-// TODO: test datastore handling as well
 fn test_ledger_db() {
     use massa_models::Amount;
     use massa_signature::{derive_public_key, generate_random_private_key};

@@ -8,7 +8,7 @@ use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
 use massa_hash::Hash;
-use massa_models::{Address, Amount, DeserializeVarInt};
+use massa_models::{Address, Amount, DeserializeCompact};
 use std::collections::BTreeMap;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
@@ -146,15 +146,12 @@ impl FinalLedger {
     /// # Returns
     /// The parallel balance, or None if the ledger entry was not found
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
-        // note: can a balance ever have a invalid format?
         self.sorted_ledger
             .get_entry(addr, LedgerSubEntry::Balance)
             .map(|bytes| {
-                Amount::from_raw(
-                    u64::from_varint_bytes(&bytes)
-                        .expect("critical: invalid balance format")
-                        .0,
-                )
+                Amount::from_bytes_compact(&bytes)
+                    .expect("critical: invalid balance format")
+                    .0
             })
     }
 
