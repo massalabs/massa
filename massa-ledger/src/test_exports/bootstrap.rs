@@ -39,8 +39,6 @@ pub fn assert_eq_ledger_bootstrap_state(
     v1: &FinalLedgerBootstrapState,
     v2: &FinalLedgerBootstrapState,
 ) {
-    println!("v1: {:#?}", v1);
-    println!("v2: {:#?}", v2);
     assert_eq!(
         v1.sorted_ledger.len(),
         v2.sorted_ledger.len(),
