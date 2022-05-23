@@ -8,7 +8,7 @@ use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
 use massa_hash::Hash;
-use massa_models::{Address, Amount};
+use massa_models::{Address, Amount, DeserializeVarInt};
 use std::collections::BTreeMap;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
@@ -150,9 +150,11 @@ impl FinalLedger {
         self.sorted_ledger
             .get_entry(addr, LedgerSubEntry::Balance)
             .map(|bytes| {
-                Amount::from_raw(u64::from_be_bytes(
-                    bytes.try_into().expect("critical: invalid balance format"),
-                ))
+                Amount::from_raw(
+                    u64::from_varint_bytes(&bytes)
+                        .expect("critical: invalid balance format")
+                        .0,
+                )
             })
     }
 

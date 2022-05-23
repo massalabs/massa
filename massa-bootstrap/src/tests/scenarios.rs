@@ -34,8 +34,6 @@ lazy_static::lazy_static! {
 
 #[tokio::test]
 #[serial]
-// TODO: remove ignore and adapt after bootstrap impl
-#[ignore]
 async fn test_bootstrap_server() {
     let (bootstrap_settings, private_key): &(BootstrapSettings, PrivateKey) =
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
