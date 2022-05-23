@@ -51,6 +51,7 @@
 
 mod bootstrap;
 mod config;
+mod cursor;
 mod error;
 mod ledger;
 mod ledger_changes;
@@ -68,6 +69,6 @@ pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "testing")]
+#[cfg(any(test, feature = "testing"))]
 /// test exports
 pub mod test_exports;
