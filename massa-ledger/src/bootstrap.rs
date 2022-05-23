@@ -3,18 +3,15 @@
 //! Provides serializable structures for bootstrapping the `FinalLedger`
 
 use crate::{
-    cursor::{LedgerCursor, LedgerCursorStep},
     LedgerEntry,
 };
 use massa_models::{
-    amount::AmountSerializer,
     array_from_slice,
-    constants::{default::MAXIMUM_BYTES_MESSAGE_BOOTSTRAP, ADDRESS_SIZE_BYTES},
+    constants::ADDRESS_SIZE_BYTES,
     Address, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::ops::Bound::{Excluded, Unbounded};
 
 /// Represents a snapshot of the ledger state,
 /// which is enough to fully bootstrap a `FinalLedger`

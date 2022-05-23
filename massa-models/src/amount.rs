@@ -8,6 +8,7 @@ use nom::IResult;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
+use std::ops::Bound;
 use std::str::FromStr;
 
 /// A structure representing a decimal Amount of coins with safe operations
@@ -181,16 +182,15 @@ impl FromStr for Amount {
 }
 
 /// Serializer for amount
-#[derive(Default)]
 pub struct AmountSerializer {
     u64_serializer: U64VarIntSerializer,
 }
 
 impl AmountSerializer {
     /// Create a new `AmountSerializer`
-    pub fn new() -> Self {
+    pub fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::default(),
+            u64_serializer: U64VarIntSerializer::new(min_amount, max_amount),
         }
     }
 }
@@ -202,16 +202,15 @@ impl Serializer<Amount> for AmountSerializer {
 }
 
 /// Deserializer for amount
-#[derive(Default)]
 pub struct AmountDeserializer {
     u64_deserializer: U64VarIntDeserializer,
 }
 
 impl AmountDeserializer {
     /// Create a new `AmountDeserializer`
-    pub fn new() -> Self {
+    pub fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::default(),
+            u64_deserializer: U64VarIntDeserializer::new(min_amount, max_amount),
         }
     }
 }

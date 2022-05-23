@@ -47,14 +47,6 @@ macro_rules! gen_varint {
                     }
                 }
 
-                impl Default for $s {
-                    fn default() -> Self {
-                        Self {
-                            range: (Bound::Included($type::MIN), Bound::Included($type::MAX))
-                        }
-                    }
-                }
-
                 impl Serializer<$type> for $s {
                     fn serialize(&self, value: &$type) -> Result<Vec<u8>, SerializeError> {
                         if !self.range.contains(value) {
@@ -69,14 +61,6 @@ macro_rules! gen_varint {
                 #[doc = " in a varint form."]
                 pub struct $ds {
                     range: (Bound<$type>, Bound<$type>)
-                }
-
-                impl Default for $ds {
-                    fn default() -> Self {
-                        Self {
-                            range: (Bound::Included($type::MIN), Bound::Included($type::MAX))
-                        }
-                    }
                 }
 
                 impl $ds {
@@ -389,16 +373,15 @@ impl DeserializeCompact for Amount {
 }
 
 /// Basic `Vec<u8>` serializer
-#[derive(Default)]
 pub struct VecU8Serializer {
     varint_u64_serializer: U64VarIntSerializer,
 }
 
 impl VecU8Serializer {
     /// Creates a new `VecU8Serializer`
-    pub fn new() -> Self {
+    pub fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
         Self {
-            varint_u64_serializer: U64VarIntSerializer::default(),
+            varint_u64_serializer: U64VarIntSerializer::new(min_length, max_length),
         }
     }
 }
@@ -415,16 +398,15 @@ impl Serializer<Vec<u8>> for VecU8Serializer {
 }
 
 /// Basic `Vec<u8>` deserializer
-#[derive(Default)]
 pub struct VecU8Deserializer {
     varint_u64_deserializer: U64VarIntDeserializer,
 }
 
 impl VecU8Deserializer {
     /// Creates a new `VecU8Deserializer`
-    pub fn new() -> Self {
+    pub fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
         Self {
-            varint_u64_deserializer: U64VarIntDeserializer::default(),
+            varint_u64_deserializer: U64VarIntDeserializer::new(min_length, max_length),
         }
     }
 }
@@ -441,13 +423,13 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
 mod tests {
     use super::*;
     use serial_test::serial;
-
+    use std::ops::Bound::Included;
     #[test]
     #[serial]
     fn vec_u8() {
         let vec: Vec<u8> = vec![9, 8, 7];
-        let vec_u8_serializer = VecU8Serializer::new();
-        let vec_u8_deserializer = VecU8Deserializer::new();
+        let vec_u8_serializer = VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX));
+        let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let serialized = vec_u8_serializer.serialize(&vec).unwrap();
         let (rest, new_vec) = vec_u8_deserializer.deserialize(&serialized).unwrap();
         assert!(rest.is_empty());
@@ -459,9 +441,11 @@ mod tests {
     fn vec_u8_big_length() {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 10;
-        let mut serialized = U64VarIntSerializer::default().serialize(&len).unwrap();
+        let mut serialized = U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+            .serialize(&len)
+            .unwrap();
         serialized.extend(vec);
-        let vec_u8_deserializer = VecU8Deserializer::new();
+        let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let _ = vec_u8_deserializer
             .deserialize(&serialized)
             .expect_err("Should fail too long size");
@@ -472,9 +456,11 @@ mod tests {
     fn vec_u8_min_length() {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 1;
-        let mut serialized = U64VarIntSerializer::default().serialize(&len).unwrap();
+        let mut serialized = U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+            .serialize(&len)
+            .unwrap();
         serialized.extend(vec);
-        let vec_u8_deserializer = VecU8Deserializer::new();
+        let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let (rest, res) = vec_u8_deserializer.deserialize(&serialized).unwrap();
         assert_eq!(rest, &[8, 7]);
         assert_eq!(res, &[9])

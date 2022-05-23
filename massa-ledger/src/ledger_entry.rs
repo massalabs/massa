@@ -18,6 +18,7 @@ use nom::sequence::tuple;
 use nom::IResult;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::ops::Bound::Included;
 
 /// Structure defining an entry associated to an address in the `FinalLedger`
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -40,7 +41,7 @@ struct DatastoreSerializer {
 impl DatastoreSerializer {
     pub fn new() -> Self {
         Self {
-            value_serializer: VecU8Serializer::new(),
+            value_serializer: VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
 }
@@ -66,7 +67,6 @@ impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
     }
 }
 
-#[derive(Default)]
 struct DatastoreDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     hash_deserializer: HashDeserializer,
@@ -76,9 +76,9 @@ struct DatastoreDeserializer {
 impl DatastoreDeserializer {
     pub fn new() -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::default(),
-            hash_deserializer: HashDeserializer::default(),
-            value_deserializer: VecU8Deserializer::new(),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            hash_deserializer: HashDeserializer::new(),
+            value_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
 }
@@ -107,8 +107,8 @@ pub struct LedgerEntrySerializer {
 impl LedgerEntrySerializer {
     pub fn new() -> Self {
         Self {
-            vec_u8_serializer: VecU8Serializer::new(),
-            amount_serializer: AmountSerializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX)),
+            amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             datastore_serializer: DatastoreSerializer::new(),
         }
     }
@@ -133,8 +133,8 @@ pub struct LedgerEntryDeserializer {
 impl LedgerEntryDeserializer {
     pub fn new() -> Self {
         Self {
-            amount_deserializer: AmountDeserializer::new(),
-            vec_u8_deserializer: VecU8Deserializer::new(),
+            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            vec_u8_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
             datastore_deserializer: DatastoreDeserializer::new(),
         }
     }

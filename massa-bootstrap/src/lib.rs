@@ -719,7 +719,7 @@ async fn manage_bootstrap(
                         write_timeout,
                         server.send(messages::BootstrapMessageServer::ExecutionLedgerPart {
                             data,
-                            cursor,
+                            cursor: cursor.unwrap(),
                             slot: Slot::new(1, 0),
                             ledger_changes: ExecutionLedgerChanges::default(),
                         }),

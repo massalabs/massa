@@ -18,6 +18,7 @@ use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::IResult;
 use std::collections::hash_map;
+use std::ops::Bound::Included;
 
 /// represents an update to one or more fields of a `LedgerEntry`
 #[derive(Default, Debug, Clone)]
@@ -37,7 +38,7 @@ struct DatastoreSerializer {
 impl DatastoreSerializer {
     pub fn new() -> Self {
         Self {
-            value_serializer: SetOrDeleteSerializer::new(VecU8Serializer::new()),
+            value_serializer: SetOrDeleteSerializer::new(VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX))),
         }
     }
 }
@@ -75,9 +76,9 @@ struct DatastoreDeserializer {
 impl DatastoreDeserializer {
     pub fn new() -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::default(),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             hash_deserializer: HashDeserializer::default(),
-            value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new()),
+            value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX))),
         }
     }
 }
@@ -109,8 +110,8 @@ struct LedgerEntryUpdateSerializer {
 impl LedgerEntryUpdateSerializer {
     pub fn new() -> Self {
         Self {
-            parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new()),
-            bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new()),
+            parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new(Included(u64::MIN), Included(u64::MAX))),
+            bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX))),
             datastore_serializer: DatastoreSerializer::new(),
         }
     }
@@ -138,8 +139,8 @@ struct LedgerEntryUpdateDeserializer {
 impl LedgerEntryUpdateDeserializer {
     pub fn new() -> Self {
         Self {
-            parallel_balance_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new()),
-            bytecode_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new()),
+            parallel_balance_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX))),
+            bytecode_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX))),
             datastore_deserializer: DatastoreDeserializer::new(),
         }
     }
@@ -236,7 +237,7 @@ impl LedgerChangesDeserializer {
     /// Creates a new `LedgerChangesDeserializer`
     pub fn new() -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::default(),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::default(),
             entry_deserializer: SetUpdateOrDeleteDeserializer::new(
                 LedgerEntryDeserializer::new(),
