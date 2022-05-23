@@ -201,6 +201,7 @@ impl LedgerDB {
         // TODO: define how we want to handle this first
     }
 
+    // NOTE: this function is not trustworthy avoid using it and eventually remove it
     pub fn entry_may_exist(&self, addr: &Address, ty: LedgerSubEntry) -> bool {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
