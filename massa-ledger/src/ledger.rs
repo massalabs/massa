@@ -17,7 +17,7 @@ use nom::error::context;
 use nom::sequence::tuple;
 use nom::AsBytes;
 use std::collections::BTreeMap;
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included, Unbounded};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -242,13 +242,17 @@ impl FinalLedger {
                     LedgerCursorStep::Datastore(key) => {
                         let key = if let Some(key) = key {
                             key
-                        } else if let Some((&key, _)) = entry.datastore.first_key_value() {
+                        } else if let Some((&key, value)) = entry.datastore.first_key_value() {
+                            data.push(DATASTORE_KEY_IDENTIFIER);
+                            data.extend(key.to_bytes());
+                            data.extend((value.len() as u64).to_varint_bytes());
+                            data.extend(value);
                             key
                         } else {
                             next_cursor.step = LedgerCursorStep::Finish;
                             break;
                         };
-                        for (key, value) in entry.datastore.range(key..) {
+                        for (key, value) in entry.datastore.range((Excluded(key), Unbounded)) {
                             data.push(DATASTORE_KEY_IDENTIFIER);
                             data.extend(key.to_bytes());
                             data.extend((value.len() as u64).to_varint_bytes());

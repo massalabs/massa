@@ -15,7 +15,7 @@ pub enum Change<T, U> {
 
 /// represents a list of additions and deletions to the asynchronous message pool
 #[derive(Default, Debug, Clone)]
-pub struct AsyncPoolChanges(pub(crate) Vec<Change<AsyncMessageId, AsyncMessage>>);
+pub struct AsyncPoolChanges(pub Vec<Change<AsyncMessageId, AsyncMessage>>);
 
 impl AsyncPoolChanges {
     /// Extends self with another another `AsyncPoolChanges`.

@@ -9,9 +9,9 @@ use crate::{
     bootstrap::FinalStateBootstrap, config::FinalStateConfig, error::FinalStateError,
     state_changes::StateChanges,
 };
-use massa_async_pool::AsyncPool;
-use massa_ledger::{Applicable, FinalLedger};
-use massa_models::Slot;
+use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
+use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
+use massa_models::{Address, Slot};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool)`
@@ -113,5 +113,56 @@ impl FinalState {
             }
             self.changes_history.push_back((slot, changes));
         }
+    }
+
+    /// Used for bootstrap
+    /// TODO: Document
+    pub fn get_part_state_changes(
+        &self,
+        slot: Slot,
+        max_address: Address,
+        max_id_async_pool: AsyncMessageId,
+    ) -> Vec<(Slot, StateChanges)> {
+        let pos_slot = self.changes_history.partition_point(|(s, _)| s > &slot);
+        let mut res_changes: Vec<(Slot, StateChanges)> = Vec::new();
+        for (slot, changes) in self.changes_history.range(pos_slot..) {
+            let mut elem: StateChanges = StateChanges::default();
+
+            //Get ledger change that concern address < max_address.
+            let ledger_changes: LedgerChanges = LedgerChanges(
+                changes
+                    .ledger_changes
+                    .0
+                    .iter()
+                    .filter_map(|(address, change)| {
+                        if address < &max_address {
+                            Some((*address, change.clone()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
+            );
+            elem.ledger_changes = ledger_changes;
+
+            //Get async pool changes that concern ids < max_id_async_pool
+            let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
+                changes
+                    .async_pool_changes
+                    .0
+                    .iter()
+                    .filter_map(|change| match change {
+                        Change::Add(id, _) if id < &max_id_async_pool => Some(change.clone()),
+                        Change::Delete(id) if id < &max_id_async_pool => Some(change.clone()),
+                        _ => None,
+                    })
+                    .collect(),
+            );
+            elem.async_pool_changes = async_pool_changes;
+            if !elem.async_pool_changes.0.is_empty() || !elem.ledger_changes.0.is_empty() {
+                res_changes.push((*slot, elem));
+            }
+        }
+        res_changes
     }
 }

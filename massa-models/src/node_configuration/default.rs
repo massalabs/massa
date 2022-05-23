@@ -113,7 +113,9 @@ pub const POS_LOOKBACK_CYCLES: u64 = 2;
 /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
 pub const POS_LOCK_CYCLES: u64 = 1;
 /// Maximum size batch of data in a part of the ledger
-pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 30000000;
+pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 30;
+/// Maximum async messages in a batch of the bootstrap of the async pool
+pub const ASYNC_POOL_BATCH_SIZE: u64 = 10;
 
 // ***********************
 // Bootstrap constants
