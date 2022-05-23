@@ -11,6 +11,7 @@
 use std::collections::VecDeque;
 
 use crate::protocol_worker::ProtocolWorker;
+use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
@@ -20,7 +21,7 @@ use massa_network_exports::NetworkError;
 use massa_protocol_exports::{ProtocolError, ProtocolPoolEvent};
 use massa_time::TimeError;
 use tokio::time::{sleep_until, Instant, Sleep};
-use tracing::{debug, warn};
+use tracing::warn;
 
 /// Structure containing a Batch of `operation_ids` we would like to ask
 /// to a `node_id` now or later. Mainly used in protocol and translated into
@@ -105,7 +106,7 @@ impl ProtocolWorker {
             }
         } // EndOf for op_id in op_batch:
         if count_reask > 0 {
-            debug!("re-ask {:#?} operations.", count_reask);
+            massa_trace!("re-ask operations.", { "count": count_reask });
         }
         if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity
             && !future_set.is_empty()

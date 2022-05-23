@@ -21,7 +21,7 @@
     readonly_queue_length = 10
     # by how many milliseconds shoud the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
-    cursor_delay = 0
+    cursor_delay = 2000
 
 [ledger]
     # path to the initial smart contract balance ledger

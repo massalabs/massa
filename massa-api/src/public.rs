@@ -275,7 +275,11 @@ impl Endpoints for API<Public> {
                 connected_nodes: peers?
                     .peers
                     .iter()
-                    .flat_map(|(ip, peer)| peer.active_nodes.iter().map(move |(id, _)| (*id, *ip)))
+                    .flat_map(|(ip, peer)| {
+                        peer.active_nodes
+                            .iter()
+                            .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
+                    })
                     .collect(),
                 last_slot,
                 next_slot: last_slot

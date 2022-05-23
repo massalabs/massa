@@ -122,14 +122,15 @@ impl ExecutionThread {
                 continue;
             }
 
-            // no final block found at this slot: it's a miss
+            // no final block found at this slot: it's a miss or active block
 
             // check if the miss is final by searching for final blocks later in the same thread
             let mut miss_final = false;
             let mut search_slot = slot;
             while search_slot < max_final_slot {
-                search_slot = search_slot
-                    .get_next_slot(self.config.thread_count)
+                search_slot.period = search_slot
+                    .period
+                    .checked_add(1)
                     .expect("final slot overflow in VM");
                 if self.pending_final_blocks.contains_key(&search_slot) {
                     // A final block was found later in the same thread.
