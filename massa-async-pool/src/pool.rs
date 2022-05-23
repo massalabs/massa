@@ -8,8 +8,9 @@ use crate::{
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
 };
-use massa_models::Slot;
+use massa_models::{constants::default::ASYNC_POOL_BATCH_SIZE, Slot};
 use std::collections::BTreeMap;
+use std::ops::Bound::{Included, Unbounded};
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -22,6 +23,9 @@ pub struct AsyncPool {
     /// Messages sorted by decreasing ID (decreasing priority)
     pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 }
+
+/// Part of the async pool used for bootstrap
+pub type AsyncPoolPart = Vec<(AsyncMessageId, AsyncMessage)>;
 
 impl AsyncPool {
     /// Creates an empty `AsyncPool`
@@ -147,6 +151,22 @@ impl AsyncPool {
                 }
             })
             .collect()
+    }
+
+    /// Used for bootstrap
+    /// TODO: Document
+    pub fn get_pool_part(&self, last_id: AsyncMessageId) -> AsyncPoolPart {
+        self.messages
+            .range((Included(last_id), Unbounded))
+            .take(ASYNC_POOL_BATCH_SIZE as usize)
+            .map(|(id, value)| (*id, value.clone()))
+            .collect()
+    }
+
+    /// Used for bootstrap
+    /// TODO: Document
+    pub fn set_pool_part(&mut self, part: AsyncPoolPart) {
+        self.messages.extend(part);
     }
 }
 

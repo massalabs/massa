@@ -152,7 +152,6 @@ impl DeserializeCompact for BootstrapMessageServer {
                 BootstrapMessageServer::ConsensusState { pos, graph }
             }
             MessageServerTypeId::ExecutionLedgerPart => {
-                let cursor_deserializer = LedgerCursorDeserializer::new();
                 let ledger_execution_deserializer = ExecutionLedgerChangesDeserializer::new();
 
                 let (data_len, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
@@ -160,9 +159,6 @@ impl DeserializeCompact for BootstrapMessageServer {
 
                 let data = &buffer[cursor..cursor + data_len as usize];
                 cursor += data_len as usize;
-
-                let (rest, ledger_cursor) = cursor_deserializer.deserialize(&buffer[cursor..])?;
-                cursor += rest.len();
 
                 let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;

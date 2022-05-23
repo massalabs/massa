@@ -170,6 +170,7 @@ async fn test_bootstrap_server() {
     assert_eq_thread_cycle_states(&sent_pos, &bootstrap_res.pos.unwrap());
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
+    println!("end of test");
     // stop bootstrap server
     bootstrap_manager
         .stop()
