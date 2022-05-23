@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use massa_models::Address;
 
-use crate::{FinalLedgerBootstrapState, LedgerEntry};
+use crate::{FinalLedger, FinalLedgerBootstrapState, LedgerEntry};
 
 /// This file defines tools to test the ledger bootstrap
 
@@ -35,10 +35,7 @@ pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
 }
 
 /// asserts that two `FinalLedgerBootstrapState` are equal
-pub fn assert_eq_ledger_bootstrap_state(
-    v1: &FinalLedgerBootstrapState,
-    v2: &FinalLedgerBootstrapState,
-) {
+pub fn assert_eq_ledger(v1: &FinalLedger, v2: &FinalLedger) {
     assert_eq!(
         v1.sorted_ledger.len(),
         v2.sorted_ledger.len(),

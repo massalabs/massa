@@ -2,7 +2,7 @@
 
 //! This file defines tools to test the final state bootstrap
 
-use crate::FinalStateBootstrap;
+use crate::{FinalState, FinalStateBootstrap};
 use massa_async_pool::AsyncMessage;
 use massa_ledger::LedgerEntry;
 use massa_models::{Address, Slot};
@@ -21,13 +21,13 @@ pub fn make_bootstrap_state(
     }
 }
 
-/// asserts that two `FinalStateBootstrap` are equal
-pub fn assert_eq_final_state_bootstrap(v1: &FinalStateBootstrap, v2: &FinalStateBootstrap) {
+/// asserts that two `FinalState` are equal
+pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     // compare slots
     assert_eq!(v1.slot, v2.slot, "final slot mismatch");
 
-    // compare ledger bootstrap states
-    massa_ledger::test_exports::assert_eq_ledger_bootstrap_state(&v1.ledger, &v2.ledger);
+    // compare ledger states
+    massa_ledger::test_exports::assert_eq_ledger(&v1.ledger, &v2.ledger);
     massa_async_pool::test_exports::assert_eq_async_pool_bootstrap_state(
         &v1.async_pool,
         &v2.async_pool,

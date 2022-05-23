@@ -19,7 +19,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
 
 /// Messages used during bootstrap by server
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BootstrapMessageServer {
     /// Sync clocks
     BootstrapTime {
@@ -43,8 +43,6 @@ pub enum BootstrapMessageServer {
     ExecutionLedgerPart {
         /// Part of the execution ledger sent in a serialized way
         data: Vec<u8>,
-        /// The next state of the cursor
-        cursor: LedgerCursor,
         /// Slot the ledger changes are attached to
         slot: Slot,
         /// Ledger change for addresses inferior to `address` of the client message.
@@ -91,16 +89,13 @@ impl SerializeCompact for BootstrapMessageServer {
             }
             BootstrapMessageServer::ExecutionLedgerPart {
                 data,
-                cursor,
                 slot,
                 ledger_changes,
             } => {
-                let cursor_serializer = LedgerCursorSerializer::new();
                 let ledger_execution_serializer = ExecutionLedgerChangesSerializer::new();
                 res.extend(u32::from(MessageServerTypeId::ExecutionLedgerPart).to_varint_bytes());
                 res.extend((data.len() as u64).to_varint_bytes());
                 res.extend(data);
-                res.extend(&cursor_serializer.serialize(cursor)?);
                 res.extend(slot.to_bytes_compact()?);
                 res.extend(ledger_execution_serializer.serialize(ledger_changes)?);
             }
@@ -177,7 +172,6 @@ impl DeserializeCompact for BootstrapMessageServer {
 
                 BootstrapMessageServer::ExecutionLedgerPart {
                     data: data.to_vec(),
-                    cursor: ledger_cursor,
                     slot,
                     ledger_changes,
                 }

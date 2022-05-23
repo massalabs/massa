@@ -18,7 +18,7 @@ use std::collections::VecDeque;
 #[derive(Debug)]
 pub struct FinalState {
     /// execution state configuration
-    config: FinalStateConfig,
+    pub(crate) config: FinalStateConfig,
     /// slot at the output of which the state is attached
     pub slot: Slot,
     /// final ledger associating addresses to their balance, executable bytecode and data
@@ -27,7 +27,7 @@ pub struct FinalState {
     pub async_pool: AsyncPool,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
-    changes_history: VecDeque<(Slot, StateChanges)>,
+    pub(crate) changes_history: VecDeque<(Slot, StateChanges)>,
 }
 
 impl FinalState {
@@ -47,7 +47,7 @@ impl FinalState {
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
 
-        // generate the final ledger
+        // generate the final state
         Ok(FinalState {
             slot,
             ledger,

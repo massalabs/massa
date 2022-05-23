@@ -28,9 +28,9 @@ use std::ops::Bound::Included;
 #[derive(Debug)]
 pub struct FinalLedger {
     /// ledger configuration
-    _config: LedgerConfig,
+    pub(crate) config: LedgerConfig,
     /// ledger tree, sorted by address
-    sorted_ledger: BTreeMap<Address, LedgerEntry>,
+    pub(crate) sorted_ledger: BTreeMap<Address, LedgerEntry>,
 }
 
 /// Allows applying `LedgerChanges` to the final ledger
@@ -108,7 +108,7 @@ impl FinalLedger {
         // generate the final ledger
         Ok(FinalLedger {
             sorted_ledger,
-            _config: config,
+            config,
         })
     }
 
@@ -122,7 +122,7 @@ impl FinalLedger {
     pub fn from_bootstrap_state(config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
         FinalLedger {
             sorted_ledger: state.sorted_ledger,
-            _config: config,
+            config,
         }
     }
 
@@ -272,7 +272,7 @@ impl FinalLedger {
                 }
             }
         }
-        Ok((data, Some(next_cursor)))
+        Ok((data, None))
     }
 
     /// Set a part of the ledger

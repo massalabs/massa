@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{AsyncMessage, AsyncPoolBootstrap};
+use crate::{AsyncMessage, AsyncPool, AsyncPoolBootstrap};
 
 /// This file defines tools to test the asynchronous pool bootstrap
 
@@ -31,13 +31,13 @@ pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
 }
 
 /// asserts that two `AsyncPoolBootstrap` are equal
-pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPoolBootstrap, v2: &AsyncPoolBootstrap) {
+pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     assert_eq!(
         v1.messages.len(),
         v2.messages.len(),
         "message count mismatch"
     );
     for (val1, val2) in v1.messages.iter().zip(v2.messages.iter()) {
-        assert_eq_async_message(val1, val2);
+        assert_eq_async_message(val1.1, val2.1);
     }
 }

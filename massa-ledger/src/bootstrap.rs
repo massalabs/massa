@@ -2,13 +2,10 @@
 
 //! Provides serializable structures for bootstrapping the `FinalLedger`
 
-use crate::{
-    LedgerEntry,
-};
+use crate::LedgerEntry;
 use massa_models::{
-    array_from_slice,
-    constants::ADDRESS_SIZE_BYTES,
-    Address, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
+    array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, DeserializeCompact,
+    DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

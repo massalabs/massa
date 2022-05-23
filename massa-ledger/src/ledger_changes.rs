@@ -38,7 +38,10 @@ struct DatastoreSerializer {
 impl DatastoreSerializer {
     pub fn new() -> Self {
         Self {
-            value_serializer: SetOrDeleteSerializer::new(VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX))),
+            value_serializer: SetOrDeleteSerializer::new(VecU8Serializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
         }
     }
 }
@@ -78,7 +81,10 @@ impl DatastoreDeserializer {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             hash_deserializer: HashDeserializer::default(),
-            value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX))),
+            value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
         }
     }
 }
@@ -110,8 +116,14 @@ struct LedgerEntryUpdateSerializer {
 impl LedgerEntryUpdateSerializer {
     pub fn new() -> Self {
         Self {
-            parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new(Included(u64::MIN), Included(u64::MAX))),
-            bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX))),
+            parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
+            bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
             datastore_serializer: DatastoreSerializer::new(),
         }
     }
@@ -139,8 +151,14 @@ struct LedgerEntryUpdateDeserializer {
 impl LedgerEntryUpdateDeserializer {
     pub fn new() -> Self {
         Self {
-            parallel_balance_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX))),
-            bytecode_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX))),
+            parallel_balance_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
+            bytecode_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
             datastore_deserializer: DatastoreDeserializer::new(),
         }
     }
