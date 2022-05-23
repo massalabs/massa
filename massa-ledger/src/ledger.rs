@@ -119,13 +119,25 @@ impl FinalLedger {
     /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
     pub fn get_bootstrap_state(&self) -> FinalLedgerBootstrapState {
         // temporary implementation while waiting for streaming
-        let b_ledger = BTreeMap::new();
-        // let iter = self.sorted_ledger.0.iterator(rocksdb::IteratorMode::Start);
-        // for (key, value) in iter {
-        //     b_ledger.insert(key.to_vec(), value.to_vec());
-        // }
         FinalLedgerBootstrapState {
-            sorted_ledger: b_ledger,
+            sorted_ledger: self
+                .sorted_ledger
+                .get_every_address()
+                .iter()
+                .map(|(addr, balance)| {
+                    (
+                        *addr,
+                        LedgerEntry {
+                            parallel_balance: *balance,
+                            bytecode: self
+                                .sorted_ledger
+                                .get_entry(&addr, LedgerSubEntry::Bytecode)
+                                .unwrap_or(Vec::new()),
+                            datastore: self.sorted_ledger.get_datastore_for(&addr),
+                        },
+                    )
+                })
+                .collect(),
         }
     }
 

@@ -49,6 +49,8 @@
 #![feature(map_first_last)]
 #![feature(async_closure)]
 #![feature(is_some_with)]
+#![feature(slice_take)]
+#![feature(let_chains)]
 
 mod bootstrap;
 mod config;
