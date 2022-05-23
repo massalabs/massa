@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_hash::Hash;
-use massa_models::{Address, Amount, DeserializeVarInt, SerializeVarInt};
+use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_models::{Address, Amount, DeserializeCompact, SerializeVarInt};
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
@@ -36,26 +36,26 @@ pub fn destroy_ledger_db() {
 
 macro_rules! balance_key {
     ($addr:ident) => {
-        [&[1u8], &$addr.to_bytes()[..]].concat()
+        [&[0u8], &$addr.to_bytes()[..]].concat()
     };
 }
 
 // NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
     ($addr:ident) => {
-        [&[2u8], &$addr.to_bytes()[..]].concat()
+        [&[1u8], &$addr.to_bytes()[..]].concat()
     };
 }
 
 macro_rules! data_key {
     ($addr:ident, $key:ident) => {
-        [&$addr.to_bytes()[..], &[0u8], &$key.to_bytes()[..]].concat()
+        [&$addr.to_bytes()[..], &$key.to_bytes()[..]].concat()
     };
 }
 
 macro_rules! data_prefix {
     ($addr:ident) => {
-        [&$addr.to_bytes()[..], &[0u8]].concat()
+        &$addr.to_bytes()[..]
     };
 }
 
@@ -127,8 +127,11 @@ impl LedgerDB {
 
         let mut addresses = BTreeMap::new();
         for (key, entry) in ledger {
-            if &key[0] == &1u8 && let Ok(v) = u64::from_varint_bytes(&entry) {
-                addresses.insert(Address::from_bytes(&key[1..].try_into().unwrap()).unwrap(), Amount::from_raw(v.0));
+            if &key[0] == &0u8 {
+                addresses.insert(
+                    Address::from_bytes(&key[1..].try_into().unwrap()).unwrap(),
+                    Amount::from_bytes_compact(&entry).unwrap().0,
+                );
             }
         }
         addresses
@@ -150,8 +153,7 @@ impl LedgerDB {
             .iter()
             .map(|(key, data)| {
                 (
-                    Hash::from_bytes(key.split(|b| b == &0u8).last().unwrap().try_into().unwrap())
-                        .unwrap(),
+                    Hash::from_bytes(key.split_at(HASH_SIZE_BYTES).1.try_into().unwrap()).unwrap(),
                     data.to_vec(),
                 )
             })
@@ -256,11 +258,9 @@ fn test_ledger_db() {
     // asserts
     assert!(db.entry_may_exist(&a, LedgerSubEntry::Balance));
     assert_eq!(
-        Amount::from_raw(
-            u64::from_varint_bytes(&db.get_entry(&a, LedgerSubEntry::Balance).unwrap())
-                .unwrap()
-                .0
-        ),
+        Amount::from_bytes_compact(&db.get_entry(&a, LedgerSubEntry::Balance).unwrap())
+            .unwrap()
+            .0,
         Amount::from_raw(21)
     );
     assert_eq!(db.get_entry(&b, LedgerSubEntry::Balance), None);
