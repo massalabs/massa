@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_models::{Address, Amount, DeserializeCompact, SerializeVarInt};
+use massa_models::{Address, Amount, DeserializeCompact, SerializeCompact};
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
@@ -16,6 +16,8 @@ const METADATA_CF: &str = "metadata";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
+const BALANCE_IDENT: u8 = 0u8;
+const BYTECODE_IDENT: u8 = 1u8;
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
@@ -36,17 +38,18 @@ pub fn destroy_ledger_db() {
 
 macro_rules! balance_key {
     ($addr:ident) => {
-        [&[0u8], &$addr.to_bytes()[..]].concat()
+        [&[BALANCE_IDENT], &$addr.to_bytes()[..]].concat()
     };
 }
 
 // NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
     ($addr:ident) => {
-        [&[1u8], &$addr.to_bytes()[..]].concat()
+        [&[BYTECODE_IDENT], &$addr.to_bytes()[..]].concat()
     };
 }
 
+// TODO: add a separator identifier if the need comes to have multiple datastores
 macro_rules! data_key {
     ($addr:ident, $key:ident) => {
         [&$addr.to_bytes()[..], &$key.to_bytes()[..]].concat()
@@ -102,7 +105,8 @@ impl LedgerDB {
         batch.put_cf(
             handle,
             balance_key!(addr),
-            ledger_entry.parallel_balance.to_raw().to_varint_bytes(),
+            // this unwrap will never fail
+            ledger_entry.parallel_balance.to_bytes_compact().unwrap(),
         );
 
         // bytecode
@@ -127,7 +131,7 @@ impl LedgerDB {
 
         let mut addresses = BTreeMap::new();
         for (key, entry) in ledger {
-            if &key[0] == &0u8 {
+            if &key[0] == &BALANCE_IDENT {
                 addresses.insert(
                     Address::from_bytes(&key[1..].try_into().unwrap()).unwrap(),
                     Amount::from_bytes_compact(&entry).unwrap().0,
@@ -169,7 +173,8 @@ impl LedgerDB {
             batch.put_cf(
                 handle,
                 balance_key!(addr),
-                balance.to_raw().to_varint_bytes(),
+                // this unwrap will never fail
+                balance.to_bytes_compact().unwrap(),
             );
         }
 
