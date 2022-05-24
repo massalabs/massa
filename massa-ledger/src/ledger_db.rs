@@ -163,13 +163,13 @@ impl LedgerDB {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(end_prefix(&data_prefix!(addr)).unwrap());
+        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
 
         self.0
             .iterator_cf_opt(
                 handle,
                 opt,
-                IteratorMode::From(&data_prefix!(addr), Direction::Forward),
+                IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
             .map(|(key, data)| {
                 (
@@ -223,11 +223,11 @@ impl LedgerDB {
 
         // datastore
         let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(end_prefix(&data_prefix!(addr)).unwrap());
+        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
         for (key, _) in self.0.iterator_cf_opt(
             handle,
             opt,
-            IteratorMode::From(&data_prefix!(addr), Direction::Forward),
+            IteratorMode::From(data_prefix!(addr), Direction::Forward),
         ) {
             batch.delete_cf(handle, key);
         }

@@ -252,10 +252,7 @@ impl ExecutionState {
         let current = self.active_cursor.period * (self.config.thread_count as u64)
             + (self.active_cursor.thread as u64);
         let asked = slot.period * (self.config.thread_count as u64) + (slot.thread as u64);
-        current
-            .checked_sub(asked)
-            .map(|v| v.try_into().ok())
-            .flatten()
+        current.checked_sub(asked).and_then(|v| v.try_into().ok())
     }
 
     /// Lazily query (from end to beginning) the active balance of an address at a given slot.
