@@ -100,7 +100,7 @@ pub use bootstrap::AsyncPoolBootstrap;
 pub use changes::{AsyncPoolChanges, Change};
 pub use config::AsyncPoolConfig;
 pub use message::{AsyncMessage, AsyncMessageId};
-pub use pool::AsyncPool;
+pub use pool::{AsyncPool, AsyncPoolPart};
 
 #[cfg(test)]
 mod tests;

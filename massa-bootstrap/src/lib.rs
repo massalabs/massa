@@ -118,7 +118,7 @@ async fn stream_ledger(
             Ok(Ok(msg)) => msg,
         };
         match msg {
-            BootstrapMessageServer::ExecutionLedgerPart {
+            BootstrapMessageServer::FinalStatePart {
                 data,
                 slot,
                 ledger_changes,
@@ -133,7 +133,7 @@ async fn stream_ledger(
                     global_bootstrap_state.final_state.read().ledger
                 );
             }
-            BootstrapMessageServer::ExecutionLedgerFinished => {
+            BootstrapMessageServer::FinalStateFinished => {
                 *next_message_bootstrap = Some(BootstrapMessageClient::AskConsensusState);
                 return Ok(());
             }
@@ -263,7 +263,7 @@ async fn bootstrap_from_server(
     // TODO: Add ledger to the state
     loop {
         match next_message_bootstrap {
-            Some(BootstrapMessageClient::AskExecutionLedgerPart { .. }) => {
+            Some(BootstrapMessageClient::AskFinalStatePart { .. }) => {
                 stream_ledger(cfg, client, next_message_bootstrap, global_bootstrap_state).await?;
             }
             Some(BootstrapMessageClient::AskBootstrapPeers) => {
@@ -393,7 +393,7 @@ pub async fn get_state(
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     // Will be none when bootstrap is over
     let mut next_message_bootstrap: Option<BootstrapMessageClient> =
-        Some(BootstrapMessageClient::AskExecutionLedgerPart {
+        Some(BootstrapMessageClient::AskFinalStatePart {
             cursor: None,
             slot: None,
         });
@@ -739,7 +739,7 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapMessageClient::AskExecutionLedgerPart { cursor, slot } => {
+                BootstrapMessageClient::AskFinalStatePart { cursor, slot } => {
                     let mut old_cursor = cursor;
                     loop {
                         println!("received ask execution");
@@ -760,13 +760,11 @@ async fn manage_bootstrap(
                             println!("sent execution ledger part");
                             match tokio::time::timeout(
                                 write_timeout,
-                                server.send(
-                                    messages::BootstrapMessageServer::ExecutionLedgerPart {
-                                        data,
-                                        slot: Slot::new(1, 0),
-                                        ledger_changes: ExecutionLedgerChanges::default(),
-                                    },
-                                ),
+                                server.send(messages::BootstrapMessageServer::FinalStatePart {
+                                    data,
+                                    slot: Slot::new(1, 0),
+                                    ledger_changes: ExecutionLedgerChanges::default(),
+                                }),
                             )
                             .await
                             {
@@ -782,9 +780,7 @@ async fn manage_bootstrap(
                             println!("sent end execution ledger");
                             match tokio::time::timeout(
                                 write_timeout,
-                                server.send(
-                                    messages::BootstrapMessageServer::ExecutionLedgerFinished,
-                                ),
+                                server.send(messages::BootstrapMessageServer::FinalStateFinished),
                             )
                             .await
                             {

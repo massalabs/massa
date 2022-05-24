@@ -3,6 +3,7 @@
 use super::mock_establisher::Duplex;
 use crate::settings::BootstrapSettings;
 use bitvec::prelude::*;
+use massa_async_pool::test_exports::get_random_message;
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::{
     test_exports::make_bootstrap_state as make_final_state_bootstrap, FinalStateBootstrap,
@@ -70,8 +71,10 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalStateBootstrap
     let mut rng = rand::thread_rng();
 
     let mut sorted_ledger = BTreeMap::new();
-    let messages = Vec::new();
-
+    let mut messages = Vec::new();
+    for _ in 0usize..rng.gen_range(0..20) {
+        messages.push(get_random_message());
+    }
     for _ in 0usize..rng.gen_range(0..2) {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }

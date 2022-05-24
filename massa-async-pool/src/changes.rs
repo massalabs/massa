@@ -1,3 +1,8 @@
+use std::ops::Bound::Included;
+
+use massa_models::{U64VarIntDeserializer, U64VarIntSerializer};
+use massa_serialization::Serializer;
+
 ///! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 ///! This file provides structures representing changes to the asynchronous message pool
@@ -16,6 +21,36 @@ pub enum Change<T, U> {
 /// represents a list of additions and deletions to the asynchronous message pool
 #[derive(Default, Debug, Clone)]
 pub struct AsyncPoolChanges(pub Vec<Change<AsyncMessageId, AsyncMessage>>);
+
+/// `AsyncPoolChanges` serializer
+pub struct AsyncPoolChangesSerializer {
+    pub u64_serializer: U64VarIntSerializer,
+}
+
+impl AsyncPoolChangesSerializer {
+    fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
+    fn serialize(
+        &self,
+        value: &AsyncPoolChanges,
+    ) -> Result<Vec<u8>, massa_serialization::SerializeError> {
+        let mut res = Vec::new();
+        res.extend(self.u64_serializer.serialize(&(value.0.len() as u64))?);
+        for change in &value.0 {
+            match change {
+                Change::Add(id, message) => res.extend(id),
+                Change::Delete(id) => {}
+            }
+        }
+        Ok(res)
+    }
+}
 
 impl AsyncPoolChanges {
     /// Extends self with another another `AsyncPoolChanges`.

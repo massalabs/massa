@@ -2,17 +2,47 @@
 
 //! This file defines the structure representing an asynchronous message
 
+use std::ops::Bound::Included;
+
+use massa_models::amount::AmountSerializer;
 use massa_models::constants::ADDRESS_SIZE_BYTES;
+use massa_models::slot::SlotSerializer;
 use massa_models::{
     array_from_slice, Address, Amount, DeserializeVarInt, ModelsError, SerializeVarInt, Slot,
 };
 use massa_models::{DeserializeCompact, SerializeCompact};
+use massa_serialization::Serializer;
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
 /// `(rev(max_gas*gas_price), emission_slot, emission_index)`
 pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
+
+pub struct AsyncMessageIdSerializer {
+    amount_serializer: AmountSerializer,
+    slot_serializer: SlotSerializer,
+}
+
+impl AsyncMessageIdSerializer {
+    fn new() -> Self {
+        Self {
+            amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
+    fn serialize(
+        &self,
+        value: &AsyncMessageId,
+    ) -> Result<Vec<u8>, massa_serialization::SerializeError> {
+        let mut res = Vec::new();
+        res.extend(self.amount_serializer.serialize(&value.0 .0)?);
+        res.extend(self.amount_serializer.serialize(&value.0 .0)?);
+        Ok(res)
+    }
+}
 
 /// Structure defining an asynchronous smart contract message
 #[derive(Debug, Clone, Serialize, Deserialize)]
