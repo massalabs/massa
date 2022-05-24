@@ -34,7 +34,10 @@ pub struct SlotSerializer {
 }
 
 impl SlotSerializer {
-    fn new(range_period: (Bound<u64>, Bound<u64>), range_thread: (Bound<u8>, Bound<u8>)) -> Self {
+    pub fn new(
+        range_period: (Bound<u64>, Bound<u64>),
+        range_thread: (Bound<u8>, Bound<u8>),
+    ) -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             range_period,
@@ -72,7 +75,10 @@ pub struct SlotDeserializer {
 }
 
 impl SlotDeserializer {
-    fn new(range_period: (Bound<u64>, Bound<u64>), range_thread: (Bound<u8>, Bound<u8>)) -> Self {
+    pub fn new(
+        range_period: (Bound<u64>, Bound<u64>),
+        range_thread: (Bound<u8>, Bound<u8>),
+    ) -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             range_period,
