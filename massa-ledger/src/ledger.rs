@@ -31,18 +31,18 @@ impl Applicable<LedgerChanges> for FinalLedger {
                 // the incoming change sets a ledger entry to a new one
                 SetUpdateOrDelete::Set(new_entry) => {
                     // inserts/overwrites the entry with the incoming one
-                    self.sorted_ledger.put(&addr, new_entry);
+                    self.sorted_ledger.put_entry(&addr, new_entry);
                 }
                 // the incoming change updates an existing ledger entry
                 SetUpdateOrDelete::Update(entry_update) => {
                     // applies the updates to the entry
                     // if the entry does not exist, inserts a default one and applies the updates to it
-                    self.sorted_ledger.update(&addr, entry_update);
+                    self.sorted_ledger.update_entry(&addr, entry_update);
                 }
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
                     // delete the entry, if it exists
-                    self.sorted_ledger.delete(&addr);
+                    self.sorted_ledger.delete_entry(&addr);
                 }
             }
         }
@@ -77,9 +77,9 @@ impl FinalLedger {
         )
         .map_err(init_file_error!("parsing", config))?;
 
-        // put initial ledger values in the disk db
+        // put_entry initial ledger values in the disk db
         for (address, amount) in &initial_ledger {
-            sorted_ledger.put(
+            sorted_ledger.put_entry(
                 address,
                 LedgerEntry {
                     parallel_balance: *amount,
@@ -106,7 +106,7 @@ impl FinalLedger {
         // temporary implementation while waiting for streaming
         let mut db = LedgerDB::new();
         for (key, entry) in state.sorted_ledger {
-            db.put(&key, entry);
+            db.put_entry(&key, entry);
         }
         FinalLedger {
             sorted_ledger: db,
@@ -131,9 +131,9 @@ impl FinalLedger {
                             parallel_balance: *balance,
                             bytecode: self
                                 .sorted_ledger
-                                .get_entry(&addr, LedgerSubEntry::Bytecode)
+                                .get_sub_entry(&addr, LedgerSubEntry::Bytecode)
                                 .unwrap_or(Vec::new()),
-                            datastore: self.sorted_ledger.get_datastore_for(&addr),
+                            datastore: self.sorted_ledger.get_entire_datastore(&addr),
                         },
                     )
                 })
@@ -147,7 +147,7 @@ impl FinalLedger {
     /// The parallel balance, or None if the ledger entry was not found
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
         self.sorted_ledger
-            .get_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::Balance)
             .map(|bytes| {
                 Amount::from_bytes_compact(&bytes)
                     .expect("critical: invalid balance format")
@@ -160,7 +160,8 @@ impl FinalLedger {
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
-        self.sorted_ledger.get_entry(addr, LedgerSubEntry::Bytecode)
+        self.sorted_ledger
+            .get_sub_entry(addr, LedgerSubEntry::Bytecode)
     }
 
     /// Checks if a ledger entry exists
@@ -170,7 +171,8 @@ impl FinalLedger {
     pub fn entry_exists(&self, addr: &Address) -> bool {
         // note: document the "may"
         self.sorted_ledger
-            .entry_may_exist(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .is_some()
     }
 
     /// Gets a copy of the value of a datastore entry for a given address.
@@ -183,7 +185,7 @@ impl FinalLedger {
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
     pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         self.sorted_ledger
-            .get_entry(addr, LedgerSubEntry::Datastore(*key))
+            .get_sub_entry(addr, LedgerSubEntry::Datastore(*key))
     }
 
     /// Checks for the existence of a datastore entry for a given address.
@@ -195,8 +197,8 @@ impl FinalLedger {
     /// # Returns
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
     pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
-        // note: document the "may"
         self.sorted_ledger
-            .entry_may_exist(addr, LedgerSubEntry::Datastore(*key))
+            .get_sub_entry(addr, LedgerSubEntry::Datastore(*key))
+            .is_some()
     }
 }

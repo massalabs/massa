@@ -246,6 +246,8 @@ impl ExecutionState {
     }
 
     /// Computes the index of a given slot in the active history
+    ///
+    /// NOTE: temporary, needs to be done in the speculative ledger
     fn get_active_index(&self, slot: Slot) -> Option<usize> {
         let current = self.active_cursor.period * (self.config.thread_count as u64)
             + (self.active_cursor.thread as u64);
@@ -258,7 +260,9 @@ impl ExecutionState {
 
     /// Lazily query (from end to beginning) the active balance of an address at a given slot.
     /// Returns None if the address balance could not be determined from the active history.
-    pub fn get_active_balance_at_slot(&self, slot: Slot, addr: &Address) -> Option<Amount> {
+    ///
+    /// NOTE: temporary, needs to be done in the speculative ledger
+    pub fn lookup_active_balance_at_slot(&self, slot: Slot, addr: &Address) -> Option<Amount> {
         self.verify_active_slot(slot);
 
         if let Some(n) = self.get_active_index(slot) {
@@ -281,7 +285,7 @@ impl ExecutionState {
 
     /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
     /// Returns None if the datastore entry could not be determined from the active history.
-    pub fn get_active_data_entry_at_slot(
+    pub fn lookup_active_data_entry_at_slot(
         &self,
         slot: Slot,
         addr: &Address,
@@ -840,6 +844,8 @@ impl ExecutionState {
     }
 
     /// Gets a parallel balance both at the latest final and active executed slots
+    ///
+    /// NOTE: temporary, needs to be done in the speculative ledger
     pub fn get_final_and_active_parallel_balance(
         &self,
         address: &Address,
@@ -849,11 +855,20 @@ impl ExecutionState {
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow when getting speculative ledger");
-        let active_balance = self.get_active_balance_at_slot(next_slot, address);
-        (final_balance, active_balance)
+        let active_balance = self.lookup_active_balance_at_slot(next_slot, address);
+        (
+            final_balance,
+            if active_balance.is_some() {
+                active_balance
+            } else {
+                final_balance
+            },
+        )
     }
 
     /// Gets a data entry both at the latest final and active executed slots
+    ///
+    /// NOTE: temporary, needs to be done in the speculative ledger
     #[allow(dead_code)]
     pub fn get_final_and_active_data_entry(
         &self,
@@ -865,8 +880,15 @@ impl ExecutionState {
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow when getting speculative ledger");
-        let active_entry = self.get_active_data_entry_at_slot(next_slot, address, key);
-        (final_entry, active_entry)
+        let active_entry = self.lookup_active_data_entry_at_slot(next_slot, address, key);
+        (
+            final_entry.clone(),
+            if active_entry.is_some() {
+                active_entry
+            } else {
+                final_entry
+            },
+        )
     }
 
     /// Gets execution events optionally filtered by:

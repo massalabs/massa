@@ -99,7 +99,7 @@ impl LedgerDB {
         LedgerDB(db)
     }
 
-    pub fn put(&mut self, addr: &Address, ledger_entry: LedgerEntry) {
+    pub fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry) {
         let mut batch = WriteBatch::default();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -123,6 +123,22 @@ impl LedgerDB {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
+    pub fn get_sub_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
+        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+
+        match ty {
+            LedgerSubEntry::Balance => self.0.get_cf(handle, balance_key!(addr)).expect(CRUD_ERROR),
+            LedgerSubEntry::Bytecode => self
+                .0
+                .get_cf(handle, bytecode_key!(addr))
+                .expect(CRUD_ERROR),
+            LedgerSubEntry::Datastore(hash) => self
+                .0
+                .get_cf(handle, data_key!(addr, hash))
+                .expect(CRUD_ERROR),
+        }
+    }
+
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -143,7 +159,7 @@ impl LedgerDB {
         addresses
     }
 
-    pub fn get_datastore_for(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
@@ -155,8 +171,6 @@ impl LedgerDB {
                 opt,
                 IteratorMode::From(&data_prefix!(addr), Direction::Forward),
             )
-            .collect::<Vec<_>>()
-            .iter()
             .map(|(key, data)| {
                 (
                     Hash::from_bytes(key.split_at(HASH_SIZE_BYTES).1.try_into().unwrap()).unwrap(),
@@ -166,7 +180,7 @@ impl LedgerDB {
             .collect()
     }
 
-    pub fn update(&mut self, addr: &Address, entry_update: LedgerEntryUpdate) {
+    pub fn update_entry(&mut self, addr: &Address, entry_update: LedgerEntryUpdate) {
         let mut batch = WriteBatch::default();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -197,37 +211,29 @@ impl LedgerDB {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
-    pub fn delete(&self, _addr: &Address) {
-        // TODO: define how we want to handle this first
-    }
-
-    // NOTE: this function is not trustworthy avoid using it and eventually remove it
-    pub fn entry_may_exist(&self, addr: &Address, ty: LedgerSubEntry) -> bool {
+    pub fn delete_entry(&self, addr: &Address) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let mut batch = WriteBatch::default();
 
-        match ty {
-            LedgerSubEntry::Balance => self.0.key_may_exist_cf(handle, balance_key!(addr)),
-            LedgerSubEntry::Bytecode => self.0.key_may_exist_cf(handle, bytecode_key!(addr)),
-            LedgerSubEntry::Datastore(hash) => {
-                self.0.key_may_exist_cf(handle, data_key!(addr, hash))
-            }
+        // balance
+        batch.delete_cf(handle, balance_key!(addr));
+
+        // bytecode
+        batch.delete_cf(handle, balance_key!(addr));
+
+        // datastore
+        let mut opt = ReadOptions::default();
+        opt.set_iterate_upper_bound(end_prefix(&data_prefix!(addr)).unwrap());
+        for (key, _) in self.0.iterator_cf_opt(
+            handle,
+            opt,
+            IteratorMode::From(&data_prefix!(addr), Direction::Forward),
+        ) {
+            batch.delete_cf(handle, key);
         }
-    }
 
-    pub fn get_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
-
-        match ty {
-            LedgerSubEntry::Balance => self.0.get_cf(handle, balance_key!(addr)).expect(CRUD_ERROR),
-            LedgerSubEntry::Bytecode => self
-                .0
-                .get_cf(handle, bytecode_key!(addr))
-                .expect(CRUD_ERROR),
-            LedgerSubEntry::Datastore(hash) => self
-                .0
-                .get_cf(handle, data_key!(addr, hash))
-                .expect(CRUD_ERROR),
-        }
+        // write batch
+        self.0.write(batch).expect(CRUD_ERROR);
     }
 }
 
@@ -260,22 +266,20 @@ fn test_ledger_db() {
 
     // db operations
     let mut db = LedgerDB::new();
-    db.put(&a, entry);
-    db.update(&a, entry_update);
+    db.put_entry(&a, entry);
+    db.update_entry(&a, entry_update);
 
     // asserts
-    assert!(db.entry_may_exist(&a, LedgerSubEntry::Balance));
+    assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
     assert_eq!(
-        Amount::from_bytes_compact(&db.get_entry(&a, LedgerSubEntry::Balance).unwrap())
+        Amount::from_bytes_compact(&db.get_sub_entry(&a, LedgerSubEntry::Balance).unwrap())
             .unwrap()
             .0,
         Amount::from_raw(21)
     );
-    assert_eq!(db.get_entry(&b, LedgerSubEntry::Balance), None);
-    assert_eq!(data, db.get_datastore_for(&a));
-
-    // TODO: remove
-    println!("{:#?}", db.get_every_address());
-
-    // TODO: add a delete after assert when it is implemented
+    assert_eq!(db.get_sub_entry(&b, LedgerSubEntry::Balance), None);
+    assert_eq!(data, db.get_entire_datastore(&a));
+    db.delete_entry(&a);
+    assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_none());
+    assert!(db.get_entire_datastore(&a).is_empty());
 }
