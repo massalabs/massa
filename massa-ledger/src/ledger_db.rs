@@ -133,7 +133,7 @@ impl LedgerDB {
 
         let mut addresses = BTreeMap::new();
         for (key, entry) in ledger {
-            if &key[0] == &BALANCE_IDENT {
+            if key.first() == Some(&BALANCE_IDENT) {
                 addresses.insert(
                     Address::from_bytes(&key[1..].try_into().unwrap()).unwrap(),
                     Amount::from_bytes_compact(&entry).unwrap().0,

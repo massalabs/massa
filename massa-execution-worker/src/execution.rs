@@ -26,6 +26,7 @@ use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
+use std::usize;
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -244,26 +245,35 @@ impl ExecutionState {
         }
     }
 
+    /// Computes the index of a given slot in the active history
+    fn get_active_index(&self, slot: Slot) -> Option<usize> {
+        let current = self.active_cursor.period * (self.config.thread_count as u64)
+            + (self.active_cursor.thread as u64);
+        let asked = slot.period * (self.config.thread_count as u64) + (slot.thread as u64);
+        current
+            .checked_sub(asked)
+            .map(|v| v.try_into().ok())
+            .flatten()
+    }
+
     /// Lazily query (from end to beginning) the active balance of an address at a given slot.
     /// Returns None if the address balance could not be determined from the active history.
     pub fn get_active_balance_at_slot(&self, slot: Slot, addr: &Address) -> Option<Amount> {
         self.verify_active_slot(slot);
 
-        let iter = self
-            .active_history
-            .iter()
-            .rev()
-            .skip_while(|output| output.slot >= slot);
+        if let Some(n) = self.get_active_index(slot) {
+            let iter = self.active_history.iter().rev().skip(n);
 
-        for output in iter {
-            match output.state_changes.ledger_changes.0.get(addr) {
-                Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
-                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    parallel_balance: SetOrKeep::Set(v),
-                    ..
-                })) => return Some(*v),
-                Some(SetUpdateOrDelete::Delete) => return None,
-                _ => (),
+            for output in iter {
+                match output.state_changes.ledger_changes.0.get(addr) {
+                    Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
+                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                        parallel_balance: SetOrKeep::Set(v),
+                        ..
+                    })) => return Some(*v),
+                    Some(SetUpdateOrDelete::Delete) => return None,
+                    _ => (),
+                }
             }
         }
         None
@@ -279,24 +289,22 @@ impl ExecutionState {
     ) -> Option<Vec<u8>> {
         self.verify_active_slot(slot);
 
-        let iter = self
-            .active_history
-            .iter()
-            .rev()
-            .skip_while(|output| output.slot >= slot);
+        if let Some(n) = self.get_active_index(slot) {
+            let iter = self.active_history.iter().rev().skip(n);
 
-        for output in iter {
-            match output.state_changes.ledger_changes.0.get(addr) {
-                Some(SetUpdateOrDelete::Set(v)) => return v.datastore.get(key).cloned(),
-                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
-                    match datastore.get(key) {
-                        Some(SetOrDelete::Set(v)) => return Some(v.clone()),
-                        Some(SetOrDelete::Delete) => return None,
-                        None => (),
+            for output in iter {
+                match output.state_changes.ledger_changes.0.get(addr) {
+                    Some(SetUpdateOrDelete::Set(v)) => return v.datastore.get(key).cloned(),
+                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
+                        match datastore.get(key) {
+                            Some(SetOrDelete::Set(v)) => return Some(v.clone()),
+                            Some(SetOrDelete::Delete) => return None,
+                            None => (),
+                        }
                     }
+                    Some(SetUpdateOrDelete::Delete) => return None,
+                    None => (),
                 }
-                Some(SetUpdateOrDelete::Delete) => return None,
-                None => (),
             }
         }
         None
