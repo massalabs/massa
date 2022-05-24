@@ -261,4 +261,25 @@ impl SpeculativeLedger {
 
         Ok(())
     }
+
+    /// Deletes a datastore entry for a given address.
+    /// Fails if the entry or address does not exist.
+    ///
+    /// # Arguments
+    /// * `addr`: address
+    /// * `key`: key of the entry to delete in the address' datastore
+    pub fn delete_data_entry(&mut self, addr: &Address, key: &Hash) -> Result<(), ExecutionError> {
+        // check if the entry exists
+        if !self.has_data_entry(addr, key) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not delete data entry {} for address {}: entry does not exist",
+                key, addr
+            )));
+        }
+
+        // delete entry
+        self.added_changes.delete_data_entry(*addr, *key);
+
+        Ok(())
+    }
 }

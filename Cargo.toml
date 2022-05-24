@@ -21,6 +21,7 @@ members = [
   "massa-proof-of-stake-exports",
   "massa-protocol-exports",
   "massa-protocol-worker",
+  "massa-serialization",
   "massa-signature",
   "massa-time",
   "massa-wallet",

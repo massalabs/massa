@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 /// Structure defining an entry associated to an address in the `FinalLedger`
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct LedgerEntry {
     /// The parallel balance of that entry.
     /// See lib.rs for an explanation on parallel vs sequential balances.

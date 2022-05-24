@@ -1447,7 +1447,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.3.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.2#25c3e5cd781c2c50716eed75a5194d5a3cb7bc75"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.4#82ef2bad81eb63d8b0efa67174c7cc8c4ea0e5b4"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -1666,6 +1666,8 @@ dependencies = [
  "bitcoin_hashes",
  "bs58",
  "displaydoc",
+ "massa_serialization",
+ "nom 7.1.1",
  "secp256k1",
  "serde 1.0.136",
  "serde_json",
@@ -1680,7 +1682,9 @@ dependencies = [
  "displaydoc",
  "massa_hash",
  "massa_models",
+ "massa_serialization",
  "massa_signature",
+ "nom 7.1.1",
  "rocksdb",
  "serde 1.0.136",
  "serde_json",
@@ -1708,14 +1712,17 @@ dependencies = [
  "integer-encoding",
  "lazy_static",
  "massa_hash",
+ "massa_serialization",
  "massa_signature",
  "massa_time",
+ "nom 7.1.1",
  "num",
  "num_enum",
  "rust_decimal",
  "serde 1.0.136",
  "serial_test",
  "thiserror",
+ "unsigned-varint",
 ]
 
 [[package]]
@@ -1848,6 +1855,16 @@ dependencies = [
  "massa_signature",
  "serde 1.0.136",
  "tokio",
+]
+
+[[package]]
+name = "massa_serialization"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "nom 7.1.1",
+ "thiserror",
+ "unsigned-varint",
 ]
 
 [[package]]
@@ -3464,6 +3481,14 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "unsigned-varint"
+version = "0.7.1"
+source = "git+https://github.com/cyphar/unsigned-varint.git?branch=nom6-errors#ad577035fc09d2b8351efa14f5812920b9216a9d"
+dependencies = [
+ "nom 7.1.1",
+]
 
 [[package]]
 name = "url"
