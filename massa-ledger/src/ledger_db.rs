@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+//! Module to interact with the disk ledger
+
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{Address, Amount, DeserializeCompact, SerializeCompact};
 use rocksdb::{
