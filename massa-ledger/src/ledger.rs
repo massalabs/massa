@@ -202,6 +202,14 @@ impl FinalLedger {
             .is_some()
     }
 
+    /// Gets the entire datastore of a given address.
+    ///
+    /// # Returns
+    /// A copy of the datastore sorted by key
+    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+        self.sorted_ledger.get_entire_datastore(addr)
+    }
+
     // /// Get a part of the ledger
     // /// Used for bootstrap
     // /// Parameters:

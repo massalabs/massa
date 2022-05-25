@@ -5,10 +5,10 @@
 use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
+use massa_ledger::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
-use massa_models::Amount;
 use massa_models::BlockId;
 use massa_models::Slot;
 use std::collections::HashMap;
@@ -34,16 +34,14 @@ pub trait ExecutionController: Send + Sync {
     /// * operation id
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent>;
 
-    /// Get the final and active parallel balance of an address
+    /// Get a copy of a full ledger entry with its final and active values
     ///
-    /// # returns
-    /// (final_balance, active_balance)
-    ///
-    /// TODO: add equivalent for datastore
-    fn get_final_and_active_parallel_balance(
+    /// # return value
+    /// * `(final_entry, active_entry)`
+    fn get_final_and_active_ledger_entry(
         &self,
-        address: &Address,
-    ) -> (Option<Amount>, Option<Amount>);
+        addr: &Address,
+    ) -> (Option<LedgerEntry>, Option<LedgerEntry>);
 
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///

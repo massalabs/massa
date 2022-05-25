@@ -9,9 +9,10 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
+use massa_ledger::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::{Address, Amount};
+use massa_models::Address;
 use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::HashMap;
@@ -93,19 +94,17 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_filtered_sc_output_event(filter)
     }
 
-    /// Get the final and active parallel balance of an address
+    /// gets a copy of a full ledger entry
     ///
-    /// # returns
-    /// (final_balance, active_balance)
-    ///
-    /// TODO: add equivalent for datastore
-    fn get_final_and_active_parallel_balance(
+    /// # return value
+    /// * `(final_entry, active_entry)`
+    fn get_final_and_active_ledger_entry(
         &self,
-        address: &Address,
-    ) -> (Option<Amount>, Option<Amount>) {
+        addr: &Address,
+    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
         self.execution_state
             .read()
-            .get_final_and_active_parallel_balance(address)
+            .get_final_and_active_ledger_entry(addr)
     }
 
     /// Executes a read-only request

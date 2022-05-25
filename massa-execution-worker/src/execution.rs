@@ -17,7 +17,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
-use massa_ledger::{LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
+use massa_ledger::{LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete, LedgerEntry};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
@@ -282,6 +282,37 @@ impl ExecutionState {
                         parallel_balance: SetOrKeep::Set(v),
                         ..
                     })) => return HistorySearchResult::Found(*v),
+                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                    _ => (),
+                }
+            }
+        }
+        HistorySearchResult::NotFound
+    }
+
+    /// Lazily query (from end to beginning) the active bytecode of an address at a given slot.
+    /// Returns None if the address bytecode could not be determined from the active history.
+    ///
+    /// NOTE: temporary, will fuse with the datastore
+    pub fn lookup_active_bytecode_at_slot(
+        &self,
+        slot: Slot,
+        addr: &Address,
+    ) -> HistorySearchResult<Vec<u8>> {
+        self.verify_active_slot(slot);
+
+        if let Some(n) = self.get_active_index(slot) {
+            let iter = self.active_history.iter().rev().skip(n);
+
+            for output in iter {
+                match output.state_changes.ledger_changes.0.get(addr) {
+                    Some(SetUpdateOrDelete::Set(v)) => {
+                        return HistorySearchResult::Found(v.bytecode.clone())
+                    }
+                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                        bytecode: SetOrKeep::Set(v),
+                        ..
+                    })) => return HistorySearchResult::Found(v.clone()),
                     Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
                     _ => (),
                 }
@@ -882,9 +913,41 @@ impl ExecutionState {
         )
     }
 
+    /// Gets a bytecode both at the latest final and active executed slots
+    ///
+    /// NOTE: temporary, will fuse with the datastore
+    pub fn get_final_and_active_bytecode(
+        &self,
+        address: &Address,
+    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+        let final_bytecode = self.final_state.read().ledger.get_bytecode(address);
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
+        let search_result = self.lookup_active_bytecode_at_slot(next_slot, address);
+        (
+            final_bytecode.clone(),
+            match search_result {
+                HistorySearchResult::Found(active_bytecode) => Some(active_bytecode),
+                HistorySearchResult::NotFound => final_bytecode,
+                HistorySearchResult::Deleted => None,
+            },
+        )
+    }
+
+    /// TODO: remove when API is updated
+    pub fn get_final_and_active_ledger_entry(
+        &self,
+        addr: &Address,
+    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+        (None, None)
+    }
+
     /// Gets a data entry both at the latest final and active executed slots
     ///
     /// NOTE: temporary, needs to be done in the speculative ledger
+    /// note: update
     #[allow(dead_code)]
     pub fn get_final_and_active_data_entry(
         &self,
