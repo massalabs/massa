@@ -262,7 +262,7 @@ impl ExecutionState {
     /// Returns None if the address balance could not be determined from the active history.
     ///
     /// NOTE: temporary, needs to be done in the speculative ledger
-    pub fn lookup_active_balance_at_slot(
+    pub fn fetch_active_balance_at_slot(
         &self,
         slot: Slot,
         addr: &Address,
@@ -831,7 +831,7 @@ impl ExecutionState {
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow when getting speculative ledger");
-        let search_result = self.lookup_active_balance_at_slot(next_slot, address);
+        let search_result = self.fetch_active_balance_at_slot(next_slot, address);
         (
             final_balance,
             match search_result {
