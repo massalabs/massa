@@ -1547,7 +1547,6 @@ dependencies = [
  "massa_models",
  "massa_serialization",
  "nom 7.1.1",
- "serde 1.0.136",
  "thiserror",
 ]
 

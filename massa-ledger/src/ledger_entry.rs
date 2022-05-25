@@ -89,7 +89,7 @@ impl Deserializer<BTreeMap<Hash, Vec<u8>>> for DatastoreDeserializer {
             |input| self.u64_deserializer.deserialize(input),
             |input| {
                 let (rest, key) = self.hash_deserializer.deserialize(input)?;
-                let (rest, data) = self.value_deserializer.deserialize(&rest)?;
+                let (rest, data) = self.value_deserializer.deserialize(rest)?;
                 Ok((rest, (key, data)))
             },
         );

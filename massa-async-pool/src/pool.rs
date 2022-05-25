@@ -45,6 +45,12 @@ impl AsyncPoolPartSerializer {
     }
 }
 
+impl Default for AsyncPoolPartSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<AsyncPoolPart> for AsyncPoolPartSerializer {
     fn serialize(&self, value: &AsyncPoolPart) -> Result<Vec<u8>, SerializeError> {
         let mut res = Vec::new();
@@ -67,6 +73,12 @@ pub struct AsyncPoolPartDeserializer {
     id_deserializer: AsyncMessageIdDeserializer,
 }
 
+impl Default for AsyncPoolPartDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AsyncPoolPartDeserializer {
     pub fn new() -> Self {
         Self {
@@ -85,7 +97,7 @@ impl Deserializer<AsyncPoolPart> for AsyncPoolPartDeserializer {
             |input| {
                 // Use tuple when async message has a new serialize version
                 let (rest, id) = self.id_deserializer.deserialize(input)?;
-                let (message, delta) = AsyncMessage::from_bytes_compact(rest).map_err(|err| {
+                let (message, delta) = AsyncMessage::from_bytes_compact(rest).map_err(|_| {
                     nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::IsNot))
                 })?;
                 // Safe because the delta has been incermented while accessing in the from_bytes_compact

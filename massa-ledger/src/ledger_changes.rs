@@ -98,7 +98,7 @@ impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreDeserializer {
             |input| self.u64_deserializer.deserialize(input),
             |input| {
                 let (rest, hash) = self.hash_deserializer.deserialize(input)?;
-                let (rest, data) = self.value_deserializer.deserialize(&rest)?;
+                let (rest, data) = self.value_deserializer.deserialize(rest)?;
                 Ok((rest, (hash, data)))
             },
         );
@@ -277,7 +277,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
             |input| self.u64_deserializer.deserialize(input),
             |input| {
                 let (rest, address) = self.address_deserializer.deserialize(input)?;
-                let (rest, data) = self.entry_deserializer.deserialize(&rest)?;
+                let (rest, data) = self.entry_deserializer.deserialize(rest)?;
                 Ok((rest, (address, data)))
             },
         );

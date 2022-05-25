@@ -27,6 +27,7 @@ pub struct Slot {
     pub thread: u8,
 }
 
+/// Basic serializer for `Slot`
 pub struct SlotSerializer {
     u64_serializer: U64VarIntSerializer,
     range_period: (Bound<u64>, Bound<u64>),
@@ -34,6 +35,7 @@ pub struct SlotSerializer {
 }
 
 impl SlotSerializer {
+    /// Creates a `SlotSerializer`
     pub fn new(
         range_period: (Bound<u64>, Bound<u64>),
         range_thread: (Bound<u8>, Bound<u8>),
@@ -68,6 +70,7 @@ impl Serializer<Slot> for SlotSerializer {
     }
 }
 
+/// Basic `Slot` Deserializer
 pub struct SlotDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     range_period: (Bound<u64>, Bound<u64>),
@@ -75,6 +78,7 @@ pub struct SlotDeserializer {
 }
 
 impl SlotDeserializer {
+    /// Creates a `SlotDeserializer`
     pub fn new(
         range_period: (Bound<u64>, Bound<u64>),
         range_thread: (Bound<u8>, Bound<u8>),
@@ -90,10 +94,12 @@ impl SlotDeserializer {
 impl Deserializer<Slot> for SlotDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Slot> {
         let (rest, period) = self.u64_deserializer.deserialize(buffer)?;
-        let thread = *rest.get(0).ok_or(nom::Err::Error(nom::error::Error::new(
-            buffer,
-            nom::error::ErrorKind::LengthValue,
-        )))?;
+        let thread = *rest.get(0).ok_or_else(|| {
+            nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::LengthValue,
+            ))
+        })?;
         if !self.range_period.contains(&period) {
             return Err(nom::Err::Error(nom::error::Error::new(
                 buffer,

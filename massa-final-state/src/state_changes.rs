@@ -18,17 +18,25 @@ pub struct StateChanges {
     pub async_pool_changes: AsyncPoolChanges,
 }
 
+/// Basic `StateChanges` serializer.
 pub struct StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
 }
 
 impl StateChangesSerializer {
+    /// Creates a `StateChangesSerializer`
     pub fn new() -> Self {
         Self {
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
         }
+    }
+}
+
+impl Default for StateChangesSerializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -47,17 +55,25 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     }
 }
 
+/// Basic `StateChanges` deserializer
 pub struct StateChangesDeserializer {
     ledger_changes_deserializer: LedgerChangesDeserializer,
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
 }
 
 impl StateChangesDeserializer {
+    /// Creates a `StateChangesDeserializer`
     pub fn new() -> Self {
         Self {
             ledger_changes_deserializer: LedgerChangesDeserializer::new(),
             async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(),
         }
+    }
+}
+
+impl Default for StateChangesDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

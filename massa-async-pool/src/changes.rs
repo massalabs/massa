@@ -42,6 +42,12 @@ impl AsyncPoolChangesSerializer {
     }
 }
 
+impl Default for AsyncPoolChangesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     fn serialize(&self, value: &AsyncPoolChanges) -> Result<Vec<u8>, SerializeError> {
         let mut res = Vec::new();
@@ -81,6 +87,12 @@ impl AsyncPoolChangesDeserializer {
     }
 }
 
+impl Default for AsyncPoolChangesDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], AsyncPoolChanges> {
         let mut parser = length_count(
@@ -106,18 +118,14 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                         let (rest, id) = self.id_deserializer.deserialize(&input[1..])?;
                         Ok((rest, Change::Delete(id)))
                     }
-                    Some(_) => {
-                        return Err(nom::Err::Error(nom::error::Error::new(
-                            buffer,
-                            nom::error::ErrorKind::Digit,
-                        )))
-                    }
-                    None => {
-                        return Err(nom::Err::Error(nom::error::Error::new(
-                            buffer,
-                            nom::error::ErrorKind::LengthValue,
-                        )))
-                    }
+                    Some(_) => Err(nom::Err::Error(nom::error::Error::new(
+                        buffer,
+                        nom::error::ErrorKind::Digit,
+                    ))),
+                    None => Err(nom::Err::Error(nom::error::Error::new(
+                        buffer,
+                        nom::error::ErrorKind::LengthValue,
+                    ))),
                 }
             },
         );

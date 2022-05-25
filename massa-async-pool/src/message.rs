@@ -42,6 +42,12 @@ impl AsyncMessageIdSerializer {
     }
 }
 
+impl Default for AsyncMessageIdSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     fn serialize(
         &self,
@@ -74,6 +80,12 @@ impl AsyncMessageIdDeserializer {
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
+    }
+}
+
+impl Default for AsyncMessageIdDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

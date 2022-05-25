@@ -114,8 +114,8 @@ impl SerializeCompact for BootstrapMessageServer {
                 let u64_serializer =
                     U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX));
                 res.extend(u32::from(MessageServerTypeId::FinalStatePart).to_varint_bytes());
-                res.extend(vec_u8_serializer.serialize(&ledger_data)?);
-                res.extend(async_pool_serializer.serialize(&async_pool_part)?);
+                res.extend(vec_u8_serializer.serialize(ledger_data)?);
+                res.extend(async_pool_serializer.serialize(async_pool_part)?);
                 res.extend(slot_serializer.serialize(slot)?);
                 res.extend(u64_serializer.serialize(&(final_state_changes.len() as u64))?);
                 for changes in final_state_changes {
@@ -202,7 +202,7 @@ impl DeserializeCompact for BootstrapMessageServer {
                         }),
                     ))(&buffer[cursor..])?;
                 // Temp while serializecompact exists
-                let delta = &buffer[cursor..].len() - rest.len();
+                let delta = buffer[cursor..].len() - rest.len();
                 cursor += delta;
                 BootstrapMessageServer::FinalStatePart {
                     ledger_data,
@@ -333,7 +333,7 @@ impl DeserializeCompact for BootstrapMessageClient {
                             }),
                         ))(&buffer[cursor..])?;
                     // Temp while serializecompact exists
-                    let delta = &buffer[cursor..].len() - rest.len();
+                    let delta = buffer[cursor..].len() - rest.len();
                     cursor += delta;
 
                     BootstrapMessageClient::AskFinalStatePart {

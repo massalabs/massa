@@ -19,13 +19,12 @@ use crate::server_binder::BootstrapServerBinder;
 use error::BootstrapError;
 pub use establisher::types::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
-use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::FinalState;
 use massa_graph::BootstrapableGraph;
-use massa_ledger::{LedgerChanges as ExecutionLedgerChanges, LedgerCursor};
+use massa_ledger::{Applicable, LedgerCursor};
 use massa_logging::massa_trace;
-use massa_models::{Slot, Version};
+use massa_models::Version;
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::{PrivateKey, PublicKey};
@@ -79,7 +78,7 @@ impl GlobalBootstrapState {
             graph: None,
             compensation_millis: Default::default(),
             peers: None,
-            final_state: final_state,
+            final_state,
         }
     }
 }
@@ -105,7 +104,6 @@ async fn stream_ledger(
         Ok(Ok(_)) => Ok(()),
     }?;
     let mut old_cursor: Option<LedgerCursor> = None;
-    let mut old_last_async_id: Option<AsyncMessageId> = None;
     loop {
         println!("client: in loop");
         let msg = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
@@ -133,12 +131,24 @@ async fn stream_ledger(
                     .write()
                     .ledger
                     .set_ledger_part(old_cursor, ledger_data)?;
-                old_last_async_id = global_bootstrap_state
+                let old_last_async_id = global_bootstrap_state
                     .final_state
                     .write()
                     .async_pool
                     .set_pool_part(async_pool_part)
                     .map(|(id, _)| *id);
+                for changes in final_state_changes {
+                    global_bootstrap_state
+                        .final_state
+                        .write()
+                        .ledger
+                        .apply(changes.ledger_changes);
+                    global_bootstrap_state
+                        .final_state
+                        .write()
+                        .async_pool
+                        .apply_changes_unchecked(changes.async_pool_changes);
+                }
                 println!(
                     "client: ledger is {:#?}",
                     global_bootstrap_state.final_state.read().ledger
@@ -147,6 +157,12 @@ async fn stream_ledger(
                     "client: async pool is {:#?}",
                     global_bootstrap_state.final_state.read().async_pool
                 );
+                // Set new message in case of disconnection
+                *next_message_bootstrap = Some(BootstrapMessageClient::AskFinalStatePart {
+                    cursor: old_cursor.clone(),
+                    slot: Some(slot),
+                    last_async_message_id: old_last_async_id,
+                });
             }
             BootstrapMessageServer::FinalStateFinished => {
                 *next_message_bootstrap = Some(BootstrapMessageClient::AskBootstrapPeers);
