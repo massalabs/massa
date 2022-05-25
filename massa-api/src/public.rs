@@ -304,9 +304,14 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>> {
+    fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || Ok(consensus_command_sender.get_active_stakers().await?);
+        let closure = async move || {
+            let stakers = consensus_command_sender.get_active_stakers().await?;
+            let mut staker_vec = Vec::from_iter(stakers);
+            staker_vec.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
+            Ok(staker_vec)
+        };
         Box::pin(closure())
     }
 
