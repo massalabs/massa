@@ -119,13 +119,17 @@ impl FinalState {
     /// TODO: Document
     pub fn get_part_state_changes(
         &self,
-        slot: Slot,
-        max_address: Address,
-        max_id_async_pool: AsyncMessageId,
-    ) -> Vec<(Slot, StateChanges)> {
-        let pos_slot = self.changes_history.partition_point(|(s, _)| s > &slot);
-        let mut res_changes: Vec<(Slot, StateChanges)> = Vec::new();
-        for (slot, changes) in self.changes_history.range(pos_slot..) {
+        min_slot: Option<Slot>,
+        max_address: Option<Address>,
+        max_id_async_pool: Option<AsyncMessageId>,
+    ) -> Vec<StateChanges> {
+        let pos_slot = min_slot
+            .map(|min_slot| self.changes_history.partition_point(|(s, _)| s > &min_slot))
+            .unwrap_or(0);
+        println!("server: in get_part_state_changes");
+        let mut res_changes: Vec<StateChanges> = Vec::new();
+        for (_, changes) in self.changes_history.range(pos_slot..) {
+            println!("server: in loop");
             let mut elem: StateChanges = StateChanges::default();
 
             //Get ledger change that concern address < max_address.
@@ -134,12 +138,12 @@ impl FinalState {
                     .ledger_changes
                     .0
                     .iter()
-                    .filter_map(|(address, change)| {
-                        if address < &max_address {
+                    .filter_map(|(address, change)| match max_address {
+                        Some(max_address) if address < &max_address => {
                             Some((*address, change.clone()))
-                        } else {
-                            None
                         }
+                        Some(_) => None,
+                        _ => Some((*address, change.clone())),
                     })
                     .collect(),
             );
@@ -151,16 +155,26 @@ impl FinalState {
                     .async_pool_changes
                     .0
                     .iter()
-                    .filter_map(|change| match change {
-                        Change::Add(id, _) if id < &max_id_async_pool => Some(change.clone()),
-                        Change::Delete(id) if id < &max_id_async_pool => Some(change.clone()),
-                        _ => None,
+                    .filter_map(|change| {
+                        if let Some(max_id_async_pool) = max_id_async_pool {
+                            match change {
+                                Change::Add(id, _) if id < &max_id_async_pool => {
+                                    Some(change.clone())
+                                }
+                                Change::Delete(id) if id < &max_id_async_pool => {
+                                    Some(change.clone())
+                                }
+                                _ => None,
+                            }
+                        } else {
+                            Some(change.clone())
+                        }
                     })
                     .collect(),
             );
             elem.async_pool_changes = async_pool_changes;
             if !elem.async_pool_changes.0.is_empty() || !elem.ledger_changes.0.is_empty() {
-                res_changes.push((*slot, elem));
+                res_changes.push(elem);
             }
         }
         res_changes

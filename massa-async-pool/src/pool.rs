@@ -6,11 +6,16 @@ use crate::{
     bootstrap::AsyncPoolBootstrap,
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId},
+    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
 };
-use massa_models::{constants::default::ASYNC_POOL_BATCH_SIZE, Slot};
+use massa_models::{
+    constants::default::ASYNC_POOL_BATCH_SIZE, DeserializeCompact, SerializeCompact, Slot,
+    U64VarIntDeserializer, U64VarIntSerializer,
+};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::{error::context, multi::length_count, IResult};
 use std::collections::BTreeMap;
-use std::ops::Bound::{Included, Unbounded};
+use std::ops::Bound::{Excluded, Included, Unbounded};
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -26,6 +31,73 @@ pub struct AsyncPool {
 
 /// Part of the async pool used for bootstrap
 pub type AsyncPoolPart = Vec<(AsyncMessageId, AsyncMessage)>;
+
+pub struct AsyncPoolPartSerializer {
+    u64_serializer: U64VarIntSerializer,
+    id_serializer: AsyncMessageIdSerializer,
+}
+
+impl AsyncPoolPartSerializer {
+    pub fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            id_serializer: AsyncMessageIdSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<AsyncPoolPart> for AsyncPoolPartSerializer {
+    fn serialize(&self, value: &AsyncPoolPart) -> Result<Vec<u8>, SerializeError> {
+        let mut res = Vec::new();
+        res.extend(self.u64_serializer.serialize(&(value.len() as u64))?);
+        for element in value {
+            res.extend(self.id_serializer.serialize(&element.0)?);
+            res.extend(
+                &element
+                    .1
+                    .to_bytes_compact()
+                    .map_err(|err| SerializeError::GeneralError(err.to_string()))?,
+            );
+        }
+        Ok(res)
+    }
+}
+
+pub struct AsyncPoolPartDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    id_deserializer: AsyncMessageIdDeserializer,
+}
+
+impl AsyncPoolPartDeserializer {
+    pub fn new() -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            id_deserializer: AsyncMessageIdDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<AsyncPoolPart> for AsyncPoolPartDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], AsyncPoolPart> {
+        let mut parser = length_count(
+            context("length in async pool part", |input| {
+                self.u64_deserializer.deserialize(input)
+            }),
+            |input| {
+                // Use tuple when async message has a new serialize version
+                let (rest, id) = self.id_deserializer.deserialize(input)?;
+                let (message, delta) = AsyncMessage::from_bytes_compact(rest).map_err(|err| {
+                    nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::IsNot))
+                })?;
+                // Safe because the delta has been incermented while accessing in the from_bytes_compact
+                // Remove when async message has a new serialize version
+                Ok((&rest[delta..], (id, message)))
+            },
+        );
+
+        parser(buffer)
+    }
+}
 
 impl AsyncPool {
     /// Creates an empty `AsyncPool`
@@ -155,9 +227,16 @@ impl AsyncPool {
 
     /// Used for bootstrap
     /// TODO: Document
-    pub fn get_pool_part(&self, last_id: AsyncMessageId) -> AsyncPoolPart {
+    pub fn get_pool_part(&self, last_id: Option<AsyncMessageId>) -> AsyncPoolPart {
+        let last_id = if let Some(last_id) = last_id {
+            last_id
+        } else if let Some((first_id, _)) = self.messages.first_key_value() {
+            *first_id
+        } else {
+            return vec![];
+        };
         self.messages
-            .range((Included(last_id), Unbounded))
+            .range((Excluded(last_id), Unbounded))
             .take(ASYNC_POOL_BATCH_SIZE as usize)
             .map(|(id, value)| (*id, value.clone()))
             .collect()

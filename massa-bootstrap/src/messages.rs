@@ -1,24 +1,30 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_async_pool::{AsyncMessageId, AsyncPoolPart};
-use massa_final_state::StateChanges;
+use massa_async_pool::{
+    AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer, AsyncPoolPart,
+    AsyncPoolPartDeserializer, AsyncPoolPartSerializer,
+};
+use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_graph::BootstrapableGraph;
-use massa_ledger::{
-    LedgerChanges as ExecutionLedgerChanges,
-    LedgerChangesDeserializer as ExecutionLedgerChangesDeserializer,
-    LedgerChangesSerializer as ExecutionLedgerChangesSerializer, LedgerCursor,
-    LedgerCursorDeserializer, LedgerCursorSerializer,
+use massa_ledger::{LedgerCursor, LedgerCursorDeserializer, LedgerCursorSerializer};
+use massa_models::slot::SlotDeserializer;
+use massa_models::{
+    constants::THREAD_COUNT, slot::SlotSerializer, DeserializeCompact, DeserializeVarInt,
+    ModelsError, SerializeCompact, SerializeVarInt, Slot, Version,
 };
 use massa_models::{
-    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Slot,
-    Version,
+    U64VarIntDeserializer, U64VarIntSerializer, VecU8Deserializer, VecU8Serializer,
 };
 use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_serialization::{Deserializer, Serializer};
 use massa_time::MassaTime;
+use nom::error::context;
+use nom::multi::length_count;
+use nom::sequence::tuple;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
+use std::ops::Bound::Included;
 
 /// Messages used during bootstrap by server
 #[derive(Debug, Clone)]
@@ -49,8 +55,8 @@ pub enum BootstrapMessageServer {
         async_pool_part: AsyncPoolPart,
         /// Slot the ledger changes are attached to
         slot: Slot,
-        /// Ledger change for addresses inferior to `address` of the client message.
-        final_state_changes: StateChanges,
+        /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
+        final_state_changes: Vec<StateChanges>,
     },
     FinalStateFinished,
     /// Bootstrap error
@@ -92,16 +98,29 @@ impl SerializeCompact for BootstrapMessageServer {
                 res.extend(&graph.to_bytes_compact()?);
             }
             BootstrapMessageServer::FinalStatePart {
-                data,
+                ledger_data,
+                async_pool_part,
                 slot,
-                ledger_changes,
+                final_state_changes,
             } => {
-                let ledger_execution_serializer = ExecutionLedgerChangesSerializer::new();
+                let async_pool_serializer = AsyncPoolPartSerializer::new();
+                let slot_serializer = SlotSerializer::new(
+                    (Included(0), Included(u64::MAX)),
+                    (Included(0), Included(THREAD_COUNT)),
+                );
+                let final_state_changes_serializer = StateChangesSerializer::new();
+                let vec_u8_serializer =
+                    VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX));
+                let u64_serializer =
+                    U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX));
                 res.extend(u32::from(MessageServerTypeId::FinalStatePart).to_varint_bytes());
-                res.extend((data.len() as u64).to_varint_bytes());
-                res.extend(data);
-                res.extend(slot.to_bytes_compact()?);
-                res.extend(ledger_execution_serializer.serialize(ledger_changes)?);
+                res.extend(vec_u8_serializer.serialize(&ledger_data)?);
+                res.extend(async_pool_serializer.serialize(&async_pool_part)?);
+                res.extend(slot_serializer.serialize(slot)?);
+                res.extend(u64_serializer.serialize(&(final_state_changes.len() as u64))?);
+                for changes in final_state_changes {
+                    res.extend(final_state_changes_serializer.serialize(changes)?);
+                }
             }
             BootstrapMessageServer::FinalStateFinished => {
                 res.extend(u32::from(MessageServerTypeId::FinalStateFinished).to_varint_bytes());
@@ -154,24 +173,42 @@ impl DeserializeCompact for BootstrapMessageServer {
                 BootstrapMessageServer::ConsensusState { pos, graph }
             }
             MessageServerTypeId::FinalStatePart => {
-                let ledger_execution_deserializer = ExecutionLedgerChangesDeserializer::new();
-
-                let (data_len, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                let async_pool_deserializer = AsyncPoolPartDeserializer::new();
+                let slot_deserializer = SlotDeserializer::new(
+                    (Included(0), Included(u64::MAX)),
+                    (Included(0), Included(THREAD_COUNT)),
+                );
+                let final_state_changes_deserializer = StateChangesDeserializer::new();
+                let vec_u8_deserializer =
+                    VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
+                let u64_deserializer =
+                    U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
+                let (rest, (ledger_data, async_pool_part, slot, final_state_changes)) =
+                    tuple((
+                        context("ledger data in final state part", |input| {
+                            vec_u8_deserializer.deserialize(input)
+                        }),
+                        context("async pool in final state part", |input| {
+                            async_pool_deserializer.deserialize(input)
+                        }),
+                        context("slot in final state part", |input| {
+                            slot_deserializer.deserialize(input)
+                        }),
+                        context("changes in final state part", |input| {
+                            length_count(
+                                |input| u64_deserializer.deserialize(input),
+                                |input| final_state_changes_deserializer.deserialize(input),
+                            )(input)
+                        }),
+                    ))(&buffer[cursor..])?;
+                // Temp while serializecompact exists
+                let delta = &buffer[cursor..].len() - rest.len();
                 cursor += delta;
-
-                let data = &buffer[cursor..cursor + data_len as usize];
-                cursor += data_len as usize;
-
-                let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-                let (rest, ledger_changes) =
-                    ledger_execution_deserializer.deserialize(&buffer[cursor..])?;
-                cursor += rest.len();
-
                 BootstrapMessageServer::FinalStatePart {
-                    data: data.to_vec(),
+                    ledger_data,
+                    async_pool_part,
                     slot,
-                    ledger_changes,
+                    final_state_changes,
                 }
             }
             MessageServerTypeId::FinalStateFinished => BootstrapMessageServer::FinalStateFinished,
@@ -230,13 +267,19 @@ impl SerializeCompact for BootstrapMessageClient {
             BootstrapMessageClient::AskConsensusState => {
                 res.extend(u32::from(MessageClientTypeId::AskConsensusState).to_varint_bytes());
             }
-            BootstrapMessageClient::AskFinalStatePart { cursor, slot } => {
+            BootstrapMessageClient::AskFinalStatePart {
+                cursor,
+                slot,
+                last_async_message_id,
+            } => {
                 res.extend(u32::from(MessageClientTypeId::AskFinalStatePart).to_varint_bytes());
                 // If we have a cursor we must have also a slot
-                if let Some(cursor) = cursor && let Some(slot) = slot  {
+                if let Some(cursor) = cursor && let Some(slot) = slot && let Some(last_async_message_id) = last_async_message_id  {
                     let cursor_serializer = LedgerCursorSerializer::new();
+                    let async_message_id_serializer = AsyncMessageIdSerializer::new();
                     res.extend(cursor_serializer.serialize(cursor)?);
                     res.extend(slot.to_bytes_compact()?);
+                    res.extend(async_message_id_serializer.serialize(last_async_message_id)?);
                 }
             }
             BootstrapMessageClient::BootstrapError { error } => {
@@ -268,19 +311,35 @@ impl DeserializeCompact for BootstrapMessageClient {
                     BootstrapMessageClient::AskFinalStatePart {
                         cursor: None,
                         slot: None,
+                        last_async_message_id: None,
                     }
                 } else {
                     let cursor_deserializer = LedgerCursorDeserializer::new();
-                    let (rest, bootstrap_cursor) =
-                        cursor_deserializer.deserialize(&buffer[cursor..])?;
-                    cursor += rest.len();
-
-                    let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
+                    let slot_deserializer = SlotDeserializer::new(
+                        (Included(0), Included(u64::MAX)),
+                        (Included(0), Included(THREAD_COUNT)),
+                    );
+                    let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
+                    let (rest, (ledger_cursor, slot, last_async_message_id)) =
+                        tuple((
+                            context("cursor in ask final state part", |input| {
+                                cursor_deserializer.deserialize(input)
+                            }),
+                            context("slot in ask final state part", |input| {
+                                slot_deserializer.deserialize(input)
+                            }),
+                            context("async message id in final state part", |input| {
+                                async_message_id_deserializer.deserialize(input)
+                            }),
+                        ))(&buffer[cursor..])?;
+                    // Temp while serializecompact exists
+                    let delta = &buffer[cursor..].len() - rest.len();
                     cursor += delta;
 
                     BootstrapMessageClient::AskFinalStatePart {
-                        cursor: Some(bootstrap_cursor),
+                        cursor: Some(ledger_cursor),
                         slot: Some(slot),
+                        last_async_message_id: Some(last_async_message_id),
                     }
                 }
             }

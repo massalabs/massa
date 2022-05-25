@@ -44,7 +44,7 @@ pub use bootstrap::FinalStateBootstrap;
 pub use config::FinalStateConfig;
 pub use error::FinalStateError;
 pub use final_state::FinalState;
-pub use state_changes::StateChanges;
+pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 
 #[cfg(test)]
 mod tests;

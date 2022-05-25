@@ -79,7 +79,7 @@ impl AsyncMessageIdDeserializer {
 
 impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], AsyncMessageId> {
-        let parser = tuple((
+        let mut parser = tuple((
             context("amount in async message id", |input| {
                 self.amount_deserializer.deserialize(input)
             }),

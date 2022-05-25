@@ -265,7 +265,9 @@ impl FinalLedger {
                         next_cursor.step = LedgerCursorStep::Finish;
                     }
                     LedgerCursorStep::Finish => {
-                        data.push(DATASTORE_END_IDENTIFIER);
+                        if !data.is_empty() {
+                            data.push(DATASTORE_END_IDENTIFIER);
+                        }
                         next_cursor.step = LedgerCursorStep::Start;
                         next_cursor.address = *addr;
                         break;
@@ -276,7 +278,7 @@ impl FinalLedger {
                 }
             }
         }
-        Ok((data, None))
+        Ok((data, Some(next_cursor)))
     }
 
     /// Set a part of the ledger

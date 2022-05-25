@@ -105,36 +105,39 @@ async fn stream_ledger(
     }?;
     let mut old_cursor: Option<LedgerCursor> = None;
     loop {
-        println!("in loop client");
+        println!("client: in loop");
         let msg = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
             Err(_) => {
+                println!("client: time out asking");
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
                     "final state bootstrap read timed out",
                 )
-                .into())
+                .into());
             }
             Ok(Err(e)) => return Err(e),
             Ok(Ok(msg)) => msg,
         };
+        println!("client: received msg");
         match msg {
             BootstrapMessageServer::FinalStatePart {
-                data,
+                ledger_data,
+                async_pool_part,
                 slot,
-                ledger_changes,
+                final_state_changes,
             } => {
                 old_cursor = global_bootstrap_state
                     .final_state
                     .write()
                     .ledger
-                    .set_ledger_part(old_cursor, data)?;
+                    .set_ledger_part(old_cursor, ledger_data)?;
                 println!(
                     "ledger is {:#?}",
                     global_bootstrap_state.final_state.read().ledger
                 );
             }
             BootstrapMessageServer::FinalStateFinished => {
-                *next_message_bootstrap = Some(BootstrapMessageClient::AskConsensusState);
+                *next_message_bootstrap = Some(BootstrapMessageClient::AskBootstrapPeers);
                 return Ok(());
             }
             _ => {
@@ -396,6 +399,7 @@ pub async fn get_state(
         Some(BootstrapMessageClient::AskFinalStatePart {
             cursor: None,
             slot: None,
+            last_async_message_id: None,
         });
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     loop {
@@ -739,11 +743,17 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapMessageClient::AskFinalStatePart { cursor, slot } => {
+                BootstrapMessageClient::AskFinalStatePart {
+                    cursor,
+                    slot,
+                    last_async_message_id,
+                } => {
                     let mut old_cursor = cursor;
+                    let mut old_last_async_id = last_async_message_id;
+                    let mut last_slot = slot;
+                    println!("server: received ask execution");
                     loop {
-                        println!("received ask execution");
-                        println!("ledger server is {:#?}", final_state.read().ledger);
+                        //println!("server: ledger server is {:#?}", final_state.read().ledger);
                         let (data, cursor) = final_state
                             .read()
                             .ledger
@@ -753,17 +763,42 @@ async fn manage_bootstrap(
                                     "Error on fetching ledger part of execution".to_string(),
                                 )
                             })?;
-                        println!("cursor = {:#?}", cursor);
+                        //println!("server: cursor = {:#?}", cursor);
                         old_cursor = cursor;
-                        println!("ledger data is {:#?}", data);
-                        if old_cursor.is_some() {
-                            println!("sent execution ledger part");
+                        //println!("server: ledger data is {:#?}", data);
+                        println!(
+                            "Server: the whole async pool {:#?}",
+                            final_state.read().async_pool
+                        );
+                        let async_pool_part = final_state
+                            .read()
+                            .async_pool
+                            .get_pool_part(old_last_async_id);
+                        println!("server: Async pool part = {:#?}", async_pool_part);
+                        if let Some((last_id, _)) = async_pool_part.last() {
+                            old_last_async_id = Some(*last_id);
+                        }
+                        println!("server: old async id = {:#?}", old_last_async_id);
+                        if !data.is_empty() || !async_pool_part.is_empty() {
+                            let actual_slot = final_state.read().slot;
+                            let final_state_changes = final_state.read().get_part_state_changes(
+                                last_slot,
+                                old_cursor.clone().map(|cursor| cursor.address),
+                                old_last_async_id,
+                            );
+                            last_slot = Some(actual_slot);
+                            println!(
+                                "server: send execution ledger part with slot = {:#?}",
+                                actual_slot
+                            );
                             match tokio::time::timeout(
                                 write_timeout,
                                 server.send(messages::BootstrapMessageServer::FinalStatePart {
-                                    data,
-                                    slot: Slot::new(1, 0),
-                                    ledger_changes: ExecutionLedgerChanges::default(),
+                                    ledger_data: data,
+                                    slot: actual_slot,
+                                    async_pool_part,
+                                    //TODO: Real values
+                                    final_state_changes,
                                 }),
                             )
                             .await
@@ -776,6 +811,7 @@ async fn manage_bootstrap(
                                 Ok(Err(e)) => Err(e),
                                 Ok(Ok(_)) => Ok(()),
                             }?;
+                            println!("server: sent successfully");
                         } else {
                             println!("sent end execution ledger");
                             match tokio::time::timeout(

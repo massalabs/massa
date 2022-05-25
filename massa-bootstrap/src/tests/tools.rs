@@ -72,10 +72,10 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalStateBootstrap
 
     let mut sorted_ledger = BTreeMap::new();
     let mut messages = Vec::new();
-    for _ in 0usize..rng.gen_range(0..20) {
+    for _ in 0usize..rng.gen_range(1..4) {
         messages.push(get_random_message());
     }
-    for _ in 0usize..rng.gen_range(0..2) {
+    for _ in 0usize..rng.gen_range(1..2) {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 

@@ -97,10 +97,14 @@ mod message;
 mod pool;
 
 pub use bootstrap::AsyncPoolBootstrap;
-pub use changes::{AsyncPoolChanges, Change};
+pub use changes::{
+    AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer, Change,
+};
 pub use config::AsyncPoolConfig;
-pub use message::{AsyncMessage, AsyncMessageId};
-pub use pool::{AsyncPool, AsyncPoolPart};
+pub use message::{
+    AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+};
+pub use pool::{AsyncPool, AsyncPoolPart, AsyncPoolPartDeserializer, AsyncPoolPartSerializer};
 
 #[cfg(test)]
 mod tests;

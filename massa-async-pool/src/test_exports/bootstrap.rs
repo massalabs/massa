@@ -3,7 +3,7 @@
 use std::str::FromStr;
 
 use crate::{AsyncMessage, AsyncPool, AsyncPoolBootstrap};
-use massa_models::{Address, Amount, Slot};
+use massa_models::{constants::THREAD_COUNT, Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key};
 use rand::Rng;
 
@@ -18,7 +18,7 @@ fn get_random_address() -> Address {
 pub fn get_random_message() -> AsyncMessage {
     let mut rng = rand::thread_rng();
     AsyncMessage {
-        emission_slot: Slot::new(rng.gen::<u64>(), rng.gen::<u8>()),
+        emission_slot: Slot::new(rng.gen_range(0..u64::MAX), rng.gen_range(0..THREAD_COUNT)),
         emission_index: 0,
         sender: get_random_address(),
         destination: get_random_address(),

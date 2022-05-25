@@ -34,7 +34,7 @@ pub struct AsyncPoolChangesSerializer {
 }
 
 impl AsyncPoolChangesSerializer {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             id_serializer: AsyncMessageIdSerializer::new(),
