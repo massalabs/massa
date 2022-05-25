@@ -129,11 +129,8 @@ impl FinalLedger {
                         *addr,
                         LedgerEntry {
                             parallel_balance: *balance,
-                            bytecode: self
-                                .sorted_ledger
-                                .get_sub_entry(addr, LedgerSubEntry::Bytecode)
-                                .unwrap_or_default(),
-                            datastore: self.sorted_ledger.get_entire_datastore(addr),
+                            bytecode: self.get_bytecode(addr).unwrap_or_default(),
+                            datastore: self.get_entire_datastore(addr),
                         },
                     )
                 })
@@ -208,6 +205,19 @@ impl FinalLedger {
     /// A copy of the datastore sorted by key
     pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
         self.sorted_ledger.get_entire_datastore(addr)
+    }
+
+    /// TODO: remove when API is updated
+    pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
+        if let Some(parallel_balance) = self.get_parallel_balance(addr) {
+            Some(LedgerEntry {
+                parallel_balance,
+                bytecode: self.get_bytecode(addr).unwrap_or_default(),
+                datastore: self.get_entire_datastore(addr),
+            })
+        } else {
+            None
+        }
     }
 
     // /// Get a part of the ledger

@@ -16,8 +16,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
-use massa_hash::Hash;
-use massa_ledger::{LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete, LedgerEntry};
+use massa_ledger::{Applicable, LedgerEntry, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
@@ -284,77 +283,6 @@ impl ExecutionState {
                     })) => return HistorySearchResult::Found(*v),
                     Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
                     _ => (),
-                }
-            }
-        }
-        HistorySearchResult::NotFound
-    }
-
-    /// Lazily query (from end to beginning) the active bytecode of an address at a given slot.
-    /// Returns None if the address bytecode could not be determined from the active history.
-    ///
-    /// NOTE: temporary, will fuse with the datastore
-    pub fn lookup_active_bytecode_at_slot(
-        &self,
-        slot: Slot,
-        addr: &Address,
-    ) -> HistorySearchResult<Vec<u8>> {
-        self.verify_active_slot(slot);
-
-        if let Some(n) = self.get_active_index(slot) {
-            let iter = self.active_history.iter().rev().skip(n);
-
-            for output in iter {
-                match output.state_changes.ledger_changes.0.get(addr) {
-                    Some(SetUpdateOrDelete::Set(v)) => {
-                        return HistorySearchResult::Found(v.bytecode.clone())
-                    }
-                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                        bytecode: SetOrKeep::Set(v),
-                        ..
-                    })) => return HistorySearchResult::Found(v.clone()),
-                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
-                    _ => (),
-                }
-            }
-        }
-        HistorySearchResult::NotFound
-    }
-
-    /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
-    /// Returns None if the datastore entry could not be determined from the active history.
-    ///
-    /// NOTE: temporary, needs to be done in the speculative ledger
-    pub fn lookup_active_data_entry_at_slot(
-        &self,
-        slot: Slot,
-        addr: &Address,
-        key: &Hash,
-    ) -> HistorySearchResult<Vec<u8>> {
-        self.verify_active_slot(slot);
-
-        if let Some(n) = self.get_active_index(slot) {
-            let iter = self.active_history.iter().rev().skip(n);
-
-            for output in iter {
-                match output.state_changes.ledger_changes.0.get(addr) {
-                    Some(SetUpdateOrDelete::Set(v)) => {
-                        return match v.datastore.get(key) {
-                            Some(entry) => HistorySearchResult::Found(entry.clone()),
-                            None => HistorySearchResult::Deleted,
-                        }
-                    }
-                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
-                        match datastore.get(key) {
-                            Some(SetOrDelete::Set(v)) => {
-                                return HistorySearchResult::Found(v.clone())
-                            }
-                            Some(SetOrDelete::Delete) => return HistorySearchResult::Deleted,
-                            None => (),
-                        }
-                    }
-                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
-                    None => (),
                 }
             }
         }
@@ -893,6 +821,7 @@ impl ExecutionState {
     /// Gets a parallel balance both at the latest final and active executed slots
     ///
     /// NOTE: temporary, needs to be done in the speculative ledger
+    #[allow(dead_code)]
     pub fn get_final_and_active_parallel_balance(
         &self,
         address: &Address,
@@ -913,61 +842,53 @@ impl ExecutionState {
         )
     }
 
-    /// Gets a bytecode both at the latest final and active executed slots
-    ///
-    /// NOTE: temporary, will fuse with the datastore
-    pub fn get_final_and_active_bytecode(
-        &self,
-        address: &Address,
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        let final_bytecode = self.final_state.read().ledger.get_bytecode(address);
-        let next_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        let search_result = self.lookup_active_bytecode_at_slot(next_slot, address);
-        (
-            final_bytecode.clone(),
-            match search_result {
-                HistorySearchResult::Found(active_bytecode) => Some(active_bytecode),
-                HistorySearchResult::NotFound => final_bytecode,
-                HistorySearchResult::Deleted => None,
-            },
-        )
-    }
-
+    /// Gets a full ledger entry both at the latest final and active executed slots
+    /// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`
     /// TODO: remove when API is updated
+    ///
+    ///
+    /// # returns
+    /// `(final_entry, active_entry)`
     pub fn get_final_and_active_ledger_entry(
         &self,
         addr: &Address,
     ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        (None, None)
-    }
+        // get the full entry from the final ledger
+        let final_entry = self.final_state.read().ledger.get_full_entry(addr);
 
-    /// Gets a data entry both at the latest final and active executed slots
-    ///
-    /// NOTE: temporary, needs to be done in the speculative ledger
-    /// note: update
-    #[allow(dead_code)]
-    pub fn get_final_and_active_data_entry(
-        &self,
-        address: &Address,
-        key: &Hash,
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
+        // get cumulative active changes and apply them
+        // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
+        // also we should proceed backwards through history for performance
+        // https://github.com/massalabs/massa/issues/2343
+        // Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one
+        // in order to take all available active slots into account (and not forget the last one)
+        // and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.
         let next_slot = self
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow when getting speculative ledger");
-        let search_result = self.lookup_active_data_entry_at_slot(next_slot, address, key);
-        (
-            final_entry.clone(),
-            match search_result {
-                HistorySearchResult::Found(active_entry) => Some(active_entry),
-                HistorySearchResult::NotFound => final_entry,
-                HistorySearchResult::Deleted => None,
-            },
-        )
+        let active_change = self
+            .get_accumulated_active_changes_at_slot(next_slot)
+            .ledger_changes
+            .get(addr)
+            .cloned();
+        let active_entry = match (&final_entry, active_change) {
+            (final_v, None) => final_v.clone(),
+            (_, Some(SetUpdateOrDelete::Set(v))) => Some(v),
+            (_, Some(SetUpdateOrDelete::Delete)) => None,
+            (None, Some(SetUpdateOrDelete::Update(u))) => {
+                let mut v = LedgerEntry::default();
+                v.apply(u);
+                Some(v)
+            }
+            (Some(final_v), Some(SetUpdateOrDelete::Update(u))) => {
+                let mut v = final_v.clone();
+                v.apply(u);
+                Some(v)
+            }
+        };
+
+        (final_entry, active_entry)
     }
 
     /// Gets execution events optionally filtered by:
