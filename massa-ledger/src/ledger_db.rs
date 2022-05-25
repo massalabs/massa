@@ -79,6 +79,8 @@ pub fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
     }
 }
 
+// TODO: implement batch functions to have atomic updates of ledger
+// TODO: save attached slot in metadata for a lighter bootstrap after disconnection
 impl LedgerDB {
     pub fn new() -> Self {
         // db options

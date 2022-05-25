@@ -66,6 +66,12 @@ pub(crate) struct ExecutionState {
     storage: Storage,
 }
 
+pub(crate) enum HistorySearchResult<T> {
+    Found(T),
+    NotFound,
+    Deleted,
+}
+
 impl ExecutionState {
     /// Create a new execution state. This should be called only once at the start of the execution worker.
     ///
@@ -246,8 +252,6 @@ impl ExecutionState {
     }
 
     /// Computes the index of a given slot in the active history
-    ///
-    /// NOTE: temporary, needs to be done in the speculative ledger
     fn get_active_index(&self, slot: Slot) -> Option<usize> {
         let current = self.active_cursor.period * (self.config.thread_count as u64)
             + (self.active_cursor.thread as u64);
@@ -259,7 +263,11 @@ impl ExecutionState {
     /// Returns None if the address balance could not be determined from the active history.
     ///
     /// NOTE: temporary, needs to be done in the speculative ledger
-    pub fn lookup_active_balance_at_slot(&self, slot: Slot, addr: &Address) -> Option<Amount> {
+    pub fn lookup_active_balance_at_slot(
+        &self,
+        slot: Slot,
+        addr: &Address,
+    ) -> HistorySearchResult<Amount> {
         self.verify_active_slot(slot);
 
         if let Some(n) = self.get_active_index(slot) {
@@ -267,27 +275,31 @@ impl ExecutionState {
 
             for output in iter {
                 match output.state_changes.ledger_changes.0.get(addr) {
-                    Some(SetUpdateOrDelete::Set(v)) => return Some(v.parallel_balance),
+                    Some(SetUpdateOrDelete::Set(v)) => {
+                        return HistorySearchResult::Found(v.parallel_balance)
+                    }
                     Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
                         parallel_balance: SetOrKeep::Set(v),
                         ..
-                    })) => return Some(*v),
-                    Some(SetUpdateOrDelete::Delete) => return None,
+                    })) => return HistorySearchResult::Found(*v),
+                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
                     _ => (),
                 }
             }
         }
-        None
+        HistorySearchResult::NotFound
     }
 
     /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
     /// Returns None if the datastore entry could not be determined from the active history.
+    ///
+    /// NOTE: temporary, needs to be done in the speculative ledger
     pub fn lookup_active_data_entry_at_slot(
         &self,
         slot: Slot,
         addr: &Address,
         key: &Hash,
-    ) -> Option<Vec<u8>> {
+    ) -> HistorySearchResult<Vec<u8>> {
         self.verify_active_slot(slot);
 
         if let Some(n) = self.get_active_index(slot) {
@@ -295,20 +307,27 @@ impl ExecutionState {
 
             for output in iter {
                 match output.state_changes.ledger_changes.0.get(addr) {
-                    Some(SetUpdateOrDelete::Set(v)) => return v.datastore.get(key).cloned(),
+                    Some(SetUpdateOrDelete::Set(v)) => {
+                        return match v.datastore.get(key) {
+                            Some(entry) => HistorySearchResult::Found(entry.clone()),
+                            None => HistorySearchResult::Deleted,
+                        }
+                    }
                     Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
                         match datastore.get(key) {
-                            Some(SetOrDelete::Set(v)) => return Some(v.clone()),
-                            Some(SetOrDelete::Delete) => return None,
+                            Some(SetOrDelete::Set(v)) => {
+                                return HistorySearchResult::Found(v.clone())
+                            }
+                            Some(SetOrDelete::Delete) => return HistorySearchResult::Deleted,
                             None => (),
                         }
                     }
-                    Some(SetUpdateOrDelete::Delete) => return None,
+                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
                     None => (),
                 }
             }
         }
-        None
+        HistorySearchResult::NotFound
     }
 
     /// Returns the state changes accumulated from the beginning of the output history,
@@ -852,13 +871,13 @@ impl ExecutionState {
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow when getting speculative ledger");
-        let active_balance = self.lookup_active_balance_at_slot(next_slot, address);
+        let search_result = self.lookup_active_balance_at_slot(next_slot, address);
         (
             final_balance,
-            if active_balance.is_some() {
-                active_balance
-            } else {
-                final_balance
+            match search_result {
+                HistorySearchResult::Found(active_balance) => Some(active_balance),
+                HistorySearchResult::NotFound => final_balance,
+                HistorySearchResult::Deleted => None,
             },
         )
     }
@@ -877,13 +896,13 @@ impl ExecutionState {
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow when getting speculative ledger");
-        let active_entry = self.lookup_active_data_entry_at_slot(next_slot, address, key);
+        let search_result = self.lookup_active_data_entry_at_slot(next_slot, address, key);
         (
             final_entry.clone(),
-            if active_entry.is_some() {
-                active_entry
-            } else {
-                final_entry
+            match search_result {
+                HistorySearchResult::Found(active_entry) => Some(active_entry),
+                HistorySearchResult::NotFound => final_entry,
+                HistorySearchResult::Deleted => None,
             },
         )
     }
