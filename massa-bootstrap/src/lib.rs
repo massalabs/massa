@@ -19,6 +19,7 @@ use crate::server_binder::BootstrapServerBinder;
 use error::BootstrapError;
 pub use establisher::types::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
+use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::{FinalState, FinalStateBootstrap};
 use massa_graph::BootstrapableGraph;
@@ -104,6 +105,7 @@ async fn stream_ledger(
         Ok(Ok(_)) => Ok(()),
     }?;
     let mut old_cursor: Option<LedgerCursor> = None;
+    let mut old_last_async_id: Option<AsyncMessageId> = None;
     loop {
         println!("client: in loop");
         let msg = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
@@ -131,9 +133,19 @@ async fn stream_ledger(
                     .write()
                     .ledger
                     .set_ledger_part(old_cursor, ledger_data)?;
+                old_last_async_id = global_bootstrap_state
+                    .final_state
+                    .write()
+                    .async_pool
+                    .set_pool_part(async_pool_part)
+                    .map(|(id, _)| *id);
                 println!(
-                    "ledger is {:#?}",
+                    "client: ledger is {:#?}",
                     global_bootstrap_state.final_state.read().ledger
+                );
+                println!(
+                    "client: async pool is {:#?}",
+                    global_bootstrap_state.final_state.read().async_pool
                 );
             }
             BootstrapMessageServer::FinalStateFinished => {

@@ -1440,6 +1440,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "massa_time",
+ "nom 7.1.1",
  "num_enum",
  "parking_lot 0.12.0",
  "rand 0.8.5",
@@ -1544,6 +1545,8 @@ dependencies = [
  "massa_async_pool",
  "massa_ledger",
  "massa_models",
+ "massa_serialization",
+ "nom 7.1.1",
  "serde 1.0.136",
  "thiserror",
 ]

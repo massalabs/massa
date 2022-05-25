@@ -229,14 +229,14 @@ impl AsyncPool {
     /// TODO: Document
     pub fn get_pool_part(&self, last_id: Option<AsyncMessageId>) -> AsyncPoolPart {
         let last_id = if let Some(last_id) = last_id {
-            last_id
-        } else if let Some((first_id, _)) = self.messages.first_key_value() {
-            *first_id
+            Excluded(last_id)
+        } else if self.messages.first_key_value().is_some() {
+            Unbounded
         } else {
             return vec![];
         };
         self.messages
-            .range((Excluded(last_id), Unbounded))
+            .range((last_id, Unbounded))
             .take(ASYNC_POOL_BATCH_SIZE as usize)
             .map(|(id, value)| (*id, value.clone()))
             .collect()
@@ -244,8 +244,12 @@ impl AsyncPool {
 
     /// Used for bootstrap
     /// TODO: Document
-    pub fn set_pool_part(&mut self, part: AsyncPoolPart) {
+    pub fn set_pool_part(
+        &mut self,
+        part: AsyncPoolPart,
+    ) -> Option<(&AsyncMessageId, &AsyncMessage)> {
         self.messages.extend(part);
+        self.messages.last_key_value()
     }
 }
 
