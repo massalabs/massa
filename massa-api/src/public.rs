@@ -10,9 +10,9 @@ use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_graph::{DiscardReason, ExportBlockStatus};
-use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
+use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall, SCELedgerInfo};
 use massa_models::execution::ReadOnlyResult;
-use massa_models::{Amount, SignedOperation};
+use massa_models::SignedOperation;
 
 use massa_models::{
     api::{
@@ -495,8 +495,6 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    // fn get_datastore_entry(&self, addresses: Vec<Address>, key: Vec<u8>) {}
-
     fn get_addresses(
         &self,
         addresses: Vec<Address>,
@@ -546,9 +544,9 @@ impl Endpoints for API<Public> {
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
             let mut endorsements: Map<Address, Set<EndorsementId>> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut final_balances: Map<Address, Amount> =
+            let mut final_sce_ledger_info: Map<Address, SCELedgerInfo> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut candidates_balances: Map<Address, Amount> =
+            let mut candidate_sce_ledger_info: Map<Address, SCELedgerInfo> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
 
             let mut concurrent_getters = FuturesUnordered::new();
@@ -581,8 +579,38 @@ impl Endpoints for API<Public> {
                         .chain(get_consensus_eds?.into_keys())
                         .collect();
 
-                    let (final_balance, candidate_balance) =
-                        exec_snd.get_final_and_active_parallel_balance(&address);
+                    let (final_sce, candidate_sce) =
+                        match exec_snd.get_final_and_active_ledger_entry(&address) {
+                            (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
+                            (None, Some(candidate)) => (
+                                SCELedgerInfo::default(),
+                                SCELedgerInfo {
+                                    balance: candidate.parallel_balance,
+                                    module: candidate.bytecode,
+                                    datastore: candidate.datastore.into_iter().collect(),
+                                },
+                            ),
+                            (Some(final_entry), None) => (
+                                SCELedgerInfo {
+                                    balance: final_entry.parallel_balance,
+                                    module: final_entry.bytecode,
+                                    datastore: final_entry.datastore.into_iter().collect(),
+                                },
+                                SCELedgerInfo::default(),
+                            ),
+                            (Some(final_entry), Some(candidate)) => (
+                                SCELedgerInfo {
+                                    balance: final_entry.parallel_balance,
+                                    module: final_entry.bytecode,
+                                    datastore: final_entry.datastore.into_iter().collect(),
+                                },
+                                SCELedgerInfo {
+                                    balance: candidate.parallel_balance,
+                                    module: candidate.bytecode,
+                                    datastore: candidate.datastore.into_iter().collect(),
+                                },
+                            ),
+                        };
 
                     Result::<
                         (
@@ -590,8 +618,8 @@ impl Endpoints for API<Public> {
                             Set<BlockId>,
                             Set<OperationId>,
                             Set<EndorsementId>,
-                            Option<Amount>,
-                            Option<Amount>,
+                            SCELedgerInfo,
+                            SCELedgerInfo,
                         ),
                         ApiError,
                     >::Ok((
@@ -599,18 +627,18 @@ impl Endpoints for API<Public> {
                         blocks,
                         gathered,
                         gathered_ed,
-                        final_balance,
-                        candidate_balance,
+                        final_sce,
+                        candidate_sce,
                     ))
                 });
             }
             while let Some(res) = concurrent_getters.next().await {
-                let (a, bl_set, op_set, ed_set, final_b, candidate_b) = res?;
+                let (a, bl_set, op_set, ed_set, final_sce, candidate_sce) = res?;
                 operations.insert(a, op_set);
                 blocks.insert(a, bl_set);
                 endorsements.insert(a, ed_set);
-                final_balances.insert(a, final_b.unwrap_or_default());
-                candidates_balances.insert(a, candidate_b.unwrap_or_default());
+                final_sce_ledger_info.insert(a, final_sce);
+                candidate_sce_ledger_info.insert(a, candidate_sce);
             }
 
             // compile everything per address
@@ -646,8 +674,10 @@ impl Endpoints for API<Public> {
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                     production_stats: state.production_stats,
-                    final_balance: final_balances.remove(&address).ok_or(ApiError::NotFound)?,
-                    candidate_balance: candidates_balances
+                    final_sce_ledger_info: final_sce_ledger_info
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
+                    candidate_sce_ledger_info: candidate_sce_ledger_info
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                 })
