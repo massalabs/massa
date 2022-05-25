@@ -209,15 +209,12 @@ impl FinalLedger {
 
     /// TODO: remove when API is updated
     pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
-        if let Some(parallel_balance) = self.get_parallel_balance(addr) {
-            Some(LedgerEntry {
+        self.get_parallel_balance(addr)
+            .map(|parallel_balance| LedgerEntry {
                 parallel_balance,
                 bytecode: self.get_bytecode(addr).unwrap_or_default(),
                 datastore: self.get_entire_datastore(addr),
             })
-        } else {
-            None
-        }
     }
 
     // /// Get a part of the ledger
