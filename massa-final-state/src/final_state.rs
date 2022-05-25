@@ -5,10 +5,7 @@
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
-use crate::{
-    bootstrap::FinalStateBootstrap, config::FinalStateConfig, error::FinalStateError,
-    state_changes::StateChanges,
-};
+use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
 use massa_models::{Address, Slot};
@@ -55,33 +52,6 @@ impl FinalState {
             config,
             changes_history: Default::default(), // no changes in history
         })
-    }
-
-    /// Initialize a `FinalState` from a bootstrap state
-    ///
-    /// # Arguments
-    /// * `config`: final state configuration
-    /// * `state`: bootstrap state
-    pub fn from_bootstrap_state(config: FinalStateConfig, state: FinalStateBootstrap) -> Self {
-        FinalState {
-            slot: state.slot,
-            ledger: FinalLedger::from_bootstrap_state(config.ledger_config.clone(), state.ledger),
-            async_pool: AsyncPool::from_bootstrap_snapshot(
-                config.async_pool_config.clone(),
-                state.async_pool,
-            ),
-            config,
-            changes_history: Default::default(), // no changes in history
-        }
-    }
-
-    /// Gets a snapshot of the state to bootstrap other nodes
-    pub fn get_bootstrap_state(&self) -> FinalStateBootstrap {
-        FinalStateBootstrap {
-            slot: self.slot,
-            async_pool: self.async_pool.get_bootstrap_snapshot(),
-            ledger: self.ledger.get_bootstrap_state(),
-        }
     }
 
     /// Applies changes to the execution state at a given slot, and settles that slot forever.

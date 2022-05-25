@@ -6,7 +6,7 @@ use crate::cursor::{LedgerCursor, LedgerCursorStep};
 use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
-use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
+use crate::{LedgerConfig, LedgerError};
 use massa_hash::{Hash, HashDeserializer};
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
@@ -28,7 +28,7 @@ use std::ops::Bound::{Excluded, Included, Unbounded};
 #[derive(Debug)]
 pub struct FinalLedger {
     /// ledger configuration
-    pub(crate) config: LedgerConfig,
+    pub(crate) _config: LedgerConfig,
     /// ledger tree, sorted by address
     pub(crate) sorted_ledger: BTreeMap<Address, LedgerEntry>,
 }
@@ -108,31 +108,8 @@ impl FinalLedger {
         // generate the final ledger
         Ok(FinalLedger {
             sorted_ledger,
-            config,
+            _config: config,
         })
-    }
-
-    /// Initialize a `FinalLedger` from a bootstrap state
-    ///
-    /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
-    ///
-    /// # Arguments
-    /// * configuration: ledger configuration
-    /// * state: bootstrap state
-    pub fn from_bootstrap_state(config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
-        FinalLedger {
-            sorted_ledger: state.sorted_ledger,
-            config,
-        }
-    }
-
-    /// Gets a snapshot of the ledger to bootstrap other nodes
-    ///
-    /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
-    pub fn get_bootstrap_state(&self) -> FinalLedgerBootstrapState {
-        FinalLedgerBootstrapState {
-            sorted_ledger: self.sorted_ledger.clone(),
-        }
     }
 
     /// Gets a copy of a full ledger entry.

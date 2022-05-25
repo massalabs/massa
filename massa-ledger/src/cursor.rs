@@ -85,7 +85,9 @@ impl Deserializer<LedgerCursorStep> for LedgerCursorStepDeserializer {
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// A cursor to iterate through the ledger with different granularity.
 pub struct LedgerCursor {
+    /// An address in the ledger where the cursor stopped.
     pub address: Address,
+    /// A step in reading the ledger entry where the cursor stopped. For more info see `LedgerCursorStep`
     pub step: LedgerCursorStep,
 }
 

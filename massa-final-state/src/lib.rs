@@ -34,13 +34,11 @@
 #![feature(map_first_last)]
 #![feature(async_closure)]
 
-mod bootstrap;
 mod config;
 mod error;
 mod final_state;
 mod state_changes;
 
-pub use bootstrap::FinalStateBootstrap;
 pub use config::FinalStateConfig;
 pub use error::FinalStateError;
 pub use final_state::FinalState;

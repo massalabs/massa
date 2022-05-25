@@ -41,10 +41,7 @@ async fn test_bootstrap_server() {
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
     let final_state_bootstrap = get_random_final_state_bootstrap(2);
-    let final_state = Arc::new(RwLock::new(FinalState::from_bootstrap_state(
-        Default::default(),
-        final_state_bootstrap.clone(),
-    )));
+    let final_state = Arc::new(RwLock::new(final_state_bootstrap));
 
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(

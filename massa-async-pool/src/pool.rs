@@ -3,7 +3,6 @@
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
 
 use crate::{
-    bootstrap::AsyncPoolBootstrap,
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
@@ -105,28 +104,6 @@ impl AsyncPool {
         AsyncPool {
             config,
             messages: Default::default(),
-        }
-    }
-
-    /// Creates an `AsyncPool` from a bootstrap snapshot obtained using `AsyncPool::get_bootstrap_snapshot`
-    pub fn from_bootstrap_snapshot(
-        config: AsyncPoolConfig,
-        snapshot: AsyncPoolBootstrap,
-    ) -> AsyncPool {
-        AsyncPool {
-            config,
-            messages: snapshot
-                .messages
-                .into_iter()
-                .map(|msg| (msg.compute_id(), msg))
-                .collect(),
-        }
-    }
-
-    /// Returns a snapshot clone of the `AsyncPool` for bootstrapping other nodes
-    pub fn get_bootstrap_snapshot(&self) -> AsyncPoolBootstrap {
-        AsyncPoolBootstrap {
-            messages: self.messages.values().cloned().collect(),
         }
     }
 

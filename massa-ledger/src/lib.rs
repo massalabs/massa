@@ -49,7 +49,6 @@
 #![feature(map_first_last)]
 #![feature(async_closure)]
 
-mod bootstrap;
 mod config;
 mod cursor;
 mod error;
@@ -58,7 +57,6 @@ mod ledger_changes;
 mod ledger_entry;
 mod types;
 
-pub use bootstrap::FinalLedgerBootstrapState;
 pub use config::LedgerConfig;
 pub use cursor::{LedgerCursor, LedgerCursorDeserializer, LedgerCursorSerializer};
 pub use error::LedgerError;

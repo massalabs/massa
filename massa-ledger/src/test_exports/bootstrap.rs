@@ -4,15 +4,18 @@ use std::collections::BTreeMap;
 
 use massa_models::Address;
 
-use crate::{FinalLedger, FinalLedgerBootstrapState, LedgerEntry};
+use crate::{FinalLedger, LedgerConfig, LedgerEntry};
 
 /// This file defines tools to test the ledger bootstrap
 
-/// creates a ledger bootstrap state from components
-pub fn make_bootstrap_state(
+pub fn create_final_ledger(
+    config: LedgerConfig,
     sorted_ledger: BTreeMap<Address, LedgerEntry>,
-) -> FinalLedgerBootstrapState {
-    FinalLedgerBootstrapState { sorted_ledger }
+) -> FinalLedger {
+    FinalLedger {
+        _config: config,
+        sorted_ledger,
+    }
 }
 
 /// asserts that two ledger entries are the same

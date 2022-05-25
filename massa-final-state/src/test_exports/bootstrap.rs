@@ -2,22 +2,28 @@
 
 //! This file defines tools to test the final state bootstrap
 
-use crate::{FinalState, FinalStateBootstrap};
-use massa_async_pool::AsyncMessage;
-use massa_ledger::LedgerEntry;
-use massa_models::{Address, Slot};
-use std::collections::BTreeMap;
+use std::collections::VecDeque;
 
-/// creates a final state bootstrap from components
-pub fn make_bootstrap_state(
+use massa_async_pool::AsyncPool;
+use massa_ledger::FinalLedger;
+use massa_models::Slot;
+
+use crate::{FinalState, FinalStateConfig, StateChanges};
+
+/// Create a `FinalState` from pre-set values
+pub fn create_final_state(
+    config: FinalStateConfig,
     slot: Slot,
-    sorted_ledger: BTreeMap<Address, LedgerEntry>,
-    messages: Vec<AsyncMessage>,
-) -> FinalStateBootstrap {
-    FinalStateBootstrap {
+    ledger: FinalLedger,
+    async_pool: AsyncPool,
+    changes_history: VecDeque<(Slot, StateChanges)>,
+) -> FinalState {
+    FinalState {
+        config,
         slot,
-        ledger: massa_ledger::test_exports::make_bootstrap_state(sorted_ledger),
-        async_pool: massa_async_pool::test_exports::make_bootstrap_state(messages),
+        ledger,
+        async_pool,
+        changes_history,
     }
 }
 

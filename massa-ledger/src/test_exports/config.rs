@@ -11,7 +11,7 @@ use tempfile::NamedTempFile;
 impl Default for FinalLedger {
     fn default() -> Self {
         FinalLedger {
-            config: Default::default(),
+            _config: Default::default(),
             sorted_ledger: BTreeMap::new(),
         }
     }

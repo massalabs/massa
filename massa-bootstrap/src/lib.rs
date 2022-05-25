@@ -21,7 +21,7 @@ pub use establisher::types::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
-use massa_final_state::{FinalState, FinalStateBootstrap};
+use massa_final_state::FinalState;
 use massa_graph::BootstrapableGraph;
 use massa_ledger::{LedgerChanges as ExecutionLedgerChanges, LedgerCursor};
 use massa_logging::massa_trace;

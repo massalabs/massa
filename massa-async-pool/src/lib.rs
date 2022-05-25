@@ -90,13 +90,11 @@
 #![feature(btree_drain_filter)]
 #![feature(drain_filter)]
 
-mod bootstrap;
 mod changes;
 mod config;
 mod message;
 mod pool;
 
-pub use bootstrap::AsyncPoolBootstrap;
 pub use changes::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer, Change,
 };

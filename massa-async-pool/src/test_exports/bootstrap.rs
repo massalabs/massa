@@ -1,13 +1,23 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::str::FromStr;
+use std::{cmp::Reverse, collections::BTreeMap, str::FromStr};
 
-use crate::{AsyncMessage, AsyncPool, AsyncPoolBootstrap};
+use crate::{AsyncMessage, AsyncPool, AsyncPoolConfig};
 use massa_models::{constants::THREAD_COUNT, Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key};
 use rand::Rng;
 
 /// This file defines tools to test the asynchronous pool bootstrap
+
+/// Creates a `AsyncPool` from pre-set values
+pub fn create_async_pool(
+    config: AsyncPoolConfig,
+    messages: BTreeMap<(Reverse<Amount>, Slot, u64), AsyncMessage>,
+) -> AsyncPool {
+    let mut async_pool = AsyncPool::new(config);
+    async_pool.messages = messages;
+    async_pool
+}
 
 fn get_random_address() -> Address {
     let priv_key = generate_random_private_key();
@@ -32,11 +42,6 @@ pub fn get_random_message() -> AsyncMessage {
     }
 }
 
-/// Creates an asynchronous pool bootstrap state from components
-pub fn make_bootstrap_state(messages: Vec<AsyncMessage>) -> AsyncPoolBootstrap {
-    AsyncPoolBootstrap { messages }
-}
-
 /// Asserts that two instances of `AsyncMessage` are the same
 pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
     assert_eq!(v1.emission_slot, v2.emission_slot, "emission_slot mismatch");
@@ -58,7 +63,7 @@ pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
     assert_eq!(v1.data, v2.data, "data mismatch");
 }
 
-/// asserts that two `AsyncPoolBootstrap` are equal
+/// asserts that two `AsyncPool` are equal
 pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     assert_eq!(
         v1.messages.len(),
