@@ -31,6 +31,9 @@ pub enum LedgerSubEntry {
     Datastore(Hash),
 }
 
+/// Disk ledger DB module
+///
+/// Contains a RocksDB DB instance
 pub(crate) struct LedgerDB(pub(crate) DB);
 
 /// Destroy the disk ledger db and free the lock
@@ -38,34 +41,42 @@ pub fn destroy_ledger_db() {
     DB::destroy(&Options::default(), DB_PATH).expect(OPEN_ERROR);
 }
 
-// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
+/// Balance key formatting macro
+///
+/// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
 macro_rules! balance_key {
     ($addr:ident) => {
         [&[BALANCE_IDENT], &$addr.to_bytes()[..]].concat()
     };
 }
 
-// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
-// NOTE: still handle separate bytecode for now to avoid too many refactoring at once
+/// Bytecode key formatting macro
+///
+/// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
+/// NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
     ($addr:ident) => {
         [&[BYTECODE_IDENT], &$addr.to_bytes()[..]].concat()
     };
 }
 
-// TODO: add a separator identifier if the need comes to have multiple datastores
+/// Datastore entry key formatting macro
+///
+/// TODO: add a separator identifier if the need comes to have multiple datastores
 macro_rules! data_key {
     ($addr:ident, $key:ident) => {
         [&$addr.to_bytes()[..], &$key.to_bytes()[..]].concat()
     };
 }
 
+/// Datastore entry prefix formatting macro
 macro_rules! data_prefix {
     ($addr:ident) => {
         &$addr.to_bytes()[..]
     };
 }
 
+/// Compute the end bound for a given prefix
 pub fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
     let mut end_range = prefix.to_vec();
     while let Some(0xff) = end_range.last() {
@@ -82,13 +93,12 @@ pub fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
 // TODO: implement batch functions to have atomic updates of ledger
 // TODO: save attached slot in metadata for a lighter bootstrap after disconnection
 impl LedgerDB {
+    /// Create and initialize a new LedgerDB
     pub fn new() -> Self {
-        // db options
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
 
-        // database init
         let db = DB::open_cf_descriptors(
             &db_opts,
             DB_PATH,
@@ -99,10 +109,14 @@ impl LedgerDB {
         )
         .expect(OPEN_ERROR);
 
-        // return database
         LedgerDB(db)
     }
 
+    /// Add every sub-entry of a given entry to the disk ledger
+    ///
+    /// # Arguments
+    /// * addr: associated address
+    /// * ledger_entry: complete entry to be added
     pub fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry) {
         let mut batch = WriteBatch::default();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
@@ -111,7 +125,7 @@ impl LedgerDB {
         batch.put_cf(
             handle,
             balance_key!(addr),
-            // this unwrap will never fail
+            // Amount::to_bytes_compact() never fails
             ledger_entry.parallel_balance.to_bytes_compact().unwrap(),
         );
 
@@ -127,6 +141,14 @@ impl LedgerDB {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
+    /// Get the given sub-entry of a given address
+    ///
+    /// # Arguments
+    /// * addr: associated address
+    /// * ty: type of the queried sub-entry
+    ///
+    /// # Returns
+    /// An Option of the sub-entry value as bytes
     pub fn get_sub_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -143,6 +165,13 @@ impl LedgerDB {
         }
     }
 
+    /// Get every address and their corresponding balance
+    /// This should only be used for debug purposes
+    ///
+    /// # Returns
+    /// A BTreeMap with the addresse as key and the balance as value
+    ///
+    /// NOTE: Currently used in the intermediate bootstrap implementation
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -163,6 +192,10 @@ impl LedgerDB {
         addresses
     }
 
+    /// Get the entire datastore for a given address
+    ///
+    /// # Returns
+    /// A BTreeMap with the entry hash as key and the data bytes as value
     pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -184,6 +217,10 @@ impl LedgerDB {
             .collect()
     }
 
+    /// Update the ledger entry of a given address
+    ///
+    /// # Arguments
+    /// * entry_update: a descriptor of the entry updates to be applied
     pub fn update_entry(&mut self, addr: &Address, entry_update: LedgerEntryUpdate) {
         let mut batch = WriteBatch::default();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
@@ -193,7 +230,7 @@ impl LedgerDB {
             batch.put_cf(
                 handle,
                 balance_key!(addr),
-                // this unwrap will never fail
+                // Amount::to_bytes_compact() never fails
                 balance.to_bytes_compact().unwrap(),
             );
         }
@@ -215,6 +252,7 @@ impl LedgerDB {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
+    /// Delete every sub-entry associated to the given address
     pub fn delete_entry(&self, addr: &Address) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let mut batch = WriteBatch::default();
@@ -241,6 +279,7 @@ impl LedgerDB {
     }
 }
 
+/// Functional test of LedgerDB
 #[test]
 fn test_ledger_db() {
     use massa_models::Amount;
