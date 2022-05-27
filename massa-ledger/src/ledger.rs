@@ -6,7 +6,7 @@ use crate::ledger_changes::LedgerChanges;
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
-use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
+use crate::{destroy_ledger_db, FinalLedgerBootstrapState, LedgerConfig, LedgerError};
 use massa_hash::Hash;
 use massa_models::{Address, Amount, DeserializeCompact};
 use rocksdb::WriteBatch;
@@ -112,6 +112,9 @@ impl FinalLedger {
     /// * state: bootstrap state
     pub fn from_bootstrap_state(_config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
         // temporary implementation while waiting for streaming
+
+        destroy_ledger_db();
+
         let mut db = LedgerDB::new();
         let mut batch = WriteBatch::default();
 

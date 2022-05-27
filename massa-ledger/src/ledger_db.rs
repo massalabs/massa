@@ -76,7 +76,10 @@ macro_rules! data_prefix {
     };
 }
 
-/// Compute the end bound for a given prefix
+/// For a given start prefix (inclusive), returns the correct end prefix (non-inclusive).
+/// This assumes the key bytes are ordered in lexicographical order.
+/// Since key length is not limited, for some case we return `None` because there is
+/// no bounded limit (every keys in the serie `[]`, `[255]`, `[255, 255]` ...).
 pub fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
     let mut end_range = prefix.to_vec();
     while let Some(0xff) = end_range.last() {
