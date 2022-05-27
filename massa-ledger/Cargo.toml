@@ -12,7 +12,6 @@ tempfile = { version = "3.2", optional = true } # use with testing feature
 thiserror = "1.0"
 rocksdb = "0.18.0"
 nom = "7.1"
-parking_lot = "0.12"
 
 # custom modules
 massa_hash = { path = "../massa-hash" }

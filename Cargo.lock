@@ -1686,7 +1686,6 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "nom 7.1.1",
- "parking_lot 0.12.0",
  "rocksdb",
  "serde 1.0.136",
  "serde_json",

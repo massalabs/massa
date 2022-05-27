@@ -9,6 +9,7 @@ use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
 use massa_hash::Hash;
 use massa_models::{Address, Amount, DeserializeCompact};
+use rocksdb::WriteBatch;
 use std::collections::BTreeMap;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
@@ -25,28 +26,31 @@ pub struct FinalLedger {
 /// Allows applying `LedgerChanges` to the final ledger
 impl Applicable<LedgerChanges> for FinalLedger {
     fn apply(&mut self, changes: LedgerChanges) {
+        // create the batch
+        let mut batch = WriteBatch::default();
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
                 // the incoming change sets a ledger entry to a new one
                 SetUpdateOrDelete::Set(new_entry) => {
                     // inserts/overwrites the entry with the incoming one
-                    self.sorted_ledger.put_entry(&addr, new_entry);
+                    self.sorted_ledger.put_entry(&addr, new_entry, &mut batch);
                 }
                 // the incoming change updates an existing ledger entry
                 SetUpdateOrDelete::Update(entry_update) => {
                     // applies the updates to the entry
                     // if the entry does not exist, inserts a default one and applies the updates to it
-                    self.sorted_ledger.update_entry(&addr, entry_update);
+                    self.sorted_ledger
+                        .update_entry(&addr, entry_update, &mut batch);
                 }
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
                     // delete the entry, if it exists
-                    self.sorted_ledger.delete_entry(&addr);
+                    self.sorted_ledger.delete_entry(&addr, &mut batch);
                 }
             }
         }
-        self.sorted_ledger.write_and_clear_current_batch();
+        self.sorted_ledger.write_operations_batch(batch);
     }
 }
 
@@ -70,6 +74,7 @@ impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
         let mut sorted_ledger = LedgerDB::new();
+        let mut batch = WriteBatch::default();
 
         // load the ledger tree from file
         let initial_ledger = serde_json::from_str::<BTreeMap<Address, Amount>>(
@@ -86,9 +91,10 @@ impl FinalLedger {
                     parallel_balance: *amount,
                     ..Default::default()
                 },
+                &mut batch,
             );
         }
-        sorted_ledger.write_and_clear_current_batch();
+        sorted_ledger.write_operations_batch(batch);
 
         // generate the final ledger
         Ok(FinalLedger {
@@ -107,10 +113,13 @@ impl FinalLedger {
     pub fn from_bootstrap_state(_config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
         // temporary implementation while waiting for streaming
         let mut db = LedgerDB::new();
+        let mut batch = WriteBatch::default();
+
         for (key, entry) in state.sorted_ledger {
-            db.put_entry(&key, entry);
+            db.put_entry(&key, entry, &mut batch);
         }
-        db.write_and_clear_current_batch();
+        db.write_operations_batch(batch);
+
         FinalLedger {
             sorted_ledger: db,
             _config,
