@@ -84,8 +84,8 @@ impl Id for OperationId {
 }
 
 impl OperationId {
-    /// op id into bytes
-    pub fn to_bytes(&self) -> [u8; OPERATION_ID_SIZE_BYTES] {
+    /// op id to bytes
+    pub fn to_bytes(&self) -> &[u8; OPERATION_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
@@ -95,10 +95,8 @@ impl OperationId {
     }
 
     /// op id from bytes
-    pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> Result<OperationId, ModelsError> {
-        Ok(OperationId(
-            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
-        ))
+    pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> OperationId {
+        OperationId(Hash::from_bytes(data))
     }
 
     /// op id from `bs58` check
@@ -265,7 +263,7 @@ impl SerializeCompact for OperationType {
                 res.extend(u32::from(OperationTypeId::Transaction).to_varint_bytes());
 
                 // recipient_address
-                res.extend(&recipient_address.to_bytes());
+                res.extend(recipient_address.to_bytes());
 
                 // amount
                 res.extend(&amount.to_bytes_compact()?);
@@ -383,7 +381,7 @@ impl DeserializeCompact for OperationType {
         let res = match type_id {
             OperationTypeId::Transaction => {
                 // recipient_address
-                let recipient_address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let recipient_address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
                 cursor += ADDRESS_SIZE_BYTES;
 
                 // amount
@@ -463,7 +461,7 @@ impl DeserializeCompact for OperationType {
                 cursor += delta;
 
                 // Target address
-                let target_addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let target_addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
                 cursor += ADDRESS_SIZE_BYTES;
 
                 // Target function name
@@ -664,7 +662,7 @@ impl SerializeCompact for OperationIds {
         let mut res = Vec::new();
         res.extend(list_len.to_varint_bytes());
         for hash in self {
-            res.extend(&hash.to_bytes());
+            res.extend(hash.into_bytes());
         }
         Ok(res)
     }
@@ -689,7 +687,7 @@ impl DeserializeCompact for OperationIds {
         let mut list: OperationIds =
             Set::with_capacity_and_hasher(length as usize, BuildMap::default());
         for _ in 0..length {
-            let b_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let b_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += OPERATION_ID_SIZE_BYTES;
             list.insert(b_id);
         }

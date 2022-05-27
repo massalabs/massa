@@ -530,7 +530,7 @@ pub fn get_export_active_test_block(
                 operation_merkle_root: Hash::compute_from(
                     &operations
                         .iter()
-                        .flat_map(|op| op.content.compute_id().unwrap().to_bytes())
+                        .flat_map(|op| op.content.compute_id().unwrap().into_bytes())
                         .collect::<Vec<_>>()[..],
                 ),
                 parents: parents.iter().map(|(id, _)| *id).collect(),

@@ -56,7 +56,7 @@ impl DeserializeCompact for FinalLedgerBootstrapState {
         let mut sorted_ledger: BTreeMap<Address, LedgerEntry> = BTreeMap::new();
         for _ in 0..ledger_size {
             // address
-            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
 
             // entry

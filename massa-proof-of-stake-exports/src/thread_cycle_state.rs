@@ -120,7 +120,7 @@ impl DeserializeCompact for ThreadCycleState {
         }
         let mut roll_count = RollCounts::default();
         for _ in 0..n_entries {
-            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
             let (rolls, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
@@ -141,7 +141,7 @@ impl DeserializeCompact for ThreadCycleState {
             BuildMap::default(),
         ));
         for _ in 0..n_entries {
-            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
             let (update, delta) = RollUpdate::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
@@ -184,7 +184,7 @@ impl DeserializeCompact for ThreadCycleState {
         let mut production_stats =
             Map::with_capacity_and_hasher(n_entries as usize, BuildMap::default());
         for _ in 0..n_entries {
-            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
             let (ok_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;

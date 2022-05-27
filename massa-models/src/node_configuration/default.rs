@@ -53,7 +53,7 @@ lazy_static::lazy_static! {
         Some(1654034400000.into())  // Tue May 31 2022 22:00:00 GMT+0000
     };
     /// `PrivateKey` to sign genesis blocks.
-    pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
+    pub static ref GENESIS_KEY: PrivateKey = "2Rmcp5w4MjcTQvPJeCV14UQf75XjKwDVJF14F2V1o5Kr3i9LZL"
         .parse()
         .unwrap();
     /// number of cycle misses (strictly) above which stakers are deactivated
