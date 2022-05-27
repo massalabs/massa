@@ -2,6 +2,8 @@
 
 use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
+use massa_serialization::Deserializer;
+use nom::IResult;
 use std::{cmp::Ordering, convert::TryInto, str::FromStr};
 
 /// Hash wrapper, the underlying hash type is Blake3
@@ -115,6 +117,34 @@ impl Hash {
     /// ```
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Hash {
         Hash(blake3::Hash::from(*data))
+    }
+}
+
+/// Deserializer for `Hash`
+#[derive(Default)]
+pub struct HashDeserializer;
+
+impl HashDeserializer {
+    /// Creates a deserializer for `Hash`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Deserializer<Hash> for HashDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Hash> {
+        if buffer.len() < HASH_SIZE_BYTES {
+            return Err(nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::LengthValue,
+            )));
+        }
+        Ok((
+            &buffer[HASH_SIZE_BYTES..],
+            Hash::from_bytes(&buffer[..HASH_SIZE_BYTES].try_into().map_err(|_| {
+                nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::Fail))
+            })?),
+        ))
     }
 }
 

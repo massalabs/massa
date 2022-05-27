@@ -14,7 +14,7 @@ use std::{collections::HashMap, net::IpAddr};
 pub struct Peer {
     /// peer info
     pub peer_info: PeerInfo,
-    /// corresponding nodes (true if active)
+    /// corresponding nodes (true if the connection is outgoing, false if incoming)
     pub active_nodes: Vec<(NodeId, bool)>,
 }
 

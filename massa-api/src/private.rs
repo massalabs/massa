@@ -16,7 +16,7 @@ use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::Set;
 use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::PrivateKey;
@@ -139,8 +139,8 @@ impl Endpoints for API<Private> {
         crate::wrong_api::<Vec<Clique>>()
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>> {
-        crate::wrong_api::<Map<Address, u64>>()
+    fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
+        crate::wrong_api::<Vec<(Address, u64)>>()
     }
 
     fn get_operations(

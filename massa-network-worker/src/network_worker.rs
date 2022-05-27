@@ -695,9 +695,9 @@ impl NetworkWorker {
         writer: WriteHalf,
         remote_addr: SocketAddr,
     ) {
-        debug!(
-            "Maximum connection reached. Inbound connection from addr={} refused, try to send a list of peers",
-            remote_addr
+        massa_trace!(
+            "Maximum connection count reached. Inbound connection refused, trying to send a list of peers",
+            {"address": remote_addr}
         );
         if self.cfg.max_in_connection_overflow > self.handshake_peer_list_futures.len() {
             let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
@@ -715,8 +715,12 @@ impl NetworkWorker {
                     )
                     .await
                     {
-                        Ok(Err(e)) => debug!("Ignored network error on send peerlist={}", e),
-                        Err(_) => debug!("Ignored timeout error on send peerlist"),
+                        Ok(Err(e)) => {
+                            massa_trace!("Ignored network error when sending peer list", {
+                                "error": format!("{:?}", e)
+                            })
+                        }
+                        Err(_) => massa_trace!("Ignored timeout error when sending peer list", {}),
                         _ => (),
                     }
                 }));
