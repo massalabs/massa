@@ -1099,6 +1099,8 @@ impl ConsensusWorker {
         match event {
             ProtocolEvent::ReceivedBlock {
                 block_id,
+                block,
+                serialized,
                 slot,
                 operation_set,
                 endorsement_ids,
@@ -1107,6 +1109,12 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_protocol_event.received_block",
                     { "block_id": block_id }
                 );
+
+                // Store block in shared storage.
+                self.block_db
+                    .storage
+                    .store_block(block_id, block, serialized);
+
                 self.block_db.incoming_block(
                     block_id,
                     slot,

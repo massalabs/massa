@@ -1743,7 +1743,6 @@ dependencies = [
  "massa_network_exports",
  "massa_protocol_exports",
  "massa_signature",
- "massa_storage",
  "massa_time",
  "serde_json",
  "serial_test",

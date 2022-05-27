@@ -18,6 +18,7 @@ where
 {
     let (protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
         MockProtocolController::new();
+    ();
 
     let (pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
         cfg,
