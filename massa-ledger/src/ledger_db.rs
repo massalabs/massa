@@ -111,10 +111,10 @@ impl LedgerDB {
         LedgerDB(db)
     }
 
-    /// Write the given operations batch to the ledger.
+    /// Apply the given operation batch to the disk ledger.
     ///
     /// NOTE: the batch is not saved within the object because it cannot be shared between threads safely
-    pub fn write_operations_batch(&self, batch: WriteBatch) {
+    pub fn write_batch(&self, batch: WriteBatch) {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
@@ -316,7 +316,7 @@ fn test_ledger_db() {
     let mut batch = WriteBatch::default();
     db.put_entry(&a, entry, &mut batch);
     db.update_entry(&a, entry_update, &mut batch);
-    db.write_operations_batch(batch);
+    db.write_batch(batch);
 
     // first assert
     assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
@@ -332,7 +332,7 @@ fn test_ledger_db() {
     // delete entry
     let mut batch = WriteBatch::default();
     db.delete_entry(&a, &mut batch);
-    db.write_operations_batch(batch);
+    db.write_batch(batch);
 
     // second assert
     assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_none());

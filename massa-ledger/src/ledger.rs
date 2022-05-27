@@ -50,7 +50,7 @@ impl Applicable<LedgerChanges> for FinalLedger {
                 }
             }
         }
-        self.sorted_ledger.write_operations_batch(batch);
+        self.sorted_ledger.write_batch(batch);
     }
 }
 
@@ -94,7 +94,7 @@ impl FinalLedger {
                 &mut batch,
             );
         }
-        sorted_ledger.write_operations_batch(batch);
+        sorted_ledger.write_batch(batch);
 
         // generate the final ledger
         Ok(FinalLedger {
@@ -118,7 +118,7 @@ impl FinalLedger {
         for (key, entry) in state.sorted_ledger {
             db.put_entry(&key, entry, &mut batch);
         }
-        db.write_operations_batch(batch);
+        db.write_batch(batch);
 
         FinalLedger {
             sorted_ledger: db,
