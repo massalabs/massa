@@ -516,7 +516,7 @@
             <span class="ident">res</span>.<span class="ident">push</span>(<span class="number">1</span>);
         }
         <span class="kw">for</span> (<span class="ident">hash</span>, <span class="ident">period</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">parents</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>.<span class="ident">to_bytes</span>());
+            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>());
             <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">period</span>.<span class="ident">to_varint_bytes</span>());
         }
 
@@ -534,7 +534,7 @@
             })<span class="question-mark">?</span>;
             <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">map_count</span>.<span class="ident">to_varint_bytes</span>());
             <span class="kw">for</span> (<span class="ident">hash</span>, <span class="ident">period</span>) <span class="kw">in</span> <span class="ident">map</span> {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>.<span class="ident">to_bytes</span>());
+                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>());
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">period</span>.<span class="ident">to_varint_bytes</span>());
             }
         }
@@ -545,7 +545,7 @@
         })<span class="question-mark">?</span>;
         <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">dependencies_count</span>.<span class="ident">to_varint_bytes</span>());
         <span class="kw">for</span> <span class="ident">dep</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">dependencies</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">dep</span>.<span class="ident">to_bytes</span>());
+            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">dep</span>.<span class="ident">to_bytes</span>());
         }
 
         <span class="comment">// block_ledger_change</span>
@@ -562,7 +562,7 @@
                 })<span class="question-mark">?</span>;
         <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">block_ledger_change_count</span>.<span class="ident">to_varint_bytes</span>());
         <span class="kw">for</span> (<span class="ident">addr</span>, <span class="ident">change</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">block_ledger_changes</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>.<span class="ident">to_bytes</span>());
+            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">addr</span>.<span class="ident">to_bytes</span>());
             <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">change</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
         }
 
@@ -618,7 +618,7 @@
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
 
         <span class="comment">// block id</span>
-        <span class="kw">let</span> <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
 
         <span class="comment">// parents</span>
@@ -627,7 +627,7 @@
         <span class="kw">let</span> <span class="ident">parents</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">has_parents</span> <span class="op">==</span> <span class="number">1</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">parent_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
             <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">parent_count</span> {
-                <span class="kw">let</span> <span class="ident">parent_h</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">parent_h</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
                 <span class="kw">let</span> (<span class="ident">period</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
@@ -664,7 +664,7 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span>
                 <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">map_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
             <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">map_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-                <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
                 <span class="kw">let</span> (<span class="ident">period</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
@@ -686,7 +686,7 @@
             <span class="ident">BuildMap::default</span>(),
         );
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">dependencies_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-            <span class="kw">let</span> <span class="ident">dep</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">dep</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
             <span class="ident">dependencies</span>.<span class="ident">insert</span>(<span class="ident">dep</span>);
         }
@@ -700,7 +700,7 @@
             <span class="ident">BuildMap::default</span>(),
         ));
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block_ledger_change_count</span> {
-            <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ADDRESS_SIZE_BYTES</span>;
             <span class="kw">let</span> (<span class="ident">change</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">LedgerChange::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
@@ -720,7 +720,7 @@
             <span class="ident">BuildMap::default</span>(),
         ));
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">roll_updates_count</span> {
-            <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ADDRESS_SIZE_BYTES</span>;
             <span class="kw">let</span> (<span class="ident">roll_update</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">RollUpdate::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
@@ -736,7 +736,7 @@
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">production_events_count</span> {
             <span class="kw">let</span> (<span class="ident">period</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-            <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ADDRESS_SIZE_BYTES</span>;
             <span class="kw">let</span> <span class="ident">has_created</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">u8_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span> {
                 <span class="number">0u8</span> =&gt; <span class="bool-val">false</span>,

@@ -232,9 +232,9 @@
         <span class="comment">// read message, check signature and check signature of the message sent just before then deserialize it</span>
         <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">prev_message</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">prev_message</span> {
-                <span class="self">self</span>.<span class="ident">prev_message</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">sig</span>.<span class="ident">to_bytes</span>()));
+                <span class="self">self</span>.<span class="ident">prev_message</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Hash::compute_from</span>(<span class="ident">sig</span>.<span class="ident">to_bytes</span>()));
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sig_msg_bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">HASH_SIZE_BYTES</span> <span class="op">+</span> (<span class="ident">msg_len</span> <span class="kw">as</span> <span class="ident">usize</span>)];
-                <span class="ident">sig_msg_bytes</span>[..<span class="ident">HASH_SIZE_BYTES</span>].<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">prev_message</span>.<span class="ident">to_bytes</span>());
+                <span class="ident">sig_msg_bytes</span>[..<span class="ident">HASH_SIZE_BYTES</span>].<span class="ident">copy_from_slice</span>(<span class="ident">prev_message</span>.<span class="ident">to_bytes</span>());
                 <span class="self">self</span>.<span class="ident">duplex</span>
                     .<span class="ident">read_exact</span>(<span class="kw-2">&amp;mut</span> <span class="ident">sig_msg_bytes</span>[<span class="ident">HASH_SIZE_BYTES</span>..])
                     .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -244,7 +244,7 @@
                     <span class="ident">BootstrapMessage::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">sig_msg_bytes</span>[<span class="ident">HASH_SIZE_BYTES</span>..])<span class="question-mark">?</span>;
                 <span class="ident">msg</span>
             } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="ident">prev_message</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">sig</span>.<span class="ident">to_bytes</span>()));
+                <span class="self">self</span>.<span class="ident">prev_message</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Hash::compute_from</span>(<span class="ident">sig</span>.<span class="ident">to_bytes</span>()));
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sig_msg_bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">msg_len</span> <span class="kw">as</span> <span class="ident">usize</span>];
                 <span class="self">self</span>.<span class="ident">duplex</span>.<span class="ident">read_exact</span>(<span class="kw-2">&amp;mut</span> <span class="ident">sig_msg_bytes</span>[..]).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">msg_hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">sig_msg_bytes</span>);
@@ -278,7 +278,7 @@
             <span class="self">self</span>.<span class="ident">prev_message</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">hash_data</span>));
 
             <span class="comment">// send old previous message</span>
-            <span class="self">self</span>.<span class="ident">duplex</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">prev_message</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">duplex</span>.<span class="ident">write_all</span>(<span class="ident">prev_message</span>).<span class="kw">await</span><span class="question-mark">?</span>;
         } <span class="kw">else</span> {
             <span class="comment">// there was no previous message</span>
 

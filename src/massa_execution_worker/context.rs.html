@@ -805,7 +805,7 @@
         <span class="comment">// Add a marker to the seed indicating that we are in read-only mode</span>
         <span class="comment">// to prevent random draw collisions with active executions</span>
         <span class="ident">seed</span>.<span class="ident">push</span>(<span class="number">0u8</span>); <span class="comment">// 0u8 = read-only</span>
-        <span class="kw">let</span> <span class="ident">seed</span> <span class="op">=</span> <span class="ident">massa_hash::Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">seed</span>).<span class="ident">to_bytes</span>();
+        <span class="kw">let</span> <span class="ident">seed</span> <span class="op">=</span> <span class="ident">massa_hash::Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">seed</span>).<span class="ident">into_bytes</span>();
         <span class="comment">// We use Xoshiro256PlusPlus because it is very fast,</span>
         <span class="comment">// has a period long enough to ensure no repetitions will ever happen,</span>
         <span class="comment">// of decent quality (given the unsafe constraints)</span>
@@ -873,7 +873,7 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_id</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">opt_block_id</span> {
             <span class="ident">seed</span>.<span class="ident">extend</span>(<span class="ident">block_id</span>.<span class="ident">to_bytes</span>()); <span class="comment">// append block ID</span>
         }
-        <span class="kw">let</span> <span class="ident">seed</span> <span class="op">=</span> <span class="ident">massa_hash::Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">seed</span>).<span class="ident">to_bytes</span>();
+        <span class="kw">let</span> <span class="ident">seed</span> <span class="op">=</span> <span class="ident">massa_hash::Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">seed</span>).<span class="ident">into_bytes</span>();
         <span class="kw">let</span> <span class="ident">unsafe_rng</span> <span class="op">=</span> <span class="ident">Xoshiro256PlusPlus::from_seed</span>(<span class="ident">seed</span>);
 
         <span class="comment">// return active slot execution context</span>

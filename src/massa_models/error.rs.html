@@ -52,6 +52,10 @@
 <span id="45">45</span>
 <span id="46">46</span>
 <span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
@@ -76,12 +80,16 @@
     <span class="ident">BufferError</span>(<span class="ident">String</span>),
     <span class="doccomment">/// `MassaHash` error: {0}</span>
     <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_hash::MassaHashError</span>),
+    <span class="doccomment">/// massa_signature error: {0}</span>
+    <span class="ident">MassaSignatureError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_signature::MassaSignatureError</span>),
     <span class="doccomment">/// thread overflow error</span>
     <span class="ident">ThreadOverflowError</span>,
     <span class="doccomment">/// period overflow error</span>
     <span class="ident">PeriodOverflowError</span>,
     <span class="doccomment">/// amount parse error</span>
     <span class="ident">AmountParseError</span>(<span class="ident">String</span>),
+    <span class="doccomment">/// address par error</span>
+    <span class="ident">AddressParseError</span>,
     <span class="doccomment">/// checked operation error</span>
     <span class="ident">CheckedOperationError</span>(<span class="ident">String</span>),
     <span class="doccomment">/// invalid version identifier: {0}</span>

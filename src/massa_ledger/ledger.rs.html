@@ -473,6 +473,10 @@
 <span id="466">466</span>
 <span id="467">467</span>
 <span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.</span>
@@ -892,7 +896,9 @@
     <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
     <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>};
 
+    <span class="comment">// NOTE: ignore for now because it will have to be refactored after the disk ledger update</span>
     <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="attribute">#[<span class="ident">ignore</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_part_ledger</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ledger</span>: <span class="ident">FinalLedger</span> <span class="op">=</span>
             <span class="ident">FinalLedger::new</span>(<span class="ident">LedgerConfig::sample</span>(<span class="kw-2">&amp;</span><span class="ident">BTreeMap::new</span>()).<span class="number">0</span>).<span class="ident">unwrap</span>();
@@ -923,7 +929,9 @@
         <span class="macro">assert_eq!</span>(<span class="ident">ledger</span>.<span class="ident">sorted_ledger</span>, <span class="ident">new_ledger</span>.<span class="ident">sorted_ledger</span>);
     }
 
+    <span class="comment">// NOTE: ignore for now because it will have to be refactored after the disk ledger update</span>
     <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="attribute">#[<span class="ident">ignore</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_part_ledger_empty</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ledger</span>: <span class="ident">FinalLedger</span> <span class="op">=</span>
             <span class="ident">FinalLedger::new</span>(<span class="ident">LedgerConfig::sample</span>(<span class="kw-2">&amp;</span><span class="ident">BTreeMap::new</span>()).<span class="number">0</span>).<span class="ident">unwrap</span>();

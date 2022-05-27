@@ -505,7 +505,7 @@
             }
             <span class="ident">Message::HandshakeReply</span> { <span class="ident">signature</span> } =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::HandshakeReply</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>.<span class="ident">to_bytes</span>());
+                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">signature</span>.<span class="ident">to_bytes</span>());
             }
             <span class="ident">Message::Block</span>(<span class="ident">block</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::Block</span>).<span class="ident">to_varint_bytes</span>());
@@ -524,7 +524,7 @@
                 })<span class="question-mark">?</span>;
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">list_len</span>.<span class="ident">to_varint_bytes</span>());
                 <span class="kw">for</span> <span class="ident">hash</span> <span class="kw">in</span> <span class="ident">list</span> {
-                    <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>.<span class="ident">to_bytes</span>());
+                    <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>());
                 }
             }
             <span class="ident">Message::AskPeerList</span> =&gt; {
@@ -539,7 +539,7 @@
             }
             <span class="ident">Message::BlockNotFound</span>(<span class="ident">hash</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::BlockNotFound</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>.<span class="ident">to_bytes</span>());
+                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>());
             }
             <span class="ident">Message::AskForOperations</span>(<span class="ident">operation_ids</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::AskForOperations</span>).<span class="ident">to_varint_bytes</span>());
@@ -631,7 +631,7 @@
                 <span class="comment">// hash list</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">list</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>);
                 <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
-                    <span class="kw">let</span> <span class="ident">b_id</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+                    <span class="kw">let</span> <span class="ident">b_id</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
                     <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
                     <span class="ident">list</span>.<span class="ident">push</span>(<span class="ident">b_id</span>);
                 }
@@ -653,7 +653,7 @@
                 <span class="ident">Message::PeerList</span>(<span class="ident">peers</span>)
             }
             <span class="ident">MessageTypeId::BlockNotFound</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">b_id</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">b_id</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
                 <span class="ident">Message::BlockNotFound</span>(<span class="ident">b_id</span>)
             }

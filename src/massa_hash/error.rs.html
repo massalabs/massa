@@ -20,9 +20,6 @@
 <span id="13">13</span>
 <span id="14">14</span>
 <span id="15">15</span>
-<span id="16">16</span>
-<span id="17">17</span>
-<span id="18">18</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
@@ -34,9 +31,6 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MassaHashError</span> {
     <span class="doccomment">/// parsing error : {0}</span>
     <span class="ident">ParsingError</span>(<span class="ident">String</span>),
-
-    <span class="doccomment">/// error forwarded by engine: {0}</span>
-    <span class="ident">EngineError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">secp256k1::Error</span>),
 
     <span class="doccomment">/// Wrong prefix for hash: expected {0}, got {1}</span>
     <span class="ident">WrongPrefix</span>(<span class="ident">String</span>, <span class="ident">String</span>),

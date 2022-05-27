@@ -863,83 +863,28 @@
 <span id="856">856</span>
 <span id="857">857</span>
 <span id="858">858</span>
-<span id="859">859</span>
-<span id="860">860</span>
-<span id="861">861</span>
-<span id="862">862</span>
-<span id="863">863</span>
-<span id="864">864</span>
-<span id="865">865</span>
-<span id="866">866</span>
-<span id="867">867</span>
-<span id="868">868</span>
-<span id="869">869</span>
-<span id="870">870</span>
-<span id="871">871</span>
-<span id="872">872</span>
-<span id="873">873</span>
-<span id="874">874</span>
-<span id="875">875</span>
-<span id="876">876</span>
-<span id="877">877</span>
-<span id="878">878</span>
-<span id="879">879</span>
-<span id="880">880</span>
-<span id="881">881</span>
-<span id="882">882</span>
-<span id="883">883</span>
-<span id="884">884</span>
-<span id="885">885</span>
-<span id="886">886</span>
-<span id="887">887</span>
-<span id="888">888</span>
-<span id="889">889</span>
-<span id="890">890</span>
-<span id="891">891</span>
-<span id="892">892</span>
-<span id="893">893</span>
-<span id="894">894</span>
-<span id="895">895</span>
-<span id="896">896</span>
-<span id="897">897</span>
-<span id="898">898</span>
-<span id="899">899</span>
-<span id="900">900</span>
-<span id="901">901</span>
-<span id="902">902</span>
-<span id="903">903</span>
-<span id="904">904</span>
-<span id="905">905</span>
-<span id="906">906</span>
-<span id="907">907</span>
-<span id="908">908</span>
-<span id="909">909</span>
-<span id="910">910</span>
-<span id="911">911</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::MassaSignatureError</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_hash::MassaHashError</span>;
-<span class="kw">use</span> <span class="ident">secp256k1</span>::{<span class="ident">Message</span>, <span class="ident">Secp256k1</span>};
+<span class="kw">use</span> <span class="ident">secp256k1</span>::{<span class="ident">schnorr</span>, <span class="ident">Message</span>, <span class="ident">SECP256K1</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryInto</span>, <span class="ident">str::FromStr</span>};
 
 <span class="doccomment">/// Size of a private key</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
 <span class="doccomment">/// Size of a public key</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">33</span>;
-<span class="doccomment">/// size of a signature</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
+<span class="doccomment">/// Size of a signature</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SIGNATURE_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">64</span>;
 <span class="kw">const</span> <span class="ident">PRIVATE_KEY_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;PRI&quot;</span>;
 <span class="kw">const</span> <span class="ident">PUBLIC_KEY_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;PUB&quot;</span>;
 <span class="kw">const</span> <span class="ident">SIGNATURE_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;SIG&quot;</span>;
 
-<span class="comment">// Per-thread signature engine, initiated lazily on first per-thread use.</span>
-<span class="macro">thread_local!</span>(<span class="kw">static</span> <span class="ident">SIGNATURE_ENGINE</span>: <span class="ident">SignatureEngine</span> <span class="op">=</span> <span class="ident">SignatureEngine</span>(<span class="ident">Secp256k1::new</span>()));
-
-<span class="doccomment">/// `PrivateKey` used to sign messages</span>
-<span class="doccomment">/// Generated using `SignatureEngine`.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::SecretKey</span>);
+<span class="doccomment">/// `PrivateKey` used to sign messages.</span>
+<span class="doccomment">/// Schnorr signatures require a [KeyPair](secp256k1::KeyPair) to be signed.</span>
+<span class="doccomment">/// The KeyPair is generated when deserializing a private key.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::KeyPair</span>);
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">PrivateKey</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
@@ -952,7 +897,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">PrivateKey</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">MassaHashError</span>;
+    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">MassaSignatureError</span>;
     <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
             <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">split</span>(<span class="string">&#39;-&#39;</span>).<span class="ident">collect</span>();
@@ -960,7 +905,7 @@
                 <span class="comment">// assume there is no prefix</span>
                 <span class="ident">PrivateKey::from_bs58_check</span>(<span class="ident">s</span>)
             } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">v</span>[<span class="number">0</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">PRIVATE_KEY_STRING_PREFIX</span> {
-                <span class="prelude-val">Err</span>(<span class="ident">MassaHashError::WrongPrefix</span>(
+                <span class="prelude-val">Err</span>(<span class="ident">MassaSignatureError::WrongPrefix</span>(
                     <span class="ident">PRIVATE_KEY_STRING_PREFIX</span>.<span class="ident">to_string</span>(),
                     <span class="ident">v</span>[<span class="number">0</span>].<span class="ident">to_string</span>(),
                 ))
@@ -999,7 +944,9 @@
     <span class="doccomment">/// let serialized = private_key.to_bytes();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>] {
-        <span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>()
+        <span class="comment">// note: should return a ref to respect conventions</span>
+        <span class="comment">// but KeyPair has no function to do so</span>
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">secret_bytes</span>()
     }
 
     <span class="doccomment">/// Serialize a `PrivateKey` into bytes.</span>
@@ -1013,7 +960,7 @@
     <span class="doccomment">/// let serialized = private_key.into_bytes();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>] {
-        <span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">secret_bytes</span>()
     }
 
     <span class="doccomment">/// Deserialize a `PrivateKey` using `bs58` encoding with checksum.</span>
@@ -1027,19 +974,19 @@
     <span class="doccomment">/// let serialized: String = private_key.to_bs58_check();</span>
     <span class="doccomment">/// let deserialized: PrivateKey = PrivateKey::from_bs58_check(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PrivateKey</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PrivateKey</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
         <span class="ident">bs58::decode</span>(<span class="ident">data</span>)
             .<span class="ident">with_check</span>(<span class="prelude-val">None</span>)
             .<span class="ident">into_vec</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">MassaHashError::ParsingError</span>(<span class="macro">format!</span>(
+                <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
                     <span class="string">&quot;private key bs58_check parsing error: {}&quot;</span>,
                     <span class="ident">err</span>
                 ))
             })
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">key</span><span class="op">|</span> {
                 <span class="ident">PrivateKey::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                    <span class="ident">MassaHashError::ParsingError</span>(<span class="macro">format!</span>(
+                    <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
                         <span class="string">&quot;private key bs58_check parsing error: {:?}&quot;</span>,
                         <span class="ident">err</span>
                     ))
@@ -1058,11 +1005,16 @@
     <span class="doccomment">/// let serialized = private_key.to_bytes();</span>
     <span class="doccomment">/// let deserialized: PrivateKey = PrivateKey::from_bytes(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PrivateKey</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
-        <span class="ident">secp256k1::SecretKey::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..])
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(
+        <span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>],
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PrivateKey</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
+        <span class="ident">secp256k1::KeyPair::from_seckey_slice</span>(<span class="ident">SECP256K1</span>, <span class="kw-2">&amp;</span><span class="ident">data</span>[..])
             .<span class="ident">map</span>(<span class="ident">PrivateKey</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">MassaHashError::ParsingError</span>(<span class="macro">format!</span>(<span class="string">&quot;private key bytes parsing error: {}&quot;</span>, <span class="ident">err</span>))
+                <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
+                    <span class="string">&quot;private key bytes parsing error: {}&quot;</span>,
+                    <span class="ident">err</span>
+                ))
             })
     }
 }
@@ -1166,7 +1118,7 @@
 <span class="doccomment">/// by the corresponding `PublicKey`.</span>
 <span class="doccomment">/// Generated from the `PrivateKey` using `SignatureEngine`</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PublicKey</span>(<span class="ident">secp256k1::PublicKey</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PublicKey</span>(<span class="ident">secp256k1::XOnlyPublicKey</span>);
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">PublicKey</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
@@ -1179,7 +1131,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">PublicKey</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">MassaHashError</span>;
+    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">MassaSignatureError</span>;
     <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
             <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">split</span>(<span class="string">&#39;-&#39;</span>).<span class="ident">collect</span>();
@@ -1187,7 +1139,7 @@
                 <span class="comment">// assume there is no prefix</span>
                 <span class="ident">PublicKey::from_bs58_check</span>(<span class="ident">s</span>)
             } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">v</span>[<span class="number">0</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">PUBLIC_KEY_STRING_PREFIX</span> {
-                <span class="prelude-val">Err</span>(<span class="ident">MassaHashError::WrongPrefix</span>(
+                <span class="prelude-val">Err</span>(<span class="ident">MassaSignatureError::WrongPrefix</span>(
                     <span class="ident">PUBLIC_KEY_STRING_PREFIX</span>.<span class="ident">to_string</span>(),
                     <span class="ident">v</span>[<span class="number">0</span>].<span class="ident">to_string</span>(),
                 ))
@@ -1258,19 +1210,19 @@
     <span class="doccomment">/// let serialized: String = public_key.to_bs58_check();</span>
     <span class="doccomment">/// let deserialized: PublicKey = PublicKey::from_bs58_check(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicKey</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicKey</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
         <span class="ident">bs58::decode</span>(<span class="ident">data</span>)
             .<span class="ident">with_check</span>(<span class="prelude-val">None</span>)
             .<span class="ident">into_vec</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">MassaHashError::ParsingError</span>(<span class="macro">format!</span>(
+                <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
                     <span class="string">&quot;public key bs58_check parsing error: {}&quot;</span>,
                     <span class="ident">err</span>
                 ))
             })
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">key</span><span class="op">|</span> {
                 <span class="ident">PublicKey::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                    <span class="ident">MassaHashError::ParsingError</span>(<span class="macro">format!</span>(
+                    <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
                         <span class="string">&quot;public key bs58_check parsing error: {:?}&quot;</span>,
                         <span class="ident">err</span>
                     ))
@@ -1290,11 +1242,16 @@
     <span class="doccomment">/// let serialized = public_key.into_bytes();</span>
     <span class="doccomment">/// let deserialized: PublicKey = PublicKey::from_bytes(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicKey</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
-        <span class="ident">secp256k1::PublicKey::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..])
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(
+        <span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>],
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicKey</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
+        <span class="ident">secp256k1::XOnlyPublicKey::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..])
             .<span class="ident">map</span>(<span class="ident">PublicKey</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">MassaHashError::ParsingError</span>(<span class="macro">format!</span>(<span class="string">&quot;public key bytes parsing error: {}&quot;</span>, <span class="ident">err</span>))
+                <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
+                    <span class="string">&quot;public key bytes parsing error: {}&quot;</span>,
+                    <span class="ident">err</span>
+                ))
             })
     }
 }
@@ -1400,7 +1357,7 @@
 
 <span class="doccomment">/// Signature generated from a message and a `PrivateKey`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span>(<span class="ident">secp256k1::Signature</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span>(<span class="ident">schnorr::Signature</span>);
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Signature</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
@@ -1413,7 +1370,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">Signature</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">MassaHashError</span>;
+    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">MassaSignatureError</span>;
     <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
             <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">split</span>(<span class="string">&#39;-&#39;</span>).<span class="ident">collect</span>();
@@ -1421,7 +1378,7 @@
                 <span class="comment">// assume there is no prefix</span>
                 <span class="ident">Signature::from_bs58_check</span>(<span class="ident">s</span>)
             } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">v</span>[<span class="number">0</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">SIGNATURE_STRING_PREFIX</span> {
-                <span class="prelude-val">Err</span>(<span class="ident">MassaHashError::WrongPrefix</span>(
+                <span class="prelude-val">Err</span>(<span class="ident">MassaSignatureError::WrongPrefix</span>(
                     <span class="ident">SIGNATURE_STRING_PREFIX</span>.<span class="ident">to_string</span>(),
                     <span class="ident">v</span>[<span class="number">0</span>].<span class="ident">to_string</span>(),
                 ))
@@ -1465,8 +1422,8 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized = signature.to_bytes();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">SIGNATURE_SIZE_BYTES</span>] {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">serialize_compact</span>()
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">SIGNATURE_SIZE_BYTES</span>] {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>()
     }
 
     <span class="doccomment">/// Serialize a Signature into bytes.</span>
@@ -1483,7 +1440,7 @@
     <span class="doccomment">/// let serialized = signature.into_bytes();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">SIGNATURE_SIZE_BYTES</span>] {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">serialize_compact</span>()
+        <span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>()
     }
 
     <span class="doccomment">/// Deserialize a `Signature` using `bs58` encoding with checksum.</span>
@@ -1500,16 +1457,19 @@
     <span class="doccomment">/// let serialized: String = signature.to_bs58_check();</span>
     <span class="doccomment">/// let deserialized: Signature = Signature::from_bs58_check(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
         <span class="ident">bs58::decode</span>(<span class="ident">data</span>)
             .<span class="ident">with_check</span>(<span class="prelude-val">None</span>)
             .<span class="ident">into_vec</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">MassaHashError::ParsingError</span>(<span class="macro">format!</span>(<span class="string">&quot;signature bs58_check parsing error: {}&quot;</span>, <span class="ident">err</span>))
+                <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
+                    <span class="string">&quot;signature bs58_check parsing error: {}&quot;</span>,
+                    <span class="ident">err</span>
+                ))
             })
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">signature</span><span class="op">|</span> {
                 <span class="ident">Signature::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                    <span class="ident">MassaHashError::ParsingError</span>(<span class="macro">format!</span>(
+                    <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
                         <span class="string">&quot;signature bs58_check parsing error: {:?}&quot;</span>,
                         <span class="ident">err</span>
                     ))
@@ -1531,11 +1491,11 @@
     <span class="doccomment">/// let serialized = signature.to_bytes();</span>
     <span class="doccomment">/// let deserialized: Signature = Signature::from_bytes(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">SIGNATURE_SIZE_BYTES</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
-        <span class="ident">secp256k1::Signature::from_compact</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..])
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">SIGNATURE_SIZE_BYTES</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
+        <span class="ident">schnorr::Signature::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..])
             .<span class="ident">map</span>(<span class="ident">Signature</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">MassaHashError::ParsingError</span>(<span class="macro">format!</span>(<span class="string">&quot;signature bytes parsing error: {}&quot;</span>, <span class="ident">err</span>))
+                <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(<span class="string">&quot;signature bytes parsing error: {}&quot;</span>, <span class="ident">err</span>))
             })
     }
 }
@@ -1564,7 +1524,7 @@
         <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">is_human_readable</span>() {
             <span class="ident">s</span>.<span class="ident">collect_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bs58_check</span>())
         } <span class="kw">else</span> {
-            <span class="ident">s</span>.<span class="ident">serialize_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes</span>())
+            <span class="ident">s</span>.<span class="ident">serialize_bytes</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>())
         }
     }
 }
@@ -1643,85 +1603,7 @@
     }
 }
 
-<span class="doccomment">/// `SignatureEngine` manages key generation,</span>
-<span class="doccomment">/// signing and verification.</span>
-<span class="doccomment">/// It contains the needed context.</span>
-<span class="kw">struct</span> <span class="ident">SignatureEngine</span>(<span class="ident">secp256k1::Secp256k1</span><span class="op">&lt;</span><span class="ident">secp256k1::All</span><span class="op">&gt;</span>);
-
-<span class="kw">impl</span> <span class="ident">SignatureEngine</span> {
-    <span class="doccomment">/// Derives a `PublicKey` from a `PrivateKey`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Example</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key};</span>
-    <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="ident">PublicKey</span> {
-        <span class="ident">PublicKey</span>(<span class="ident">secp256k1::key::PublicKey::from_secret_key</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>,
-            <span class="kw-2">&amp;</span><span class="ident">private_key</span>.<span class="number">0</span>,
-        ))
-    }
-
-    <span class="doccomment">/// Returns the `Signature` produced by signing</span>
-    <span class="doccomment">/// data bytes with a `PrivateKey`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Example</span>
-    <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, PublicKey};</span>
-    <span class="doccomment">/// # use massa_hash::Hash;</span>
-    <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
-    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>, <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">Message::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>.<span class="ident">to_bytes</span>())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Signature</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>, <span class="kw-2">&amp;</span><span class="ident">private_key</span>.<span class="number">0</span>)))
-    }
-
-    <span class="doccomment">/// Checks if the `Signature` associated with data bytes</span>
-    <span class="doccomment">/// was produced with the `PrivateKey` associated to given `PublicKey`</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Example</span>
-    <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, verify_signature, PublicKey};</span>
-    <span class="doccomment">/// # use massa_hash::Hash;</span>
-    <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
-    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
-    <span class="doccomment">/// let verification: bool = verify_signature(&amp;data, &amp;signature, &amp;public_key).is_ok();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">verify</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>,
-        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
-        <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">Message::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>.<span class="ident">to_bytes</span>())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>, <span class="kw-2">&amp;</span><span class="ident">signature</span>.<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">public_key</span>.<span class="number">0</span>)<span class="question-mark">?</span>)
-    }
-}
-
-<span class="doccomment">/// Generate a random private key from a random draw.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Example</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key};</span>
-<span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-<span class="doccomment">/// let private_key = generate_random_private_key();</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_random_private_key</span>() -&gt; <span class="ident">PrivateKey</span> {
-    <span class="kw">use</span> <span class="ident">secp256k1::rand::rngs::OsRng</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">OsRng::new</span>().<span class="ident">expect</span>(<span class="string">&quot;OsRng&quot;</span>);
-    <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::key::SecretKey::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>))
-}
-
-<span class="doccomment">/// Derives a `PublicKey` from a `PrivateKey`.</span>
+<span class="doccomment">/// Derives a PublicKey from a PrivateKey.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
 <span class="doccomment">/// ```</span>
@@ -1731,11 +1613,11 @@
 <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">derive_public_key</span>(<span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="ident">PublicKey</span> {
-    <span class="ident">SIGNATURE_ENGINE</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">signature_engine</span><span class="op">|</span> <span class="ident">signature_engine</span>.<span class="ident">derive_public_key</span>(<span class="ident">private_key</span>))
+    <span class="ident">PublicKey</span>(<span class="ident">private_key</span>.<span class="number">0</span>.<span class="ident">public_key</span>())
 }
 
-<span class="doccomment">/// Returns the `Signature` produced by signing</span>
-<span class="doccomment">/// data bytes with a `PrivateKey`.</span>
+<span class="doccomment">/// Returns the Signature produced by signing</span>
+<span class="doccomment">/// data bytes with a PrivateKey.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
 <span class="doccomment">///  ```</span>
@@ -1747,11 +1629,12 @@
 <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
 <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
 <span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>, <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
-    <span class="ident">SIGNATURE_ENGINE</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">signature_engine</span><span class="op">|</span> <span class="ident">signature_engine</span>.<span class="ident">sign</span>(<span class="ident">hash</span>, <span class="ident">private_key</span>))
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>, <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">Message::from_slice</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>())<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(<span class="ident">Signature</span>(<span class="ident">SECP256K1</span>.<span class="ident">sign_schnorr</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>, <span class="kw-2">&amp;</span><span class="ident">private_key</span>.<span class="number">0</span>)))
 }
 
-<span class="doccomment">/// Checks if the Signature associated with data bytes</span>
+<span class="doccomment">/// Checks if the `Signature` associated with data bytes</span>
 <span class="doccomment">/// was produced with the `PrivateKey` associated to given `PublicKey`</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
@@ -1769,8 +1652,19 @@
     <span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>,
     <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
     <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
-    <span class="ident">SIGNATURE_ENGINE</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">signature_engine</span><span class="op">|</span> <span class="ident">signature_engine</span>.<span class="ident">verify</span>(<span class="ident">hash</span>, <span class="ident">signature</span>, <span class="ident">public_key</span>))
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">Message::from_slice</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>())<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(<span class="ident">SECP256K1</span>.<span class="ident">verify_schnorr</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>.<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">message</span>, <span class="kw-2">&amp;</span><span class="ident">public_key</span>.<span class="number">0</span>)<span class="question-mark">?</span>)
+}
+
+<span class="doccomment">/// Generate a random private key from a RNG.</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_random_private_key</span>() -&gt; <span class="ident">PrivateKey</span> {
+    <span class="kw">use</span> <span class="ident">secp256k1::rand::rngs::OsRng</span>;
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">OsRng::new</span>().<span class="ident">expect</span>(<span class="string">&quot;OsRng&quot;</span>);
+    <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::KeyPair::from_secret_key</span>(
+        <span class="ident">SECP256K1</span>,
+        <span class="ident">secp256k1::SecretKey::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>),
+    ))
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
