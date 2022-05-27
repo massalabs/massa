@@ -1523,14 +1523,6 @@
 <span id="1516">1516</span>
 <span id="1517">1517</span>
 <span id="1518">1518</span>
-<span id="1519">1519</span>
-<span id="1520">1520</span>
-<span id="1521">1521</span>
-<span id="1522">1522</span>
-<span id="1523">1523</span>
-<span id="1524">1524</span>
-<span id="1525">1525</span>
-<span id="1526">1526</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node_info::NodeInfo</span>, <span class="ident">worker_operations_impl::OperationBatchBuffer</span>};
@@ -1551,7 +1543,6 @@
     <span class="ident">ProtocolManagementCommand</span>, <span class="ident">ProtocolManager</span>, <span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolPoolEventReceiver</span>,
     <span class="ident">ProtocolSettings</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">massa_time::TimeError</span>;
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">tokio</span>::{
@@ -1579,7 +1570,6 @@
     <span class="ident">max_block_gas</span>: <span class="ident">u64</span>,
     <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
     <span class="ident">network_event_receiver</span>: <span class="ident">NetworkEventReceiver</span>,
-    <span class="ident">storage</span>: <span class="ident">Storage</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>
     (
         <span class="ident">ProtocolCommandSender</span>,
@@ -1602,7 +1592,6 @@
             <span class="ident">protocol_settings</span>,
             <span class="ident">operation_validity_periods</span>,
             <span class="ident">max_block_gas</span>,
-            <span class="ident">storage</span>,
             <span class="ident">ProtocolWorkerChannels</span> {
                 <span class="ident">network_command_sender</span>,
                 <span class="ident">network_event_receiver</span>,
@@ -1682,8 +1671,6 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">checked_operations</span>: <span class="ident">OperationIds</span>,
     <span class="doccomment">/// List of processed headers</span>
     <span class="ident">checked_headers</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">BlockInfo</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Shared storage.</span>
-    <span class="ident">storage</span>: <span class="ident">Storage</span>,
     <span class="doccomment">/// List of ids of operations that we asked to the nodes</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">asked_operations</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">Instant</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Buffer for operations that we want later</span>
@@ -1722,7 +1709,6 @@
         <span class="ident">protocol_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ProtocolSettings</span>,
         <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
         <span class="ident">max_block_gas</span>: <span class="ident">u64</span>,
-        <span class="ident">storage</span>: <span class="ident">Storage</span>,
         <span class="ident">ProtocolWorkerChannels</span> {
             <span class="ident">network_command_sender</span>,
             <span class="ident">network_event_receiver</span>,
@@ -1747,7 +1733,6 @@
             <span class="ident">checked_endorsements</span>: <span class="ident">Default::default</span>(),
             <span class="ident">checked_operations</span>: <span class="ident">Default::default</span>(),
             <span class="ident">checked_headers</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">storage</span>,
             <span class="ident">asked_operations</span>: <span class="ident">Default::default</span>(),
             <span class="ident">op_batch_buffer</span>: <span class="ident">OperationBatchBuffer::with_capacity</span>(
                 <span class="ident">protocol_settings</span>.<span class="ident">operation_batch_buffer_capacity</span>,
@@ -2783,14 +2768,13 @@
                 {
                     <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>;
 
-                    <span class="comment">// Store block in shared storage.</span>
-                    <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">store_block</span>(<span class="ident">block_id</span>, <span class="ident">block</span>, <span class="ident">serialized</span>);
-
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(<span class="number">1</span>, <span class="ident">BuildMap::default</span>());
                     <span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">block_id</span>);
                     <span class="self">self</span>.<span class="ident">stop_asking_blocks</span>(<span class="ident">set</span>)<span class="question-mark">?</span>;
                     <span class="self">self</span>.<span class="ident">send_protocol_event</span>(<span class="ident">ProtocolEvent::ReceivedBlock</span> {
                         <span class="ident">block_id</span>,
+                        <span class="ident">block</span>,
+                        <span class="ident">serialized</span>,
                         <span class="ident">slot</span>,
                         <span class="ident">operation_set</span>,
                         <span class="ident">endorsement_ids</span>,
@@ -3058,5 +3042,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (76761db59 2022-05-24)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (490324f7b 2022-05-26)" ></div>
 </body></html>

@@ -345,6 +345,10 @@
 <span id="338">338</span>
 <span id="339">339</span>
 <span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ProtocolError</span>;
@@ -358,7 +362,7 @@
 };
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
+    <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network_exports::NetworkEventReceiver</span>;
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
@@ -371,8 +375,12 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolEvent</span> {
     <span class="doccomment">/// A block with a valid signature has been received.</span>
     <span class="ident">ReceivedBlock</span> {
-        <span class="doccomment">/// corresponding id</span>
+        <span class="doccomment">/// corresponding Id.</span>
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
+        <span class="doccomment">/// corresponding block</span>
+        <span class="ident">block</span>: <span class="ident">Block</span>,
+        <span class="doccomment">/// The serialized form of the block</span>
+        <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
         <span class="doccomment">/// the slot</span>
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
         <span class="doccomment">/// operations in the block by (index, validity end period)</span>
@@ -686,5 +694,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (76761db59 2022-05-24)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (490324f7b 2022-05-26)" ></div>
 </body></html>

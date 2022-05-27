@@ -1414,6 +1414,14 @@
 <span id="1407">1407</span>
 <span id="1408">1408</span>
 <span id="1409">1409</span>
+<span id="1410">1410</span>
+<span id="1411">1411</span>
+<span id="1412">1412</span>
+<span id="1413">1413</span>
+<span id="1414">1414</span>
+<span id="1415">1415</span>
+<span id="1416">1416</span>
+<span id="1417">1417</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{
     <span class="ident">commands::ConsensusCommand</span>,
@@ -2515,6 +2523,8 @@
         <span class="kw">match</span> <span class="ident">event</span> {
             <span class="ident">ProtocolEvent::ReceivedBlock</span> {
                 <span class="ident">block_id</span>,
+                <span class="ident">block</span>,
+                <span class="ident">serialized</span>,
                 <span class="ident">slot</span>,
                 <span class="ident">operation_set</span>,
                 <span class="ident">endorsement_ids</span>,
@@ -2523,6 +2533,12 @@
                     <span class="string">&quot;consensus.consensus_worker.process_protocol_event.received_block&quot;</span>,
                     { <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span> }
                 );
+
+                <span class="comment">// Store block in shared storage.</span>
+                <span class="self">self</span>.<span class="ident">block_db</span>
+                    .<span class="ident">storage</span>
+                    .<span class="ident">store_block</span>(<span class="ident">block_id</span>, <span class="ident">block</span>, <span class="ident">serialized</span>);
+
                 <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">incoming_block</span>(
                     <span class="ident">block_id</span>,
                     <span class="ident">slot</span>,
@@ -2824,5 +2840,5 @@
     <span class="prelude-val">Ok</span>((<span class="ident">e_id</span>, <span class="ident">endorsement</span>))
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (76761db59 2022-05-24)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (490324f7b 2022-05-26)" ></div>
 </body></html>
