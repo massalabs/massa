@@ -46,6 +46,7 @@ impl Applicable<LedgerChanges> for FinalLedger {
                 }
             }
         }
+        self.sorted_ledger.write_and_clear_current_batch();
     }
 }
 
@@ -87,6 +88,7 @@ impl FinalLedger {
                 },
             );
         }
+        sorted_ledger.write_and_clear_current_batch();
 
         // generate the final ledger
         Ok(FinalLedger {
@@ -108,6 +110,7 @@ impl FinalLedger {
         for (key, entry) in state.sorted_ledger {
             db.put_entry(&key, entry);
         }
+        db.write_and_clear_current_batch();
         FinalLedger {
             sorted_ledger: db,
             _config,

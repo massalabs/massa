@@ -4,10 +4,11 @@
 
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{Address, Amount, DeserializeCompact, SerializeCompact};
+use parking_lot::RwLock;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
@@ -34,7 +35,10 @@ pub enum LedgerSubEntry {
 /// Disk ledger DB module
 ///
 /// Contains a RocksDB DB instance
-pub(crate) struct LedgerDB(pub(crate) DB);
+pub(crate) struct LedgerDB {
+    pub(crate) db: DB,
+    batch: Arc<RwLock<WriteBatch>>,
+}
 
 /// Destroy the disk ledger db and free the lock
 pub fn destroy_ledger_db() {
@@ -90,10 +94,9 @@ pub fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
     }
 }
 
-// TODO: implement batch functions to have atomic updates of ledger
 // TODO: save attached slot in metadata for a lighter bootstrap after disconnection
 impl LedgerDB {
-    /// Create and initialize a new LedgerDB
+    /// Create and initialize a new LedgerDB.
     pub fn new() -> Self {
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
@@ -109,20 +112,31 @@ impl LedgerDB {
         )
         .expect(OPEN_ERROR);
 
-        LedgerDB(db)
+        LedgerDB {
+            batch: Arc::new(RwLock::new(WriteBatch::default())),
+            db,
+        }
     }
 
-    /// Add every sub-entry of a given entry to the disk ledger
+    /// Write the current operations batch in the disk ledger and clear it.
+    pub fn write_and_clear_current_batch(&mut self) {
+        self.db
+            .write(std::mem::take(&mut self.batch.write()))
+            .expect(CRUD_ERROR);
+    }
+
+    /// Add every sub-entry individually for the given entry.
+    /// This function fills the batch, to execute its operations call `write_and_clear_current_batch`.
     ///
     /// # Arguments
     /// * addr: associated address
     /// * ledger_entry: complete entry to be added
     pub fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry) {
-        let mut batch = WriteBatch::default();
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let mut batch_lock = self.batch.write();
 
         // balance
-        batch.put_cf(
+        batch_lock.put_cf(
             handle,
             balance_key!(addr),
             // Amount::to_bytes_compact() never fails
@@ -130,18 +144,15 @@ impl LedgerDB {
         );
 
         // bytecode
-        batch.put_cf(handle, bytecode_key!(addr), ledger_entry.bytecode);
+        batch_lock.put_cf(handle, bytecode_key!(addr), ledger_entry.bytecode);
 
         // datastore
         for (hash, entry) in ledger_entry.datastore {
-            batch.put_cf(handle, data_key!(addr, hash), entry);
+            batch_lock.put_cf(handle, data_key!(addr, hash), entry);
         }
-
-        // write batch
-        self.0.write(batch).expect(CRUD_ERROR);
     }
 
-    /// Get the given sub-entry of a given address
+    /// Get the given sub-entry of a given address.
     ///
     /// # Arguments
     /// * addr: associated address
@@ -150,33 +161,36 @@ impl LedgerDB {
     /// # Returns
     /// An Option of the sub-entry value as bytes
     pub fn get_sub_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         match ty {
-            LedgerSubEntry::Balance => self.0.get_cf(handle, balance_key!(addr)).expect(CRUD_ERROR),
+            LedgerSubEntry::Balance => self
+                .db
+                .get_cf(handle, balance_key!(addr))
+                .expect(CRUD_ERROR),
             LedgerSubEntry::Bytecode => self
-                .0
+                .db
                 .get_cf(handle, bytecode_key!(addr))
                 .expect(CRUD_ERROR),
             LedgerSubEntry::Datastore(hash) => self
-                .0
+                .db
                 .get_cf(handle, data_key!(addr, hash))
                 .expect(CRUD_ERROR),
         }
     }
 
-    /// Get every address and their corresponding balance
-    /// This should only be used for debug purposes
+    /// Get every address and their corresponding balance.
+    /// This should only be used for debug purposes.
     ///
     /// # Returns
     /// A BTreeMap with the addresse as key and the balance as value
     ///
     /// NOTE: Currently used in the intermediate bootstrap implementation
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let ledger = self
-            .0
+            .db
             .iterator_cf(handle, IteratorMode::Start)
             .collect::<Vec<_>>();
 
@@ -192,17 +206,17 @@ impl LedgerDB {
         addresses
     }
 
-    /// Get the entire datastore for a given address
+    /// Get the entire datastore for a given address.
     ///
     /// # Returns
     /// A BTreeMap with the entry hash as key and the data bytes as value
     pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
 
-        self.0
+        self.db
             .iterator_cf_opt(
                 handle,
                 opt,
@@ -217,17 +231,18 @@ impl LedgerDB {
             .collect()
     }
 
-    /// Update the ledger entry of a given address
+    /// Update the ledger entry of a given address.
+    /// This function fills the batch, to execute its operations call `write_and_clear_current_batch`.
     ///
     /// # Arguments
     /// * entry_update: a descriptor of the entry updates to be applied
     pub fn update_entry(&mut self, addr: &Address, entry_update: LedgerEntryUpdate) {
-        let mut batch = WriteBatch::default();
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let mut batch_lock = self.batch.write();
 
         // balance
         if let SetOrKeep::Set(balance) = entry_update.parallel_balance {
-            batch.put_cf(
+            batch_lock.put_cf(
                 handle,
                 balance_key!(addr),
                 // Amount::to_bytes_compact() never fails
@@ -237,45 +252,40 @@ impl LedgerDB {
 
         // bytecode
         if let SetOrKeep::Set(bytecode) = entry_update.bytecode {
-            batch.put_cf(handle, bytecode_key!(addr), bytecode);
+            batch_lock.put_cf(handle, bytecode_key!(addr), bytecode);
         }
 
         // datastore
         for (hash, update) in entry_update.datastore {
             match update {
-                SetOrDelete::Set(entry) => batch.put_cf(handle, data_key!(addr, hash), entry),
-                SetOrDelete::Delete => batch.delete_cf(handle, data_key!(addr, hash)),
+                SetOrDelete::Set(entry) => batch_lock.put_cf(handle, data_key!(addr, hash), entry),
+                SetOrDelete::Delete => batch_lock.delete_cf(handle, data_key!(addr, hash)),
             }
         }
-
-        // write batch
-        self.0.write(batch).expect(CRUD_ERROR);
     }
 
-    /// Delete every sub-entry associated to the given address
-    pub fn delete_entry(&self, addr: &Address) {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
-        let mut batch = WriteBatch::default();
+    /// Delete every sub-entry associated to the given address.
+    /// This function fills the batch, to execute its operations call `write_and_clear_current_batch`
+    pub fn delete_entry(&mut self, addr: &Address) {
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let mut batch_lock = self.batch.write();
 
         // balance
-        batch.delete_cf(handle, balance_key!(addr));
+        batch_lock.delete_cf(handle, balance_key!(addr));
 
         // bytecode
-        batch.delete_cf(handle, balance_key!(addr));
+        batch_lock.delete_cf(handle, balance_key!(addr));
 
         // datastore
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
-        for (key, _) in self.0.iterator_cf_opt(
+        for (key, _) in self.db.iterator_cf_opt(
             handle,
             opt,
             IteratorMode::From(data_prefix!(addr), Direction::Forward),
         ) {
-            batch.delete_cf(handle, key);
+            batch_lock.delete_cf(handle, key);
         }
-
-        // write batch
-        self.0.write(batch).expect(CRUD_ERROR);
     }
 }
 
@@ -311,6 +321,7 @@ fn test_ledger_db() {
     let mut db = LedgerDB::new();
     db.put_entry(&a, entry);
     db.update_entry(&a, entry_update);
+    db.write_and_clear_current_batch();
 
     // asserts
     assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
@@ -323,6 +334,7 @@ fn test_ledger_db() {
     assert_eq!(db.get_sub_entry(&b, LedgerSubEntry::Balance), None);
     assert_eq!(data, db.get_entire_datastore(&a));
     db.delete_entry(&a);
+    db.write_and_clear_current_batch();
     assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_none());
     assert!(db.get_entire_datastore(&a).is_empty());
 }
