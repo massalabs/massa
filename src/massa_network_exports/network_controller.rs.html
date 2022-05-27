@@ -318,6 +318,8 @@
 <span id="311">311</span>
 <span id="312">312</span>
 <span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -542,18 +544,20 @@
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the</span>
     <span class="doccomment">/// function.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_ask_for_operations</span>(
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_ask_for_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
         <span class="ident">wishlist</span>: <span class="ident">OperationIds</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::AskForOperations</span> { <span class="ident">to_node</span>, <span class="ident">wishlist</span> })
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send AskForOperations command&quot;</span>.<span class="ident">into</span>())
-            })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
+        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">try_reserve</span>() {
+            <span class="prelude-val">Ok</span>(<span class="ident">permit</span>) =&gt; {
+                <span class="ident">permit</span>.<span class="ident">send</span>(<span class="ident">NetworkCommand::AskForOperations</span> { <span class="ident">to_node</span>, <span class="ident">wishlist</span> });
+                <span class="prelude-val">Ok</span>(())
+            }
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">NetworkError::ChannelError</span>(
+                <span class="string">&quot;Failed to acquire permit to send AskForOperations command&quot;</span>.<span class="ident">into</span>(),
+            )),
+        }
     }
 
     <span class="doccomment">/// send endorsements to node id</span>

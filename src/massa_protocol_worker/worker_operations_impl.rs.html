@@ -237,6 +237,15 @@
 <span id="230">230</span>
 <span id="231">231</span>
 <span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Implement the propagation algorithm written here [redirect to GitHub]</span>
@@ -254,7 +263,6 @@
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">node::NodeId</span>,
     <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
-    <span class="ident">prehash::BuildMap</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network_exports::NetworkError</span>;
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolError</span>, <span class="ident">ProtocolPoolEvent</span>};
@@ -278,96 +286,6 @@
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">OperationBatchBuffer</span> <span class="op">=</span> <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">OperationBatchItem</span><span class="op">&gt;</span>;
 
 <span class="kw">impl</span> <span class="ident">ProtocolWorker</span> {
-    <span class="doccomment">/// On receive a batch of operation ids `op_batch` from another `node_id`</span>
-    <span class="doccomment">/// Execute the following algorithm: [redirect to GitHub](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">///```py</span>
-    <span class="doccomment">///def process_op_batch(op_batch, node_id):</span>
-    <span class="doccomment">///    ask_set = void HashSet&lt;OperationId&gt;</span>
-    <span class="doccomment">///    future_set = void HashSet&lt;OperationId&gt;</span>
-    <span class="doccomment">///    for op_id in op_batch:</span>
-    <span class="doccomment">///        if not is_op_received(op_id):</span>
-    <span class="doccomment">///            if (op_id not in asked_ops) or (node_id not in asked_ops(op_id)[1]):</span>
-    <span class="doccomment">///                if (op_id not in asked_ops) or (asked_ops(op_id)[0] &lt; now - op_batch_proc_period:</span>
-    <span class="doccomment">///                    ask_set.add(op_id)</span>
-    <span class="doccomment">///                    asked_ops(op_id)[0] = now</span>
-    <span class="doccomment">///                    asked_ops(op_id)[1].add(node_id)</span>
-    <span class="doccomment">///                else:</span>
-    <span class="doccomment">///                    future_set.add(op_id)</span>
-    <span class="doccomment">///    if op_batch_buf is not full:</span>
-    <span class="doccomment">///        op_batch_buf.push(now+op_batch_proc_period, node_id, future_set)</span>
-    <span class="doccomment">///    ask ask_set to node_id</span>
-    <span class="doccomment">///```</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_operations_announcements_received</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">op_batch</span>: <span class="ident">OperationIds</span>,
-        <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ask_set</span> <span class="op">=</span>
-            <span class="ident">OperationIds::with_capacity_and_hasher</span>(<span class="ident">op_batch</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">future_set</span> <span class="op">=</span>
-            <span class="ident">OperationIds::with_capacity_and_hasher</span>(<span class="ident">op_batch</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
-        <span class="comment">// exactitude isn&#39;t important, we want to have a now for that function call</span>
-        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">count_reask</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">for</span> <span class="ident">op_id</span> <span class="kw">in</span> <span class="ident">op_batch</span> {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_operations</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">op_id</span>) {
-                <span class="kw">continue</span>;
-            }
-            <span class="kw">let</span> <span class="ident">wish</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">asked_operations</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">op_id</span>) {
-                <span class="prelude-val">Some</span>(<span class="ident">wish</span>) =&gt; {
-                    <span class="kw">if</span> <span class="ident">wish</span>.<span class="number">1</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">node_id</span>) {
-                        <span class="kw">continue</span>; <span class="comment">// already asked to the `node_id`</span>
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">wish</span>) <span class="comment">// already asked but at someone else</span>
-                    }
-                }
-                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
-            };
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">wish</span>) <span class="op">=</span> <span class="ident">wish</span> {
-                <span class="comment">// Ask now if latest ask instant &lt; now - operation_batch_proc_period</span>
-                <span class="comment">// otherwise add in future_set</span>
-                <span class="kw">if</span> <span class="ident">wish</span>.<span class="number">0</span>
-                    <span class="op">&lt;</span> <span class="ident">now</span>
-                        .<span class="ident">checked_sub</span>(<span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">operation_batch_proc_period</span>.<span class="ident">into</span>())
-                        .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>
-                {
-                    <span class="ident">count_reask</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                    <span class="ident">ask_set</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>);
-                    <span class="ident">wish</span>.<span class="number">0</span> <span class="op">=</span> <span class="ident">now</span>;
-                    <span class="ident">wish</span>.<span class="number">1</span>.<span class="ident">push</span>(<span class="ident">node_id</span>);
-                } <span class="kw">else</span> {
-                    <span class="ident">future_set</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>);
-                }
-            } <span class="kw">else</span> {
-                <span class="ident">ask_set</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>);
-                <span class="self">self</span>.<span class="ident">asked_operations</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>, (<span class="ident">now</span>, <span class="macro">vec!</span>[<span class="ident">node_id</span>]));
-            }
-        } <span class="comment">// EndOf for op_id in op_batch:</span>
-        <span class="kw">if</span> <span class="ident">count_reask</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;re-ask operations.&quot;</span>, { <span class="string">&quot;count&quot;</span>: <span class="ident">count_reask</span> });
-        }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">operation_batch_buffer_capacity</span>
-            <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">future_set</span>.<span class="ident">is_empty</span>()
-        {
-            <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">push_back</span>(<span class="ident">OperationBatchItem</span> {
-                <span class="ident">instant</span>: <span class="ident">now</span>
-                    .<span class="ident">checked_add</span>(<span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">operation_batch_proc_period</span>.<span class="ident">into</span>())
-                    .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>,
-                <span class="ident">node_id</span>,
-                <span class="ident">operations_ids</span>: <span class="ident">future_set</span>,
-            });
-        }
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">ask_set</span>.<span class="ident">is_empty</span>() {
-            <span class="self">self</span>.<span class="ident">network_command_sender</span>
-                .<span class="ident">send_ask_for_operations</span>(<span class="ident">node_id</span>, <span class="ident">ask_set</span>)
-                .<span class="kw">await</span>
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;send ask for operations failed&quot;</span>.<span class="ident">into</span>()))
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(())
-        }
-    }
-
     <span class="doccomment">/// On full operations are received from the network,</span>
     <span class="doccomment">/// - Update the cache `received_operations` ids and each</span>
     <span class="doccomment">///   `node_info.known_operations`</span>
@@ -402,31 +320,131 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// When receiving a batch of announcements, buffer it for processing at the next tick.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_operations_announcements_received</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">operations_ids</span>: <span class="ident">OperationIds</span>,
+        <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">operations_ids</span>.<span class="ident">is_disjoint</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">checked_operations</span>) {
+            <span class="comment">// Ignore the announcements if it contains ANY operations we already know about.</span>
+            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+        }
+        <span class="comment">// Add to the buffer, dropping the oldest one if no capacity remains.</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">operation_batch_buffer_capacity</span> {
+            <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">pop_front</span>();
+        }
+        <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">push_back</span>(<span class="ident">OperationBatchItem</span> {
+            <span class="ident">instant</span>: <span class="ident">Instant::now</span>(),
+            <span class="ident">node_id</span>,
+            <span class="ident">operations_ids</span>,
+        });
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// On processing a batch of operation ids `op_batch` from another `node_id`</span>
+    <span class="doccomment">/// Execute the following algorithm: [redirect to GitHub](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">///```py</span>
+    <span class="doccomment">///def process_op_batch(op_batch, node_id):</span>
+    <span class="doccomment">///    ask_set = void HashSet&lt;OperationId&gt;</span>
+    <span class="doccomment">///    future_set = void HashSet&lt;OperationId&gt;</span>
+    <span class="doccomment">///    for op_id in op_batch:</span>
+    <span class="doccomment">///        if not is_op_received(op_id):</span>
+    <span class="doccomment">///            if (op_id not in asked_ops) or (node_id not in asked_ops(op_id)[1]):</span>
+    <span class="doccomment">///                if (op_id not in asked_ops) or (asked_ops(op_id)[0] &lt; now - op_batch_proc_period:</span>
+    <span class="doccomment">///                    ask_set.add(op_id)</span>
+    <span class="doccomment">///                    asked_ops(op_id)[0] = now</span>
+    <span class="doccomment">///                    asked_ops(op_id)[1].add(node_id)</span>
+    <span class="doccomment">///                else:</span>
+    <span class="doccomment">///                    future_set.add(op_id)</span>
+    <span class="doccomment">///    if op_batch_buf is not full:</span>
+    <span class="doccomment">///        op_batch_buf.push(now+op_batch_proc_period, node_id, future_set)</span>
+    <span class="doccomment">///    ask ask_set to node_id</span>
+    <span class="doccomment">///```</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_ask_operation</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">operation_batch_proc_period_timer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::pin::Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">Sleep</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="kw">while</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">is_empty</span>()
-        <span class="comment">// This unwrap is ok because we checked that it&#39;s not empty just before.</span>
-            <span class="op">&amp;&amp;</span> <span class="ident">now</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">front</span>().<span class="ident">unwrap</span>().<span class="ident">instant</span>
-        {
-            <span class="kw">let</span> <span class="ident">op_batch_item</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">pop_front</span>().<span class="ident">unwrap</span>();
-            <span class="self">self</span>.<span class="ident">on_operations_announcements_received</span>(
-                <span class="ident">op_batch_item</span>.<span class="ident">operations_ids</span>,
-                <span class="ident">op_batch_item</span>.<span class="ident">node_id</span>,
-            )
-            .<span class="kw">await</span><span class="question-mark">?</span>;
-        }
-        <span class="comment">// reset timer</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">item</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">front</span>() {
-            <span class="ident">operation_batch_proc_period_timer</span>.<span class="ident">set</span>(<span class="ident">sleep_until</span>(<span class="ident">item</span>.<span class="ident">instant</span>));
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">next_tick</span> <span class="op">=</span> <span class="ident">now</span>
-                .<span class="ident">checked_add</span>(<span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">operation_batch_proc_period</span>.<span class="ident">into</span>())
-                .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>;
-            <span class="ident">operation_batch_proc_period_timer</span>.<span class="ident">set</span>(<span class="ident">sleep_until</span>(<span class="ident">next_tick</span>));
-        }
+
+        <span class="comment">// Reset timer to the next tick.</span>
+        <span class="kw">let</span> <span class="ident">next_tick</span> <span class="op">=</span> <span class="ident">now</span>
+            .<span class="ident">checked_add</span>(<span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">operation_batch_proc_period</span>.<span class="ident">into</span>())
+            .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>;
+        <span class="ident">operation_batch_proc_period_timer</span>.<span class="ident">set</span>(<span class="ident">sleep_until</span>(<span class="ident">next_tick</span>));
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">count_reask</span> <span class="op">=</span> <span class="number">0</span>;
+
+        <span class="comment">// Process the buffer of batches.</span>
+        <span class="comment">// Note that items are removed from the buffer below,</span>
+        <span class="comment">// and only if:</span>
+        <span class="comment">// 1. sending the corresponding request to network succeeded, or</span>
+        <span class="comment">// 2. the corresponding request would have been empty.</span>
+        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">batch_item</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">front</span>() {
+            <span class="kw">if</span> <span class="ident">now</span> <span class="op">&lt;</span> <span class="ident">batch_item</span>.<span class="ident">instant</span> {
+                <span class="kw">break</span>;
+            }
+
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ask_set</span> <span class="op">=</span> <span class="ident">OperationIds::default</span>();
+            <span class="kw">for</span> <span class="ident">op_id</span> <span class="kw">in</span> <span class="ident">batch_item</span>.<span class="ident">operations_ids</span>.<span class="ident">iter</span>() {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_operations</span>.<span class="ident">contains</span>(<span class="ident">op_id</span>) {
+                    <span class="kw">continue</span>;
+                }
+                <span class="kw">let</span> <span class="ident">wish</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">asked_operations</span>.<span class="ident">get_mut</span>(<span class="ident">op_id</span>) {
+                    <span class="prelude-val">Some</span>(<span class="ident">wish</span>) =&gt; {
+                        <span class="kw">if</span> <span class="ident">wish</span>.<span class="number">1</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">batch_item</span>.<span class="ident">node_id</span>) {
+                            <span class="kw">continue</span>; <span class="comment">// already asked to the `node_id`</span>
+                        } <span class="kw">else</span> {
+                            <span class="prelude-val">Some</span>(<span class="ident">wish</span>) <span class="comment">// already asked but at someone else</span>
+                        }
+                    }
+                    <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
+                };
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">wish</span>) <span class="op">=</span> <span class="ident">wish</span> {
+                    <span class="comment">// Ask now if latest ask instant &lt; now - operation_batch_proc_period.</span>
+                    <span class="kw">if</span> <span class="ident">wish</span>.<span class="number">0</span>
+                        <span class="op">&lt;</span> <span class="ident">now</span>
+                            .<span class="ident">checked_sub</span>(<span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">operation_batch_proc_period</span>.<span class="ident">into</span>())
+                            .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>
+                    {
+                        <span class="ident">ask_set</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
+                        <span class="ident">wish</span>.<span class="number">0</span> <span class="op">=</span> <span class="ident">now</span>;
+                        <span class="ident">wish</span>.<span class="number">1</span>.<span class="ident">push</span>(<span class="ident">batch_item</span>.<span class="ident">node_id</span>);
+                        <span class="ident">count_reask</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                    }
+                } <span class="kw">else</span> {
+                    <span class="ident">ask_set</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
+                    <span class="self">self</span>.<span class="ident">asked_operations</span>
+                        .<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>, (<span class="ident">now</span>, <span class="macro">vec!</span>[<span class="ident">batch_item</span>.<span class="ident">node_id</span>]));
+                }
+            } <span class="comment">// EndOf for op_id in op_batch:</span>
+
+            <span class="kw">if</span> <span class="ident">count_reask</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;re-ask operations.&quot;</span>, { <span class="string">&quot;count&quot;</span>: <span class="ident">count_reask</span> });
+            }
+
+            <span class="comment">// If we have operations to ask, try to send the request to network.</span>
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">ask_set</span>.<span class="ident">is_empty</span>()
+                <span class="op">&amp;&amp;</span> <span class="self">self</span>
+                    .<span class="ident">network_command_sender</span>
+                    .<span class="ident">send_ask_for_operations</span>(<span class="ident">batch_item</span>.<span class="ident">node_id</span>, <span class="ident">ask_set</span>)
+                    .<span class="ident">is_err</span>()
+            {
+                <span class="macro">massa_trace!</span>(
+                    <span class="string">&quot;Failed to acquire permit to send AskForOperations command&quot;</span>,
+                    {}
+                );
+
+                <span class="comment">// Stop processing the buffer, since network is busy.</span>
+                <span class="kw">break</span>;
+            }
+
+            <span class="comment">// Remove the batch item,</span>
+            <span class="comment">// if sending it was successful,</span>
+            <span class="comment">// or if `ask_set` was empty.</span>
+            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">pop_front</span>();
+        } <span class="comment">// End of batch processing.</span>
 
         <span class="prelude-val">Ok</span>(())
     }
