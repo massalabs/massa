@@ -114,7 +114,7 @@ impl LedgerDB {
     /// Apply the given operation batch to the disk ledger.
     ///
     /// NOTE: the batch is not saved within the object because it cannot be shared between threads safely
-    pub fn write_batch(&self, batch: WriteBatch) {
+    pub(crate) fn write_batch(&self, batch: WriteBatch) {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
@@ -124,7 +124,12 @@ impl LedgerDB {
     /// * addr: associated address
     /// * ledger_entry: complete entry to be added
     /// * batch: the given operation batch to update
-    pub fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut WriteBatch) {
+    pub(crate) fn put_entry(
+        &mut self,
+        addr: &Address,
+        ledger_entry: LedgerEntry,
+        batch: &mut WriteBatch,
+    ) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance
@@ -225,7 +230,7 @@ impl LedgerDB {
     /// # Arguments
     /// * entry_update: a descriptor of the entry updates to be applied
     /// * batch: the given operation batch to update
-    pub fn update_entry(
+    pub(crate) fn update_entry(
         &mut self,
         addr: &Address,
         entry_update: LedgerEntryUpdate,
@@ -261,7 +266,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    pub fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
+    pub(crate) fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance

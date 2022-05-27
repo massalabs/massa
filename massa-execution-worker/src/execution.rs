@@ -252,10 +252,14 @@ impl ExecutionState {
 
     /// Computes the index of a given slot in the active history
     fn get_active_index(&self, slot: Slot) -> Option<usize> {
-        let current = self.active_cursor.period * (self.config.thread_count as u64)
-            + (self.active_cursor.thread as u64);
-        let asked = slot.period * (self.config.thread_count as u64) + (slot.thread as u64);
-        current.checked_sub(asked).and_then(|v| v.try_into().ok())
+        if let Some(hist_front) = &self.active_history.front() {
+            slot.slots_since(&hist_front.slot, self.config.thread_count)
+                .map(|v| v.try_into().ok())
+                .ok()
+                .flatten()
+        } else {
+            None
+        }
     }
 
     /// Lazily query (from end to beginning) the active balance of an address at a given slot.
@@ -270,7 +274,7 @@ impl ExecutionState {
         self.verify_active_slot(slot);
 
         if let Some(n) = self.get_active_index(slot) {
-            let iter = self.active_history.iter().rev().skip(n);
+            let iter = self.active_history.iter().skip(n).rev();
 
             for output in iter {
                 match output.state_changes.ledger_changes.0.get(addr) {
