@@ -50,7 +50,7 @@ impl BlockFactory {
                     &self
                         .operations
                         .iter()
-                        .flat_map(|op| op.content.compute_id().unwrap().to_bytes())
+                        .flat_map(|op| op.content.compute_id().unwrap().into_bytes())
                         .collect::<Vec<_>>()[..],
                 ),
                 endorsements: self.endorsements.clone(),

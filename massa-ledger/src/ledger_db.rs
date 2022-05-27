@@ -187,7 +187,7 @@ impl LedgerDB {
         for (key, entry) in ledger {
             if key.first() == Some(&BALANCE_IDENT) {
                 addresses.insert(
-                    Address::from_bytes(&key[1..].try_into().unwrap()).unwrap(),
+                    Address::from_bytes(&key[1..].try_into().unwrap()),
                     Amount::from_bytes_compact(&entry).unwrap().0,
                 );
             }
@@ -213,7 +213,7 @@ impl LedgerDB {
             )
             .map(|(key, data)| {
                 (
-                    Hash::from_bytes(key.split_at(HASH_SIZE_BYTES).1.try_into().unwrap()).unwrap(),
+                    Hash::from_bytes(key.split_at(HASH_SIZE_BYTES).1.try_into().unwrap()),
                     data.to_vec(),
                 )
             })

@@ -193,7 +193,7 @@ impl ExecutionContext {
         // Add a marker to the seed indicating that we are in read-only mode
         // to prevent random draw collisions with active executions
         seed.push(0u8); // 0u8 = read-only
-        let seed = massa_hash::Hash::compute_from(&seed).to_bytes();
+        let seed = massa_hash::Hash::compute_from(&seed).into_bytes();
         // We use Xoshiro256PlusPlus because it is very fast,
         // has a period long enough to ensure no repetitions will ever happen,
         // of decent quality (given the unsafe constraints)
@@ -261,7 +261,7 @@ impl ExecutionContext {
         if let Some(block_id) = &opt_block_id {
             seed.extend(block_id.to_bytes()); // append block ID
         }
-        let seed = massa_hash::Hash::compute_from(&seed).to_bytes();
+        let seed = massa_hash::Hash::compute_from(&seed).into_bytes();
         let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
 
         // return active slot execution context

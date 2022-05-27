@@ -23,13 +23,15 @@ use std::str::FromStr;
 use tempfile::NamedTempFile;
 use tracing::warn;
 
+/// the data input to create the public keys was generated using the secp256k1 curve
+/// a test using this function is a regression test not an implementation test
 fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
     let pk = generate_random_private_key();
     let block = Block {
         header: Signed::new_signed(
             BlockHeader {
                 creator: PublicKey::from_bs58_check(
-                    "4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb",
+                    "2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA",
                 )
                 .unwrap(),
                 operation_merkle_root: Hash::compute_from(&Vec::new()),
@@ -39,7 +41,7 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
                     Signed::new_signed(
                         Endorsement {
                             sender_public_key: PublicKey::from_bs58_check(
-                                "4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb",
+                                "2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA",
                             )
                             .unwrap(),
                             endorsed_block: get_dummy_block_id("parent1"),
@@ -91,24 +93,21 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
             block_ledger_changes: LedgerChanges(
                 vec![
                     (
-                        Address::from_bytes(&Hash::compute_from("addr01".as_bytes()).into_bytes())
-                            .unwrap(),
+                        Address::from_bytes(&Hash::compute_from("addr01".as_bytes()).into_bytes()),
                         LedgerChange {
                             balance_delta: Amount::from_str("1").unwrap(),
                             balance_increment: true, // whether to increment or decrement balance of delta
                         },
                     ),
                     (
-                        Address::from_bytes(&Hash::compute_from("addr02".as_bytes()).into_bytes())
-                            .unwrap(),
+                        Address::from_bytes(&Hash::compute_from("addr02".as_bytes()).into_bytes()),
                         LedgerChange {
                             balance_delta: Amount::from_str("2").unwrap(),
                             balance_increment: false, // whether to increment or decrement balance of delta
                         },
                     ),
                     (
-                        Address::from_bytes(&Hash::compute_from("addr11".as_bytes()).into_bytes())
-                            .unwrap(),
+                        Address::from_bytes(&Hash::compute_from("addr11".as_bytes()).into_bytes()),
                         LedgerChange {
                             balance_delta: Amount::from_str("3").unwrap(),
                             balance_increment: false, // whether to increment or decrement balance of delta
@@ -174,12 +173,12 @@ pub async fn test_get_ledger_at_parents() {
 
     // define addresses use for the test
     let pubkey_a =
-        PublicKey::from_bs58_check("5UvFn66yoQerrEmikCxDVvhkLvCo9R2hJAYFMh2pZfYUQDMuCE").unwrap();
+        PublicKey::from_bs58_check("2Bnffv4cGZ5XVAYdV4kiC5L9Vu3f3NSyssJJswdfXYB93iJQrj").unwrap();
     let address_a = Address::from_public_key(&pubkey_a);
     assert_eq!(0, address_a.get_thread(thread_count));
 
     let pubkey_b =
-        PublicKey::from_bs58_check("4uRbkzUvQwW19dD6cxQ9WiYo8BZTPQsmsCbBrFLxMiUYTSbo2p").unwrap();
+        PublicKey::from_bs58_check("2DTtxCs9xGeX9kZgc8BjosCmCxkKQuxx1a7KTxWxm68sgAh1pt").unwrap();
     let address_b = Address::from_public_key(&pubkey_b);
     assert_eq!(1, address_b.get_thread(thread_count));
 

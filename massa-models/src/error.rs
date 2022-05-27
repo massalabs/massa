@@ -22,12 +22,16 @@ pub enum ModelsError {
     BufferError(String),
     /// `MassaHash` error: {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
+    /// massa_signature error: {0}
+    MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// thread overflow error
     ThreadOverflowError,
     /// period overflow error
     PeriodOverflowError,
     /// amount parse error
     AmountParseError(String),
+    /// address par error
+    AddressParseError,
     /// checked operation error
     CheckedOperationError(String),
     /// invalid version identifier: {0}

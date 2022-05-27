@@ -196,7 +196,7 @@ impl Ledger {
                 for (address, data) in init_ledger.0.iter() {
                     let thread = address.get_thread(cfg.thread_count);
                     ledger[thread as usize].insert(
-                        &address.to_bytes(),
+                        address.to_bytes(),
                         data.to_bytes_compact().map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
@@ -347,10 +347,10 @@ impl Ledger {
                 })?;
                 // remove entry if nil
                 if data.is_nil() {
-                    db.remove(&address_bytes)?;
+                    db.remove(address_bytes)?;
                 } else {
                     db.insert(
-                        &address_bytes,
+                        address_bytes,
                         data.to_bytes_compact().map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
@@ -428,7 +428,7 @@ impl Ledger {
         for tree in self.ledger_per_thread.iter() {
             for element in tree.iter() {
                 let (addr, data) = element?;
-                let address = Address::from_bytes(addr.as_ref().try_into()?)?;
+                let address = Address::from_bytes(addr.as_ref().try_into()?);
                 let (ledger_data, _) = LedgerData::from_bytes_compact(&data)?;
                 if let Some(val) = res.0.insert(address, ledger_data) {
                     return Err(LedgerError::LedgerInconsistency(format!(
@@ -605,7 +605,7 @@ impl SerializeCompact for LedgerSubset {
         })?;
         res.extend(entry_count.to_varint_bytes());
         for (address, data) in self.0.iter() {
-            res.extend(&address.to_bytes());
+            res.extend(address.to_bytes());
             res.extend(&data.to_bytes_compact()?);
         }
 
@@ -626,7 +626,7 @@ impl DeserializeCompact for LedgerSubset {
             BuildMap::default(),
         ));
         for _ in 0..entry_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
 
             let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..])?;
