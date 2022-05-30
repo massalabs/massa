@@ -8,8 +8,8 @@ From binaries
 =============
 
 Simply run the binaries you downloaded in the previous step:
-Open the `massa-node` folder and run the `massa-node` excutable
-Open the `massa-client` folder and run the `massa-client` excutable
+Open the `massa-node` folder and run the `massa-node` executable
+Open the `massa-client` folder and run the `massa-client` executable
 
 From source code
 ================

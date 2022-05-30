@@ -71,4 +71,4 @@ Last step
     you have to register with your Discord account. Write something in the
     `testnet-rewards-registration` channel of our
     `Discord <https://discord.com/invite/massa>`_ and our bot will DM you
-    instructions. More info here: `Testnet rewards program <https://github.com/massalabs/massa/wiki/testnet_rules>`_
+    instructions. More info here: `Testnet rewards program <https://massa.readthedocs.io/en/latest/testnet/rewards.html>`_
