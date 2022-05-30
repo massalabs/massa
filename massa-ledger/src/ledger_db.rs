@@ -3,11 +3,11 @@
 //! Module to interact with the disk ledger
 
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_models::{Address, Amount, DeserializeCompact, SerializeCompact};
+use massa_models::{Address, Amount, DeserializeCompact, SerializeCompact, Slot};
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, path::Path};
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
@@ -18,8 +18,10 @@ const METADATA_CF: &str = "metadata";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
+const DESTROY_ERROR: &str = "critical: disk ledger destroy process failed";
 const BALANCE_IDENT: u8 = 0u8;
 const BYTECODE_IDENT: u8 = 1u8;
+const SLOT_KEY: &[u8; 1] = b"s";
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
@@ -36,9 +38,11 @@ pub enum LedgerSubEntry {
 /// Contains a RocksDB DB instance
 pub(crate) struct LedgerDB(pub(crate) DB);
 
-/// Destroy the disk ledger db and free the lock
+/// Destroy the disk ledger db and free the lock if it exists
 pub fn destroy_ledger_db() {
-    DB::destroy(&Options::default(), DB_PATH).expect(OPEN_ERROR);
+    if Path::new(DB_PATH).exists() {
+        DB::destroy(&Options::default(), DB_PATH).expect(DESTROY_ERROR);
+    }
 }
 
 /// Balance key formatting macro
@@ -119,6 +123,20 @@ impl LedgerDB {
     /// NOTE: the batch is not saved within the object because it cannot be shared between threads safely
     pub(crate) fn write_batch(&self, batch: WriteBatch) {
         self.0.write(batch).expect(CRUD_ERROR);
+    }
+
+    /// Set the disk ledger metadata
+    ///
+    /// # Arguments
+    /// * slot: associated slot of the current ledger
+    /// * batch: the given operation batch to update
+    ///
+    /// NOTE: right now the metadata is only a Slot, use a struct in the future
+    pub(crate) fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch) {
+        let handle = self.0.cf_handle(METADATA_CF).expect(CF_ERROR);
+
+        // Slot::to_bytes_compact() never fails
+        batch.put_cf(handle, SLOT_KEY, slot.to_bytes_compact().unwrap());
     }
 
     /// Add every sub-entry individually for a given entry.

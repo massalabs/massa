@@ -5,10 +5,10 @@
 use crate::ledger_changes::LedgerChanges;
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use crate::ledger_entry::LedgerEntry;
-use crate::types::{Applicable, SetUpdateOrDelete};
+use crate::types::SetUpdateOrDelete;
 use crate::{destroy_ledger_db, FinalLedgerBootstrapState, LedgerConfig, LedgerError};
 use massa_hash::Hash;
-use massa_models::{Address, Amount, DeserializeCompact};
+use massa_models::{Address, Amount, DeserializeCompact, Slot};
 use rocksdb::WriteBatch;
 use std::collections::BTreeMap;
 
@@ -21,37 +21,6 @@ pub struct FinalLedger {
     _config: LedgerConfig,
     /// ledger tree, sorted by address
     sorted_ledger: LedgerDB,
-}
-
-/// Allows applying `LedgerChanges` to the final ledger
-impl Applicable<LedgerChanges> for FinalLedger {
-    fn apply(&mut self, changes: LedgerChanges) {
-        // create the batch
-        let mut batch = WriteBatch::default();
-        // for all incoming changes
-        for (addr, change) in changes.0 {
-            match change {
-                // the incoming change sets a ledger entry to a new one
-                SetUpdateOrDelete::Set(new_entry) => {
-                    // inserts/overwrites the entry with the incoming one
-                    self.sorted_ledger.put_entry(&addr, new_entry, &mut batch);
-                }
-                // the incoming change updates an existing ledger entry
-                SetUpdateOrDelete::Update(entry_update) => {
-                    // applies the updates to the entry
-                    // if the entry does not exist, inserts a default one and applies the updates to it
-                    self.sorted_ledger
-                        .update_entry(&addr, entry_update, &mut batch);
-                }
-                // the incoming change deletes a ledger entry
-                SetUpdateOrDelete::Delete => {
-                    // delete the entry, if it exists
-                    self.sorted_ledger.delete_entry(&addr, &mut batch);
-                }
-            }
-        }
-        self.sorted_ledger.write_batch(batch);
-    }
 }
 
 /// Macro used to shorten file error returns
@@ -101,6 +70,36 @@ impl FinalLedger {
             sorted_ledger,
             _config: config,
         })
+    }
+
+    /// Allows applying `LedgerChanges` to the final ledger
+    pub fn apply_changes_at_slot(&mut self, changes: LedgerChanges, slot: Slot) {
+        // create the batch
+        let mut batch = WriteBatch::default();
+        // for all incoming changes
+        for (addr, change) in changes.0 {
+            match change {
+                // the incoming change sets a ledger entry to a new one
+                SetUpdateOrDelete::Set(new_entry) => {
+                    // inserts/overwrites the entry with the incoming one
+                    self.sorted_ledger.put_entry(&addr, new_entry, &mut batch);
+                }
+                // the incoming change updates an existing ledger entry
+                SetUpdateOrDelete::Update(entry_update) => {
+                    // applies the updates to the entry
+                    // if the entry does not exist, inserts a default one and applies the updates to it
+                    self.sorted_ledger
+                        .update_entry(&addr, entry_update, &mut batch);
+                }
+                // the incoming change deletes a ledger entry
+                SetUpdateOrDelete::Delete => {
+                    // delete the entry, if it exists
+                    self.sorted_ledger.delete_entry(&addr, &mut batch);
+                }
+            }
+        }
+        self.sorted_ledger.set_metadata(slot, &mut batch);
+        self.sorted_ledger.write_batch(batch);
     }
 
     /// Initialize a `FinalLedger` from a bootstrap state
