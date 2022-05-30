@@ -215,7 +215,7 @@ impl AsyncPool {
     }
 
     /// Used for bootstrap
-    /// TODO: Document
+    /// Take a part of the async pool starting from the next element after `last_id` and with a max length of the constant `ASYNC_POOL_BATCH_SIZE`.
     pub fn get_pool_part(&self, last_id: Option<AsyncMessageId>) -> AsyncPoolPart {
         let last_id = if let Some(last_id) = last_id {
             Excluded(last_id)
@@ -232,7 +232,7 @@ impl AsyncPool {
     }
 
     /// Used for bootstrap
-    /// TODO: Document
+    /// Add an `AsyncPoolPart` to the async pool
     pub fn set_pool_part(
         &mut self,
         part: AsyncPoolPart,

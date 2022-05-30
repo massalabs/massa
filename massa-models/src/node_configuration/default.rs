@@ -115,7 +115,7 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 30;
 /// Maximum async messages in a batch of the bootstrap of the async pool
-pub const ASYNC_POOL_BATCH_SIZE: u64 = 2;
+pub const ASYNC_POOL_BATCH_SIZE: u64 = 50;
 
 // ***********************
 // Bootstrap constants
@@ -138,8 +138,7 @@ pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Number of bytes to send in one batch of information when streaming ledger in bootstrap
-/// TODO: Define value
-pub const MAXIMUM_BYTES_MESSAGE_BOOTSTRAP: u32 = 3000;
+pub const MAXIMUM_BYTES_MESSAGE_BOOTSTRAP: u32 = 30000000;
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 

@@ -21,85 +21,92 @@ use crate::{
     BootstrapSettings, Establisher, GlobalBootstrapState,
 };
 
+/// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapMessageServer::FinalStateFinished` message from the server.
+/// `next_message_bootstrap` passed as parameter must be `BootstrapMessageClient::AskFinalStatePart` enum's variant.
+/// `next_message_bootstrap` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
 async fn stream_ledger(
     cfg: &BootstrapSettings,
     client: &mut BootstrapClientBinder,
     next_message_bootstrap: &mut Option<BootstrapMessageClient>,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
-    match tokio::time::timeout(
-        cfg.write_timeout.into(),
-        client.send(next_message_bootstrap.as_ref().unwrap()),
-    )
-    .await
+    if let Some(BootstrapMessageClient::AskFinalStatePart {
+        cursor: old_cursor, ..
+    }) = &next_message_bootstrap
     {
-        Err(_) => Err(std::io::Error::new(
-            std::io::ErrorKind::TimedOut,
-            "bootstrap ask ledger part send timed out",
+        match tokio::time::timeout(
+            cfg.write_timeout.into(),
+            client.send(next_message_bootstrap.as_ref().unwrap()),
         )
-        .into()),
-        Ok(Err(e)) => Err(e),
-        Ok(Ok(_)) => Ok(()),
-    }?;
-    let mut old_cursor: Option<LedgerCursor> = None;
-    loop {
-        let msg = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
-            Err(_) => {
-                println!("client: time out asking");
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "final state bootstrap read timed out",
-                )
-                .into());
-            }
-            Ok(Err(e)) => return Err(e),
-            Ok(Ok(msg)) => msg,
-        };
-        match msg {
-            BootstrapMessageServer::FinalStatePart {
-                ledger_data,
-                async_pool_part,
-                slot,
-                final_state_changes,
-            } => {
-                old_cursor = global_bootstrap_state
-                    .final_state
-                    .write()
-                    .ledger
-                    .set_ledger_part(old_cursor, ledger_data)?;
-                let old_last_async_id = global_bootstrap_state
-                    .final_state
-                    .write()
-                    .async_pool
-                    .set_pool_part(async_pool_part)
-                    .map(|(id, _)| *id);
-                for changes in final_state_changes {
-                    global_bootstrap_state
-                        .final_state
-                        .write()
-                        .ledger
-                        .apply(changes.ledger_changes);
-                    global_bootstrap_state
-                        .final_state
-                        .write()
-                        .async_pool
-                        .apply_changes_unchecked(changes.async_pool_changes);
+        .await
+        {
+            Err(_) => Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bootstrap ask ledger part send timed out",
+            )
+            .into()),
+            Ok(Err(e)) => Err(e),
+            Ok(Ok(_)) => Ok(()),
+        }?;
+        let mut old_cursor: Option<LedgerCursor> = old_cursor.clone();
+        loop {
+            let msg = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
+                Err(_) => {
+                    println!("client: time out asking");
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "final state bootstrap read timed out",
+                    )
+                    .into());
                 }
-                // Set new message in case of disconnection
-                *next_message_bootstrap = Some(BootstrapMessageClient::AskFinalStatePart {
-                    cursor: old_cursor.clone(),
-                    slot: Some(slot),
-                    last_async_message_id: old_last_async_id,
-                });
-            }
-            BootstrapMessageServer::FinalStateFinished => {
-                *next_message_bootstrap = Some(BootstrapMessageClient::AskBootstrapPeers);
-                return Ok(());
-            }
-            _ => {
-                return Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bad message").into())
+                Ok(Err(e)) => return Err(e),
+                Ok(Ok(msg)) => msg,
+            };
+            match msg {
+                BootstrapMessageServer::FinalStatePart {
+                    ledger_data,
+                    async_pool_part,
+                    slot,
+                    final_state_changes,
+                } => {
+                    let mut write_final_state = global_bootstrap_state.final_state.write();
+                    old_cursor = write_final_state
+                        .ledger
+                        .set_ledger_part(old_cursor, ledger_data)?;
+                    let old_last_async_id = write_final_state
+                        .async_pool
+                        .set_pool_part(async_pool_part)
+                        .map(|(id, _)| *id);
+                    for changes in final_state_changes {
+                        write_final_state.ledger.apply(changes.ledger_changes);
+                        write_final_state
+                            .async_pool
+                            .apply_changes_unchecked(changes.async_pool_changes);
+                    }
+                    write_final_state.slot = slot;
+                    // Set new message in case of disconnection
+                    *next_message_bootstrap = Some(BootstrapMessageClient::AskFinalStatePart {
+                        cursor: old_cursor.clone(),
+                        slot: Some(slot),
+                        last_async_message_id: old_last_async_id,
+                    });
+                }
+                BootstrapMessageServer::FinalStateFinished => {
+                    *next_message_bootstrap = Some(BootstrapMessageClient::AskBootstrapPeers);
+                    return Ok(());
+                }
+                _ => {
+                    return Err(
+                        std::io::Error::new(std::io::ErrorKind::TimedOut, "bad message").into(),
+                    )
+                }
             }
         }
+    } else {
+        Err(BootstrapError::GeneralError(format!(
+            "Try to stream the final state but the message to send to the server was {:#?}",
+            next_message_bootstrap
+        )))
     }
 }
 
@@ -217,7 +224,6 @@ async fn bootstrap_from_server(
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
     // Loop to ask data to the server depending on the last message we sent
-    // TODO: Add ledger to the state
     loop {
         match next_message_bootstrap {
             Some(BootstrapMessageClient::AskFinalStatePart { .. }) => {
