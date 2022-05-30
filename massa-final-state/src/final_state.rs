@@ -112,7 +112,7 @@ impl FinalState {
                         Some(LedgerCursor {
                             address,
                             step: _step,
-                        }) if change_address < &address => Some((*change_address, change.clone())),
+                        }) if change_address < address => Some((*change_address, change.clone())),
                         Some(_) => None,
                         _ => Some((*change_address, change.clone())),
                     })
