@@ -269,7 +269,7 @@ impl DeserializeCompact for LedgerEntry {
         let mut datastore: BTreeMap<Hash, Vec<u8>> = BTreeMap::new();
         for _ in 0..datastore_len {
             // key
-            let key = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let key = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += HASH_SIZE_BYTES;
 
             // value length

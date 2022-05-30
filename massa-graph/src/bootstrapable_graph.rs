@@ -46,19 +46,19 @@ impl SerializeCompact for BootstrapableGraph {
         }
         res.extend(blocks_count.to_varint_bytes());
         for (hash, block) in self.active_blocks.iter() {
-            res.extend(&hash.to_bytes());
+            res.extend(hash.to_bytes());
             res.extend(block.to_bytes_compact()?);
         }
 
         // best_parents
         for (parent_h, parent_period) in self.best_parents.iter() {
-            res.extend(&parent_h.to_bytes());
+            res.extend(parent_h.to_bytes());
             res.extend(&parent_period.to_varint_bytes());
         }
 
         // latest_final_blocks_periods
         for (hash, period) in self.latest_final_blocks_periods.iter() {
-            res.extend(&hash.to_bytes());
+            res.extend(hash.to_bytes());
             res.extend(period.to_varint_bytes());
         }
 
@@ -68,7 +68,7 @@ impl SerializeCompact for BootstrapableGraph {
         })?;
         res.extend(gi_head_count.to_varint_bytes());
         for (gihash, set) in self.gi_head.iter() {
-            res.extend(&gihash.to_bytes());
+            res.extend(gihash.to_bytes());
             let set_count: u32 = set.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
                     "too many entry in gi_head set in BootstrapableGraph: {}",
@@ -77,7 +77,7 @@ impl SerializeCompact for BootstrapableGraph {
             })?;
             res.extend(set_count.to_varint_bytes());
             for hash in set {
-                res.extend(&hash.to_bytes());
+                res.extend(hash.to_bytes());
             }
         }
 
@@ -127,7 +127,7 @@ impl DeserializeCompact for BootstrapableGraph {
         let mut active_blocks =
             Map::with_capacity_and_hasher(active_blocks_count as usize, BuildMap::default());
         for _ in 0..(active_blocks_count as usize) {
-            let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += BLOCK_ID_SIZE_BYTES;
             let (block, delta) = ExportActiveBlock::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
@@ -137,7 +137,7 @@ impl DeserializeCompact for BootstrapableGraph {
         // best_parents
         let mut best_parents: Vec<(BlockId, u64)> = Vec::with_capacity(parent_count as usize);
         for _ in 0..parent_count {
-            let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += BLOCK_ID_SIZE_BYTES;
             let (parent_period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
@@ -148,7 +148,7 @@ impl DeserializeCompact for BootstrapableGraph {
         let mut latest_final_blocks_periods: Vec<(BlockId, u64)> =
             Vec::with_capacity(parent_count as usize);
         for _ in 0..parent_count {
-            let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += BLOCK_ID_SIZE_BYTES;
             let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
             cursor += delta;
@@ -167,7 +167,7 @@ impl DeserializeCompact for BootstrapableGraph {
         let mut gi_head =
             Map::with_capacity_and_hasher(gi_head_count as usize, BuildMap::default());
         for _ in 0..(gi_head_count as usize) {
-            let gihash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let gihash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += BLOCK_ID_SIZE_BYTES;
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             if set_count > max_bootstrap_blocks {
@@ -177,7 +177,7 @@ impl DeserializeCompact for BootstrapableGraph {
             let mut set =
                 Set::<BlockId>::with_capacity_and_hasher(set_count as usize, BuildMap::default());
             for _ in 0..(set_count as usize) {
-                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
                 cursor += BLOCK_ID_SIZE_BYTES;
                 set.insert(hash);
             }

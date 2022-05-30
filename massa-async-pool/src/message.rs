@@ -232,11 +232,11 @@ impl DeserializeCompact for AsyncMessage {
         cursor += delta;
 
         // sender address
-        let sender = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        let sender = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
         cursor += ADDRESS_SIZE_BYTES;
 
         // destination address
-        let destination = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        let destination = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
         cursor += ADDRESS_SIZE_BYTES;
 
         // handler name length

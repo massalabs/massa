@@ -2846,7 +2846,7 @@ impl BlockGraph {
                         )
                         .ok_or(GraphError::FitnessOverflow)?;
                     sum_hash -=
-                        num::BigInt::from_bytes_be(num::bigint::Sign::Plus, &block_h.to_bytes());
+                        num::BigInt::from_bytes_be(num::bigint::Sign::Plus, block_h.to_bytes());
                 }
                 let cur_fit = (clique.fitness, sum_hash);
                 if cur_fit > max_clique_fitness {

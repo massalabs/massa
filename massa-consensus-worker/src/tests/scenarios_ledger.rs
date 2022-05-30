@@ -497,7 +497,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(storage.clone());
+        MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();

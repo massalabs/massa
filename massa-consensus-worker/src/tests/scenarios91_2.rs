@@ -222,7 +222,7 @@ async fn test_doubles() {
             }
 
             // create 1 block in thread 0 slot 41 with missed block as parent
-            valid_hasht0 = create_and_test_block(
+            create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
                 Slot::new(41, 0),
@@ -232,10 +232,6 @@ async fn test_doubles() {
                 staking_keys[0],
             )
             .await;
-
-            if let Some(block) = protocol_controller.get_block(&valid_hasht0) {
-                propagate_block(&mut protocol_controller, block, false, 1000).await;
-            };
             (
                 protocol_controller,
                 consensus_command_sender,

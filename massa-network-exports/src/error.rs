@@ -32,6 +32,8 @@ pub enum NetworkError {
     SerdeError(#[from] serde_json::Error),
     /// `MassaHash` error {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
+    /// massa_signature error {0}
+    MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// handshake error:{0:?}
     HandshakeError(HandshakeErrorType),
     /// the network controller should not drop a node command sender before shutting down the node.

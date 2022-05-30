@@ -118,7 +118,7 @@ impl SerializeCompact for Message {
             }
             Message::HandshakeReply { signature } => {
                 res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
-                res.extend(&signature.to_bytes());
+                res.extend(signature.to_bytes());
             }
             Message::Block(block) => {
                 res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
@@ -137,7 +137,7 @@ impl SerializeCompact for Message {
                 })?;
                 res.extend(list_len.to_varint_bytes());
                 for hash in list {
-                    res.extend(&hash.to_bytes());
+                    res.extend(hash.to_bytes());
                 }
             }
             Message::AskPeerList => {
@@ -152,7 +152,7 @@ impl SerializeCompact for Message {
             }
             Message::BlockNotFound(hash) => {
                 res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
-                res.extend(&hash.to_bytes());
+                res.extend(hash.to_bytes());
             }
             Message::AskForOperations(operation_ids) => {
                 res.extend(u32::from(MessageTypeId::AskForOperations).to_varint_bytes());
@@ -244,7 +244,7 @@ impl DeserializeCompact for Message {
                 // hash list
                 let mut list: Vec<BlockId> = Vec::with_capacity(length as usize);
                 for _ in 0..length {
-                    let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                    let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
                     cursor += BLOCK_ID_SIZE_BYTES;
                     list.push(b_id);
                 }
@@ -266,7 +266,7 @@ impl DeserializeCompact for Message {
                 Message::PeerList(peers)
             }
             MessageTypeId::BlockNotFound => {
-                let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
                 cursor += BLOCK_ID_SIZE_BYTES;
                 Message::BlockNotFound(b_id)
             }

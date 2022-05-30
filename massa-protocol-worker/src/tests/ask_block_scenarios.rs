@@ -359,6 +359,7 @@ async fn test_multiple_blocks_without_a_priori() {
             // node a is disconnected so no node knows about wanted blocks
             network_controller.close_connection(node_a.id).await;
             // end set up
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
             // send wishlist
             protocol_command_sender

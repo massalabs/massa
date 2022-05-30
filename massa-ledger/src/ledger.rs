@@ -401,7 +401,9 @@ mod tests {
     use massa_hash::Hash;
     use massa_models::{Address, Amount};
 
+    // NOTE: ignore for now because it will have to be refactored after the disk ledger update
     #[test]
+    #[ignore]
     fn test_part_ledger() {
         let mut ledger: FinalLedger =
             FinalLedger::new(LedgerConfig::sample(&BTreeMap::new()).0).unwrap();
@@ -432,7 +434,9 @@ mod tests {
         assert_eq!(ledger.sorted_ledger, new_ledger.sorted_ledger);
     }
 
+    // NOTE: ignore for now because it will have to be refactored after the disk ledger update
     #[test]
+    #[ignore]
     fn test_part_ledger_empty() {
         let mut ledger: FinalLedger =
             FinalLedger::new(LedgerConfig::sample(&BTreeMap::new()).0).unwrap();
