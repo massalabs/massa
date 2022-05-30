@@ -7,8 +7,8 @@
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
-use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerCursor};
-use massa_models::Slot;
+use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
+use massa_models::{Address, Slot};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool)`
@@ -86,13 +86,13 @@ impl FinalState {
     }
 
     /// Used for bootstrap
-    /// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `LedgerCursor` (step of the cursor is not taking in count yet) and a `AsyncMessageId`.
+    /// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `max_address` and a `AsyncMessageId`.
     /// Every ledgers changes that are after `min_slot` and below `end_cursor` must be returned.
     /// Every async pool changes that are after `min_slot` and below `max_id_async_pool` must be returned.
     pub fn get_part_state_changes(
         &self,
         min_slot: Option<Slot>,
-        end_cursor: &Option<LedgerCursor>,
+        max_address: Option<Address>,
         max_id_async_pool: Option<AsyncMessageId>,
     ) -> Vec<StateChanges> {
         let pos_slot = min_slot
@@ -107,14 +107,13 @@ impl FinalState {
                     .ledger_changes
                     .0
                     .iter()
-                    .filter_map(|(change_address, change)| match end_cursor {
+                    .filter_map(|(address, change)| match max_address {
                         // TODO: Improve by taking in count the step
-                        Some(LedgerCursor {
-                            address,
-                            step: _step,
-                        }) if change_address < address => Some((*change_address, change.clone())),
+                        Some(max_address) if max_address < *address => {
+                            Some((*address, change.clone()))
+                        }
                         Some(_) => None,
-                        _ => Some((*change_address, change.clone())),
+                        _ => Some((*address, change.clone())),
                     })
                     .collect(),
             );

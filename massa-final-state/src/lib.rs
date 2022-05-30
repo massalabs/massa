@@ -31,6 +31,7 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(hash_drain_filter)]
 #![feature(map_first_last)]
 #![feature(async_closure)]
 

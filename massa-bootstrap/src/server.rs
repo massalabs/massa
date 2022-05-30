@@ -282,7 +282,7 @@ pub async fn send_stream_ledger(
             let actual_slot = final_state.read().slot;
             let final_state_changes = final_state.read().get_part_state_changes(
                 last_slot,
-                &old_cursor,
+                old_cursor.clone().map(|cursor| cursor.address),
                 old_last_async_id,
             );
             last_slot = Some(actual_slot);
