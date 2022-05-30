@@ -226,11 +226,19 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<Set<Address>>()
     }
 
-    fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    fn node_ban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
     }
 
-    fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    fn node_ban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
+
+    fn node_unban_by_ip(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
+
+    fn node_unban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
     }
 
@@ -267,7 +275,11 @@ impl Endpoints for API<Public> {
                 connected_nodes: peers?
                     .peers
                     .iter()
-                    .flat_map(|(ip, peer)| peer.active_nodes.iter().map(move |(id, _)| (*id, *ip)))
+                    .flat_map(|(ip, peer)| {
+                        peer.active_nodes
+                            .iter()
+                            .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
+                    })
                     .collect(),
                 last_slot,
                 next_slot: last_slot
@@ -292,9 +304,14 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>> {
+    fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || Ok(consensus_command_sender.get_active_stakers().await?);
+        let closure = async move || {
+            let stakers = consensus_command_sender.get_active_stakers().await?;
+            let mut staker_vec = Vec::from_iter(stakers);
+            staker_vec.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
+            Ok(staker_vec)
+        };
         Box::pin(closure())
     }
 

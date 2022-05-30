@@ -21,7 +21,7 @@
     readonly_queue_length = 10
     # by how many milliseconds shoud the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
-    cursor_delay = 0
+    cursor_delay = 2000
 
 [ledger]
     # path to the initial smart contract balance ledger
@@ -93,7 +93,7 @@
     max_known_endorsements_size = 1024
     # Maximum number of batches in the memory buffer.
     # Dismiss the new batches if overflow
-    operation_batch_buffer_capacity = 10024 
+    operation_batch_buffer_capacity = 10024
     # Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     operation_batch_proc_period = 500
     # All operations asked are prune each `operation_asked_pruning_period` millisecond
@@ -157,23 +157,31 @@
 [bootstrap]
     # list of bootstrap (ip, node id)
     bootstrap_list = [
-        ["149.202.86.103:31245", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
-        ["149.202.89.125:31245", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
-        ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
-        ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
+        ["149.202.86.103:31245", "2Fyi8WsZQR8QibNh5pBSdAJ8tLLo5ryVizjbipvyHAuAdRSHgm"],
+        ["149.202.89.125:31245", "2Zr27YCr8MaHTC41ZLWVquyrM8cbMt8jJi6fttHQSnMxL3g1uD"],
+        ["158.69.120.215:31245", "2Hujf2rHBquDrhixnw3dQTHaZMGp5xJq4q766dTRwy6v224CAi"],
+        ["158.69.23.120:31245", "CzhbcUMKLmnkg9vzZUHVH6buzE22oToDxW7nndnYyETSh2fYn"],
+        ["198.27.74.5:31245", "wQbN87JXJysgCLMHmHCfwQPivqj4WUTViB2NN2WBKZ2U4oLbm"],
+        ["198.27.74.52:31245", "FshA2S8YhpHBXkuFeKeq8tVF34FtYSJ3wk2LSxgvMZYkDmY23"],
+        ["54.36.174.177:31245", "xzGjgD7BBxTJZYo4p522TQzTkMUbKF3cVgfvuwjVdzo4XJgDM"],
+        ["51.75.60.228:31245", "2jSHRWDv7S1RR4TuQLYHPw4mEawQVBxVARbgoZByH4s7cYrnVN"]
     ]
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection
     connect_timeout = 15000
     # delay in milliseconds to wait between consecutive bootstrap attempts
-    retry_delay = 600000
+    retry_delay = 60000
     # if ping is too high bootstrap will be interrupted after max_ping milliseconds
     max_ping = 10000
     # timeout for incoming message readout
     read_timeout = 10000
     # timeout for message sending
     write_timeout = 10000
+    # timeout for incoming error message readout
+    read_error_timeout = 200
+    # timeout for message error sending
+    write_error_timeout = 200
     # when enabled, apply a correction to the local computer clock to match bootstrap server time
     enable_clock_synchronization = false
     # [server] data is cached for cache duration milliseconds

@@ -14,8 +14,9 @@ use massa_models::api::{
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::Set;
 use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::PrivateKey;
@@ -106,15 +107,27 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn ban(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    fn node_ban_by_ip(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
         let network_command_sender = self.0.network_command_sender.clone();
-        let closure = async move || Ok(network_command_sender.ban_ip(ips).await?);
+        let closure = async move || Ok(network_command_sender.node_ban_by_ips(ips).await?);
         Box::pin(closure())
     }
 
-    fn unban(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+    fn node_ban_by_id(&self, ids: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
         let network_command_sender = self.0.network_command_sender.clone();
-        let closure = async move || Ok(network_command_sender.unban(ips).await?);
+        let closure = async move || Ok(network_command_sender.node_ban_by_ids(ids).await?);
+        Box::pin(closure())
+    }
+
+    fn node_unban_by_id(&self, ids: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.node_unban_by_ids(ids).await?);
+        Box::pin(closure())
+    }
+
+    fn node_unban_by_ip(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.node_unban_ips(ips).await?);
         Box::pin(closure())
     }
 
@@ -126,8 +139,8 @@ impl Endpoints for API<Private> {
         crate::wrong_api::<Vec<Clique>>()
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>> {
-        crate::wrong_api::<Map<Address, u64>>()
+    fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
+        crate::wrong_api::<Vec<(Address, u64)>>()
     }
 
     fn get_operations(

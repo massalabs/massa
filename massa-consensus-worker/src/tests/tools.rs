@@ -530,7 +530,7 @@ pub fn get_export_active_test_block(
                 operation_merkle_root: Hash::compute_from(
                     &operations
                         .iter()
-                        .flat_map(|op| op.content.compute_id().unwrap().to_bytes())
+                        .flat_map(|op| op.content.compute_id().unwrap().into_bytes())
                         .collect::<Vec<_>>()[..],
                 ),
                 parents: parents.iter().map(|(id, _)| *id).collect(),
@@ -670,7 +670,7 @@ pub async fn consensus_pool_test<F, V>(
     }
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(storage.clone());
+        MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
@@ -763,7 +763,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     }
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(storage.clone());
+        MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
@@ -837,7 +837,7 @@ where
     let storage: Storage = Default::default();
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(storage.clone());
+        MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
@@ -904,7 +904,7 @@ where
     let storage: Storage = Default::default();
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new(storage.clone());
+        MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();

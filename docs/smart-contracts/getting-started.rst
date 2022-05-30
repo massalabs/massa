@@ -115,9 +115,9 @@ Congratulations! You have generated your first smart contract: the `helloworld.w
 
    * check that you properly followed all the steps,
    * do a couple a internet research,
-   * look for any similare issue (open or closed) in `this <//TODO>`_ project.
+   * look for any similare issue (open or closed) in `this <https://github.com/massalabs/massa-sc-std/>`_ project.
 
-   If you find nothing, feel free to contact us at `TODO <//TODO>`_ or directly open an issue `here <//TODO>`_.
+   If you find nothing, feel free to contact us on `Discord <https://discord.gg/massa>`_ or directly open an issue `here <https://github.com/massalabs/massa-sc-std/>`_.
 
 Execute your smart contract on a node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -174,7 +174,7 @@ Everything is in place, we can now execute the `hello world` smart contract on y
 
 .. code-block:: shell
 
-   send_smart_contract <address> <path to wasm file> 0 0 0 0
+   send_smart_contract <address> <path to wasm file> 100000 0 0 0
 
 .. note::
 
@@ -182,7 +182,8 @@ Everything is in place, we can now execute the `hello world` smart contract on y
 
    - <address>: the address of your wallet kept during previous step;
    - <path to wasm file>: the full path (from the root directory to the file extension .wasm) of the hello smart contract generated in the previous chapter.
-   - Four 0 parameters that can be safely ignored by now. If you want more info on them, use the command `help send_smart_contract`.
+   - 100000: the maximum amount of gas that the execution of your smart-contract is allowed to use.
+   - Three 0 parameters that can be safely ignored by now. If you want more info on them, use the command `help send_smart_contract`.
 
 
 If everything went fine, the following prompted message should be prompted:

@@ -66,23 +66,19 @@ impl FromStr for EndorsementId {
 }
 
 impl EndorsementId {
-    /// endorsement ids to bytes
-    pub fn to_bytes(&self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
+    /// endorsement id to bytes
+    pub fn to_bytes(&self) -> &[u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
-    /// endorsement ids into bytes
+    /// endorsement id into bytes
     pub fn into_bytes(self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
     /// endorsement id from bytes
-    pub fn from_bytes(
-        data: &[u8; ENDORSEMENT_ID_SIZE_BYTES],
-    ) -> Result<EndorsementId, ModelsError> {
-        Ok(EndorsementId(
-            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
-        ))
+    pub fn from_bytes(data: &[u8; ENDORSEMENT_ID_SIZE_BYTES]) -> EndorsementId {
+        EndorsementId(Hash::from_bytes(data))
     }
 
     /// endorsement id from `bs58` check
@@ -144,7 +140,7 @@ impl SerializeCompact for Endorsement {
         res.extend(self.index.to_varint_bytes());
 
         // id of endorsed block
-        res.extend(&self.endorsed_block.to_bytes());
+        res.extend(self.endorsed_block.to_bytes());
 
         Ok(res)
     }
@@ -182,7 +178,7 @@ impl DeserializeCompact for Endorsement {
         cursor += delta;
 
         // id of endorsed block
-        let endorsed_block = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        let endorsed_block = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
         cursor += BLOCK_ID_SIZE_BYTES;
 
         Ok((

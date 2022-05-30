@@ -24,6 +24,8 @@ pub enum BootstrapError {
     UnexpectedConnectionDrop,
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
+    /// massa_signature error {0}
+    MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// time error: {0}
     TimeError(#[from] TimeError),
     /// consensus error: {0}
@@ -38,4 +40,6 @@ pub enum BootstrapError {
     MissingKeyError,
     /// incompatible version: {0}
     IncompatibleVersionError(String),
+    /// Received error: {0}
+    ReceivedError(String),
 }

@@ -2,13 +2,22 @@
 
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
+use crate::cursor::{LedgerCursor, LedgerCursorStep};
 use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
-use massa_hash::Hash;
-use massa_models::{Address, Amount};
+use massa_hash::{Hash, HashDeserializer};
+use massa_models::address::AddressDeserializer;
+use massa_models::amount::{AmountDeserializer, AmountSerializer};
+use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
+use massa_models::{Address, Amount, ModelsError, SerializeVarInt, VecU8Deserializer};
+use massa_serialization::{Deserializer, Serializer};
+use nom::error::context;
+use nom::sequence::tuple;
+use nom::AsBytes;
 use std::collections::BTreeMap;
+use std::ops::Bound::Included;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -70,6 +79,9 @@ macro_rules! init_file_error {
     };
 }
 pub(crate) use init_file_error;
+
+const DATASTORE_END_IDENTIFIER: u8 = 0;
+const DATASTORE_KEY_IDENTIFIER: u8 = 1;
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
@@ -183,5 +195,278 @@ impl FinalLedger {
         self.sorted_ledger
             .get(addr)
             .map_or(false, |v| v.datastore.contains_key(key))
+    }
+
+    /// Get a part of the ledger
+    /// Used for bootstrap
+    /// Parameters:
+    /// * cursor: Where we stopped in the ledger
+    ///
+    /// Returns:
+    /// A subset of the ledger starting at `cursor` and of size `LEDGER_PART_SIZE_MESSAGE_BYTES` bytes.
+    pub fn get_ledger_part(
+        &self,
+        cursor: Option<LedgerCursor>,
+    ) -> Result<(Vec<u8>, Option<LedgerCursor>), ModelsError> {
+        let mut next_cursor = if let Some(cursor) = cursor.or_else(|| {
+            self.sorted_ledger
+                .first_key_value()
+                .map(|(&address, _)| LedgerCursor {
+                    address,
+                    step: LedgerCursorStep::Start,
+                })
+        }) {
+            cursor
+        } else {
+            return Ok((vec![], None));
+        };
+        let mut data = Vec::new();
+        let amount_serializer = AmountSerializer::new(Included(u64::MIN), Included(u64::MAX));
+        for (addr, entry) in self.sorted_ledger.range(next_cursor.address..) {
+            while (data.len() as u64) < LEDGER_PART_SIZE_MESSAGE_BYTES {
+                match next_cursor.step {
+                    LedgerCursorStep::Start => {
+                        data.extend(addr.to_bytes());
+                        next_cursor.step = LedgerCursorStep::Balance;
+                    }
+                    LedgerCursorStep::Balance => {
+                        data.extend(amount_serializer.serialize(&entry.parallel_balance)?);
+                        next_cursor.step = LedgerCursorStep::Bytecode;
+                    }
+                    LedgerCursorStep::Bytecode => {
+                        data.extend((entry.bytecode.len() as u64).to_varint_bytes());
+                        data.extend(&entry.bytecode);
+                        next_cursor.step = LedgerCursorStep::Datastore(None);
+                    }
+                    LedgerCursorStep::Datastore(key) => {
+                        let key = if let Some(key) = key {
+                            key
+                        } else if let Some((&key, _)) = entry.datastore.first_key_value() {
+                            key
+                        } else {
+                            next_cursor.step = LedgerCursorStep::Finish;
+                            break;
+                        };
+                        for (key, value) in entry.datastore.range(key..) {
+                            data.push(DATASTORE_KEY_IDENTIFIER);
+                            data.extend(key.to_bytes());
+                            data.extend((value.len() as u64).to_varint_bytes());
+                            data.extend(value);
+                            next_cursor.step = LedgerCursorStep::Datastore(Some(*key));
+                            if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
+                                return Ok((data, Some(next_cursor)));
+                            }
+                        }
+                        next_cursor.step = LedgerCursorStep::Finish;
+                    }
+                    LedgerCursorStep::Finish => {
+                        data.push(DATASTORE_END_IDENTIFIER);
+                        next_cursor.step = LedgerCursorStep::Start;
+                        next_cursor.address = *addr;
+                        break;
+                    }
+                }
+                if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
+                    return Ok((data, Some(next_cursor)));
+                }
+            }
+        }
+        Ok((data, Some(next_cursor)))
+    }
+
+    /// Set a part of the ledger
+    /// Used for bootstrap
+    /// Parameters:
+    /// * cursor: Where we stopped in the ledger
+    ///
+    /// Returns:
+    /// Nothing on success error else.
+    pub fn set_ledger_part(
+        &mut self,
+        old_cursor: Option<LedgerCursor>,
+        data: Vec<u8>,
+    ) -> Result<Option<LedgerCursor>, ModelsError> {
+        let mut data = data.as_bytes();
+        let address_deserializer = AddressDeserializer::new();
+        let hash_deserializer = HashDeserializer::default();
+        let amount_deserializer = AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX));
+        let vecu8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
+        let mut cursor = if let Some(old_cursor) = old_cursor {
+            old_cursor
+        } else {
+            if data.is_empty() {
+                return Ok(None);
+            }
+            let (rest, address) = address_deserializer.deserialize(data).map_err(|_| {
+                ModelsError::DeserializeError("Fail to deserialize address".to_string())
+            })?;
+            data = rest;
+            self.sorted_ledger
+                .entry(address)
+                .or_insert_with(LedgerEntry::default);
+            LedgerCursor {
+                address,
+                step: LedgerCursorStep::Balance,
+            }
+        };
+        while !data.is_empty() {
+            // We want to make one check per loop to check that the cursor isn't finish each loop turn.
+            let (new_state, rest) = match cursor.step {
+                LedgerCursorStep::Start => {
+                    let (rest, address) = address_deserializer.deserialize(data).map_err(|_| {
+                        ModelsError::DeserializeError("Fail to deserialize address".to_string())
+                    })?;
+                    self.sorted_ledger
+                        .entry(address)
+                        .or_insert_with(LedgerEntry::default);
+                    cursor.address = address;
+                    (LedgerCursorStep::Balance, rest)
+                }
+                LedgerCursorStep::Balance => {
+                    let (rest, balance) = amount_deserializer.deserialize(data).map_err(|_| {
+                        ModelsError::DeserializeError("Fail to deserialize amount".to_string())
+                    })?;
+                    self.sorted_ledger
+                        .get_mut(&cursor.address)
+                        .ok_or_else(|| {
+                            ModelsError::InvalidLedgerChange(format!(
+                                "Address: {:#?} not found",
+                                cursor.address
+                            ))
+                        })?
+                        .parallel_balance = balance;
+                    (LedgerCursorStep::Bytecode, rest)
+                }
+                LedgerCursorStep::Bytecode => {
+                    let (rest, bytecode) = vecu8_deserializer.deserialize(data).map_err(|_| {
+                        ModelsError::DeserializeError("Fail to deserialize bytecode".to_string())
+                    })?;
+                    self.sorted_ledger
+                        .get_mut(&cursor.address)
+                        .ok_or_else(|| {
+                            ModelsError::InvalidLedgerChange(format!(
+                                "Address: {:#?} not found",
+                                cursor.address
+                            ))
+                        })?
+                        .bytecode = bytecode;
+                    (LedgerCursorStep::Datastore(None), rest)
+                }
+                LedgerCursorStep::Datastore(_) => {
+                    match data.get(0) {
+                        Some(&DATASTORE_END_IDENTIFIER) => {
+                            cursor.step = LedgerCursorStep::Finish;
+                            continue;
+                        }
+                        Some(_) => (),
+                        None => {
+                            return Err(ModelsError::DeserializeError(
+                                "No identifier for datastore key when excepted".to_string(),
+                            ))
+                        }
+                    };
+                    data = match data.get(1..) {
+                        Some(data) => data,
+                        None => {
+                            return Err(ModelsError::DeserializeError(
+                                "No datastore key when excepted".to_string(),
+                            ))
+                        }
+                    };
+                    let mut entry_parser = tuple((
+                        context("Key of datastore deserialization", |input| {
+                            hash_deserializer.deserialize(input)
+                        }),
+                        context("Value of a key of datastore deserialization", |input| {
+                            vecu8_deserializer.deserialize(input)
+                        }),
+                    ));
+                    let (rest, (key, value)) = entry_parser(data)
+                        .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
+                    self.sorted_ledger
+                        .get_mut(&cursor.address)
+                        .ok_or_else(|| {
+                            ModelsError::InvalidLedgerChange(format!(
+                                "Address: {:#?} not found",
+                                cursor.address
+                            ))
+                        })?
+                        .datastore
+                        .insert(key, value);
+                    (LedgerCursorStep::Datastore(Some(key)), rest)
+                }
+                LedgerCursorStep::Finish => (
+                    LedgerCursorStep::Start,
+                    data.get(1..).ok_or_else(|| {
+                        ModelsError::DeserializeError("Missing end of message".to_string())
+                    })?,
+                ),
+            };
+            cursor.step = new_state;
+            data = rest;
+        }
+        Ok(Some(cursor))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use crate::{FinalLedger, LedgerConfig, LedgerEntry};
+    use massa_hash::Hash;
+    use massa_models::{Address, Amount};
+
+    // NOTE: ignore for now because it will have to be refactored after the disk ledger update
+    #[test]
+    #[ignore]
+    fn test_part_ledger() {
+        let mut ledger: FinalLedger =
+            FinalLedger::new(LedgerConfig::sample(&BTreeMap::new()).0).unwrap();
+        ledger.sorted_ledger.clear();
+        let mut datastore = BTreeMap::new();
+        datastore.insert(Hash::compute_from(&"hello".as_bytes()), vec![4, 5, 6]);
+        datastore.insert(Hash::compute_from(&"world".as_bytes()), vec![4, 5, 6]);
+        let ledger_entry = LedgerEntry {
+            parallel_balance: Amount::from_raw(10),
+            bytecode: vec![1, 2, 3],
+            datastore,
+        };
+        ledger.sorted_ledger.insert(
+            Address::from_bs58_check("xh1fXpp7VuciaCwejMF7ufF19SWv7dFPJ7U6HiTQaeNEFBiV3").unwrap(),
+            ledger_entry,
+        );
+        let (part, cursor) = ledger.get_ledger_part(None).unwrap();
+        let (part2, cursor2) = ledger.get_ledger_part(cursor.clone()).unwrap();
+        let (part3, _) = ledger.get_ledger_part(cursor2.clone()).unwrap();
+        let mut new_ledger: FinalLedger = FinalLedger::new(LedgerConfig {
+            initial_sce_ledger_path: "../massa-node/base_config/initial_sce_ledger.json".into(),
+        })
+        .unwrap();
+        new_ledger.sorted_ledger.clear();
+        let cursor = new_ledger.set_ledger_part(None, part).unwrap();
+        let cursor = new_ledger.set_ledger_part(cursor, part2).unwrap();
+        new_ledger.set_ledger_part(cursor, part3).unwrap();
+        assert_eq!(ledger.sorted_ledger, new_ledger.sorted_ledger);
+    }
+
+    // NOTE: ignore for now because it will have to be refactored after the disk ledger update
+    #[test]
+    #[ignore]
+    fn test_part_ledger_empty() {
+        let mut ledger: FinalLedger =
+            FinalLedger::new(LedgerConfig::sample(&BTreeMap::new()).0).unwrap();
+        ledger.sorted_ledger.clear();
+        let (part, old_cursor) = ledger.get_ledger_part(None).unwrap();
+        assert!(old_cursor.is_none());
+        let mut new_ledger: FinalLedger = FinalLedger::new(LedgerConfig {
+            initial_sce_ledger_path: "../massa-node/base_config/initial_sce_ledger.json".into(),
+        })
+        .unwrap();
+        new_ledger.sorted_ledger.clear();
+        let cursor = new_ledger.set_ledger_part(None, part).unwrap();
+        assert!(cursor.is_none());
+        assert_eq!(old_cursor, cursor);
+        assert_eq!(ledger.sorted_ledger, new_ledger.sorted_ledger);
     }
 }

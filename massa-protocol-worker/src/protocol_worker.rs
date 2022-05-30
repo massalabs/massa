@@ -18,7 +18,6 @@ use massa_protocol_exports::{
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
-use massa_storage::Storage;
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
 use tokio::{
@@ -46,7 +45,6 @@ pub async fn start_protocol_controller(
     max_block_gas: u64,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
-    storage: Storage,
 ) -> Result<
     (
         ProtocolCommandSender,
@@ -69,7 +67,6 @@ pub async fn start_protocol_controller(
             protocol_settings,
             operation_validity_periods,
             max_block_gas,
-            storage,
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
@@ -149,8 +146,6 @@ pub struct ProtocolWorker {
     pub(crate) checked_operations: OperationIds,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
-    /// Shared storage.
-    storage: Storage,
     /// List of ids of operations that we asked to the nodes
     pub(crate) asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
@@ -189,7 +184,6 @@ impl ProtocolWorker {
         protocol_settings: &'static ProtocolSettings,
         operation_validity_periods: u64,
         max_block_gas: u64,
-        storage: Storage,
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
@@ -214,7 +208,6 @@ impl ProtocolWorker {
             checked_endorsements: Default::default(),
             checked_operations: Default::default(),
             checked_headers: Default::default(),
-            storage,
             asked_operations: Default::default(),
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 protocol_settings.operation_batch_buffer_capacity,
@@ -776,7 +769,7 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
         self.network_command_sender
-            .ban(*node_id)
+            .node_ban_by_ids(vec![*node_id])
             .await
             .map_err(|_| ProtocolError::ChannelError("Ban node command send failed".into()))?;
         Ok(())
@@ -1250,14 +1243,13 @@ impl ProtocolWorker {
                 {
                     let slot = block.header.content.slot;
 
-                    // Store block in shared storage.
-                    self.storage.store_block(block_id, block, serialized);
-
                     let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
                     set.insert(block_id);
                     self.stop_asking_blocks(set)?;
                     self.send_protocol_event(ProtocolEvent::ReceivedBlock {
                         block_id,
+                        block,
+                        serialized,
                         slot,
                         operation_set,
                         endorsement_ids,

@@ -8,8 +8,10 @@ edition = "2021"
 
 [dependencies]
 bs58 = { version = "0.4", features = ["check"] }
-secp256k1 = { version = "0.20", features = ["rand-std"] }
+displaydoc = "0.2"
+secp256k1 = { version = "0.22", features = ["rand-std", "global-context"] }
 serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
 # custom modules
 massa_hash = { path = "../massa-hash" }
 

@@ -25,19 +25,19 @@ use tokio::{
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
 impl NetworkCommandSender {
-    /// ban by node
-    pub async fn ban(&self, node_id: NodeId) -> Result<(), NetworkError> {
+    /// ban node(s) by id(s)
+    pub async fn node_ban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::Ban(node_id))
+            .send(NetworkCommand::NodeBanByIds(ids))
             .await
-            .map_err(|_| NetworkError::ChannelError("could not send Ban command".into()))?;
+            .map_err(|_| NetworkError::ChannelError("could not send BanId command".into()))?;
         Ok(())
     }
 
-    /// ban ip
-    pub async fn ban_ip(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    /// ban node(s) by ip(s)
+    pub async fn node_ban_by_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::BanIp(ips))
+            .send(NetworkCommand::NodeBanByIps(ips))
             .await
             .map_err(|_| NetworkError::ChannelError("could not send BanIp command".into()))?;
         Ok(())
@@ -63,10 +63,19 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    /// remove from banned nodes
-    pub async fn unban(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    /// remove from banned node(s) by id(s)
+    pub async fn node_unban_by_ids(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::Unban(ips))
+            .send(NetworkCommand::NodeUnbanByIds(ids))
+            .await
+            .map_err(|_| NetworkError::ChannelError("could not send Unban command".into()))?;
+        Ok(())
+    }
+
+    /// remove from banned node(s) by ip(s)
+    pub async fn node_unban_ips(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::NodeUnbanByIps(ips))
             .await
             .map_err(|_| NetworkError::ChannelError("could not send Unban command".into()))?;
         Ok(())

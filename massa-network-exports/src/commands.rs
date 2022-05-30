@@ -37,7 +37,7 @@
 //! NodeWorker      NetworkWorker          ProtocolWorker
 //!    |               |                         |
 //!    +------------------------------------------------------- Receive a batch of annoucemnt
-//!    .               |                         |              
+//!    .               |                         |
 //!    +-------------->|                         |              NetworkWorker react on previous event. Forward to protocol.
 //!    |               +------------------------>#              - Check in the protocol if we already have operations
 //!    |               |                         #              or not. Build the vector of requirement.
@@ -49,13 +49,13 @@
 //!    |               |                         |
 //!    |               |                         |              > Ask to the node that sent the batch a list of operations
 //!    |               |                         |              > that we don't already know with `NodeCommand::AskForOperations`.
-//!    |               |                         |                 
+//!    |               |                         |
 //!    +-------------->|                         |
 //!    |               +------------------------>#
-//!    |               |                         #              
+//!    |               |                         #
 //!    |               |                         #              > Receive the full operations inside the structure
 //!    |               |                         #              > `AskedOperation`.
-//!    |               |                         #              
+//!    |               |                         #
 //!    |               |                         #              Update local state and the `NodeInfo` of the sender if required.
 //!    |               |                         |
 //!    |               |<------------------------+              Once we received and store the operation, we can propagate it.
@@ -163,12 +163,14 @@ pub enum NetworkCommand {
     GetPeers(oneshot::Sender<Peers>),
     /// get peers for bootstrap server
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
-    /// Ban a peer by his node id
-    Ban(NodeId),
+    /// Ban a list of peer by their node id
+    NodeBanByIds(Vec<NodeId>),
     /// Ban a list of peer by their ip address
-    BanIp(Vec<IpAddr>),
+    NodeBanByIps(Vec<IpAddr>),
+    /// Unban a list of peer by their node id
+    NodeUnbanByIds(Vec<NodeId>),
     /// Unban a list of peer by their ip address
-    Unban(Vec<IpAddr>),
+    NodeUnbanByIps(Vec<IpAddr>),
     /// Send a message that a block is not found to a node
     BlockNotFound {
         /// to node id

@@ -11,16 +11,16 @@
 use std::collections::VecDeque;
 
 use crate::protocol_worker::ProtocolWorker;
+use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
-    signed::Signable,
 };
 use massa_network_exports::NetworkError;
 use massa_protocol_exports::{ProtocolError, ProtocolPoolEvent};
 use massa_time::TimeError;
 use tokio::time::{sleep_until, Instant, Sleep};
-use tracing::{debug, warn};
+use tracing::warn;
 
 /// Structure containing a Batch of `operation_ids` we would like to ask
 /// to a `node_id` now or later. Mainly used in protocol and translated into
@@ -38,58 +38,11 @@ pub struct OperationBatchItem {
 pub type OperationBatchBuffer = VecDeque<OperationBatchItem>;
 
 impl ProtocolWorker {
-    /// On receive a batch of operation ids `op_batch` from another `node_id`
-    /// Execute the following algorithm: [redirect to GitHub](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
-    ///
-    ///```py
-    ///def process_op_batch(op_batch, node_id):
-    ///    ask_set = void HashSet<OperationId>
-    ///    future_set = void HashSet<OperationId>
-    ///    for op_id in op_batch:
-    ///        if not is_op_received(op_id):
-    ///            if (op_id not in asked_ops) or (node_id not in asked_ops(op_id)[1]):
-    ///                if (op_id not in asked_ops) or (asked_ops(op_id)[0] < now - op_batch_proc_period:
-    ///                    ask_set.add(op_id)
-    ///                    asked_ops(op_id)[0] = now
-    ///                    asked_ops(op_id)[1].add(node_id)
-    ///                else:
-    ///                    future_set.add(op_id)
-    ///    if op_batch_buf is not full:
-    ///        op_batch_buf.push(now+op_batch_proc_period, node_id, future_set)
-    ///    ask ask_set to node_id
-    ///```
-    pub(crate) async fn on_operations_announcements_received(
-        &mut self,
-        operations_ids: OperationIds,
-        node_id: NodeId,
-    ) -> Result<(), ProtocolError> {
-        // Add to the buffer, dropping the oldest one if no capacity remains.
-        if self.op_batch_buffer.len() >= self.protocol_settings.operation_batch_buffer_capacity {
-            self.op_batch_buffer.pop_front();
-        }
-        self.op_batch_buffer.push_back(OperationBatchItem {
-            instant: Instant::now(),
-            node_id,
-            operations_ids,
-        });
-        Ok(())
-    }
-
     /// On full operations are received from the network,
     /// - Update the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
     pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
-        let operation_ids: OperationIds = operations
-            .iter()
-            .filter_map(|signed_op| match signed_op.content.compute_id() {
-                Ok(op_id) => Some(op_id),
-                _ => None,
-            })
-            .collect();
-        if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            node_info.known_operations.extend(operation_ids.iter());
-        }
         if self
             .note_operations_from_node(operations, &node_id, true)
             .await
@@ -119,6 +72,48 @@ impl ProtocolWorker {
         Ok(())
     }
 
+    /// When receiving a batch of announcements, buffer it for processing at the next tick.
+    pub(crate) async fn on_operations_announcements_received(
+        &mut self,
+        operations_ids: OperationIds,
+        node_id: NodeId,
+    ) -> Result<(), ProtocolError> {
+        if !operations_ids.is_disjoint(&self.checked_operations) {
+            // Ignore the announcements if it contains ANY operations we already know about.
+            return Ok(());
+        }
+        // Add to the buffer, dropping the oldest one if no capacity remains.
+        if self.op_batch_buffer.len() >= self.protocol_settings.operation_batch_buffer_capacity {
+            self.op_batch_buffer.pop_front();
+        }
+        self.op_batch_buffer.push_back(OperationBatchItem {
+            instant: Instant::now(),
+            node_id,
+            operations_ids,
+        });
+        Ok(())
+    }
+
+    /// On processing a batch of operation ids `op_batch` from another `node_id`
+    /// Execute the following algorithm: [redirect to GitHub](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
+    ///
+    ///```py
+    ///def process_op_batch(op_batch, node_id):
+    ///    ask_set = void HashSet<OperationId>
+    ///    future_set = void HashSet<OperationId>
+    ///    for op_id in op_batch:
+    ///        if not is_op_received(op_id):
+    ///            if (op_id not in asked_ops) or (node_id not in asked_ops(op_id)[1]):
+    ///                if (op_id not in asked_ops) or (asked_ops(op_id)[0] < now - op_batch_proc_period:
+    ///                    ask_set.add(op_id)
+    ///                    asked_ops(op_id)[0] = now
+    ///                    asked_ops(op_id)[1].add(node_id)
+    ///                else:
+    ///                    future_set.add(op_id)
+    ///    if op_batch_buf is not full:
+    ///        op_batch_buf.push(now+op_batch_proc_period, node_id, future_set)
+    ///    ask ask_set to node_id
+    ///```
     pub(crate) async fn update_ask_operation(
         &mut self,
         operation_batch_proc_period_timer: &mut std::pin::Pin<&mut Sleep>,
@@ -131,6 +126,13 @@ impl ProtocolWorker {
             .ok_or(TimeError::TimeOverflowError)?;
         operation_batch_proc_period_timer.set(sleep_until(next_tick));
 
+        let mut count_reask = 0;
+
+        // Process the buffer of batches.
+        // Note that items are removed from the buffer below,
+        // and only if:
+        // 1. sending the corresponding request to network succeeded, or
+        // 2. the corresponding request would have been empty.
         while let Some(batch_item) = self.op_batch_buffer.front() {
             if now < batch_item.instant {
                 break;
@@ -158,14 +160,10 @@ impl ProtocolWorker {
                             .checked_sub(self.protocol_settings.operation_batch_proc_period.into())
                             .ok_or(TimeError::TimeOverflowError)?
                     {
-                        debug!(
-                            "re-ask operation {:?} asked for the first time {:?} millis ago.",
-                            op_id,
-                            wish.0.elapsed().as_millis()
-                        );
                         ask_set.insert(*op_id);
                         wish.0 = now;
                         wish.1.push(batch_item.node_id);
+                        count_reask += 1;
                     }
                 } else {
                     ask_set.insert(*op_id);
@@ -174,14 +172,31 @@ impl ProtocolWorker {
                 }
             } // EndOf for op_id in op_batch:
 
-            if !ask_set.is_empty() {
-                self.network_command_sender
-                    .send_ask_for_operations(batch_item.node_id, ask_set)?;
-
-                // Remove the item from the buffer if sending was successful.
-                let _ = self.op_batch_buffer.pop_front().unwrap();
+            if count_reask > 0 {
+                massa_trace!("re-ask operations.", { "count": count_reask });
             }
-        }
+
+            // If we have operations to ask, try to send the request to network.
+            if !ask_set.is_empty()
+                && self
+                    .network_command_sender
+                    .send_ask_for_operations(batch_item.node_id, ask_set)
+                    .is_err()
+            {
+                massa_trace!(
+                    "Failed to acquire permit to send AskForOperations command",
+                    {}
+                );
+
+                // Stop processing the buffer, since network is busy.
+                break;
+            }
+
+            // Remove the batch item,
+            // if sending it was successful,
+            // or if `ask_set` was empty.
+            let _ = self.op_batch_buffer.pop_front();
+        } // End of batch processing.
 
         Ok(())
     }
@@ -198,9 +213,8 @@ impl ProtocolWorker {
         op_ids: OperationIds,
     ) -> Result<(), ProtocolError> {
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            for op_ids in op_ids.iter() {
-                node_info.known_operations.remove(op_ids);
-            }
+            // remove_known_ops is inefficient when actually removing an entry, but this is almost never the case
+            node_info.remove_known_ops(&op_ids);
         }
         let mut operation_ids = OperationIds::default();
         for op_id in op_ids.iter() {

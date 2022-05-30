@@ -30,8 +30,8 @@ pub struct NodeStatus {
     pub current_time: MassaTime,
     /// current cycle
     pub current_cycle: u64,
-    /// connected nodes (node id, ip address)
-    pub connected_nodes: HashMap<NodeId, IpAddr>,
+    /// connected nodes (node id, ip address, true if the connection is outgoing, false if incoming)
+    pub connected_nodes: HashMap<NodeId, (IpAddr, bool)>,
     /// latest slot, none if now is before genesis timestamp
     pub last_slot: Option<Slot>,
     /// next slot
@@ -75,8 +75,14 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f, "{}", self.network_stats)?;
 
         writeln!(f, "Connected nodes:")?;
-        for (node_id, ip_addr) in &self.connected_nodes {
-            writeln!(f, "\t[\"{}:31245\", \"{}\"],", ip_addr, node_id)?;
+        for (node_id, (ip_addr, is_outgoing)) in &self.connected_nodes {
+            writeln!(
+                f,
+                "Node's ID: {} / IP address: {} / {} connection",
+                node_id,
+                ip_addr,
+                if *is_outgoing { "Out" } else { "In" }
+            )?
         }
         Ok(())
     }

@@ -1,6 +1,6 @@
 .. index:: web; decentralized, decentralized web
 
-.. _sc-decentralized-web:
+.. _web-hosting:
 
 =========================
 Massa's decentralized web
@@ -30,7 +30,7 @@ To upload a website to Massa's decentralized web you can use the following smart
         return 0;
     }
 
-This smart-contract and the dependencies are available `here <https://github.com/massalabs/massa-sc-examples/tree/fix-8/website>`_.
+This smart-contract and the dependencies are available `here <https://github.com/massalabs/massa-sc-examples/tree/main/website>`_.
 
 Setting the DNS
 ===============

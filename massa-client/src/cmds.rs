@@ -5,6 +5,7 @@ use anyhow::{anyhow, bail, Result};
 use console::style;
 use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
+use massa_models::node::NodeId;
 use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
@@ -16,6 +17,7 @@ use massa_time::MassaTime;
 use massa_wallet::{Wallet, WalletError};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::path::PathBuf;
@@ -27,7 +29,7 @@ use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 /// the order they are defined is the order they are displayed in so be careful
 /// Maybe it would be worth renaming some of them for consistency
 #[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
+#[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
     #[strum(ascii_case_insensitive, message = "exit the client gracefully")]
     exit,
@@ -37,17 +39,31 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "unban given IP addresses"
+        props(args = "IpAddr1 IpAddr2 ..."),
+        message = "unban given IP address(es)"
     )]
-    unban,
+    node_unban_by_ip,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "[IpAddr]"),
-        message = "ban given IP addresses"
+        props(args = "Id1 Id2 ..."),
+        message = "unban given id(s)"
     )]
-    ban,
+    node_unban_by_id,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "IpAddr1 IpAddr2 ..."),
+        message = "ban given IP address(es)"
+    )]
+    node_ban_by_ip,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "Id1 Id2 ..."),
+        message = "ban given id(s)"
+    )]
+    node_ban_by_id,
 
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
@@ -365,9 +381,9 @@ impl Command {
                 Ok(Box::new(()))
             }
 
-            Command::unban => {
+            Command::node_unban_by_ip => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.unban(ips).await {
+                match client.private.node_unban_by_ip(ips).await {
                     Ok(()) => {
                         if !json {
                             println!("Request of unbanning successfully sent!")
@@ -378,9 +394,35 @@ impl Command {
                 Ok(Box::new(()))
             }
 
-            Command::ban => {
+            Command::node_unban_by_id => {
+                let ids = parse_vec::<NodeId>(parameters)?;
+                match client.private.node_unban_by_id(ids).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of unbanning successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                };
+                Ok(Box::new(()))
+            }
+
+            Command::node_ban_by_ip => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
-                match client.private.ban(ips).await {
+                match client.private.node_ban_by_ip(ips).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of banning successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                }
+                Ok(Box::new(()))
+            }
+
+            Command::node_ban_by_id => {
+                let ids = parse_vec::<NodeId>(parameters)?;
+                match client.private.node_ban_by_id(ids).await {
                     Ok(()) => {
                         if !json {
                             println!("Request of banning successfully sent!")
@@ -586,16 +628,14 @@ impl Command {
                 for key in parse_vec::<Address>(parameters)?.into_iter() {
                     match wallet.remove_address(key) {
                         Ok(_) => {
-                            res.push_str(&format!("Removed address {} from the wallet\n", key));
+                            let _ = writeln!(res, "Removed address {} from the wallet", key);
                         }
                         Err(WalletError::MissingKeyError(_)) => {
-                            res.push_str(&format!("Address {} wasn't in the wallet\n", key));
+                            let _ = writeln!(res, "Address {} wasn't in the wallet", key);
                         }
                         Err(_) => {
-                            res.push_str(&format!(
-                                "Failed to remove address {} from the wallet\n",
-                                key
-                            ));
+                            let _ =
+                                writeln!(res, "Failed to remove address {} from the wallet", key);
                         }
                     }
                 }
@@ -744,9 +784,9 @@ impl Command {
                     let (days, hours, mins, secs) =
                         e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation milliseconds is zero
 
-                    res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
+                    let _ = write!(res, "{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs);
                 } else {
-                    res.push_str("There is no end !")
+                    let _ = write!(res, "There is no end !");
                 }
                 if !json {
                     println!("{}", res);

@@ -96,7 +96,7 @@ where
         res.extend(self.content.to_bytes_compact()?);
 
         // signature
-        res.extend(&self.signature.to_bytes());
+        res.extend(self.signature.to_bytes());
 
         Ok(res)
     }
