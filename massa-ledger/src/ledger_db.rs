@@ -84,7 +84,7 @@ macro_rules! data_prefix {
 /// This assumes the key bytes are ordered in lexicographical order.
 /// Since key length is not limited, for some case we return `None` because there is
 /// no bounded limit (every keys in the serie `[]`, `[255]`, `[255, 255]` ...).
-pub fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
+fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
     let mut end_range = prefix.to_vec();
     while let Some(0xff) = end_range.last() {
         end_range.pop();
@@ -95,6 +95,12 @@ pub fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
     } else {
         None
     }
+}
+
+#[test]
+fn test_end_prefix() {
+    assert_eq!(end_prefix(&[5, 6, 7]), Some(vec![5, 6, 8]));
+    assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));
 }
 
 // TODO: save attached slot in metadata for a lighter bootstrap after disconnection

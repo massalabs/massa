@@ -8,7 +8,7 @@ edition = "2021"
 displaydoc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tempfile = { version = "3.2", optional = true } # use with testing feature
+tempfile = { version = "3.2", optional = true }    # use with testing feature
 thiserror = "1.0"
 rocksdb = "0.18.0"
 nom = "7.1"
@@ -24,5 +24,5 @@ massa_signature = { path = "../massa-signature" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-instrument = [ "massa_models/instrument"]
+instrument = ["massa_models/instrument"]
 testing = ["tempfile", "massa_models/testing"]
