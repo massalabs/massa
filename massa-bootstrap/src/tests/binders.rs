@@ -4,8 +4,8 @@ use super::tools::get_keys;
 use crate::messages::{BootstrapMessageClient, BootstrapMessageServer};
 use crate::BootstrapSettings;
 use crate::{
-    tests::tools::get_bootstrap_config, BootstrapClientBinder, BootstrapPeers,
-    BootstrapServerBinder,
+    client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
+    tests::tools::get_bootstrap_config, BootstrapPeers,
 };
 use massa_models::Version;
 use massa_signature::PrivateKey;

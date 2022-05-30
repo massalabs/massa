@@ -338,7 +338,7 @@ impl SerializeCompact for LedgerChanges {
         })?;
         res.extend(entry_count.to_varint_bytes());
         for (address, data) in self.0.iter() {
-            res.extend(&address.to_bytes());
+            res.extend(address.to_bytes());
             res.extend(&data.to_bytes_compact()?);
         }
 
@@ -356,7 +356,7 @@ impl DeserializeCompact for LedgerChanges {
 
         let mut ledger_subset = LedgerChanges(Map::default());
         for _ in 0..entry_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
 
             let (data, delta) = LedgerChange::from_bytes_compact(&buffer[cursor..])?;

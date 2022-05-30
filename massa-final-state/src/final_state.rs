@@ -96,12 +96,9 @@ impl FinalState {
         let pos_slot = min_slot
             .map(|min_slot| self.changes_history.partition_point(|(s, _)| s > &min_slot))
             .unwrap_or(0);
-        println!("server: in get_part_state_changes");
         let mut res_changes: Vec<StateChanges> = Vec::new();
         for (_, changes) in self.changes_history.range(pos_slot..) {
-            println!("server: in loop");
             let mut elem: StateChanges = StateChanges::default();
-
             //Get ledger change that concern address < max_address.
             let ledger_changes: LedgerChanges = LedgerChanges(
                 changes
