@@ -3,10 +3,14 @@
 //! Module to interact with the disk ledger
 
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_models::{Address, Amount, DeserializeCompact, SerializeCompact, Slot};
+use massa_models::{
+    Address, Amount, DeserializeCompact, ModelsError, SerializeCompact, Slot, U64VarIntSerializer,
+};
+use massa_serialization::Serializer;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
+use std::ops::Bound;
 use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
@@ -41,7 +45,7 @@ pub(crate) struct LedgerDB(pub(crate) DB);
 ///
 /// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
 macro_rules! balance_key {
-    ($addr:ident) => {
+    ($addr:expr) => {
         [&[BALANCE_IDENT], &$addr.to_bytes()[..]].concat()
     };
 }
@@ -51,7 +55,7 @@ macro_rules! balance_key {
 /// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
 /// NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
-    ($addr:ident) => {
+    ($addr:expr) => {
         [&[BYTECODE_IDENT], &$addr.to_bytes()[..]].concat()
     };
 }
@@ -60,14 +64,14 @@ macro_rules! bytecode_key {
 ///
 /// TODO: add a separator identifier if the need comes to have multiple datastores
 macro_rules! data_key {
-    ($addr:ident, $key:ident) => {
+    ($addr:expr, $key:expr) => {
         [&$addr.to_bytes()[..], &$key.to_bytes()[..]].concat()
     };
 }
 
 /// Datastore entry prefix formatting macro
 macro_rules! data_prefix {
-    ($addr:ident) => {
+    ($addr:expr) => {
         &$addr.to_bytes()[..]
     };
 }
@@ -307,6 +311,41 @@ impl LedgerDB {
         ) {
             batch.delete_cf(handle, key);
         }
+    }
+
+    /// Get a part of the disk Ledger.
+    /// Mainly used in the bootstrap process.
+    ///
+    /// # Arguments
+    /// * last_key: key where the part retrieving must start
+    pub fn get_ledger_part(&self, last_key: Option<Vec<u8>>) -> Result<Vec<u8>, ModelsError> {
+        let ser = U64VarIntSerializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
+        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+
+        let mut part = Vec::new();
+        let opt = ReadOptions::default();
+
+        let mut db_iterator = if let Some(key) = last_key {
+            let iter =
+                self.0
+                    .iterator_cf_opt(handle, opt, IteratorMode::From(&key, Direction::Forward));
+            iter.next();
+            iter
+        } else {
+            self.0.iterator_cf_opt(handle, opt, IteratorMode::Start)
+        };
+        for (key, entry) in db_iterator {
+            part.extend(key.to_vec());
+            part.extend(
+                ser.serialize(&entry.len().try_into().expect("critical: conversion error"))?,
+            );
+            part.extend(entry.to_vec());
+        }
+        Ok(part)
+    }
+
+    pub fn set_ledger_part(&self, data: Vec<u8>) -> Result<(), ModelsError> {
+        Ok(())
     }
 }
 
