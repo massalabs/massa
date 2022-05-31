@@ -16,15 +16,16 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
-use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
+use massa_ledger::{Applicable, LedgerEntry, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
-use massa_models::Slot;
 use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
+use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
+use std::usize;
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -62,6 +63,12 @@ pub(crate) struct ExecutionState {
     execution_interface: Box<dyn Interface>,
     /// Shared storage across all modules
     storage: Storage,
+}
+
+pub(crate) enum HistorySearchResult<T> {
+    Found(T),
+    NotFound,
+    Deleted,
 }
 
 impl ExecutionState {
@@ -229,15 +236,8 @@ impl ExecutionState {
         }
     }
 
-    /// Returns the state changes accumulated from the beginning of the output history,
-    /// up until a provided slot (excluded).
-    /// Only used in the VM main loop because the lock on the final ledger
-    /// carried by the returned `SpeculativeLedger` is not held.
-    /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry
-    /// by scanning through history from end to beginning
-    /// `https://github.com/massalabs/massa/issues/2343`
-    pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> StateChanges {
-        // check that the slot is within the reach of history
+    /// Check that the slot is within the reach of history
+    fn verify_active_slot(&self, slot: Slot) {
         if slot <= self.final_cursor {
             panic!("cannot execute at a slot before finality");
         }
@@ -248,7 +248,60 @@ impl ExecutionState {
         if slot > max_slot {
             panic!("cannot execute at a slot beyond active cursor + 1");
         }
+    }
 
+    /// Computes the index of a given slot in the active history
+    fn get_active_index(&self, slot: Slot) -> Option<usize> {
+        if let Some(hist_front) = &self.active_history.front() {
+            slot.slots_since(&hist_front.slot, self.config.thread_count)
+                .map(|v| v.try_into().ok())
+                .ok()
+                .flatten()
+        } else {
+            None
+        }
+    }
+
+    /// Lazily query (from end to beginning) the active balance of an address at a given slot.
+    /// Returns None if the address balance could not be determined from the active history.
+    ///
+    /// NOTE: temporary, needs to be done in the speculative ledger
+    pub fn fetch_active_history_balance(
+        &self,
+        slot: Slot,
+        addr: &Address,
+    ) -> HistorySearchResult<Amount> {
+        self.verify_active_slot(slot);
+
+        if let Some(n) = self.get_active_index(slot) {
+            let iter = self.active_history.iter().skip(n).rev();
+
+            for output in iter {
+                match output.state_changes.ledger_changes.0.get(addr) {
+                    Some(SetUpdateOrDelete::Set(v)) => {
+                        return HistorySearchResult::Found(v.parallel_balance)
+                    }
+                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                        parallel_balance: SetOrKeep::Set(v),
+                        ..
+                    })) => return HistorySearchResult::Found(*v),
+                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                    _ => (),
+                }
+            }
+        }
+        HistorySearchResult::NotFound
+    }
+
+    /// Returns the state changes accumulated from the beginning of the output history,
+    /// up until a provided slot (excluded).
+    /// Only used in the VM main loop because the lock on the final ledger
+    /// carried by the returned `SpeculativeLedger` is not held.
+    /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry
+    /// by scanning through history from end to beginning
+    /// `https://github.com/massalabs/massa/issues/2343`
+    pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> StateChanges {
+        self.verify_active_slot(slot);
         // gather the history of state changes in the relevant history range
         let mut accumulated_changes = StateChanges::default();
         for previous_output in &self.active_history {
@@ -769,8 +822,34 @@ impl ExecutionState {
         Ok(context_guard!(self).settle_slot())
     }
 
+    /// Gets a parallel balance both at the latest final and active executed slots
+    ///
+    /// NOTE: temporary, needs to be done in the speculative ledger
+    #[allow(dead_code)]
+    pub fn get_final_and_active_parallel_balance(
+        &self,
+        address: &Address,
+    ) -> (Option<Amount>, Option<Amount>) {
+        let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
+        let search_result = self.fetch_active_history_balance(next_slot, address);
+        (
+            final_balance,
+            match search_result {
+                HistorySearchResult::Found(active_balance) => Some(active_balance),
+                HistorySearchResult::NotFound => final_balance,
+                HistorySearchResult::Deleted => None,
+            },
+        )
+    }
+
     /// Gets a full ledger entry both at the latest final and active executed slots
     /// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`
+    /// TODO: remove when API is updated
+    ///
     ///
     /// # returns
     /// `(final_entry, active_entry)`

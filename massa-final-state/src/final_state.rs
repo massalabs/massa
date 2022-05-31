@@ -10,7 +10,7 @@ use crate::{
     state_changes::StateChanges,
 };
 use massa_async_pool::AsyncPool;
-use massa_ledger::{Applicable, FinalLedger};
+use massa_ledger::FinalLedger;
 use massa_models::Slot;
 use std::collections::VecDeque;
 
@@ -101,7 +101,8 @@ impl FinalState {
         self.slot = slot;
 
         // apply changes
-        self.ledger.apply(changes.ledger_changes.clone());
+        self.ledger
+            .apply_changes_at_slot(changes.ledger_changes.clone(), self.slot);
         self.async_pool
             .apply_changes_unchecked(changes.async_pool_changes.clone());
 

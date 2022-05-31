@@ -139,8 +139,10 @@ async fn launch() -> (
     let t0 = *T0;
 
     // init final state
+    // HERE
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
+        disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,

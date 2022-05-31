@@ -9,4 +9,6 @@ use std::path::PathBuf;
 pub struct LedgerConfig {
     /// initial SCE ledger file
     pub initial_sce_ledger_path: PathBuf,
+    /// disk ledger db directory
+    pub disk_ledger_path: PathBuf,
 }
