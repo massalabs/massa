@@ -72,7 +72,8 @@ impl FinalState {
         self.slot = slot;
 
         // apply changes
-        self.ledger.apply(changes.ledger_changes.clone());
+        self.ledger
+            .apply_changes_at_slot(changes.ledger_changes.clone(), self.slot);
         self.async_pool
             .apply_changes_unchecked(changes.async_pool_changes.clone());
 

@@ -246,6 +246,24 @@ impl Slot {
             ))
         }
     }
+
+    /// Counts the number of slots since the one passed in parameter and until self
+    /// If the two slots are equal, the returned value is `0`.
+    /// If the passed slot is strictly higher than self, an error is returned
+    pub fn slots_since(&self, s: &Slot, thread_count: u8) -> Result<u64, ModelsError> {
+        // if s > self, return an error
+        if s > self {
+            return Err(ModelsError::PeriodOverflowError);
+        }
+
+        // compute the number of slots from s to self
+        Ok((self.period - s.period)
+            .checked_mul(thread_count as u64)
+            .ok_or(ModelsError::PeriodOverflowError)?
+            .checked_add(self.thread as u64)
+            .ok_or(ModelsError::PeriodOverflowError)?
+            .saturating_sub(s.thread as u64))
+    }
 }
 
 impl SerializeCompact for Slot {

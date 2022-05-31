@@ -17,12 +17,6 @@ even in a fully decentralized network with thousands of nodes.
 An easy-to-read blog post introduction with videos is written
 `here <https://massa.net/blog/post/0/>`_.
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Hackathon onboarding
-
-   hackathon.rst
-
 Testnet
 -------
 
@@ -85,18 +79,24 @@ Contents
 
    testnet/install.rst
    testnet/running.rst
+   testnet/update.rst
    testnet/wallet.rst
    testnet/staking.rst
    testnet/routability.rst
    testnet/rewards.rst
    testnet/faq.rst
+   testnet/community-resources.rst
 
 .. toctree::
    :maxdepth: 2
    :caption: Technical documentation
 
    technical-doc/api.rst
-
+   technical-doc/glossary.rst
+   technical-doc/concurrency.rst
+   technical-doc/vm-block-feed.rst
+   technical-doc/vm-ledger-interaction.rst
+   technical-doc/dummy-network-generation.rst
 
 * :ref:`genindex`
 * :ref:`modindex`

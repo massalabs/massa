@@ -8,7 +8,7 @@ MAS, so in theory, there could be 5 million people staking.
 
 Addresses are randomly selected to stake (create blocks) in all threads,
 based on the number of rolls they possess. The list of stakers and their
-rolls can be seen `there <https://test.massa.net/#staking>`_.
+rolls can be seen `there <https://massa.net/testnet/staking/>`_.
 
 Rolls can be bought with Massa coins or sold to get the coins back. If
 you already have more than 100 Massa, you can continue this tutorial,

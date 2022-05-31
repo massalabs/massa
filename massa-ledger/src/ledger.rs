@@ -2,11 +2,12 @@
 
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
-use crate::cursor::{LedgerCursor, LedgerCursorStep};
+use crate::cursor::LedgerCursorStep;
 use crate::ledger_changes::LedgerChanges;
+use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use crate::ledger_entry::LedgerEntry;
-use crate::types::{Applicable, SetUpdateOrDelete};
-use crate::{LedgerConfig, LedgerError};
+use crate::types::{SetUpdateOrDelete};
+use crate::{LedgerConfig, LedgerError, LedgerCursor};
 use massa_hash::{Hash, HashDeserializer};
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
@@ -18,51 +19,19 @@ use nom::sequence::tuple;
 use nom::AsBytes;
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included, Unbounded};
+use massa_models::{DeserializeCompact, Slot};
+use rocksdb::WriteBatch;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
 /// The ledger size can be very high: it can exceed 1 terabyte.
 /// To allow for storage on disk, the ledger uses trees and has `O(log(N))` access, insertion and deletion complexity.
-///
-/// Note: currently the ledger is stored in RAM. TODO put it on the hard drive with cache.
 #[derive(Debug)]
 pub struct FinalLedger {
     /// ledger configuration
     pub(crate) _config: LedgerConfig,
     /// ledger tree, sorted by address
-    pub(crate) sorted_ledger: BTreeMap<Address, LedgerEntry>,
-}
-
-/// Allows applying `LedgerChanges` to the final ledger
-impl Applicable<LedgerChanges> for FinalLedger {
-    fn apply(&mut self, changes: LedgerChanges) {
-        // for all incoming changes
-        for (addr, change) in changes.0 {
-            match change {
-                // the incoming change sets a ledger entry to a new one
-                SetUpdateOrDelete::Set(new_entry) => {
-                    // inserts/overwrites the entry with the incoming one
-                    self.sorted_ledger.insert(addr, new_entry);
-                }
-
-                // the incoming change updates an existing ledger entry
-                SetUpdateOrDelete::Update(entry_update) => {
-                    // applies the updates to the entry
-                    // if the entry does not exist, inserts a default one and applies the updates to it
-                    self.sorted_ledger
-                        .entry(addr)
-                        .or_insert_with(Default::default)
-                        .apply(entry_update);
-                }
-
-                // the incoming change deletes a ledger entry
-                SetUpdateOrDelete::Delete => {
-                    // delete the entry, if it exists
-                    self.sorted_ledger.remove(&addr);
-                }
-            }
-        }
-    }
+    sorted_ledger: LedgerDB,
 }
 
 /// Macro used to shorten file error returns
@@ -87,23 +56,28 @@ const DATASTORE_KEY_IDENTIFIER: u8 = 1;
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
+        let mut sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());
+        let mut batch = WriteBatch::default();
+
         // load the ledger tree from file
-        let sorted_ledger = serde_json::from_str::<BTreeMap<Address, Amount>>(
+        let initial_ledger = serde_json::from_str::<BTreeMap<Address, Amount>>(
             &std::fs::read_to_string(&config.initial_sce_ledger_path)
                 .map_err(init_file_error!("loading", config))?,
         )
-        .map_err(init_file_error!("parsing", config))?
-        .into_iter()
-        .map(|(address, balance)| {
-            (
+        .map_err(init_file_error!("parsing", config))?;
+
+        // put_entry initial ledger values in the disk db
+        for (address, amount) in &initial_ledger {
+            sorted_ledger.put_entry(
                 address,
                 LedgerEntry {
-                    parallel_balance: balance,
+                    parallel_balance: *amount,
                     ..Default::default()
                 },
-            )
-        })
-        .collect();
+                &mut batch,
+            );
+        }
+        sorted_ledger.write_batch(batch);
 
         // generate the final ledger
         Ok(FinalLedger {
@@ -112,23 +86,49 @@ impl FinalLedger {
         })
     }
 
-    /// Gets a copy of a full ledger entry.
-    ///
-    /// # Returns
-    /// A clone of the whole `LedgerEntry`, or None if not found.
-    ///
-    /// TODO: in the future, never manipulate full ledger entries because their datastore can be huge
-    /// `https://github.com/massalabs/massa/issues/2342`
-    pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
-        self.sorted_ledger.get(addr).cloned()
+    /// Allows applying `LedgerChanges` to the final ledger
+    pub fn apply_changes_at_slot(&mut self, changes: LedgerChanges, slot: Slot) {
+        // create the batch
+        let mut batch = WriteBatch::default();
+        // for all incoming changes
+        for (addr, change) in changes.0 {
+            match change {
+                // the incoming change sets a ledger entry to a new one
+                SetUpdateOrDelete::Set(new_entry) => {
+                    // inserts/overwrites the entry with the incoming one
+                    self.sorted_ledger.put_entry(&addr, new_entry, &mut batch);
+                }
+                // the incoming change updates an existing ledger entry
+                SetUpdateOrDelete::Update(entry_update) => {
+                    // applies the updates to the entry
+                    // if the entry does not exist, inserts a default one and applies the updates to it
+                    self.sorted_ledger
+                        .update_entry(&addr, entry_update, &mut batch);
+                }
+                // the incoming change deletes a ledger entry
+                SetUpdateOrDelete::Delete => {
+                    // delete the entry, if it exists
+                    self.sorted_ledger.delete_entry(&addr, &mut batch);
+                }
+            }
+        }
+        self.sorted_ledger.set_metadata(slot, &mut batch);
+        self.sorted_ledger.write_batch(batch);
     }
+
 
     /// Gets the parallel balance of a ledger entry
     ///
     /// # Returns
     /// The parallel balance, or None if the ledger entry was not found
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
-        self.sorted_ledger.get(addr).map(|v| v.parallel_balance)
+        self.sorted_ledger
+            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .map(|bytes| {
+                Amount::from_bytes_compact(&bytes)
+                    .expect("critical: invalid balance format")
+                    .0
+            })
     }
 
     /// Gets a copy of the bytecode of a ledger entry
@@ -136,7 +136,8 @@ impl FinalLedger {
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
-        self.sorted_ledger.get(addr).map(|v| v.bytecode.clone())
+        self.sorted_ledger
+            .get_sub_entry(addr, LedgerSubEntry::Bytecode)
     }
 
     /// Checks if a ledger entry exists
@@ -144,7 +145,10 @@ impl FinalLedger {
     /// # Returns
     /// true if it exists, false otherwise.
     pub fn entry_exists(&self, addr: &Address) -> bool {
-        self.sorted_ledger.contains_key(addr)
+        // note: document the "may"
+        self.sorted_ledger
+            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .is_some()
     }
 
     /// Gets a copy of the value of a datastore entry for a given address.
@@ -157,8 +161,7 @@ impl FinalLedger {
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
     pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         self.sorted_ledger
-            .get(addr)
-            .and_then(|v| v.datastore.get(key).cloned())
+            .get_sub_entry(addr, LedgerSubEntry::Datastore(*key))
     }
 
     /// Checks for the existence of a datastore entry for a given address.
@@ -171,8 +174,24 @@ impl FinalLedger {
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
     pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
         self.sorted_ledger
-            .get(addr)
-            .map_or(false, |v| v.datastore.contains_key(key))
+            .get_sub_entry(addr, LedgerSubEntry::Datastore(*key))
+            .is_some()
+    }
+
+    /// # Returns
+    /// A copy of the datastore sorted by key
+    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+        self.sorted_ledger.get_entire_datastore(addr)
+    }
+
+    /// TODO: remove when API is updated
+    pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
+        self.get_parallel_balance(addr)
+            .map(|parallel_balance| LedgerEntry {
+                parallel_balance,
+                bytecode: self.get_bytecode(addr).unwrap_or_default(),
+                datastore: self.get_entire_datastore(addr),
+            })
     }
 
     /// Get a part of the ledger
@@ -187,10 +206,12 @@ impl FinalLedger {
         cursor: Option<LedgerCursor>,
     ) -> Result<(Vec<u8>, Option<LedgerCursor>), ModelsError> {
         let mut next_cursor = if let Some(cursor) = cursor.or_else(|| {
-            self.sorted_ledger
-                .first_key_value()
-                .map(|(&address, _)| LedgerCursor {
-                    address,
+            // NOTE FOR THOMAS: Add this to a method in LedgerDB.
+            let mut iterator = self.sorted_ledger
+            .0.raw_iterator();
+            iterator.seek_to_first();
+            iterator.key().map(|key| LedgerCursor {
+                    address: Address::from_bytes(&key[1..].try_into().unwrap()),
                     step: LedgerCursorStep::Start,
                 })
         }) {
@@ -412,6 +433,7 @@ impl FinalLedger {
         }
         Ok(Some(cursor))
     }
+
 }
 
 #[cfg(test)]
@@ -422,9 +444,7 @@ mod tests {
     use massa_hash::Hash;
     use massa_models::{Address, Amount};
 
-    // NOTE: ignore for now because it will have to be refactored after the disk ledger update
     #[test]
-    #[ignore]
     fn test_part_ledger() {
         let mut ledger: FinalLedger =
             FinalLedger::new(LedgerConfig::sample(&BTreeMap::new()).0).unwrap();
@@ -455,9 +475,7 @@ mod tests {
         assert_eq!(ledger.sorted_ledger, new_ledger.sorted_ledger);
     }
 
-    // NOTE: ignore for now because it will have to be refactored after the disk ledger update
     #[test]
-    #[ignore]
     fn test_part_ledger_empty() {
         let mut ledger: FinalLedger =
             FinalLedger::new(LedgerConfig::sample(&BTreeMap::new()).0).unwrap();
