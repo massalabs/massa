@@ -277,7 +277,7 @@ Raspberry Pi problem "Thread 'main' panicked"
 
 If you encountered an error message such as:
 
-"Thread 'main' panicked at 'called Option::unwrap() on aNone value', models/src/hhasher.rs:35:46", this is a known problem on older Raspberry Pi,
+"Thread 'main' panicked at 'called Option::unwrap() on a None value', models/src/hasher.rs:35:46", this is a known problem on older Raspberry Pi,
 especially with Raspbian. Try installing Debian.
 
 Please note, running a Massa node on a Raspberry Pi is ambitious and will probably not work that well. We don't
