@@ -31,7 +31,7 @@ pub struct FinalLedger {
     /// ledger configuration
     pub(crate) _config: LedgerConfig,
     /// ledger tree, sorted by address
-    sorted_ledger: LedgerDB,
+    pub(crate) sorted_ledger: LedgerDB,
 }
 
 /// Macro used to shorten file error returns

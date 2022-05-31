@@ -30,19 +30,14 @@ impl Default for FinalState {
     }
 }
 
-impl FinalStateConfig {
-    /// Get sample final state configuration
-    pub fn sample() -> (Self, NamedTempFile, TempDir) {
-        let (ledger_config, keep_file, keep_dir) = LedgerConfig::sample(&BTreeMap::new());
-        (
-            FinalStateConfig {
-                ledger_config,
-                async_pool_config: AsyncPoolConfig::default(),
-                final_history_length: 10,
-                thread_count: 2,
-            },
-            keep_file,
-            keep_dir,
-        )
+/// Default value of `FinalStateConfig` used for tests
+impl Default for FinalStateConfig {
+    fn default() -> Self {
+        FinalStateConfig {
+            ledger_config: LedgerConfig::default(),
+            async_pool_config: AsyncPoolConfig::default(),
+            final_history_length: 10,
+            thread_count: 2,
+        }
     }
 }

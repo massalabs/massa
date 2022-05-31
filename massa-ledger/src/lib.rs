@@ -65,13 +65,15 @@ pub use config::LedgerConfig;
 pub use cursor::{LedgerCursor, LedgerCursorDeserializer, LedgerCursorSerializer};
 pub use error::LedgerError;
 pub use ledger::FinalLedger;
-pub use ledger_changes::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+pub use ledger_changes::{
+    LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, LedgerEntryUpdate,
+};
 pub use ledger_entry::LedgerEntry;
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(feature = "testing")]
 /// test exports
 pub mod test_exports;

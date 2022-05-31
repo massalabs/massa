@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 /// This file defines testing tools related to the configuration
-use crate::{FinalLedger, LedgerConfig};
+use crate::{ledger_db::LedgerDB, FinalLedger, LedgerConfig};
 use massa_models::{Address, Amount};
 use std::collections::BTreeMap;
 use std::io::Seek;
@@ -12,7 +12,8 @@ impl Default for FinalLedger {
     fn default() -> Self {
         FinalLedger {
             _config: Default::default(),
-            sorted_ledger: BTreeMap::new(),
+            //TODO: Aurelien change
+            sorted_ledger: LedgerDB::new("".into()),
         }
     }
 }

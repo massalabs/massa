@@ -4,6 +4,7 @@
 
 use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_models::address::AddressDeserializer;
+use massa_models::constants::default::MAXIMUM_BOOTSTRAP_MESSAGE_BYTES;
 use massa_models::{
     Address, Amount, DeserializeCompact, ModelsError, SerializeCompact, Slot, U64VarIntSerializer,
     VecU8Deserializer, VecU8Serializer,
@@ -11,7 +12,6 @@ use massa_models::{
 use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
-use nom::AsBytes;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
@@ -330,8 +330,8 @@ impl LedgerDB {
         let mut part = Vec::new();
         let opt = ReadOptions::default();
 
-        let mut db_iterator = if let Some(key) = last_key {
-            let iter =
+        let db_iterator = if let Some(key) = last_key {
+            let mut iter =
                 self.0
                     .iterator_cf_opt(handle, opt, IteratorMode::From(&key, Direction::Forward));
             iter.next();
@@ -340,13 +340,15 @@ impl LedgerDB {
             self.0.iterator_cf_opt(handle, opt, IteratorMode::Start)
         };
         for (key, entry) in db_iterator {
-            part.extend(key.to_vec());
-            part.extend(ser.serialize(&entry.to_vec())?);
+            if part.len() < (MAXIMUM_BOOTSTRAP_MESSAGE_BYTES as usize) {
+                part.extend(key.to_vec());
+                part.extend(ser.serialize(&entry.to_vec())?);
+            }
         }
         Ok(part)
     }
 
-    pub fn set_ledger_part(&self, data: Vec<u8>) -> Result<(), ModelsError> {
+    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<(), ModelsError> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let address_deserializer = AddressDeserializer::new();
         let hash_deserializer = HashDeserializer::new();
@@ -354,7 +356,7 @@ impl LedgerDB {
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let mut batch = WriteBatch::default();
         // NOTE: We deserialize to address to go back directly to vec u8 because we want to perform security check because this data can come from the network.
-        let (rest, part) = many0(|input: &[u8]| {
+        let (rest, _) = many0(|input: &'a [u8]| {
             match input.get(0) {
                 Some(ident) if *ident == BALANCE_IDENT => {
                     // Safe because we matched that there is a first byte just above.
@@ -374,13 +376,13 @@ impl LedgerDB {
                     batch.put_cf(handle, bytecode_key!(address), bytecode);
                     Ok((rest, ()))
                 }
-                Some(ident) => {
+                Some(_) => {
                     // Safe because we matched that there is a first byte just above.
                     let (rest, (address, key, value)) = tuple((
                         |input| address_deserializer.deserialize(input),
                         |input| hash_deserializer.deserialize(input),
                         |input| vec_u8_deserializer.deserialize(input),
-                    ))(&input[1..])?;
+                    ))(&input[..])?;
                     batch.put_cf(handle, data_key!(address, key), value);
                     Ok((rest, ()))
                 }
@@ -391,71 +393,103 @@ impl LedgerDB {
                     )))
                 }
             }
-        })(data.as_bytes())
-        .map_err(|_| ModelsError::SerializeError("Error".to_string()))?;
+        })(&data[..])
+        .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
         if rest.is_empty() {
             self.0.write(batch).expect(CRUD_ERROR);
             Ok(())
         } else {
-            Err(ModelsError::SerializeError("Error".to_string()))
+            Err(ModelsError::SerializeError(
+                "rest is not empty.".to_string(),
+            ))
         }
     }
 }
 
-/// Functional test of LedgerDB
-#[test]
-fn test_ledger_db() {
-    use massa_models::Amount;
+#[cfg(feature = "testing")]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use massa_hash::Hash;
+    use massa_models::{Address, Amount, DeserializeCompact};
     use massa_signature::{derive_public_key, generate_random_private_key};
+    use rocksdb::WriteBatch;
     use tempfile::TempDir;
 
-    // init addresses
-    let pub_a = derive_public_key(&generate_random_private_key());
-    let pub_b = derive_public_key(&generate_random_private_key());
-    let a = Address::from_public_key(&pub_a);
-    let b = Address::from_public_key(&pub_b);
-
-    // init data
-    let mut data = BTreeMap::new();
-    data.insert(Hash::compute_from(b"1"), b"a".to_vec());
-    data.insert(Hash::compute_from(b"2"), b"b".to_vec());
-    data.insert(Hash::compute_from(b"3"), b"c".to_vec());
-    let entry = LedgerEntry {
-        parallel_balance: Amount::from_raw(42),
-        datastore: data.clone(),
-        ..Default::default()
-    };
-    let entry_update = LedgerEntryUpdate {
-        parallel_balance: SetOrKeep::Set(Amount::from_raw(21)),
-        bytecode: SetOrKeep::Keep,
-        ..Default::default()
+    use crate::{
+        ledger_changes::LedgerEntryUpdate, ledger_db::LedgerSubEntry, LedgerEntry, SetOrKeep,
     };
 
-    // write data
-    let temp_dir = TempDir::new().unwrap();
-    let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
-    let mut batch = WriteBatch::default();
-    db.put_entry(&a, entry, &mut batch);
-    db.update_entry(&a, entry_update, &mut batch);
-    db.write_batch(batch);
+    use super::LedgerDB;
 
-    // first assert
-    assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
-    assert_eq!(
-        Amount::from_bytes_compact(&db.get_sub_entry(&a, LedgerSubEntry::Balance).unwrap())
-            .unwrap()
-            .0,
-        Amount::from_raw(21)
-    );
-    assert!(db.get_sub_entry(&b, LedgerSubEntry::Balance).is_none());
-    assert_eq!(data, db.get_entire_datastore(&a));
+    fn init_test_ledger(a: Address, _b: Address) -> (LedgerDB, BTreeMap<Hash, Vec<u8>>) {
+        // init data
+        let mut data = BTreeMap::new();
+        data.insert(Hash::compute_from(b"1"), b"a".to_vec());
+        data.insert(Hash::compute_from(b"2"), b"b".to_vec());
+        data.insert(Hash::compute_from(b"3"), b"c".to_vec());
+        let entry = LedgerEntry {
+            parallel_balance: Amount::from_raw(42),
+            datastore: data.clone(),
+            ..Default::default()
+        };
+        let entry_update = LedgerEntryUpdate {
+            parallel_balance: SetOrKeep::Set(Amount::from_raw(21)),
+            bytecode: SetOrKeep::Keep,
+            ..Default::default()
+        };
 
-    // delete entry
-    let mut batch = WriteBatch::default();
-    db.delete_entry(&a, &mut batch);
-    db.write_batch(batch);
+        // write data
+        let temp_dir = TempDir::new().unwrap();
+        let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
+        let mut batch = WriteBatch::default();
+        db.put_entry(&a, entry, &mut batch);
+        db.update_entry(&a, entry_update, &mut batch);
+        db.write_batch(batch);
 
-    // second assert
-    assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_none());
-    assert!(db.get_entire_datastore(&a).is_empty());
+        // return db and initial data
+        (db, data)
+    }
+
+    /// Functional test of LedgerDB
+    #[test]
+    fn test_ledger_db() {
+        // init addresses
+        let pub_a = derive_public_key(&generate_random_private_key());
+        let pub_b = derive_public_key(&generate_random_private_key());
+        let a = Address::from_public_key(&pub_a);
+        let b = Address::from_public_key(&pub_b);
+        let (db, data) = init_test_ledger(a, b);
+
+        // first assert
+        assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
+        assert_eq!(
+            Amount::from_bytes_compact(&db.get_sub_entry(&a, LedgerSubEntry::Balance).unwrap())
+                .unwrap()
+                .0,
+            Amount::from_raw(21)
+        );
+        assert!(db.get_sub_entry(&b, LedgerSubEntry::Balance).is_none());
+        assert_eq!(data, db.get_entire_datastore(&a));
+
+        // delete entry
+        let mut batch = WriteBatch::default();
+        db.delete_entry(&a, &mut batch);
+        db.write_batch(batch);
+
+        // second assert
+        assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_none());
+        assert!(db.get_entire_datastore(&a).is_empty());
+    }
+
+    #[test]
+    fn test_ledger_parts() {
+        let pub_a = derive_public_key(&generate_random_private_key());
+        let pub_b = derive_public_key(&generate_random_private_key());
+        let a = Address::from_public_key(&pub_a);
+        let b = Address::from_public_key(&pub_b);
+        let (db, _) = init_test_ledger(a, b);
+        let res = db.get_ledger_part(None).unwrap();
+        db.set_ledger_part(&res[..]).unwrap();
+    }
 }
