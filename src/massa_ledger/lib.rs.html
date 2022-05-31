@@ -79,6 +79,12 @@
 <span id="72">72</span>
 <span id="73">73</span>
 <span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! # General description</span>
@@ -129,6 +135,9 @@
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">is_some_with</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">slice_take</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">let_chains</span>)]</span>
 
 <span class="kw">mod</span> <span class="ident">bootstrap</span>;
 <span class="kw">mod</span> <span class="ident">config</span>;
@@ -136,6 +145,7 @@
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">ledger</span>;
 <span class="kw">mod</span> <span class="ident">ledger_changes</span>;
+<span class="kw">mod</span> <span class="ident">ledger_db</span>;
 <span class="kw">mod</span> <span class="ident">ledger_entry</span>;
 <span class="kw">mod</span> <span class="ident">types</span>;
 
@@ -144,6 +154,8 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::LedgerError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger::FinalLedger</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_changes::LedgerChanges</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_changes::LedgerEntryUpdate</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_db::LedgerSubEntry</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_entry::LedgerEntry</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">types</span>::{<span class="ident">Applicable</span>, <span class="ident">SetOrDelete</span>, <span class="ident">SetOrKeep</span>, <span class="ident">SetUpdateOrDelete</span>};
 

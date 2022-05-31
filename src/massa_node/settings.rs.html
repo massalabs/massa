@@ -76,6 +76,7 @@
 <span id="69">69</span>
 <span id="70">70</span>
 <span id="71">71</span>
+<span id="72">72</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Build here the default node settings from the configuration file toml</span>
@@ -126,6 +127,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerSettings</span> {
     <span class="kw">pub</span> <span class="ident">initial_sce_ledger_path</span>: <span class="ident">PathBuf</span>,
+    <span class="kw">pub</span> <span class="ident">disk_ledger_path</span>: <span class="ident">PathBuf</span>,
     <span class="kw">pub</span> <span class="ident">final_history_length</span>: <span class="ident">usize</span>,
 }
 

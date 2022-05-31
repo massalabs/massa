@@ -841,6 +841,85 @@
 <span id="834">834</span>
 <span id="835">835</span>
 <span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.</span>
@@ -859,15 +938,16 @@
     <span class="ident">ReadOnlyExecutionRequest</span>, <span class="ident">ReadOnlyExecutionTarget</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_final_state</span>::{<span class="ident">FinalState</span>, <span class="ident">StateChanges</span>};
-<span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">Applicable</span>, <span class="ident">LedgerEntry</span>, <span class="ident">SetUpdateOrDelete</span>};
+<span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">Applicable</span>, <span class="ident">LedgerEntry</span>, <span class="ident">LedgerEntryUpdate</span>, <span class="ident">SetOrKeep</span>, <span class="ident">SetUpdateOrDelete</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api::EventFilter</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::signed::Signable</span>;
-<span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">SignedOperation</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Amount</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">massa_sc_runtime::Interface</span>;
 <span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">parking_lot</span>::{<span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
+<span class="kw">use</span> <span class="ident">std::usize</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">collections</span>::{<span class="ident">HashMap</span>, <span class="ident">VecDeque</span>},
     <span class="ident">sync::Arc</span>,
@@ -905,6 +985,12 @@
     <span class="ident">execution_interface</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Interface</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Shared storage across all modules</span>
     <span class="ident">storage</span>: <span class="ident">Storage</span>,
+}
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">HistorySearchResult</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+    <span class="ident">Found</span>(<span class="ident">T</span>),
+    <span class="ident">NotFound</span>,
+    <span class="ident">Deleted</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ExecutionState</span> {
@@ -1072,15 +1158,8 @@
         }
     }
 
-    <span class="doccomment">/// Returns the state changes accumulated from the beginning of the output history,</span>
-    <span class="doccomment">/// up until a provided slot (excluded).</span>
-    <span class="doccomment">/// Only used in the VM main loop because the lock on the final ledger</span>
-    <span class="doccomment">/// carried by the returned `SpeculativeLedger` is not held.</span>
-    <span class="doccomment">/// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry</span>
-    <span class="doccomment">/// by scanning through history from end to beginning</span>
-    <span class="doccomment">/// `https://github.com/massalabs/massa/issues/2343`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="ident">StateChanges</span> {
-        <span class="comment">// check that the slot is within the reach of history</span>
+    <span class="doccomment">/// Check that the slot is within the reach of history</span>
+    <span class="kw">fn</span> <span class="ident">verify_active_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) {
         <span class="kw">if</span> <span class="ident">slot</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">final_cursor</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;cannot execute at a slot before finality&quot;</span>);
         }
@@ -1091,7 +1170,60 @@
         <span class="kw">if</span> <span class="ident">slot</span> <span class="op">&gt;</span> <span class="ident">max_slot</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;cannot execute at a slot beyond active cursor + 1&quot;</span>);
         }
+    }
 
+    <span class="doccomment">/// Computes the index of a given slot in the active history</span>
+    <span class="kw">fn</span> <span class="ident">get_active_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">hist_front</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">front</span>() {
+            <span class="ident">slot</span>.<span class="ident">slots_since</span>(<span class="kw-2">&amp;</span><span class="ident">hist_front</span>.<span class="ident">slot</span>, <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">try_into</span>().<span class="ident">ok</span>())
+                .<span class="ident">ok</span>()
+                .<span class="ident">flatten</span>()
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        }
+    }
+
+    <span class="doccomment">/// Lazily query (from end to beginning) the active balance of an address at a given slot.</span>
+    <span class="doccomment">/// Returns None if the address balance could not be determined from the active history.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// NOTE: temporary, needs to be done in the speculative ledger</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fetch_active_history_balance</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">slot</span>: <span class="ident">Slot</span>,
+        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
+    ) -&gt; <span class="ident">HistorySearchResult</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">verify_active_slot</span>(<span class="ident">slot</span>);
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_active_index</span>(<span class="ident">slot</span>) {
+            <span class="kw">let</span> <span class="ident">iter</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">iter</span>().<span class="ident">skip</span>(<span class="ident">n</span>).<span class="ident">rev</span>();
+
+            <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">iter</span> {
+                <span class="kw">match</span> <span class="ident">output</span>.<span class="ident">state_changes</span>.<span class="ident">ledger_changes</span>.<span class="number">0</span>.<span class="ident">get</span>(<span class="ident">addr</span>) {
+                    <span class="prelude-val">Some</span>(<span class="ident">SetUpdateOrDelete::Set</span>(<span class="ident">v</span>)) =&gt; {
+                        <span class="kw">return</span> <span class="ident">HistorySearchResult::Found</span>(<span class="ident">v</span>.<span class="ident">parallel_balance</span>)
+                    }
+                    <span class="prelude-val">Some</span>(<span class="ident">SetUpdateOrDelete::Update</span>(<span class="ident">LedgerEntryUpdate</span> {
+                        <span class="ident">parallel_balance</span>: <span class="ident">SetOrKeep::Set</span>(<span class="ident">v</span>),
+                        ..
+                    })) =&gt; <span class="kw">return</span> <span class="ident">HistorySearchResult::Found</span>(<span class="kw-2">*</span><span class="ident">v</span>),
+                    <span class="prelude-val">Some</span>(<span class="ident">SetUpdateOrDelete::Delete</span>) =&gt; <span class="kw">return</span> <span class="ident">HistorySearchResult::Deleted</span>,
+                    <span class="kw">_</span> =&gt; (),
+                }
+            }
+        }
+        <span class="ident">HistorySearchResult::NotFound</span>
+    }
+
+    <span class="doccomment">/// Returns the state changes accumulated from the beginning of the output history,</span>
+    <span class="doccomment">/// up until a provided slot (excluded).</span>
+    <span class="doccomment">/// Only used in the VM main loop because the lock on the final ledger</span>
+    <span class="doccomment">/// carried by the returned `SpeculativeLedger` is not held.</span>
+    <span class="doccomment">/// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry</span>
+    <span class="doccomment">/// by scanning through history from end to beginning</span>
+    <span class="doccomment">/// `https://github.com/massalabs/massa/issues/2343`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="ident">StateChanges</span> {
+        <span class="self">self</span>.<span class="ident">verify_active_slot</span>(<span class="ident">slot</span>);
         <span class="comment">// gather the history of state changes in the relevant history range</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accumulated_changes</span> <span class="op">=</span> <span class="ident">StateChanges::default</span>();
         <span class="kw">for</span> <span class="ident">previous_output</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">active_history</span> {
@@ -1612,8 +1744,34 @@
         <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">settle_slot</span>())
     }
 
+    <span class="doccomment">/// Gets a parallel balance both at the latest final and active executed slots</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// NOTE: temporary, needs to be done in the speculative ledger</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_and_active_parallel_balance</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
+    ) -&gt; (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>) {
+        <span class="kw">let</span> <span class="ident">final_balance</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">ledger</span>.<span class="ident">get_parallel_balance</span>(<span class="ident">address</span>);
+        <span class="kw">let</span> <span class="ident">next_slot</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">active_cursor</span>
+            .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
+            .<span class="ident">expect</span>(<span class="string">&quot;slot overflow when getting speculative ledger&quot;</span>);
+        <span class="kw">let</span> <span class="ident">search_result</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fetch_active_history_balance</span>(<span class="ident">next_slot</span>, <span class="ident">address</span>);
+        (
+            <span class="ident">final_balance</span>,
+            <span class="kw">match</span> <span class="ident">search_result</span> {
+                <span class="ident">HistorySearchResult::Found</span>(<span class="ident">active_balance</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">active_balance</span>),
+                <span class="ident">HistorySearchResult::NotFound</span> =&gt; <span class="ident">final_balance</span>,
+                <span class="ident">HistorySearchResult::Deleted</span> =&gt; <span class="prelude-val">None</span>,
+            },
+        )
+    }
+
     <span class="doccomment">/// Gets a full ledger entry both at the latest final and active executed slots</span>
     <span class="doccomment">/// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`</span>
+    <span class="doccomment">/// TODO: remove when API is updated</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
     <span class="doccomment">/// `(final_entry, active_entry)`</span>

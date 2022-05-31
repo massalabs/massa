@@ -218,6 +218,24 @@
 <span id="211">211</span>
 <span id="212">212</span>
 <span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -370,6 +388,24 @@
                     .<span class="ident">ok_or</span>(<span class="ident">ModelsError::ThreadOverflowError</span>)<span class="question-mark">?</span>,
             ))
         }
+    }
+
+    <span class="doccomment">/// Counts the number of slots since the one passed in parameter and until self</span>
+    <span class="doccomment">/// If the two slots are equal, the returned value is `0`.</span>
+    <span class="doccomment">/// If the passed slot is strictly higher than self, an error is returned</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">slots_since</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">Slot</span>, <span class="ident">thread_count</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
+        <span class="comment">// if s &gt; self, return an error</span>
+        <span class="kw">if</span> <span class="ident">s</span> <span class="op">&gt;</span> <span class="self">self</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::PeriodOverflowError</span>);
+        }
+
+        <span class="comment">// compute the number of slots from s to self</span>
+        <span class="prelude-val">Ok</span>((<span class="self">self</span>.<span class="ident">period</span> <span class="op">-</span> <span class="ident">s</span>.<span class="ident">period</span>)
+            .<span class="ident">checked_mul</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
+            .<span class="ident">ok_or</span>(<span class="ident">ModelsError::PeriodOverflowError</span>)<span class="question-mark">?</span>
+            .<span class="ident">checked_add</span>(<span class="self">self</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>)
+            .<span class="ident">ok_or</span>(<span class="ident">ModelsError::PeriodOverflowError</span>)<span class="question-mark">?</span>
+            .<span class="ident">saturating_sub</span>(<span class="ident">s</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>))
     }
 }
 

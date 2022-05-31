@@ -121,6 +121,7 @@
 <span id="114">114</span>
 <span id="115">115</span>
 <span id="116">116</span>
+<span id="117">117</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the final state of the node, which includes</span>
@@ -133,7 +134,7 @@
     <span class="ident">state_changes::StateChanges</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_async_pool::AsyncPool</span>;
-<span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">Applicable</span>, <span class="ident">FinalLedger</span>};
+<span class="kw">use</span> <span class="ident">massa_ledger::FinalLedger</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 
@@ -224,7 +225,8 @@
         <span class="self">self</span>.<span class="ident">slot</span> <span class="op">=</span> <span class="ident">slot</span>;
 
         <span class="comment">// apply changes</span>
-        <span class="self">self</span>.<span class="ident">ledger</span>.<span class="ident">apply</span>(<span class="ident">changes</span>.<span class="ident">ledger_changes</span>.<span class="ident">clone</span>());
+        <span class="self">self</span>.<span class="ident">ledger</span>
+            .<span class="ident">apply_changes_at_slot</span>(<span class="ident">changes</span>.<span class="ident">ledger_changes</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">slot</span>);
         <span class="self">self</span>.<span class="ident">async_pool</span>
             .<span class="ident">apply_changes_unchecked</span>(<span class="ident">changes</span>.<span class="ident">async_pool_changes</span>.<span class="ident">clone</span>());
 
