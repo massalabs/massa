@@ -26,6 +26,8 @@
 [ledger]
     # path to the initial smart contract balance ledger
     initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
+    # path to the disk ledger db directory
+    disk_ledger_path = "storage/ledger/rocks_db"
     # length of the changes history. Higher values allow bootstrapping nodes with slower connections
     final_history_length = 100
 

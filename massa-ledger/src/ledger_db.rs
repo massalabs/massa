@@ -7,18 +7,16 @@ use massa_models::{Address, Amount, DeserializeCompact, SerializeCompact, Slot};
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
-use std::{collections::BTreeMap, path::Path};
+use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
 
 // TODO: remove rocks_db dir when sled is cut out
-const DB_PATH: &str = "../massa-node/storage/ledger/rocks_db";
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
-const DESTROY_ERROR: &str = "critical: disk ledger destroy process failed";
 const BALANCE_IDENT: u8 = 0u8;
 const BYTECODE_IDENT: u8 = 1u8;
 const SLOT_KEY: &[u8; 1] = b"s";
@@ -37,13 +35,6 @@ pub enum LedgerSubEntry {
 ///
 /// Contains a RocksDB DB instance
 pub(crate) struct LedgerDB(pub(crate) DB);
-
-/// Destroy the disk ledger db and free the lock if it exists
-pub fn destroy_ledger_db() {
-    if Path::new(DB_PATH).exists() {
-        DB::destroy(&Options::default(), DB_PATH).expect(DESTROY_ERROR);
-    }
-}
 
 /// Balance key formatting macro
 ///
@@ -106,14 +97,17 @@ fn test_end_prefix() {
 // TODO: save attached slot in metadata for a lighter bootstrap after disconnection
 impl LedgerDB {
     /// Create and initialize a new LedgerDB.
-    pub fn new() -> Self {
+    ///
+    /// # Arguments
+    /// * path: path to the desired disk ledger db directory
+    pub fn new(path: PathBuf) -> Self {
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
 
         let db = DB::open_cf_descriptors(
             &db_opts,
-            DB_PATH,
+            path,
             vec![
                 ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
                 ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
@@ -320,6 +314,7 @@ impl LedgerDB {
 fn test_ledger_db() {
     use massa_models::Amount;
     use massa_signature::{derive_public_key, generate_random_private_key};
+    use tempdir::TempDir;
 
     // init addresses
     let pub_a = derive_public_key(&generate_random_private_key());
@@ -344,7 +339,8 @@ fn test_ledger_db() {
     };
 
     // write data
-    let mut db = LedgerDB::new();
+    let tmp_dir = TempDir::new("ledger").unwrap();
+    let mut db = LedgerDB::new(tmp_dir.path().to_path_buf());
     let mut batch = WriteBatch::default();
     db.put_entry(&a, entry, &mut batch);
     db.update_entry(&a, entry_update, &mut batch);

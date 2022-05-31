@@ -6,7 +6,7 @@ use crate::ledger_changes::LedgerChanges;
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use crate::ledger_entry::LedgerEntry;
 use crate::types::SetUpdateOrDelete;
-use crate::{destroy_ledger_db, FinalLedgerBootstrapState, LedgerConfig, LedgerError};
+use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
 use massa_hash::Hash;
 use massa_models::{Address, Amount, DeserializeCompact, Slot};
 use rocksdb::WriteBatch;
@@ -42,7 +42,7 @@ pub(crate) use init_file_error;
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
-        let mut sorted_ledger = LedgerDB::new();
+        let mut sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());
         let mut batch = WriteBatch::default();
 
         // load the ledger tree from file
@@ -105,16 +105,17 @@ impl FinalLedger {
     /// Initialize a `FinalLedger` from a bootstrap state
     ///
     /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
+    /// NOTE: temporary implementation while waiting for streaming
     ///
     /// # Arguments
     /// * configuration: ledger configuration
     /// * state: bootstrap state
-    pub fn from_bootstrap_state(_config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
-        // temporary implementation while waiting for streaming
+    pub fn from_bootstrap_state(config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
+        if config.disk_ledger_path.exists() {
+            std::fs::remove_dir_all(config.disk_ledger_path.clone()).expect("should not fail");
+        }
 
-        destroy_ledger_db();
-
-        let mut db = LedgerDB::new();
+        let mut db = LedgerDB::new(config.disk_ledger_path.clone());
         let mut batch = WriteBatch::default();
 
         for (key, entry) in state.sorted_ledger {
@@ -123,16 +124,16 @@ impl FinalLedger {
         db.write_batch(batch);
 
         FinalLedger {
+            _config: config,
             sorted_ledger: db,
-            _config,
         }
     }
 
     /// Gets a snapshot of the ledger to bootstrap other nodes
     ///
     /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
+    /// NOTE: temporary implementation while waiting for streaming
     pub fn get_bootstrap_state(&self) -> FinalLedgerBootstrapState {
-        // temporary implementation while waiting for streaming
         FinalLedgerBootstrapState {
             sorted_ledger: self
                 .sorted_ledger
