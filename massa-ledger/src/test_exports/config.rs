@@ -5,6 +5,7 @@ use crate::LedgerConfig;
 use massa_models::{Address, Amount};
 use std::collections::BTreeMap;
 use std::io::Seek;
+use tempdir::TempDir;
 use tempfile::NamedTempFile;
 
 /// Default value of `LedgerConfig` used for tests
@@ -23,7 +24,7 @@ impl LedgerConfig {
     /// get ledger and ledger configuration
     pub fn sample(ledger: &BTreeMap<Address, Amount>) -> (Self, NamedTempFile) {
         let initial_ledger = NamedTempFile::new().expect("cannot create temp file");
-        let disk_ledger = NamedTempFile::new().expect("cannot create temp file");
+        let disk_ledger = TempDir::new("disk_ledger").expect("cannot create temp directory");
         serde_json::to_writer_pretty(initial_ledger.as_file(), &ledger)
             .expect("unable to write ledger file");
         initial_ledger
