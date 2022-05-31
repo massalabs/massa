@@ -339,8 +339,8 @@ fn test_ledger_db() {
     };
 
     // write data
-    let tmp_dir = TempDir::new("ledger").unwrap();
-    let mut db = LedgerDB::new(tmp_dir.path().to_path_buf());
+    let temp_dir = TempDir::new("disk_ledger").unwrap();
+    let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
     let mut batch = WriteBatch::default();
     db.put_entry(&a, entry, &mut batch);
     db.update_entry(&a, entry_update, &mut batch);
