@@ -96,7 +96,7 @@ impl FinalState {
         max_id_async_pool: Option<AsyncMessageId>,
     ) -> Vec<StateChanges> {
         let pos_slot = min_slot
-            .map(|min_slot| self.changes_history.partition_point(|(s, _)| s > &min_slot))
+            .map(|min_slot| self.changes_history.partition_point(|(s, _)| s < &min_slot))
             .unwrap_or(0);
         let mut res_changes: Vec<StateChanges> = Vec::new();
         for (_, changes) in self.changes_history.range(pos_slot..) {
@@ -148,5 +148,59 @@ impl FinalState {
             }
         }
         res_changes
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::collections::VecDeque;
+
+    use crate::{FinalState, StateChanges};
+    use massa_ledger::SetUpdateOrDelete;
+    use massa_models::{Address, Slot};
+    use massa_signature::{derive_public_key, generate_random_private_key};
+
+    fn get_random_address() -> Address {
+        let priv_key = generate_random_private_key();
+        let pub_key = derive_public_key(&priv_key);
+        Address::from_public_key(&pub_key)
+    }
+
+    #[test]
+    fn get_part_state_changes() {
+        // Building the state changes
+        let mut history_state_changes: VecDeque<(Slot, StateChanges)> = VecDeque::new();
+        let (low_address, high_address) = {
+            let address1 = get_random_address();
+            let address2 = get_random_address();
+            if address1 < address2 {
+                (address1, address2)
+            } else {
+                (address2, address1)
+            }
+        };
+        let mut state_changes = StateChanges::default();
+        state_changes
+            .ledger_changes
+            .0
+            .insert(low_address, SetUpdateOrDelete::Delete);
+        history_state_changes.push_front((Slot::new(3, 0), state_changes));
+        let mut state_changes = StateChanges::default();
+        state_changes
+            .ledger_changes
+            .0
+            .insert(high_address, SetUpdateOrDelete::Delete);
+        history_state_changes.push_front((Slot::new(2, 0), state_changes.clone()));
+        history_state_changes.push_front((Slot::new(1, 0), state_changes));
+        let mut final_state: FinalState = Default::default();
+        final_state.changes_history = history_state_changes;
+        // Test slot filter
+        let part = final_state.get_part_state_changes(Some(Slot::new(2, 0)), None, None);
+        assert_eq!(part.len(), 2);
+        // Test address filter
+        let part =
+            final_state.get_part_state_changes(Some(Slot::new(2, 0)), Some(low_address), None);
+        assert_eq!(part.len(), 1);
     }
 }

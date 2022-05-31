@@ -1596,6 +1596,7 @@ dependencies = [
  "massa_ledger",
  "massa_models",
  "massa_serialization",
+ "massa_signature",
  "nom 7.1.1",
  "thiserror",
 ]
