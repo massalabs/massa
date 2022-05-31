@@ -25,7 +25,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use tempfile::NamedTempFile;
+use tempfile::{NamedTempFile, TempDir};
 
 /// Same as `get_random_address()` and return `priv_key` and `pub_key` associated
 /// to the address.
@@ -40,11 +40,11 @@ pub fn get_random_address() -> Address {
     get_random_address_full().0
 }
 
-fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), LedgerError> {
+fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let mut initial: BTreeMap<Address, Amount> = Default::default();
     initial.insert(get_random_address(), Amount::from_str("129").unwrap());
     initial.insert(get_random_address(), Amount::from_str("878").unwrap());
-    let (ledger_config, tempfile) = LedgerConfig::sample(&initial);
+    let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&initial);
     let async_pool_config = AsyncPoolConfig { max_length: 100 };
     let cfg = FinalStateConfig {
         ledger_config,
@@ -55,13 +55,14 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), Ledger
     Ok((
         Arc::new(RwLock::new(FinalState::new(cfg).unwrap())),
         tempfile,
+        tempdir,
     ))
 }
 
 #[test]
 #[serial]
 fn test_execution_shutdown() {
-    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, _) =
         start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
     manager.stop();
@@ -70,7 +71,7 @@ fn test_execution_shutdown() {
 #[test]
 #[serial]
 fn test_sending_command() {
-    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) =
         start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
     controller.update_blockclique_status(Default::default(), Default::default());
@@ -80,7 +81,7 @@ fn test_sending_command() {
 #[test]
 #[serial]
 fn test_sending_read_only_execution_command() {
-    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) =
         start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
     controller
@@ -113,7 +114,7 @@ fn test_nested_call_gas_usage() {
         ..ExecutionConfig::default()
     };
     // get a sample final state
-    let (sample_state, _) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     // init the storage
     let storage = Storage::default();
     // start the execution worker
@@ -209,7 +210,8 @@ fn send_and_receive_async_message() {
         ..ExecutionConfig::default()
     };
     // get a sample final state
-    let (sample_state, _) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
     // init the storage
     let storage = Storage::default();
     // start the execution worker
@@ -260,7 +262,7 @@ fn generate_events() {
         ..ExecutionConfig::default()
     };
     let storage: Storage = Default::default();
-    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();

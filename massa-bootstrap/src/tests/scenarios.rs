@@ -15,7 +15,9 @@ use crate::{
     },
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
-use massa_final_state::{test_exports::assert_eq_final_state_bootstrap, FinalState};
+use massa_final_state::{
+    test_exports::assert_eq_final_state_bootstrap, FinalState, FinalStateConfig,
+};
 use massa_models::Version;
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
@@ -41,8 +43,9 @@ async fn test_bootstrap_server() {
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
     let final_state_bootstrap = get_random_final_state_bootstrap(2);
+    let (final_state_config, _keep_file, _keep_dir) = FinalStateConfig::sample();
     let final_state = Arc::new(RwLock::new(FinalState::from_bootstrap_state(
-        Default::default(),
+        final_state_config,
         final_state_bootstrap.clone(),
     )));
 

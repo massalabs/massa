@@ -314,7 +314,7 @@ impl LedgerDB {
 fn test_ledger_db() {
     use massa_models::Amount;
     use massa_signature::{derive_public_key, generate_random_private_key};
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     // init addresses
     let pub_a = derive_public_key(&generate_random_private_key());
@@ -339,7 +339,7 @@ fn test_ledger_db() {
     };
 
     // write data
-    let temp_dir = TempDir::new("disk_ledger").unwrap();
+    let temp_dir = TempDir::new().unwrap();
     let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
     let mut batch = WriteBatch::default();
     db.put_entry(&a, entry, &mut batch);
