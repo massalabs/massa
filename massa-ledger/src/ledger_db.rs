@@ -2,11 +2,16 @@
 
 //! Module to interact with the disk ledger
 
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
+use massa_models::address::AddressDeserializer;
 use massa_models::{
     Address, Amount, DeserializeCompact, ModelsError, SerializeCompact, Slot, U64VarIntSerializer,
+    VecU8Deserializer, VecU8Serializer,
 };
-use massa_serialization::Serializer;
+use massa_serialization::{Deserializer, Serializer};
+use nom::multi::many0;
+use nom::sequence::tuple;
+use nom::AsBytes;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
@@ -319,7 +324,7 @@ impl LedgerDB {
     /// # Arguments
     /// * last_key: key where the part retrieving must start
     pub fn get_ledger_part(&self, last_key: Option<Vec<u8>>) -> Result<Vec<u8>, ModelsError> {
-        let ser = U64VarIntSerializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
+        let ser = VecU8Serializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut part = Vec::new();
@@ -336,16 +341,64 @@ impl LedgerDB {
         };
         for (key, entry) in db_iterator {
             part.extend(key.to_vec());
-            part.extend(
-                ser.serialize(&entry.len().try_into().expect("critical: conversion error"))?,
-            );
-            part.extend(entry.to_vec());
+            part.extend(ser.serialize(&entry.to_vec())?);
         }
         Ok(part)
     }
 
     pub fn set_ledger_part(&self, data: Vec<u8>) -> Result<(), ModelsError> {
-        Ok(())
+        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let address_deserializer = AddressDeserializer::new();
+        let hash_deserializer = HashDeserializer::new();
+        let vec_u8_deserializer =
+            VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
+        let mut batch = WriteBatch::default();
+        // NOTE: We deserialize to address to go back directly to vec u8 because we want to perform security check because this data can come from the network.
+        let (rest, part) = many0(|input: &[u8]| {
+            match input.get(0) {
+                Some(ident) if *ident == BALANCE_IDENT => {
+                    // Safe because we matched that there is a first byte just above.
+                    let (rest, (address, value)) = tuple((
+                        |input| address_deserializer.deserialize(input),
+                        |input| vec_u8_deserializer.deserialize(input),
+                    ))(&input[1..])?;
+                    batch.put_cf(handle, balance_key!(address), value);
+                    Ok((rest, ()))
+                }
+                Some(ident) if *ident == BYTECODE_IDENT => {
+                    // Safe because we matched that there is a first byte just above.
+                    let (rest, (address, bytecode)) = tuple((
+                        |input| address_deserializer.deserialize(input),
+                        |input| vec_u8_deserializer.deserialize(input),
+                    ))(&input[1..])?;
+                    batch.put_cf(handle, bytecode_key!(address), bytecode);
+                    Ok((rest, ()))
+                }
+                Some(ident) => {
+                    // Safe because we matched that there is a first byte just above.
+                    let (rest, (address, key, value)) = tuple((
+                        |input| address_deserializer.deserialize(input),
+                        |input| hash_deserializer.deserialize(input),
+                        |input| vec_u8_deserializer.deserialize(input),
+                    ))(&input[1..])?;
+                    batch.put_cf(handle, data_key!(address, key), value);
+                    Ok((rest, ()))
+                }
+                None => {
+                    return Err(nom::Err::Error(nom::error::Error::new(
+                        input,
+                        nom::error::ErrorKind::IsNot,
+                    )))
+                }
+            }
+        })(data.as_bytes())
+        .map_err(|_| ModelsError::SerializeError("Error".to_string()))?;
+        if rest.is_empty() {
+            self.0.write(batch).expect(CRUD_ERROR);
+            Ok(())
+        } else {
+            Err(ModelsError::SerializeError("Error".to_string()))
+        }
     }
 }
 
