@@ -2,7 +2,7 @@
 
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
-use crate::messages::{BootstrapMessageClient, BootstrapMessageServer};
+use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
@@ -63,7 +63,7 @@ impl BootstrapClientBinder {
     }
 
     /// Reads the next message. NOT cancel-safe
-    pub async fn next(&mut self) -> Result<BootstrapMessageServer, BootstrapError> {
+    pub async fn next(&mut self) -> Result<BootstrapServerMessage, BootstrapError> {
         // read signature
         let sig = {
             let mut sig_bytes = [0u8; SIGNATURE_SIZE_BYTES];
@@ -90,7 +90,7 @@ impl BootstrapClientBinder {
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
                 let (msg, _len) =
-                    BootstrapMessageServer::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
+                    BootstrapServerMessage::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
                 msg
             } else {
                 self.prev_message = Some(Hash::compute_from(sig.to_bytes()));
@@ -98,7 +98,7 @@ impl BootstrapClientBinder {
                 self.duplex.read_exact(&mut sig_msg_bytes[..]).await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
                 verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
-                let (msg, _len) = BootstrapMessageServer::from_bytes_compact(&sig_msg_bytes[..])?;
+                let (msg, _len) = BootstrapServerMessage::from_bytes_compact(&sig_msg_bytes[..])?;
                 msg
             }
         };
@@ -107,7 +107,7 @@ impl BootstrapClientBinder {
 
     #[allow(dead_code)]
     /// Send a message to the bootstrap server
-    pub async fn send(&mut self, msg: &BootstrapMessageClient) -> Result<(), BootstrapError> {
+    pub async fn send(&mut self, msg: &BootstrapClientMessage) -> Result<(), BootstrapError> {
         let msg_bytes = msg.to_bytes_compact()?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))

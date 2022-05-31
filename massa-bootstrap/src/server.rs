@@ -24,7 +24,7 @@ use tracing::{debug, info, warn};
 
 use crate::{
     error::BootstrapError,
-    messages::{BootstrapMessageClient, BootstrapMessageServer},
+    messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
     BootstrapSettings, Establisher,
 };
@@ -170,7 +170,7 @@ impl BootstrapServer {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
                                 let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                                let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
+                                let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                                     error:
                                     format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
                                 })).await {
@@ -221,7 +221,7 @@ impl BootstrapServer {
                                 Err(err) => {
                                     debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
                                     // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                    let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError { error: err.to_string() })).await;
+                                    let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
                                 },
                             }
                         }
@@ -229,7 +229,7 @@ impl BootstrapServer {
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
                     let mut server = BootstrapServerBinder::new(dplx, self.private_key);
-                    let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapMessageServer::BootstrapError {
+                    let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                         error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
                     })).await {
                         Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
@@ -288,7 +288,7 @@ pub async fn send_stream_ledger(
             last_slot = Some(actual_slot);
             match tokio::time::timeout(
                 write_timeout,
-                server.send(BootstrapMessageServer::FinalStatePart {
+                server.send(BootstrapServerMessage::FinalStatePart {
                     ledger_data: data,
                     slot: actual_slot,
                     async_pool_part,
@@ -308,7 +308,7 @@ pub async fn send_stream_ledger(
         } else {
             match tokio::time::timeout(
                 write_timeout,
-                server.send(BootstrapMessageServer::FinalStateFinished),
+                server.send(BootstrapServerMessage::FinalStateFinished),
             )
             .await
             {
@@ -360,10 +360,10 @@ async fn manage_bootstrap(
     match tokio::time::timeout(read_error_timeout, server.next()).await {
         Err(_) => (),
         Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapMessageClient::BootstrapError { error })) => {
+        Ok(Ok(BootstrapClientMessage::BootstrapError { error })) => {
             return Err(BootstrapError::GeneralError(error))
         }
-        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessageClient(msg)),
+        Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
     };
 
     let write_timeout: std::time::Duration = bootstrap_settings.write_timeout.into();
@@ -373,7 +373,7 @@ async fn manage_bootstrap(
 
     match tokio::time::timeout(
         write_timeout,
-        server.send(BootstrapMessageServer::BootstrapTime {
+        server.send(BootstrapServerMessage::BootstrapTime {
             server_time,
             version,
         }),
@@ -394,10 +394,10 @@ async fn manage_bootstrap(
             Err(_) => return Ok(()),
             Ok(Err(e)) => return Err(e),
             Ok(Ok(msg)) => match msg {
-                BootstrapMessageClient::AskBootstrapPeers => {
+                BootstrapClientMessage::AskBootstrapPeers => {
                     match tokio::time::timeout(
                         write_timeout,
-                        server.send(BootstrapMessageServer::BootstrapPeers {
+                        server.send(BootstrapServerMessage::BootstrapPeers {
                             peers: data_peers.clone(),
                         }),
                     )
@@ -412,7 +412,7 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapMessageClient::AskFinalStatePart {
+                BootstrapClientMessage::AskFinalStatePart {
                     cursor,
                     slot,
                     last_async_message_id,
@@ -427,10 +427,10 @@ async fn manage_bootstrap(
                     )
                     .await?;
                 }
-                BootstrapMessageClient::AskConsensusState => {
+                BootstrapClientMessage::AskConsensusState => {
                     match tokio::time::timeout(
                         write_timeout,
-                        server.send(BootstrapMessageServer::ConsensusState {
+                        server.send(BootstrapServerMessage::ConsensusState {
                             pos: data_pos.clone(),
                             graph: data_graph.clone(),
                         }),
@@ -446,7 +446,7 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
-                BootstrapMessageClient::BootstrapError { error } => {
+                BootstrapClientMessage::BootstrapError { error } => {
                     return Err(BootstrapError::ReceivedError(error));
                 }
             },

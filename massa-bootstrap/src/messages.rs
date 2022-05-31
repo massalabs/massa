@@ -28,7 +28,7 @@ use std::ops::Bound::Included;
 
 /// Messages used during bootstrap by server
 #[derive(Debug, Clone)]
-pub enum BootstrapMessageServer {
+pub enum BootstrapServerMessage {
     /// Sync clocks
     BootstrapTime {
         /// The current time on the bootstrap server.
@@ -76,11 +76,11 @@ enum MessageServerTypeId {
     BootstrapError = 5u32,
 }
 
-impl SerializeCompact for BootstrapMessageServer {
+impl SerializeCompact for BootstrapServerMessage {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         match self {
-            BootstrapMessageServer::BootstrapTime {
+            BootstrapServerMessage::BootstrapTime {
                 server_time,
                 version,
             } => {
@@ -88,16 +88,16 @@ impl SerializeCompact for BootstrapMessageServer {
                 res.extend(server_time.to_bytes_compact()?);
                 res.extend(&version.to_bytes_compact()?)
             }
-            BootstrapMessageServer::BootstrapPeers { peers } => {
+            BootstrapServerMessage::BootstrapPeers { peers } => {
                 res.extend(u32::from(MessageServerTypeId::Peers).to_varint_bytes());
                 res.extend(&peers.to_bytes_compact()?);
             }
-            BootstrapMessageServer::ConsensusState { pos, graph } => {
+            BootstrapServerMessage::ConsensusState { pos, graph } => {
                 res.extend(u32::from(MessageServerTypeId::ConsensusState).to_varint_bytes());
                 res.extend(&pos.to_bytes_compact()?);
                 res.extend(&graph.to_bytes_compact()?);
             }
-            BootstrapMessageServer::FinalStatePart {
+            BootstrapServerMessage::FinalStatePart {
                 ledger_data,
                 async_pool_part,
                 slot,
@@ -122,10 +122,10 @@ impl SerializeCompact for BootstrapMessageServer {
                     res.extend(final_state_changes_serializer.serialize(changes)?);
                 }
             }
-            BootstrapMessageServer::FinalStateFinished => {
+            BootstrapServerMessage::FinalStateFinished => {
                 res.extend(u32::from(MessageServerTypeId::FinalStateFinished).to_varint_bytes());
             }
-            BootstrapMessageServer::BootstrapError { error } => {
+            BootstrapServerMessage::BootstrapError { error } => {
                 res.extend(u32::from(MessageServerTypeId::BootstrapError).to_varint_bytes());
                 res.extend(u32::to_varint_bytes(error.len() as u32));
                 res.extend(error.as_bytes())
@@ -135,7 +135,7 @@ impl SerializeCompact for BootstrapMessageServer {
     }
 }
 
-impl DeserializeCompact for BootstrapMessageServer {
+impl DeserializeCompact for BootstrapServerMessage {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
@@ -153,7 +153,7 @@ impl DeserializeCompact for BootstrapMessageServer {
 
                 let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                BootstrapMessageServer::BootstrapTime {
+                BootstrapServerMessage::BootstrapTime {
                     server_time,
                     version,
                 }
@@ -162,7 +162,7 @@ impl DeserializeCompact for BootstrapMessageServer {
                 let (peers, delta) = BootstrapPeers::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
-                BootstrapMessageServer::BootstrapPeers { peers }
+                BootstrapServerMessage::BootstrapPeers { peers }
             }
             MessageServerTypeId::ConsensusState => {
                 let (pos, delta) = ExportProofOfStake::from_bytes_compact(&buffer[cursor..])?;
@@ -170,7 +170,7 @@ impl DeserializeCompact for BootstrapMessageServer {
                 let (graph, delta) = BootstrapableGraph::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
-                BootstrapMessageServer::ConsensusState { pos, graph }
+                BootstrapServerMessage::ConsensusState { pos, graph }
             }
             MessageServerTypeId::FinalStatePart => {
                 let async_pool_deserializer = AsyncPoolPartDeserializer::new();
@@ -204,14 +204,14 @@ impl DeserializeCompact for BootstrapMessageServer {
                 // Temp while serializecompact exists
                 let delta = buffer[cursor..].len() - rest.len();
                 cursor += delta;
-                BootstrapMessageServer::FinalStatePart {
+                BootstrapServerMessage::FinalStatePart {
                     ledger_data,
                     async_pool_part,
                     slot,
                     final_state_changes,
                 }
             }
-            MessageServerTypeId::FinalStateFinished => BootstrapMessageServer::FinalStateFinished,
+            MessageServerTypeId::FinalStateFinished => BootstrapServerMessage::FinalStateFinished,
             MessageServerTypeId::BootstrapError => {
                 let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
@@ -219,7 +219,7 @@ impl DeserializeCompact for BootstrapMessageServer {
                 let error = String::from_utf8_lossy(&buffer[cursor..cursor + error_len as usize]);
                 cursor += error_len as usize;
 
-                BootstrapMessageServer::BootstrapError {
+                BootstrapServerMessage::BootstrapError {
                     error: error.into_owned(),
                 }
             }
@@ -230,7 +230,7 @@ impl DeserializeCompact for BootstrapMessageServer {
 
 /// Messages used during bootstrap by client
 #[derive(Debug)]
-pub enum BootstrapMessageClient {
+pub enum BootstrapClientMessage {
     /// Ask for bootstrap peers
     AskBootstrapPeers,
     /// Ask for consensus state
@@ -257,17 +257,17 @@ enum MessageClientTypeId {
     BootstrapError = 3u32,
 }
 
-impl SerializeCompact for BootstrapMessageClient {
+impl SerializeCompact for BootstrapClientMessage {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
         match self {
-            BootstrapMessageClient::AskBootstrapPeers => {
+            BootstrapClientMessage::AskBootstrapPeers => {
                 res.extend(u32::from(MessageClientTypeId::AskBootstrapPeers).to_varint_bytes());
             }
-            BootstrapMessageClient::AskConsensusState => {
+            BootstrapClientMessage::AskConsensusState => {
                 res.extend(u32::from(MessageClientTypeId::AskConsensusState).to_varint_bytes());
             }
-            BootstrapMessageClient::AskFinalStatePart {
+            BootstrapClientMessage::AskFinalStatePart {
                 cursor,
                 slot,
                 last_async_message_id,
@@ -282,7 +282,7 @@ impl SerializeCompact for BootstrapMessageClient {
                     res.extend(async_message_id_serializer.serialize(last_async_message_id)?);
                 }
             }
-            BootstrapMessageClient::BootstrapError { error } => {
+            BootstrapClientMessage::BootstrapError { error } => {
                 res.extend(u32::from(MessageClientTypeId::BootstrapError).to_varint_bytes());
                 res.extend(u32::to_varint_bytes(error.len() as u32));
                 res.extend(error.as_bytes())
@@ -292,7 +292,7 @@ impl SerializeCompact for BootstrapMessageClient {
     }
 }
 
-impl DeserializeCompact for BootstrapMessageClient {
+impl DeserializeCompact for BootstrapClientMessage {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
@@ -304,11 +304,11 @@ impl DeserializeCompact for BootstrapMessageClient {
             .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
 
         let res = match type_id {
-            MessageClientTypeId::AskBootstrapPeers => BootstrapMessageClient::AskBootstrapPeers,
-            MessageClientTypeId::AskConsensusState => BootstrapMessageClient::AskConsensusState,
+            MessageClientTypeId::AskBootstrapPeers => BootstrapClientMessage::AskBootstrapPeers,
+            MessageClientTypeId::AskConsensusState => BootstrapClientMessage::AskConsensusState,
             MessageClientTypeId::AskFinalStatePart => {
                 if buffer.len() == cursor {
-                    BootstrapMessageClient::AskFinalStatePart {
+                    BootstrapClientMessage::AskFinalStatePart {
                         cursor: None,
                         slot: None,
                         last_async_message_id: None,
@@ -336,7 +336,7 @@ impl DeserializeCompact for BootstrapMessageClient {
                     let delta = buffer[cursor..].len() - rest.len();
                     cursor += delta;
 
-                    BootstrapMessageClient::AskFinalStatePart {
+                    BootstrapClientMessage::AskFinalStatePart {
                         cursor: Some(ledger_cursor),
                         slot: Some(slot),
                         last_async_message_id: Some(last_async_message_id),
@@ -358,7 +358,7 @@ impl DeserializeCompact for BootstrapMessageClient {
                 );
                 cursor += error_len as usize;
 
-                BootstrapMessageClient::BootstrapError {
+                BootstrapClientMessage::BootstrapError {
                     error: error.into_owned(),
                 }
             }

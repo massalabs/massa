@@ -487,7 +487,6 @@ impl Ledger {
         let mut res = ConsensusLedgerSubset::default();
         let mut start: bool = start_address.is_none();
         let mut count: usize = 0;
-        // TODO: Optimize to avoid checking the threads before the address passed
         for tree in self.ledger_per_thread.iter() {
             for element in tree.iter() {
                 let (addr, data) = element?;
