@@ -151,7 +151,7 @@ impl BootstrapServer {
                 }
 
                 // listener
-                Ok((dplx, remote_addr)) = listener.accept() => if bootstrap_sessions.len() < self.bootstrap_settings.max_simultaneous_bootstraps as usize {
+                Ok((dplx, remote_addr)) = listener.accept() => if bootstrap_sessions.len() < self.bootstrap_settings.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
                     massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
                     let now = Instant::now();
 

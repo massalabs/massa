@@ -54,7 +54,11 @@ impl Default for AsyncPoolPartSerializer {
 impl Serializer<AsyncPoolPart> for AsyncPoolPartSerializer {
     fn serialize(&self, value: &AsyncPoolPart) -> Result<Vec<u8>, SerializeError> {
         let mut res = Vec::new();
-        res.extend(self.u64_serializer.serialize(&(value.len() as u64))?);
+        res.extend(self.u64_serializer.serialize(
+            &(value.len().try_into().map_err(|_| {
+                SerializeError::GeneralError("Fail to transform usize to u64".to_string())
+            })?),
+        )?);
         for element in value {
             res.extend(self.id_serializer.serialize(&element.0)?);
             res.extend(
@@ -226,7 +230,11 @@ impl AsyncPool {
         };
         self.messages
             .range((last_id, Unbounded))
-            .take(ASYNC_POOL_BATCH_SIZE as usize)
+            .take(
+                ASYNC_POOL_BATCH_SIZE
+                    .try_into()
+                    .expect("Fail to convert a u64 to a usize."),
+            )
             .map(|(id, value)| (*id, value.clone()))
             .collect()
     }

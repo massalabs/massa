@@ -212,7 +212,10 @@ impl FinalLedger {
                         next_cursor.step = LedgerCursorStep::Bytecode;
                     }
                     LedgerCursorStep::Bytecode => {
-                        data.extend((entry.bytecode.len() as u64).to_varint_bytes());
+                        let bytecode_len: u64 = entry.bytecode.len().try_into().map_err(|_| {
+                            ModelsError::SerializeError("Fail to convert usize to u64".to_string())
+                        })?;
+                        data.extend(bytecode_len.to_varint_bytes());
                         data.extend(&entry.bytecode);
                         next_cursor.step = LedgerCursorStep::Datastore(None);
                     }
@@ -222,7 +225,12 @@ impl FinalLedger {
                         } else if let Some((&key, value)) = entry.datastore.first_key_value() {
                             data.push(DATASTORE_KEY_IDENTIFIER);
                             data.extend(key.to_bytes());
-                            data.extend((value.len() as u64).to_varint_bytes());
+                            let value_len: u64 = value.len().try_into().map_err(|_| {
+                                ModelsError::SerializeError(
+                                    "Fail to convert usize to u64".to_string(),
+                                )
+                            })?;
+                            data.extend(value_len.to_varint_bytes());
                             data.extend(value);
                             key
                         } else {
@@ -232,10 +240,20 @@ impl FinalLedger {
                         for (key, value) in entry.datastore.range((Excluded(key), Unbounded)) {
                             data.push(DATASTORE_KEY_IDENTIFIER);
                             data.extend(key.to_bytes());
-                            data.extend((value.len() as u64).to_varint_bytes());
+                            let value_len: u64 = value.len().try_into().map_err(|_| {
+                                ModelsError::SerializeError(
+                                    "Fail to convert usize to u64".to_string(),
+                                )
+                            })?;
+                            data.extend(value_len.to_varint_bytes());
                             data.extend(value);
                             next_cursor.step = LedgerCursorStep::Datastore(Some(*key));
-                            if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
+                            let data_len: u64 = data.len().try_into().map_err(|_| {
+                                ModelsError::SerializeError(
+                                    "Fail to convert usize to u64".to_string(),
+                                )
+                            })?;
+                            if data_len > LEDGER_PART_SIZE_MESSAGE_BYTES {
                                 return Ok((data, Some(next_cursor)));
                             }
                         }
@@ -250,7 +268,10 @@ impl FinalLedger {
                         break;
                     }
                 }
-                if data.len() as u64 > LEDGER_PART_SIZE_MESSAGE_BYTES {
+                let len: u64 = data.len().try_into().map_err(|_| {
+                    ModelsError::SerializeError("Fail to convert usize to u64".to_string())
+                })?;
+                if len > LEDGER_PART_SIZE_MESSAGE_BYTES {
                     return Ok((data, Some(next_cursor)));
                 }
             }

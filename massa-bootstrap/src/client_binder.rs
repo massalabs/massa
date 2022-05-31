@@ -50,7 +50,7 @@ impl BootstrapClientBinder {
         let msg_hash = {
             let version = version.to_bytes_compact()?;
             let mut version_random_bytes =
-                vec![0u8; (version.len() as usize) + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
+                vec![0u8; version.len() + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
             version_random_bytes[..version.len()].clone_from_slice(&version);
             StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version.len()..]);
             self.duplex.write_all(&version_random_bytes).await?;

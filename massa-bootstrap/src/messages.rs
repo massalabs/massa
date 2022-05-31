@@ -117,7 +117,11 @@ impl SerializeCompact for BootstrapServerMessage {
                 res.extend(vec_u8_serializer.serialize(ledger_data)?);
                 res.extend(async_pool_serializer.serialize(async_pool_part)?);
                 res.extend(slot_serializer.serialize(slot)?);
-                res.extend(u64_serializer.serialize(&(final_state_changes.len() as u64))?);
+                res.extend(u64_serializer.serialize(
+                    &(final_state_changes.len().try_into().map_err(|_| {
+                        ModelsError::SerializeError("Fail to convert usize to u64".to_string())
+                    })?),
+                )?);
                 for changes in final_state_changes {
                     res.extend(final_state_changes_serializer.serialize(changes)?);
                 }
@@ -127,7 +131,9 @@ impl SerializeCompact for BootstrapServerMessage {
             }
             BootstrapServerMessage::BootstrapError { error } => {
                 res.extend(u32::from(MessageServerTypeId::BootstrapError).to_varint_bytes());
-                res.extend(u32::to_varint_bytes(error.len() as u32));
+                res.extend(u32::to_varint_bytes(error.len().try_into().map_err(
+                    |_| ModelsError::SerializeError("Fail to convert usize to u32".to_string()),
+                )?));
                 res.extend(error.as_bytes())
             }
         }
