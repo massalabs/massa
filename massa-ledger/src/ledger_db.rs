@@ -9,7 +9,8 @@ use rocksdb::{
 };
 use std::{collections::BTreeMap, path::PathBuf};
 
-use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
+use crate::ledger_changes::LedgerEntryUpdate;
+use crate::{LedgerChanges, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 
 // TODO: remove rocks_db dir when sled is cut out
 const LEDGER_CF: &str = "ledger";
@@ -34,7 +35,7 @@ pub enum LedgerSubEntry {
 /// Disk ledger DB module
 ///
 /// Contains a RocksDB DB instance
-pub(crate) struct LedgerDB(pub(crate) DB);
+pub(crate) struct LedgerDB(DB);
 
 /// Balance key formatting macro
 ///
@@ -118,9 +119,45 @@ impl LedgerDB {
         LedgerDB(db)
     }
 
+    /// Allows applying `LedgerChanges` to the disk ledger
+    ///
+    /// # Arguments
+    /// * changes: ledger changes to be applied
+    /// * slot: new slot associated to the final ledger
+    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+        // create the batch
+        let mut batch = WriteBatch::default();
+        // for all incoming changes
+        for (addr, change) in changes.0 {
+            match change {
+                // the incoming change sets a ledger entry to a new one
+                SetUpdateOrDelete::Set(new_entry) => {
+                    // inserts/overwrites the entry with the incoming one
+                    self.put_entry(&addr, new_entry, &mut batch);
+                }
+                // the incoming change updates an existing ledger entry
+                SetUpdateOrDelete::Update(entry_update) => {
+                    // applies the updates to the entry
+                    // if the entry does not exist, inserts a default one and applies the updates to it
+                    self.update_entry(&addr, entry_update, &mut batch);
+                }
+                // the incoming change deletes a ledger entry
+                SetUpdateOrDelete::Delete => {
+                    // delete the entry, if it exists
+                    self.delete_entry(&addr, &mut batch);
+                }
+            }
+        }
+        // set the assiociated slot in metadata
+        self.set_metadata(slot, &mut batch);
+        // write the batch
+        self.write_batch(batch);
+    }
+
     /// Apply the given operation batch to the disk ledger.
     ///
     /// NOTE: the batch is not saved within the object because it cannot be shared between threads safely
+    /// TODO FOR THIS PR: remove pub(crate) after bootstrap streaming
     pub(crate) fn write_batch(&self, batch: WriteBatch) {
         self.0.write(batch).expect(CRUD_ERROR);
     }
@@ -132,7 +169,7 @@ impl LedgerDB {
     /// * batch: the given operation batch to update
     ///
     /// NOTE: right now the metadata is only a Slot, use a struct in the future
-    pub(crate) fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch) {
+    fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         // Slot::to_bytes_compact() never fails
@@ -145,6 +182,8 @@ impl LedgerDB {
     /// * addr: associated address
     /// * ledger_entry: complete entry to be added
     /// * batch: the given operation batch to update
+    ///
+    /// TODO FOR THIS PR: remove pub(crate) after bootstrap streaming
     pub(crate) fn put_entry(
         &mut self,
         addr: &Address,
@@ -251,7 +290,7 @@ impl LedgerDB {
     /// # Arguments
     /// * entry_update: a descriptor of the entry updates to be applied
     /// * batch: the given operation batch to update
-    pub(crate) fn update_entry(
+    fn update_entry(
         &mut self,
         addr: &Address,
         entry_update: LedgerEntryUpdate,
@@ -287,7 +326,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    pub(crate) fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
+    fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance
