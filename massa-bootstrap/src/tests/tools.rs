@@ -82,7 +82,6 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
     }
 
     let slot = Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count));
-    //TODO: Aurelien pass ledger built just above
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
     create_final_state(

@@ -57,16 +57,16 @@ async fn test_bootstrap_server() {
     .await
     .unwrap()
     .unwrap();
-    println!("Size part = {:#?}", LEDGER_PART_SIZE_MESSAGE_BYTES);
 
     let final_state_client = Arc::new(RwLock::new(FinalState::default()));
+    let final_state_client_thread = final_state_client.clone();
 
     // launch the get_state process
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
             bootstrap_settings,
-            final_state_client,
+            final_state_client_thread,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
@@ -162,13 +162,12 @@ async fn test_bootstrap_server() {
     );
 
     // check final states
-    assert_eq_final_state(&final_state.read(), &bootstrap_res.final_state.read());
+    assert_eq_final_state(&final_state.read(), &final_state_client.read());
 
     // check states
     assert_eq_thread_cycle_states(&sent_pos, &bootstrap_res.pos.unwrap());
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
-    println!("end of test");
     // stop bootstrap server
     bootstrap_manager
         .stop()

@@ -47,7 +47,6 @@ async fn stream_ledger(
         loop {
             let msg = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
                 Err(_) => {
-                    println!("client: time out asking");
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
                         "final state bootstrap read timed out",
