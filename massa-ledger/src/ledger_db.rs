@@ -148,7 +148,7 @@ impl LedgerDB {
                 }
             }
         }
-        // set the assiociated slot in metadata
+        // set the associated slot in metadata
         self.set_metadata(slot, &mut batch);
         // write the batch
         self.write_batch(batch);
