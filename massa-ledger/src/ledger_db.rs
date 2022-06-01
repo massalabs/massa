@@ -124,7 +124,7 @@ impl LedgerDB {
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * slot: new slot associated to the final ledger
-    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+    pub(crate) fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         // create the batch
         let mut batch = WriteBatch::default();
         // for all incoming changes
