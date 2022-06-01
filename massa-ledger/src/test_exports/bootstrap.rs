@@ -25,7 +25,6 @@ pub fn create_final_ledger(
     }
     FinalLedger {
         _config: config,
-        // NOTE:Aurelien change
         sorted_ledger: db,
     }
 }

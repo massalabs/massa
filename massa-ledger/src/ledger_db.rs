@@ -154,7 +154,6 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
                 Ok((rest, bytecode_key!(address)))
             }
             Some(_) => {
-                // Safe because we matched that there is a first byte just above.
                 let (rest, (address, key)) = tuple((
                     |input| self.address_deserializer.deserialize(input),
                     |input| self.hash_deserializer.deserialize(input),
@@ -422,6 +421,7 @@ impl LedgerDB {
         let mut part = Vec::new();
         let opt = ReadOptions::default();
 
+        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
         let db_iterator = if let Some(key) = last_key {
             let mut iter =
                 self.0
@@ -432,6 +432,8 @@ impl LedgerDB {
             self.0.iterator_cf_opt(handle, opt, IteratorMode::Start)
         };
         let mut last_key = Vec::new();
+
+        // Iterates over the whole database
         for (key, entry) in db_iterator {
             if part.len() < (LEDGER_PART_SIZE_MESSAGE_BYTES as usize) {
                 part.extend(key_serializer.serialize(&key.to_vec())?);
@@ -442,6 +444,9 @@ impl LedgerDB {
         Ok((part, last_key))
     }
 
+    /// Set a part of the ledger in the database
+    /// 
+    /// Return: The last key of the entry inserted
     pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Vec<u8>, ModelsError> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
@@ -449,6 +454,7 @@ impl LedgerDB {
         let key_deserializer = KeyDeserializer::new();
         let mut last_key = Rc::new(Vec::new());
         let mut batch = WriteBatch::default();
+
         // NOTE: We deserialize to address to go back directly to vec u8 because we want to perform security check because this data can come from the network.
         let (rest, _) = many0(|input: &'a [u8]| {
             let (rest, (key, value)) = tuple((
@@ -462,6 +468,8 @@ impl LedgerDB {
             Ok((rest, ()))
         })(data)
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
+
+        // We should not have any data left.
         if rest.is_empty() {
             self.0.write(batch).expect(CRUD_ERROR);
             Ok((*last_key).clone())
@@ -490,7 +498,7 @@ mod tests {
     use super::LedgerDB;
 
     #[cfg(test)]
-    fn init_test_ledger(a: Address, _b: Address) -> (LedgerDB, BTreeMap<Hash, Vec<u8>>) {
+    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Hash, Vec<u8>>) {
         // init data
         let mut data = BTreeMap::new();
         data.insert(Hash::compute_from(b"1"), b"a".to_vec());
@@ -511,8 +519,8 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
         let mut batch = WriteBatch::default();
-        db.put_entry(&a, entry, &mut batch);
-        db.update_entry(&a, entry_update, &mut batch);
+        db.put_entry(&addr, entry, &mut batch);
+        db.update_entry(&addr, entry_update, &mut batch);
         db.write_batch(batch);
 
         // return db and initial data
@@ -527,7 +535,7 @@ mod tests {
         let pub_b = derive_public_key(&generate_random_private_key());
         let a = Address::from_public_key(&pub_a);
         let b = Address::from_public_key(&pub_b);
-        let (db, data) = init_test_ledger(a, b);
+        let (db, data) = init_test_ledger(a);
 
         // first assert
         assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
@@ -553,10 +561,8 @@ mod tests {
     #[test]
     fn test_ledger_parts() {
         let pub_a = derive_public_key(&generate_random_private_key());
-        let pub_b = derive_public_key(&generate_random_private_key());
         let a = Address::from_public_key(&pub_a);
-        let b = Address::from_public_key(&pub_b);
-        let (db, _) = init_test_ledger(a, b);
+        let (db, _) = init_test_ledger(a);
         let res = db.get_ledger_part(None).unwrap();
         db.set_ledger_part(&res.0[..]).unwrap();
     }

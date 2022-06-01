@@ -90,7 +90,7 @@ impl FinalState {
     /// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `max_address` and a `AsyncMessageId`.
     /// Every ledgers changes that are after `min_slot` and below `end_cursor` must be returned.
     /// Every async pool changes that are after `min_slot` and below `max_id_async_pool` must be returned.
-    pub fn get_part_state_changes(
+    pub fn get_state_changes_part(
         &self,
         min_slot: Option<Slot>,
         max_address: Option<Address>,
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn get_part_state_changes() {
+    fn get_state_changes_part() {
         // Building the state changes
         let mut history_state_changes: VecDeque<(Slot, StateChanges)> = VecDeque::new();
         let (low_address, high_address) = {
@@ -197,11 +197,11 @@ mod tests {
         let mut final_state: FinalState = Default::default();
         final_state.changes_history = history_state_changes;
         // Test slot filter
-        let part = final_state.get_part_state_changes(Some(Slot::new(2, 0)), None, None);
+        let part = final_state.get_state_changes_part(Some(Slot::new(2, 0)), None, None);
         assert_eq!(part.len(), 2);
         // Test address filter
         let part =
-            final_state.get_part_state_changes(Some(Slot::new(2, 0)), Some(low_address), None);
+            final_state.get_state_changes_part(Some(Slot::new(2, 0)), Some(low_address), None);
         assert_eq!(part.len(), 1);
     }
 }

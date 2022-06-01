@@ -281,7 +281,7 @@ pub async fn send_stream_ledger(
         }
         if !data.is_empty() || !async_pool_part.is_empty() {
             let actual_slot = final_state.read().slot;
-            let final_state_changes = final_state.read().get_part_state_changes(
+            let final_state_changes = final_state.read().get_state_changes_part(
                 last_slot,
                 old_key.clone().and_then(get_address_from_key),
                 old_last_async_id,
