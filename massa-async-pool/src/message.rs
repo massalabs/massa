@@ -35,7 +35,7 @@ impl AsyncMessageIdSerializer {
             amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_serializer: SlotSerializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Included(THREAD_COUNT.into())),
             ),
             u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
@@ -76,6 +76,9 @@ impl AsyncMessageIdDeserializer {
             amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
+                #[cfg(feature = "sandbox")]
+                (Included(0), Included(*THREAD_COUNT)),
+                #[cfg(not(feature = "sandbox"))]
                 (Included(0), Included(THREAD_COUNT)),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),

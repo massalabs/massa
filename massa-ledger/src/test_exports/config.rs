@@ -10,10 +10,11 @@ use tempfile::{NamedTempFile, TempDir};
 /// Default value of `FinalLedger` used for tests
 impl Default for FinalLedger {
     fn default() -> Self {
+        let temp_dir = TempDir::new().unwrap();
+        let db = LedgerDB::new(temp_dir.path().to_path_buf());
         FinalLedger {
             _config: Default::default(),
-            //TODO: Aurelien change
-            sorted_ledger: LedgerDB::new("default.db".into()),
+            sorted_ledger: db,
         }
     }
 }

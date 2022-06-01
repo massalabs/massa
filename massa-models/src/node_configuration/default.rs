@@ -81,18 +81,34 @@ lazy_static::lazy_static! {
         32
     );
 }
+#[cfg(feature = "sandbox")]
+impl Into<u8> for THREAD_COUNT {
+    fn into(self) -> u8 {
+        *self
+    }
+}
+
+#[cfg(feature = "sandbox")]
+impl Copy for THREAD_COUNT {}
+
+#[cfg(feature = "sandbox")]
+impl Clone for THREAD_COUNT {
+    fn clone(&self) -> THREAD_COUNT {
+        *self
+    }
+}
 
 /// Price of a roll in the network
 pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::from_raw((0.3 * AMOUNT_DECIMAL_FACTOR as f64) as u64);
-#[cfg(not(feature = "sandbox"))]
 /// Time between the periods in the same thread.
+#[cfg(not(feature = "sandbox"))]
 pub const T0: MassaTime = MassaTime::from(16000);
 /// Proof of stake seed for the initial draw
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
-#[cfg(not(feature = "sandbox"))]
 /// Number of threads
+#[cfg(not(feature = "sandbox"))]
 pub const THREAD_COUNT: u8 = 32;
 /// Number of endorsement
 pub const ENDORSEMENT_COUNT: u32 = 9;

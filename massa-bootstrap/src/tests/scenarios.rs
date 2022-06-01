@@ -16,7 +16,7 @@ use crate::{
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
-use massa_models::{constants::LEDGER_PART_SIZE_MESSAGE_BYTES, Version};
+use massa_models::Version;
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;

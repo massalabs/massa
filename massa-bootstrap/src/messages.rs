@@ -106,7 +106,7 @@ impl SerializeCompact for BootstrapServerMessage {
                 let async_pool_serializer = AsyncPoolPartSerializer::new();
                 let slot_serializer = SlotSerializer::new(
                     (Included(0), Included(u64::MAX)),
-                    (Included(0), Included(THREAD_COUNT)),
+                    (Included(0), Included(THREAD_COUNT.into())),
                 );
                 let final_state_changes_serializer = StateChangesSerializer::new();
                 let vec_u8_serializer =
@@ -182,7 +182,7 @@ impl DeserializeCompact for BootstrapServerMessage {
                 let async_pool_deserializer = AsyncPoolPartDeserializer::new();
                 let slot_deserializer = SlotDeserializer::new(
                     (Included(0), Included(u64::MAX)),
-                    (Included(0), Included(THREAD_COUNT)),
+                    (Included(0), Included(THREAD_COUNT.into())),
                 );
                 let final_state_changes_deserializer = StateChangesDeserializer::new();
                 let vec_u8_deserializer =
@@ -323,7 +323,7 @@ impl DeserializeCompact for BootstrapClientMessage {
                     let key_deserializer = KeyDeserializer::new();
                     let slot_deserializer = SlotDeserializer::new(
                         (Included(0), Included(u64::MAX)),
-                        (Included(0), Included(THREAD_COUNT)),
+                        (Included(0), Included(THREAD_COUNT.into())),
                     );
                     let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
                     let (rest, (last_key, slot, last_async_message_id)) =

@@ -32,3 +32,4 @@ serial_test = "0.5"
 [features]
 instrument = ["tokio/tracing", "massa_models/instrument", "massa_time/instrument"]
 testing = []
+sandbox = []
