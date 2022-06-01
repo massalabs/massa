@@ -445,7 +445,7 @@ impl LedgerDB {
     }
 
     /// Set a part of the ledger in the database
-    /// 
+    ///
     /// Return: The last key of the entry inserted
     pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Vec<u8>, ModelsError> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
