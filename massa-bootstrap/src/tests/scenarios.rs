@@ -16,7 +16,7 @@ use crate::{
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
-use massa_models::Version;
+use massa_models::{constants::LEDGER_PART_SIZE_MESSAGE_BYTES, Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
@@ -57,6 +57,7 @@ async fn test_bootstrap_server() {
     .await
     .unwrap()
     .unwrap();
+    println!("Size part = {:#?}", LEDGER_PART_SIZE_MESSAGE_BYTES);
 
     let final_state_client = Arc::new(RwLock::new(FinalState::default()));
 

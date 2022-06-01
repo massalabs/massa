@@ -13,7 +13,7 @@ impl Default for FinalLedger {
         FinalLedger {
             _config: Default::default(),
             //TODO: Aurelien change
-            sorted_ledger: LedgerDB::new("".into()),
+            sorted_ledger: LedgerDB::new("default.db".into()),
         }
     }
 }

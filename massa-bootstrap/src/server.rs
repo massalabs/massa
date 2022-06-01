@@ -11,7 +11,7 @@ use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::FinalState;
 use massa_graph::BootstrapableGraph;
-use massa_ledger::LedgerCursor;
+use massa_ledger::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{Slot, Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
@@ -250,27 +250,28 @@ impl BootstrapServer {
 
 pub async fn send_stream_ledger(
     server: &mut BootstrapServerBinder,
-    cursor: Option<LedgerCursor>,
+    last_key: Option<Vec<u8>>,
     final_state: Arc<RwLock<FinalState>>,
     slot: Option<Slot>,
     last_async_message_id: Option<AsyncMessageId>,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
-    let mut old_cursor = cursor;
+    let mut old_key = last_key;
     let mut old_last_async_id = last_async_message_id;
     let mut last_slot = slot;
 
     loop {
-        let (data, cursor) = final_state
-            .read()
-            .ledger
-            .get_ledger_part(old_cursor)
-            .map_err(|_| {
-                BootstrapError::GeneralError(
-                    "Error on fetching ledger part of execution".to_string(),
-                )
-            })?;
-        old_cursor = cursor;
+        let (data, new_last_key) =
+            final_state
+                .read()
+                .ledger
+                .get_ledger_part(old_key)
+                .map_err(|_| {
+                    BootstrapError::GeneralError(
+                        "Error on fetching ledger part of execution".to_string(),
+                    )
+                })?;
+        old_key = Some(new_last_key);
         let async_pool_part = final_state
             .read()
             .async_pool
@@ -282,7 +283,7 @@ pub async fn send_stream_ledger(
             let actual_slot = final_state.read().slot;
             let final_state_changes = final_state.read().get_part_state_changes(
                 last_slot,
-                old_cursor.clone().map(|cursor| cursor.address),
+                old_key.clone().and_then(get_address_from_key),
                 old_last_async_id,
             );
             last_slot = Some(actual_slot);
@@ -413,13 +414,13 @@ async fn manage_bootstrap(
                     }?;
                 }
                 BootstrapClientMessage::AskFinalStatePart {
-                    cursor,
+                    last_key,
                     slot,
                     last_async_message_id,
                 } => {
                     send_stream_ledger(
                         server,
-                        cursor,
+                        last_key,
                         final_state.clone(),
                         slot,
                         last_async_message_id,

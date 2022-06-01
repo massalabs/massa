@@ -53,7 +53,6 @@
 #![feature(let_chains)]
 
 mod config;
-mod cursor;
 mod error;
 mod ledger;
 mod ledger_changes;
@@ -62,15 +61,14 @@ mod ledger_entry;
 mod types;
 
 pub use config::LedgerConfig;
-pub use cursor::{LedgerCursor, LedgerCursorDeserializer, LedgerCursorSerializer};
 pub use error::LedgerError;
 pub use ledger::FinalLedger;
 pub use ledger_changes::{
     LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, LedgerEntryUpdate,
 };
+pub use ledger_db::{get_address_from_key, KeyDeserializer, KeySerializer};
 pub use ledger_entry::LedgerEntry;
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
-
 #[cfg(test)]
 mod tests;
 

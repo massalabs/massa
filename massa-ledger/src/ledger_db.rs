@@ -4,10 +4,9 @@
 
 use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_models::address::AddressDeserializer;
-use massa_models::constants::default::MAXIMUM_BOOTSTRAP_MESSAGE_BYTES;
+use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
 use massa_models::{
-    Address, Amount, DeserializeCompact, ModelsError, SerializeCompact, Slot, U64VarIntSerializer,
-    VecU8Deserializer, VecU8Serializer,
+    Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
 };
 use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
@@ -16,9 +15,13 @@ use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
 use std::ops::Bound;
+use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
+
+#[cfg(feature = "testing")]
+use massa_models::{Amount, DeserializeCompact};
 
 // TODO: remove rocks_db dir when sled is cut out
 const LEDGER_CF: &str = "ledger";
@@ -79,6 +82,91 @@ macro_rules! data_prefix {
     ($addr:expr) => {
         &$addr.to_bytes()[..]
     };
+}
+
+/// Extract an address from a key
+pub fn get_address_from_key(key: Vec<u8>) -> Option<Address> {
+    let address_deserializer = AddressDeserializer::new();
+    match key.get(0) {
+        Some(ident) if *ident == BALANCE_IDENT => {
+            // Safe because we matched that there is a first byte just above.
+            let (_, address) = address_deserializer.deserialize(&key[1..]).ok()?;
+            Some(address)
+        }
+        Some(ident) if *ident == BYTECODE_IDENT => {
+            // Safe because we matched that there is a first byte just above.
+            let (_, address) = address_deserializer.deserialize(&key[1..]).ok()?;
+            Some(address)
+        }
+        Some(_) => {
+            let (_, address) = address_deserializer.deserialize(&key[..]).ok()?;
+            Some(address)
+        }
+        None => None,
+    }
+}
+
+/// Basic key serializer
+#[derive(Default)]
+pub struct KeySerializer;
+
+impl KeySerializer {
+    /// Creates a new `KeySerializer`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Serializer<Vec<u8>> for KeySerializer {
+    fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, massa_serialization::SerializeError> {
+        Ok(value.clone())
+    }
+}
+
+/// Basic key deserializer
+#[derive(Default)]
+pub struct KeyDeserializer {
+    address_deserializer: AddressDeserializer,
+    hash_deserializer: HashDeserializer,
+}
+
+impl KeyDeserializer {
+    /// Creates a new `KeyDeserializer`
+    pub fn new() -> Self {
+        Self {
+            address_deserializer: AddressDeserializer::new(),
+            hash_deserializer: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<Vec<u8>> for KeyDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
+        match buffer.get(0) {
+            Some(ident) if *ident == BALANCE_IDENT => {
+                // Safe because we matched that there is a first byte just above.
+                let (rest, address) = self.address_deserializer.deserialize(&buffer[1..])?;
+                Ok((rest, balance_key!(address)))
+            }
+            Some(ident) if *ident == BYTECODE_IDENT => {
+                // Safe because we matched that there is a first byte just above.
+                let (rest, address) = self.address_deserializer.deserialize(&buffer[1..])?;
+                Ok((rest, bytecode_key!(address)))
+            }
+            Some(_) => {
+                // Safe because we matched that there is a first byte just above.
+                let (rest, (address, key)) = tuple((
+                    |input| self.address_deserializer.deserialize(input),
+                    |input| self.hash_deserializer.deserialize(input),
+                ))(buffer)?;
+                Ok((rest, data_key!(address, key)))
+            }
+            None => Err(nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::IsNot,
+            ))),
+        }
+    }
 }
 
 /// For a given start prefix (inclusive), returns the correct end prefix (non-inclusive).
@@ -210,7 +298,8 @@ impl LedgerDB {
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
     ///
-    /// NOTE: Currently used in the intermediate bootstrap implementation
+    /// NOTE: ONLY USE THIS FOR TESTS
+    #[cfg(feature = "testing")]
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -323,10 +412,13 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * last_key: key where the part retrieving must start
-    pub fn get_ledger_part(&self, last_key: Option<Vec<u8>>) -> Result<Vec<u8>, ModelsError> {
+    pub fn get_ledger_part(
+        &self,
+        last_key: Option<Vec<u8>>,
+    ) -> Result<(Vec<u8>, Vec<u8>), ModelsError> {
         let ser = VecU8Serializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
+        let key_serializer = KeySerializer::new();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
-
         let mut part = Vec::new();
         let opt = ReadOptions::default();
 
@@ -339,65 +431,41 @@ impl LedgerDB {
         } else {
             self.0.iterator_cf_opt(handle, opt, IteratorMode::Start)
         };
+        let mut last_key = Vec::new();
         for (key, entry) in db_iterator {
-            if part.len() < (MAXIMUM_BOOTSTRAP_MESSAGE_BYTES as usize) {
-                part.extend(key.to_vec());
+            if part.len() < (LEDGER_PART_SIZE_MESSAGE_BYTES as usize) {
+                part.extend(key_serializer.serialize(&key.to_vec())?);
                 part.extend(ser.serialize(&entry.to_vec())?);
+                last_key = key.to_vec();
             }
         }
-        Ok(part)
+        Ok((part, last_key))
     }
 
-    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<(), ModelsError> {
+    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Vec<u8>, ModelsError> {
+        println!("new part");
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
-        let address_deserializer = AddressDeserializer::new();
-        let hash_deserializer = HashDeserializer::new();
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
+        let key_deserializer = KeyDeserializer::new();
+        let mut last_key = Rc::new(Vec::new());
         let mut batch = WriteBatch::default();
         // NOTE: We deserialize to address to go back directly to vec u8 because we want to perform security check because this data can come from the network.
         let (rest, _) = many0(|input: &'a [u8]| {
-            match input.get(0) {
-                Some(ident) if *ident == BALANCE_IDENT => {
-                    // Safe because we matched that there is a first byte just above.
-                    let (rest, (address, value)) = tuple((
-                        |input| address_deserializer.deserialize(input),
-                        |input| vec_u8_deserializer.deserialize(input),
-                    ))(&input[1..])?;
-                    batch.put_cf(handle, balance_key!(address), value);
-                    Ok((rest, ()))
-                }
-                Some(ident) if *ident == BYTECODE_IDENT => {
-                    // Safe because we matched that there is a first byte just above.
-                    let (rest, (address, bytecode)) = tuple((
-                        |input| address_deserializer.deserialize(input),
-                        |input| vec_u8_deserializer.deserialize(input),
-                    ))(&input[1..])?;
-                    batch.put_cf(handle, bytecode_key!(address), bytecode);
-                    Ok((rest, ()))
-                }
-                Some(_) => {
-                    // Safe because we matched that there is a first byte just above.
-                    let (rest, (address, key, value)) = tuple((
-                        |input| address_deserializer.deserialize(input),
-                        |input| hash_deserializer.deserialize(input),
-                        |input| vec_u8_deserializer.deserialize(input),
-                    ))(&input[..])?;
-                    batch.put_cf(handle, data_key!(address, key), value);
-                    Ok((rest, ()))
-                }
-                None => {
-                    return Err(nom::Err::Error(nom::error::Error::new(
-                        input,
-                        nom::error::ErrorKind::IsNot,
-                    )))
-                }
-            }
-        })(&data[..])
+            let (rest, (key, value)) = tuple((
+                |input| key_deserializer.deserialize(input),
+                |input| vec_u8_deserializer.deserialize(input),
+            ))(input)?;
+            *Rc::get_mut(&mut last_key).ok_or_else(|| {
+                nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
+            })? = key.clone();
+            batch.put_cf(handle, key, value);
+            Ok((rest, ()))
+        })(data)
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
         if rest.is_empty() {
             self.0.write(batch).expect(CRUD_ERROR);
-            Ok(())
+            Ok((*last_key).clone())
         } else {
             Err(ModelsError::SerializeError(
                 "rest is not empty.".to_string(),
@@ -406,7 +474,7 @@ impl LedgerDB {
     }
 }
 
-#[cfg(feature = "testing")]
+#[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
@@ -422,6 +490,7 @@ mod tests {
 
     use super::LedgerDB;
 
+    #[cfg(test)]
     fn init_test_ledger(a: Address, _b: Address) -> (LedgerDB, BTreeMap<Hash, Vec<u8>>) {
         // init data
         let mut data = BTreeMap::new();
@@ -490,6 +559,6 @@ mod tests {
         let b = Address::from_public_key(&pub_b);
         let (db, _) = init_test_ledger(a, b);
         let res = db.get_ledger_part(None).unwrap();
-        db.set_ledger_part(&res[..]).unwrap();
+        db.set_ledger_part(&res.0[..]).unwrap();
     }
 }

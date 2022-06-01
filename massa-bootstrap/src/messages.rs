@@ -6,7 +6,7 @@ use massa_async_pool::{
 };
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_graph::BootstrapableGraph;
-use massa_ledger::{LedgerCursor, LedgerCursorDeserializer, LedgerCursorSerializer};
+use massa_ledger::{KeyDeserializer, KeySerializer};
 use massa_models::slot::SlotDeserializer;
 use massa_models::{
     constants::THREAD_COUNT, slot::SlotSerializer, DeserializeCompact, DeserializeVarInt,
@@ -244,7 +244,7 @@ pub enum BootstrapClientMessage {
     /// Ask for a part of the final state
     AskFinalStatePart {
         /// Last position of the cursor received from the server
-        cursor: Option<LedgerCursor>,
+        last_key: Option<Vec<u8>>,
         /// Slot we are attached to for ledger changes
         slot: Option<Slot>,
         /// Last async message id sent
@@ -274,16 +274,16 @@ impl SerializeCompact for BootstrapClientMessage {
                 res.extend(u32::from(MessageClientTypeId::AskConsensusState).to_varint_bytes());
             }
             BootstrapClientMessage::AskFinalStatePart {
-                cursor,
+                last_key,
                 slot,
                 last_async_message_id,
             } => {
                 res.extend(u32::from(MessageClientTypeId::AskFinalStatePart).to_varint_bytes());
                 // If we have a cursor we must have also a slot
-                if let Some(cursor) = cursor && let Some(slot) = slot && let Some(last_async_message_id) = last_async_message_id  {
-                    let cursor_serializer = LedgerCursorSerializer::new();
+                if let Some(key) = last_key && let Some(slot) = slot && let Some(last_async_message_id) = last_async_message_id  {
                     let async_message_id_serializer = AsyncMessageIdSerializer::new();
-                    res.extend(cursor_serializer.serialize(cursor)?);
+                    let key_serializer = KeySerializer::new();
+                    res.extend(key_serializer.serialize(key)?);
                     res.extend(slot.to_bytes_compact()?);
                     res.extend(async_message_id_serializer.serialize(last_async_message_id)?);
                 }
@@ -315,21 +315,21 @@ impl DeserializeCompact for BootstrapClientMessage {
             MessageClientTypeId::AskFinalStatePart => {
                 if buffer.len() == cursor {
                     BootstrapClientMessage::AskFinalStatePart {
-                        cursor: None,
+                        last_key: None,
                         slot: None,
                         last_async_message_id: None,
                     }
                 } else {
-                    let cursor_deserializer = LedgerCursorDeserializer::new();
+                    let key_deserializer = KeyDeserializer::new();
                     let slot_deserializer = SlotDeserializer::new(
                         (Included(0), Included(u64::MAX)),
                         (Included(0), Included(THREAD_COUNT)),
                     );
                     let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
-                    let (rest, (ledger_cursor, slot, last_async_message_id)) =
+                    let (rest, (last_key, slot, last_async_message_id)) =
                         tuple((
-                            context("cursor in ask final state part", |input| {
-                                cursor_deserializer.deserialize(input)
+                            context("last_key in ask final state part", |input| {
+                                key_deserializer.deserialize(input)
                             }),
                             context("slot in ask final state part", |input| {
                                 slot_deserializer.deserialize(input)
@@ -343,7 +343,7 @@ impl DeserializeCompact for BootstrapClientMessage {
                     cursor += delta;
 
                     BootstrapClientMessage::AskFinalStatePart {
-                        cursor: Some(ledger_cursor),
+                        last_key: Some(last_key),
                         slot: Some(slot),
                         last_async_message_id: Some(last_async_message_id),
                     }

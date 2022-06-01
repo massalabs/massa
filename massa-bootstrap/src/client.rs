@@ -1,7 +1,6 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
-use massa_ledger::{Applicable, LedgerCursor};
 use massa_logging::massa_trace;
 use massa_models::Version;
 use massa_signature::PublicKey;
@@ -30,10 +29,7 @@ async fn stream_ledger(
     next_message_bootstrap: &mut Option<BootstrapClientMessage>,
     global_bootstrap_state: &mut GlobalBootstrapState,
 ) -> Result<(), BootstrapError> {
-    if let Some(BootstrapClientMessage::AskFinalStatePart {
-        cursor: old_cursor, ..
-    }) = &next_message_bootstrap
-    {
+    if let Some(BootstrapClientMessage::AskFinalStatePart { .. }) = &next_message_bootstrap {
         match tokio::time::timeout(
             cfg.write_timeout.into(),
             client.send(next_message_bootstrap.as_ref().unwrap()),
@@ -48,7 +44,6 @@ async fn stream_ledger(
             Ok(Err(e)) => Err(e),
             Ok(Ok(_)) => Ok(()),
         }?;
-        let mut old_cursor: Option<LedgerCursor> = old_cursor.clone();
         loop {
             let msg = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
                 Err(_) => {
@@ -70,15 +65,15 @@ async fn stream_ledger(
                     final_state_changes,
                 } => {
                     let mut write_final_state = global_bootstrap_state.final_state.write();
-                    old_cursor = write_final_state
-                        .ledger
-                        .set_ledger_part(old_cursor, ledger_data)?;
+                    let last_key = write_final_state.ledger.set_ledger_part(ledger_data)?;
                     let old_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part)
                         .map(|(id, _)| *id);
                     for changes in final_state_changes {
-                        write_final_state.ledger.apply(changes.ledger_changes);
+                        write_final_state
+                            .ledger
+                            .apply_changes_at_slot(changes.ledger_changes, slot);
                         write_final_state
                             .async_pool
                             .apply_changes_unchecked(changes.async_pool_changes);
@@ -86,7 +81,7 @@ async fn stream_ledger(
                     write_final_state.slot = slot;
                     // Set new message in case of disconnection
                     *next_message_bootstrap = Some(BootstrapClientMessage::AskFinalStatePart {
-                        cursor: old_cursor.clone(),
+                        last_key: Some(last_key),
                         slot: Some(slot),
                         last_async_message_id: old_last_async_id,
                     });
@@ -350,7 +345,7 @@ pub async fn get_state(
     // Will be none when bootstrap is over
     let mut next_message_bootstrap: Option<BootstrapClientMessage> =
         Some(BootstrapClientMessage::AskFinalStatePart {
-            cursor: None,
+            last_key: None,
             slot: None,
             last_async_message_id: None,
         });
