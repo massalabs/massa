@@ -104,9 +104,13 @@ impl SerializeCompact for BootstrapServerMessage {
                 final_state_changes,
             } => {
                 let async_pool_serializer = AsyncPoolPartSerializer::new();
+                #[cfg(feature = "sandbox")]
+                let thread_count = *THREAD_COUNT;
+                #[cfg(not(feature = "sandbox"))]
+                let thread_count = THREAD_COUNT;
                 let slot_serializer = SlotSerializer::new(
                     (Included(0), Included(u64::MAX)),
-                    (Included(0), Included(THREAD_COUNT.into())),
+                    (Included(0), Included(thread_count)),
                 );
                 let final_state_changes_serializer = StateChangesSerializer::new();
                 let vec_u8_serializer =
@@ -180,9 +184,13 @@ impl DeserializeCompact for BootstrapServerMessage {
             }
             MessageServerTypeId::FinalStatePart => {
                 let async_pool_deserializer = AsyncPoolPartDeserializer::new();
+                #[cfg(feature = "sandbox")]
+                let thread_count = *THREAD_COUNT;
+                #[cfg(not(feature = "sandbox"))]
+                let thread_count = THREAD_COUNT;
                 let slot_deserializer = SlotDeserializer::new(
                     (Included(0), Included(u64::MAX)),
-                    (Included(0), Included(THREAD_COUNT.into())),
+                    (Included(0), Included(thread_count)),
                 );
                 let final_state_changes_deserializer = StateChangesDeserializer::new();
                 let vec_u8_deserializer =
@@ -321,9 +329,13 @@ impl DeserializeCompact for BootstrapClientMessage {
                     }
                 } else {
                     let key_deserializer = KeyDeserializer::new();
+                    #[cfg(feature = "sandbox")]
+                    let thread_count = *THREAD_COUNT;
+                    #[cfg(not(feature = "sandbox"))]
+                    let thread_count = THREAD_COUNT;
                     let slot_deserializer = SlotDeserializer::new(
                         (Included(0), Included(u64::MAX)),
-                        (Included(0), Included(THREAD_COUNT.into())),
+                        (Included(0), Included(thread_count)),
                     );
                     let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
                     let (rest, (last_key, slot, last_async_message_id)) =

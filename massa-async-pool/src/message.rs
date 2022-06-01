@@ -31,11 +31,15 @@ pub struct AsyncMessageIdSerializer {
 
 impl AsyncMessageIdSerializer {
     pub fn new() -> Self {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
         Self {
             amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_serializer: SlotSerializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT.into())),
+                (Included(0), Included(thread_count)),
             ),
             u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
         }

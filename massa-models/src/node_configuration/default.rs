@@ -81,22 +81,6 @@ lazy_static::lazy_static! {
         32
     );
 }
-#[cfg(feature = "sandbox")]
-impl Into<u8> for THREAD_COUNT {
-    fn into(self) -> u8 {
-        *self
-    }
-}
-
-#[cfg(feature = "sandbox")]
-impl Copy for THREAD_COUNT {}
-
-#[cfg(feature = "sandbox")]
-impl Clone for THREAD_COUNT {
-    fn clone(&self) -> THREAD_COUNT {
-        *self
-    }
-}
 
 /// Price of a roll in the network
 pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
