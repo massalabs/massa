@@ -287,25 +287,43 @@ pub async fn send_stream_ledger(
                 old_last_async_id,
             );
             last_slot = Some(actual_slot);
-            match tokio::time::timeout(
-                write_timeout,
-                server.send(BootstrapServerMessage::FinalStatePart {
-                    ledger_data: data,
-                    slot: actual_slot,
-                    async_pool_part,
-                    final_state_changes,
-                }),
-            )
-            .await
-            {
-                Err(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "bootstrap ask ledger part send timed out",
+            if let Ok(final_state_changes) = final_state_changes {
+                match tokio::time::timeout(
+                    write_timeout,
+                    server.send(BootstrapServerMessage::FinalStatePart {
+                        ledger_data: data,
+                        slot: actual_slot,
+                        async_pool_part,
+                        final_state_changes,
+                    }),
                 )
-                .into()),
-                Ok(Err(e)) => Err(e),
-                Ok(Ok(_)) => Ok(()),
-            }?;
+                .await
+                {
+                    Err(_) => Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "bootstrap ask ledger part send timed out",
+                    )
+                    .into()),
+                    Ok(Err(e)) => Err(e),
+                    Ok(Ok(_)) => Ok(()),
+                }?;
+            } else {
+                match tokio::time::timeout(
+                    write_timeout,
+                    server.send(BootstrapServerMessage::SlotTooOld),
+                )
+                .await
+                {
+                    Err(_) => Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "bootstrap ask ledger part send timed out",
+                    )
+                    .into()),
+                    Ok(Err(e)) => Err(e),
+                    Ok(Ok(_)) => Ok(()),
+                }?;
+                break;
+            }
         } else {
             match tokio::time::timeout(
                 write_timeout,

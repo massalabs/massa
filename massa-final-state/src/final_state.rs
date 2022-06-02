@@ -90,15 +90,24 @@ impl FinalState {
     /// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `max_address` and a `AsyncMessageId`.
     /// Every ledgers changes that are after `min_slot` and below `end_cursor` must be returned.
     /// Every async pool changes that are after `min_slot` and below `max_id_async_pool` must be returned.
+    ///
+    /// Error case: When the min_slot is too old for `self.changes_history`
     pub fn get_state_changes_part(
         &self,
         min_slot: Option<Slot>,
         max_address: Option<Address>,
         max_id_async_pool: Option<AsyncMessageId>,
-    ) -> Vec<StateChanges> {
-        let pos_slot = min_slot
-            .map(|min_slot| self.changes_history.partition_point(|(s, _)| s < &min_slot))
-            .unwrap_or(0);
+    ) -> Result<Vec<StateChanges>, FinalStateError> {
+        let pos_slot = if let Some(min_slot) = min_slot && !self.changes_history.is_empty() {
+            match self.changes_history.partition_point(|(s, _)| s < &min_slot) {
+                0 => return Err(FinalStateError::LedgerError("The slot passed as parameter is too old.".to_string())),
+                x => x,
+            }
+        } else if self.changes_history.is_empty() {
+            return Ok(Vec::new());
+        } else {
+            0
+        };
         let mut res_changes: Vec<StateChanges> = Vec::new();
         for (_, changes) in self.changes_history.range(pos_slot..) {
             let mut elem: StateChanges = StateChanges::default();
@@ -148,7 +157,7 @@ impl FinalState {
                 res_changes.push(elem);
             }
         }
-        res_changes
+        Ok(res_changes)
     }
 }
 
@@ -197,11 +206,14 @@ mod tests {
         let mut final_state: FinalState = Default::default();
         final_state.changes_history = history_state_changes;
         // Test slot filter
-        let part = final_state.get_state_changes_part(Some(Slot::new(2, 0)), None, None);
+        let part = final_state
+            .get_state_changes_part(Some(Slot::new(2, 0)), None, None)
+            .unwrap();
         assert_eq!(part.len(), 2);
         // Test address filter
-        let part =
-            final_state.get_state_changes_part(Some(Slot::new(2, 0)), Some(low_address), None);
+        let part = final_state
+            .get_state_changes_part(Some(Slot::new(2, 0)), Some(low_address), None)
+            .unwrap();
         assert_eq!(part.len(), 1);
     }
 }

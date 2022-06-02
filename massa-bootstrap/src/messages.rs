@@ -47,22 +47,23 @@ pub enum BootstrapServerMessage {
         /// block graph
         graph: BootstrapableGraph,
     },
-    /// Part of the ledger of execution
+    /// Part of the final state
     FinalStatePart {
         /// Part of the execution ledger sent in a serialized way
         ledger_data: Vec<u8>,
         /// Part of the async pool
         async_pool_part: AsyncPoolPart,
-        /// Slot the ledger changes are attached to
+        /// Slot the state changes are attached to
         slot: Slot,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
         final_state_changes: Vec<StateChanges>,
     },
+    /// Message sent when there is no state part left
     FinalStateFinished,
+    /// Slot sent to get state changes is too old
+    SlotTooOld,
     /// Bootstrap error
-    BootstrapError {
-        error: String,
-    },
+    BootstrapError { error: String },
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -73,7 +74,8 @@ enum MessageServerTypeId {
     ConsensusState = 2u32,
     FinalStatePart = 3u32,
     FinalStateFinished = 4u32,
-    BootstrapError = 5u32,
+    SlotTooOld = 5u32,
+    BootstrapError = 6u32,
 }
 
 impl SerializeCompact for BootstrapServerMessage {
@@ -132,6 +134,9 @@ impl SerializeCompact for BootstrapServerMessage {
             }
             BootstrapServerMessage::FinalStateFinished => {
                 res.extend(u32::from(MessageServerTypeId::FinalStateFinished).to_varint_bytes());
+            }
+            BootstrapServerMessage::SlotTooOld => {
+                res.extend(u32::from(MessageServerTypeId::SlotTooOld).to_varint_bytes());
             }
             BootstrapServerMessage::BootstrapError { error } => {
                 res.extend(u32::from(MessageServerTypeId::BootstrapError).to_varint_bytes());
@@ -226,6 +231,7 @@ impl DeserializeCompact for BootstrapServerMessage {
                 }
             }
             MessageServerTypeId::FinalStateFinished => BootstrapServerMessage::FinalStateFinished,
+            MessageServerTypeId::SlotTooOld => BootstrapServerMessage::SlotTooOld,
             MessageServerTypeId::BootstrapError => {
                 let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;

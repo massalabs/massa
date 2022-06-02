@@ -89,6 +89,15 @@ async fn stream_ledger(
                     *next_bootstrap_message = Some(BootstrapClientMessage::AskBootstrapPeers);
                     return Ok(());
                 }
+                BootstrapServerMessage::SlotTooOld => {
+                    info!("Slot is too old retry bootstrap from scratch");
+                    *next_bootstrap_message = Some(BootstrapClientMessage::AskFinalStatePart {
+                        last_key: None,
+                        slot: None,
+                        last_async_message_id: None,
+                    });
+                    return Ok(());
+                }
                 _ => {
                     return Err(
                         std::io::Error::new(std::io::ErrorKind::TimedOut, "bad message").into(),
