@@ -3843,6 +3843,16 @@
 <span id="3836">3836</span>
 <span id="3837">3837</span>
 <span id="3838">3838</span>
+<span id="3839">3839</span>
+<span id="3840">3840</span>
+<span id="3841">3841</span>
+<span id="3842">3842</span>
+<span id="3843">3843</span>
+<span id="3844">3844</span>
+<span id="3845">3845</span>
+<span id="3846">3846</span>
+<span id="3847">3847</span>
+<span id="3848">3848</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! All information concerning blocks, the block graph and cliques is managed here.</span>
@@ -5106,43 +5116,53 @@
     <span class="doccomment">/// Retrieves operations from operation Ids</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operation_ids</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
+        <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="comment">// The search result.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
-        <span class="comment">// for each active block</span>
-        <span class="kw">for</span> <span class="ident">block_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_index</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">active_block</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="ident">block_id</span>) {
-                <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">retrieve_block</span>(<span class="ident">block_id</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">GraphError::MissingBlock</span>(<span class="macro">format!</span>(
-                        <span class="string">&quot;missing block in get_operations: {}&quot;</span>,
-                        <span class="ident">block_id</span>
-                    ))
-                })<span class="question-mark">?</span>;
-                <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">stored_block</span>.<span class="ident">read</span>();
 
-                <span class="comment">// check the intersection with the wanted operation ids, and update/insert into results</span>
-                <span class="ident">operation_ids</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">op_id</span><span class="op">|</span> {
-                        <span class="ident">active_block</span>.<span class="ident">operation_set</span>.<span class="ident">get</span>(<span class="ident">op_id</span>).<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">idx</span>, <span class="kw">_</span>)<span class="op">|</span> {
-                            (<span class="ident">op_id</span>, <span class="ident">idx</span>, <span class="ident">stored_block</span>.<span class="ident">block</span>.<span class="ident">operations</span>[<span class="kw-2">*</span><span class="ident">idx</span>].<span class="ident">clone</span>())
-                        })
-                    })
-                    .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">op_id</span>, <span class="ident">idx</span>, <span class="ident">op</span>)<span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">search_new</span> <span class="op">=</span> <span class="ident">OperationSearchResult</span> {
-                            <span class="ident">op</span>,
-                            <span class="ident">in_pool</span>: <span class="bool-val">false</span>,
-                            <span class="ident">in_blocks</span>: <span class="macro">vec!</span>[(<span class="kw-2">*</span><span class="ident">block_id</span>, (<span class="kw-2">*</span><span class="ident">idx</span>, <span class="ident">active_block</span>.<span class="ident">is_final</span>))]
-                                .<span class="ident">into_iter</span>()
-                                .<span class="ident">collect</span>(),
-                            <span class="ident">status</span>: <span class="ident">OperationSearchResultStatus::InBlock</span>(
-                                <span class="ident">OperationSearchResultBlockStatus::Active</span>,
-                            ),
-                        };
-                        <span class="ident">res</span>.<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">op_id</span>)
-                            .<span class="ident">and_modify</span>(<span class="op">|</span><span class="ident">search_old</span><span class="op">|</span> <span class="ident">search_old</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">search_new</span>))
-                            .<span class="ident">or_insert</span>(<span class="ident">search_new</span>);
-                    });
+        <span class="comment">// For each operation id we are searching for.</span>
+        <span class="kw">for</span> <span class="ident">op_id</span> <span class="kw">in</span> <span class="ident">operation_ids</span>.<span class="ident">into_iter</span>() {
+            <span class="comment">// The operation corresponding to the id, initially none.</span>
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operation</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+
+            <span class="comment">// The active blocks in which the operation is found.</span>
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">in_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">usize</span>, <span class="ident">bool</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
+
+            <span class="kw">for</span> <span class="ident">block_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_index</span>.<span class="ident">iter</span>() {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">active_block</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="ident">block_id</span>) {
+                    <span class="comment">// If the operation is found in the active block.</span>
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">idx</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="ident">active_block</span>.<span class="ident">operation_set</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">op_id</span>) {
+                        <span class="comment">// If this is the first time we encounter the operation as present in an active block.</span>
+                        <span class="kw">if</span> <span class="ident">operation</span>.<span class="ident">is_none</span>() {
+                            <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span>
+                                <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">retrieve_block</span>(<span class="ident">block_id</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                                    <span class="ident">GraphError::MissingBlock</span>(<span class="macro">format!</span>(
+                                        <span class="string">&quot;missing block in get_operations: {}&quot;</span>,
+                                        <span class="ident">block_id</span>
+                                    ))
+                                })<span class="question-mark">?</span>;
+                            <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">stored_block</span>.<span class="ident">read</span>();
+
+                            <span class="comment">// Clone the operation.</span>
+                            <span class="ident">operation</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">stored_block</span>.<span class="ident">block</span>.<span class="ident">operations</span>[<span class="kw-2">*</span><span class="ident">idx</span>].<span class="ident">clone</span>());
+                        }
+                        <span class="ident">in_blocks</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">block_id</span>, (<span class="kw-2">*</span><span class="ident">idx</span>, <span class="ident">active_block</span>.<span class="ident">is_final</span>));
+                    }
+                }
+            }
+
+            <span class="comment">// If we found the operation in at least one active block.</span>
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">op</span>) <span class="op">=</span> <span class="ident">operation</span> {
+                <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">OperationSearchResult</span> {
+                    <span class="ident">op</span>,
+                    <span class="ident">in_pool</span>: <span class="bool-val">false</span>,
+                    <span class="ident">in_blocks</span>,
+                    <span class="ident">status</span>: <span class="ident">OperationSearchResultStatus::InBlock</span>(
+                        <span class="ident">OperationSearchResultBlockStatus::Active</span>,
+                    ),
+                };
+                <span class="ident">res</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>, <span class="ident">result</span>);
             }
         }
         <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
@@ -7682,5 +7702,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c35035cef 2022-05-30)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (12cd71f4d 2022-06-01)" ></div>
 </body></html>
