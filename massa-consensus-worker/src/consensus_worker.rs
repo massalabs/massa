@@ -819,7 +819,7 @@ impl ConsensusWorker {
                     { "operation_ids": operation_ids }
                 );
                 if response_tx
-                    .send(self.block_db.get_operations(&operation_ids)?)
+                    .send(self.block_db.get_operations(operation_ids)?)
                     .is_err()
                 {
                     warn!("consensus: could not send get operations response");
