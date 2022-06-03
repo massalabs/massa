@@ -1,15 +1,16 @@
 use massa_models::Operation;
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
-use massa_models::prehash::{BuildMap, Map, Set};
+use massa_models::prehash::Set;
 use massa_models::{
     array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, Amount, DeserializeCompact,
     DeserializeVarInt, SerializeCompact, SerializeVarInt,
 };
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};
+use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
 use std::{
-    collections::hash_map,
     convert::{TryFrom, TryInto},
     usize,
 };
@@ -33,7 +34,7 @@ pub struct Ledger {
 /// Read the initial ledger.
 pub async fn read_genesis_ledger(ledger_config: &LedgerConfig) -> Result<Ledger> {
     // load ledger from file
-    let ledger = serde_json::from_str::<LedgerSubset>(
+    let ledger = serde_json::from_str::<ConsensusLedgerSubset>(
         &tokio::fs::read_to_string(&ledger_config.initial_ledger_path).await?,
     )?;
     Ledger::new(ledger_config.to_owned(), Some(ledger))
@@ -169,7 +170,7 @@ impl OperationLedgerInterface for Operation {
 impl Ledger {
     /// if no `latest_final_periods` in file, they are initialized at `0u64`
     /// if there is a ledger in the given file, it is loaded
-    pub fn new(cfg: LedgerConfig, opt_init_data: Option<LedgerSubset>) -> Result<Ledger> {
+    pub fn new(cfg: LedgerConfig, opt_init_data: Option<ConsensusLedgerSubset>) -> Result<Ledger> {
         let sled_config = sled::Config::default()
             .path(&cfg.ledger_path)
             .cache_capacity(cfg.ledger_cache_capacity)
@@ -218,10 +219,10 @@ impl Ledger {
     }
 
     /// Returns the final ledger data of a list of unique addresses belonging to any thread.
-    pub fn get_final_data(&self, addresses: Set<Address>) -> Result<LedgerSubset> {
+    pub fn get_final_data(&self, addresses: Set<Address>) -> Result<ConsensusLedgerSubset> {
         self.ledger_per_thread
             .transaction(|ledger_per_thread| {
-                let mut result = LedgerSubset::default();
+                let mut result = ConsensusLedgerSubset::default();
                 for address in addresses.iter() {
                     let thread = address.get_thread(self.cfg.thread_count);
                     let ledger = ledger_per_thread.get(thread as usize).ok_or_else(|| {
@@ -262,7 +263,7 @@ impl Ledger {
 
     /// If there is something in the ledger file, it is overwritten
     pub fn from_export(
-        export: LedgerSubset,
+        export: ConsensusLedgerSubset,
         latest_final_periods: Vec<u64>,
         cfg: LedgerConfig,
     ) -> Result<Ledger> {
@@ -423,8 +424,8 @@ impl Ledger {
 
     /// Used for bootstrap.
     /// Note: this cannot be done transactionally.
-    pub fn read_whole(&self) -> Result<LedgerSubset> {
-        let mut res = LedgerSubset::default();
+    pub fn read_whole(&self) -> Result<ConsensusLedgerSubset> {
+        let mut res = ConsensusLedgerSubset::default();
         for tree in self.ledger_per_thread.iter() {
             for element in tree.iter() {
                 let (addr, data) = element?;
@@ -442,9 +443,12 @@ impl Ledger {
     }
 
     /// Gets ledger at latest final blocks for `query_addrs`
-    pub fn get_final_ledger_subset(&self, query_addrs: &Set<Address>) -> Result<LedgerSubset> {
+    pub fn get_final_ledger_subset(
+        &self,
+        query_addrs: &Set<Address>,
+    ) -> Result<ConsensusLedgerSubset> {
         let res = self.ledger_per_thread.transaction(|ledger_per_thread| {
-            let mut data = LedgerSubset::default();
+            let mut data = ConsensusLedgerSubset::default();
             for addr in query_addrs {
                 let thread = addr.get_thread(self.cfg.thread_count);
                 if let Some(data_bytes) = ledger_per_thread[thread as usize].get(addr.to_bytes())? {
@@ -466,14 +470,56 @@ impl Ledger {
         })?;
         Ok(res)
     }
+
+    /// Get a part of the ledger
+    /// Used for bootstrap
+    /// Parameters:
+    /// * address: Address to start fetching
+    /// * batch_size: Size of the batch of address to return
+    ///
+    /// Returns:
+    /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
+    pub fn get_ledger_part(
+        &self,
+        start_address: Option<Address>,
+        subset_size: usize,
+    ) -> Result<ConsensusLedgerSubset> {
+        let mut res = ConsensusLedgerSubset::default();
+        let mut start: bool = start_address.is_none();
+        let mut count: usize = 0;
+        for tree in self.ledger_per_thread.iter() {
+            for element in tree.iter() {
+                let (addr, data) = element?;
+                let address = Address::from_bytes(addr.as_ref().try_into()?);
+                if start && count < subset_size {
+                    let (ledger_data, _) = LedgerData::from_bytes_compact(&data)?;
+                    if let Some(val) = res.0.insert(address, ledger_data) {
+                        return Err(LedgerError::LedgerInconsistency(format!(
+                            "address {:?} twice in ledger",
+                            val
+                        )));
+                    }
+                    count += 1;
+                }
+                if !start {
+                    start = match start_address {
+                        Some(inner_start_address) if inner_start_address == address => true,
+                        Some(_) => false,
+                        None => true,
+                    };
+                }
+            }
+        }
+        Ok(res)
+    }
 }
 
 /// address to ledger data map
 /// Only part of a ledger
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct LedgerSubset(pub Map<Address, LedgerData>);
+pub struct ConsensusLedgerSubset(pub BTreeMap<Address, LedgerData>);
 
-impl LedgerSubset {
+impl ConsensusLedgerSubset {
     /// If subset contains given address
     pub fn contains(&self, address: &Address) -> bool {
         self.0.contains_key(address)
@@ -495,13 +541,13 @@ impl LedgerSubset {
     /// note: a failure may still leave the entry modified
     pub fn apply_change(&mut self, addr: &Address, change: &LedgerChange) -> Result<()> {
         match self.0.entry(*addr) {
-            hash_map::Entry::Occupied(mut occ) => {
+            Entry::Occupied(mut occ) => {
                 occ.get_mut().apply_change(change)?;
                 if occ.get().is_nil() {
                     occ.remove();
                 }
             }
-            hash_map::Entry::Vacant(vac) => {
+            Entry::Vacant(vac) => {
                 let mut res = LedgerData::default();
                 res.apply_change(change)?;
                 if !res.is_nil() {
@@ -532,7 +578,7 @@ impl LedgerSubset {
 
     /// merge another ledger subset into self, overwriting existing data
     /// address that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerSubset) {
+    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: ConsensusLedgerSubset) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -545,7 +591,7 @@ impl LedgerSubset {
     /// clone subset
     #[must_use]
     pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
-        LedgerSubset(
+        ConsensusLedgerSubset(
             self.0
                 .iter()
                 .filter_map(|(a, dta)| {
@@ -560,11 +606,11 @@ impl LedgerSubset {
     }
 }
 
-impl<'a> TryFrom<&'a Ledger> for LedgerSubset {
+impl<'a> TryFrom<&'a Ledger> for ConsensusLedgerSubset {
     type Error = GraphError;
 
     fn try_from(value: &'a Ledger) -> Result<Self, Self::Error> {
-        Ok(LedgerSubset(
+        Ok(ConsensusLedgerSubset(
             value
                 .read_whole()?
                 .0
@@ -575,20 +621,20 @@ impl<'a> TryFrom<&'a Ledger> for LedgerSubset {
     }
 }
 
-impl SerializeCompact for LedgerSubset {
+impl SerializeCompact for ConsensusLedgerSubset {
     /// ## Example
     /// ```rust
     /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
     /// # use std::str::FromStr;
     /// # use massa_models::ledger_models::LedgerData;
-    /// # use massa_graph::ledger::LedgerSubset;
-    /// # let ledger = LedgerSubset(vec![
+    /// # use massa_graph::ledger::ConsensusLedgerSubset;
+    /// # let ledger = ConsensusLedgerSubset(vec![
     /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(Amount::from_str("1022").unwrap())),
     /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData::new(Amount::from_str("1020").unwrap())),
     /// # ].into_iter().collect());
     /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
-    /// let (res, _) = LedgerSubset::from_bytes_compact(&bytes).unwrap();
+    /// let (res, _) = ConsensusLedgerSubset::from_bytes_compact(&bytes).unwrap();
     /// for (address, data) in &ledger.0 {
     ///    assert!(res.0.iter().filter(|(addr, dta)| &address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
     /// }
@@ -599,7 +645,7 @@ impl SerializeCompact for LedgerSubset {
 
         let entry_count: u64 = self.0.len().try_into().map_err(|err| {
             massa_models::ModelsError::SerializeError(format!(
-                "too many entries in LedgerSubset: {}",
+                "too many entries in ConsensusLedgerSubset: {}",
                 err
             ))
         })?;
@@ -613,7 +659,7 @@ impl SerializeCompact for LedgerSubset {
     }
 }
 
-impl DeserializeCompact for LedgerSubset {
+impl DeserializeCompact for ConsensusLedgerSubset {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
         let mut cursor = 0usize;
 
@@ -621,10 +667,7 @@ impl DeserializeCompact for LedgerSubset {
         // TODO: add entry_count checks ... see #1200
         cursor += delta;
 
-        let mut ledger_subset = LedgerSubset(Map::with_capacity_and_hasher(
-            entry_count as usize,
-            BuildMap::default(),
-        ));
+        let mut ledger_subset = ConsensusLedgerSubset(BTreeMap::new());
         for _ in 0..entry_count {
             let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::messages::BootstrapMessage;
+use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use displaydoc::Display;
 use massa_consensus_exports::error::ConsensusError;
 use massa_final_state::FinalStateError;
@@ -18,8 +18,10 @@ pub enum BootstrapError {
     GeneralError(String),
     /// models error: {0}
     ModelsError(#[from] massa_models::ModelsError),
-    /// unexpected message from bootstrap node: {0:?}
-    UnexpectedMessage(BootstrapMessage),
+    /// unexpected message received from server: {0:?}
+    UnexpectedServerMessage(BootstrapServerMessage),
+    /// unexpected message received from client: {0:?}
+    UnexpectedClientMessage(BootstrapClientMessage),
     /// connection with bootstrap node dropped
     UnexpectedConnectionDrop,
     /// `massa_hash` error: {0}

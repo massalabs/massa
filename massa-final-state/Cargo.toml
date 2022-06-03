@@ -6,18 +6,20 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
+nom = "7.1"
 thiserror = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-tempfile = { version = "3.2", optional = true }    # use with testing feature
 # custom modules
 massa_ledger = { path = "../massa-ledger" }
 massa_models = { path = "../massa-models" }
 massa_async_pool = { path = "../massa-async-pool" }
+massa_serialization = { path = "../massa-serialization" }
 
 [dev-dependencies]
-massa_ledger = { path = "../massa-ledger", features = [] }
-massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
+massa_ledger = { path = "../massa-ledger", features=["testing"] }
+massa_async_pool = { path = "../massa-async-pool", features=["testing"] }
+massa_signature = { path = "../massa-signature" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-testing = ["tempfile", "massa_ledger/testing", "massa_async_pool/testing"]
+testing = ["massa_ledger/testing", "massa_async_pool/testing"]
+sandbox = [ "massa_async_pool/sandbox" ]

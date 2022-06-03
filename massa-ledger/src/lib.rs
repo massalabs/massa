@@ -52,9 +52,7 @@
 #![feature(slice_take)]
 #![feature(let_chains)]
 
-mod bootstrap;
 mod config;
-mod cursor;
 mod error;
 mod ledger;
 mod ledger_changes;
@@ -62,19 +60,18 @@ mod ledger_db;
 mod ledger_entry;
 mod types;
 
-pub use bootstrap::FinalLedgerBootstrapState;
 pub use config::LedgerConfig;
 pub use error::LedgerError;
 pub use ledger::FinalLedger;
-pub use ledger_changes::LedgerChanges;
-pub use ledger_changes::LedgerEntryUpdate;
-pub use ledger_db::LedgerSubEntry;
+pub use ledger_changes::{
+    LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, LedgerEntryUpdate,
+};
+pub use ledger_db::{get_address_from_key, KeyDeserializer, KeySerializer};
 pub use ledger_entry::LedgerEntry;
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
-
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(feature = "testing")]
 /// test exports
 pub mod test_exports;

@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_graph::{ledger::LedgerSubset, BootstrapableGraph};
+use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
 use massa_models::clique::Clique;
 use massa_models::ledger_models::LedgerData;
 use massa_models::signed::Signable;
@@ -162,7 +162,7 @@ async fn test_new_final_ops() {
     let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
     let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
 
-    let boot_ledger = LedgerSubset(
+    let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
@@ -256,7 +256,7 @@ async fn test_max_attempts_get_operations() {
     let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
     let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
 
-    let boot_ledger = LedgerSubset(
+    let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
@@ -351,7 +351,7 @@ async fn test_max_batch_size_get_operations() {
     let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
     let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
 
-    let boot_ledger = LedgerSubset(
+    let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
@@ -424,7 +424,7 @@ async fn test_max_batch_size_get_operations() {
 fn get_bootgraph(
     creator: PublicKey,
     operation: SignedOperation,
-    ledger: LedgerSubset,
+    ledger: ConsensusLedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0_id, genesis_0) =
         get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);

@@ -49,3 +49,9 @@ pub enum ModelsError {
     /// Wrong prefix for hash: expected {0}, got {1}
     WrongPrefix(String, String),
 }
+
+impl From<nom::Err<nom::error::Error<&[u8]>>> for ModelsError {
+    fn from(err: nom::Err<nom::error::Error<&[u8]>>) -> Self {
+        ModelsError::DeserializeError(err.to_string())
+    }
+}

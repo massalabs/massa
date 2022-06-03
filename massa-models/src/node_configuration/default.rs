@@ -40,7 +40,7 @@ lazy_static::lazy_static! {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
-                .saturating_add(MassaTime::from(1000 * 60 * 3))
+                .saturating_add(MassaTime::from(1000 * 10))
         )
     } else {
         1651795200000.into()  // Fri May 06 2022 00:00:00 GMT+0000
@@ -86,13 +86,13 @@ lazy_static::lazy_static! {
 pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::from_raw((0.3 * AMOUNT_DECIMAL_FACTOR as f64) as u64);
-#[cfg(not(feature = "sandbox"))]
 /// Time between the periods in the same thread.
+#[cfg(not(feature = "sandbox"))]
 pub const T0: MassaTime = MassaTime::from(16000);
 /// Proof of stake seed for the initial draw
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
-#[cfg(not(feature = "sandbox"))]
 /// Number of threads
+#[cfg(not(feature = "sandbox"))]
 pub const THREAD_COUNT: u8 = 32;
 /// Number of endorsement
 pub const ENDORSEMENT_COUNT: u32 = 9;
@@ -113,7 +113,9 @@ pub const POS_LOOKBACK_CYCLES: u64 = 2;
 /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
 pub const POS_LOCK_CYCLES: u64 = 1;
 /// Maximum size batch of data in a part of the ledger
-pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 30000000;
+pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum async messages in a batch of the bootstrap of the async pool
+pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 
 // ***********************
 // Bootstrap constants

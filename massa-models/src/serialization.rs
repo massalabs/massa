@@ -413,8 +413,8 @@ impl VecU8Deserializer {
 
 impl Deserializer<Vec<u8>> for VecU8Deserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Vec<u8>> {
-        let mut parser = length_data(|input| self.varint_u64_deserializer.deserialize(input));
-        let (rest, result) = parser(buffer)?;
+        let (rest, result) =
+            length_data(|input| self.varint_u64_deserializer.deserialize(input))(buffer)?;
         Ok((rest, result.to_vec()))
     }
 }

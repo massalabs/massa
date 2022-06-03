@@ -33,3 +33,6 @@ massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
 ] }
 massa_ledger = { path = "../massa-ledger", features = ["testing"] }
+
+[features]
+sandbox = ["massa_async_pool/sandbox"]

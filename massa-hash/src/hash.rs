@@ -141,8 +141,6 @@ impl Deserializer<Hash> for HashDeserializer {
         }
         Ok((
             &buffer[HASH_SIZE_BYTES..],
-            // NOTE FOR AURELIEN: updated this line after the new hash, make sure it still works
-            // as expected when we decide to use it
             Hash::from_bytes(&buffer[..HASH_SIZE_BYTES].try_into().map_err(|_| {
                 nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::Fail))
             })?),

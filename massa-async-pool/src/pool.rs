@@ -3,13 +3,18 @@
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
 
 use crate::{
-    bootstrap::AsyncPoolBootstrap,
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId},
+    message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
 };
-use massa_models::Slot;
+use massa_models::{
+    constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, DeserializeCompact, ModelsError,
+    SerializeCompact, Slot,
+};
+use massa_serialization::{Deserializer, Serializer};
+use nom::multi::many0;
 use std::collections::BTreeMap;
+use std::ops::Bound::{Excluded, Unbounded};
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -29,28 +34,6 @@ impl AsyncPool {
         AsyncPool {
             config,
             messages: Default::default(),
-        }
-    }
-
-    /// Creates an `AsyncPool` from a bootstrap snapshot obtained using `AsyncPool::get_bootstrap_snapshot`
-    pub fn from_bootstrap_snapshot(
-        config: AsyncPoolConfig,
-        snapshot: AsyncPoolBootstrap,
-    ) -> AsyncPool {
-        AsyncPool {
-            config,
-            messages: snapshot
-                .messages
-                .into_iter()
-                .map(|msg| (msg.compute_id(), msg))
-                .collect(),
-        }
-    }
-
-    /// Returns a snapshot clone of the `AsyncPool` for bootstrapping other nodes
-    pub fn get_bootstrap_snapshot(&self) -> AsyncPoolBootstrap {
-        AsyncPoolBootstrap {
-            messages: self.messages.values().cloned().collect(),
         }
     }
 
@@ -147,6 +130,76 @@ impl AsyncPool {
                 }
             })
             .collect()
+    }
+
+    /// Used for bootstrap
+    /// Take a part of the async pool starting from the next element after `last_id` and with a max length of the constant `ASYNC_POOL_PART_SIZE_MESSAGE_BYTES`.
+    /// Should always follow the same behavior as the `get_ledger_part` from `FinalLedger`method.
+    pub fn get_pool_part(
+        &self,
+        last_id: Option<AsyncMessageId>,
+    ) -> Result<(Vec<u8>, Option<AsyncMessageId>), ModelsError> {
+        let last_id = if let Some(last_id) = last_id {
+            Excluded(last_id)
+        } else if self.messages.first_key_value().is_some() {
+            Unbounded
+        } else {
+            return Ok((Vec::new(), None));
+        };
+        let mut part = Vec::new();
+        let mut next_last_id = None;
+        let id_async_message_serializer = AsyncMessageIdSerializer::new();
+
+        for (id, message) in self.messages.range((last_id, Unbounded)) {
+            if part.len() < ASYNC_POOL_PART_SIZE_MESSAGE_BYTES as usize {
+                part.extend(id_async_message_serializer.serialize(id)?);
+                part.extend(message.to_bytes_compact()?);
+                next_last_id = Some(*id);
+            }
+        }
+        Ok((part, next_last_id))
+    }
+
+    /// Set a part of the async pool.
+    /// We deserialize in this function because we insert in the async pool while deserializing.
+    /// Used for bootstrap.
+    ///
+    /// # Arguments
+    /// * data: must be the serialized version provided by `get_pool_part`
+    ///
+    /// # Returns
+    /// The last id of the inserted entry (this is an optimization to easily keep a reference to the last id)
+    pub fn set_pool_part<'a>(
+        &mut self,
+        part: &'a [u8],
+    ) -> Result<Option<AsyncMessageId>, ModelsError> {
+        let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
+        let (rest, messages) = many0(|input: &'a [u8]| {
+            if input.is_empty() {
+                return Err(nom::Err::Error(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::LengthValue,
+                )));
+            }
+            let (rest, id) = async_message_id_deserializer.deserialize(input)?;
+            //TODO: Change when async message has new serialize form
+            let (message, delta) = AsyncMessage::from_bytes_compact(rest).map_err(|_| {
+                nom::Err::Error(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::LengthValue,
+                ))
+            })?;
+            // Safe because we obtain delta by moving forward in the buffer.
+            Ok((&rest[delta..], (id, message)))
+        })(part)?;
+        if rest.is_empty() {
+            self.messages.extend(messages);
+            Ok(self.messages.last_key_value().map(|(id, _)| *id))
+        } else {
+            Err(ModelsError::SerializeError(
+                "pool part deserialization has data left".to_string(),
+            ))
+        }
     }
 }
 
