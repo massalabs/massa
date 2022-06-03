@@ -8,7 +8,7 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger::{FinalLedger, LedgerChanges};
-use massa_models::{Address, Slot};
+use massa_models::{constants::THREAD_COUNT, Address, Slot};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool)`
@@ -99,23 +99,24 @@ impl FinalState {
         last_id_async_pool: AsyncMessageId,
     ) -> Result<StateChanges, FinalStateError> {
         let pos_slot = if !self.changes_history.is_empty() {
-            // Change because there is always state change for a slot
-            match self
-                .changes_history
-                .partition_point(|(s, _)| s < &last_slot)
-            {
-                0 => {
-                    return Err(FinalStateError::LedgerError(
-                        "The slot passed as parameter is too old.".to_string(),
-                    ))
-                }
-                x => x,
+            // Safe because we checked that there is changes just above.
+            let index = last_slot
+                .slots_since(&self.changes_history[0].0, THREAD_COUNT)
+                .map_err(|_| {
+                    FinalStateError::LedgerError("Last slot is overflowing history.".to_string())
+                })?;
+            // Check if `last_slot` isn't in the future
+            if self.changes_history.len() as u64 <= index {
+                return Err(FinalStateError::LedgerError(
+                    "Last slot is overflowing history.".to_string(),
+                ));
             }
+            index
         } else {
             return Ok(StateChanges::default());
         };
         let mut res_changes: StateChanges = StateChanges::default();
-        for (_, changes) in self.changes_history.range(pos_slot..) {
+        for (_, changes) in self.changes_history.range((pos_slot as usize)..) {
             //Get ledger change that concern address <= last_address.
             let ledger_changes: LedgerChanges = LedgerChanges(
                 changes
@@ -142,7 +143,8 @@ impl FinalState {
                     .filter_map(|change| match change {
                         Change::Add(id, _) if id <= &last_id_async_pool => Some(change.clone()),
                         Change::Delete(id) if id <= &last_id_async_pool => Some(change.clone()),
-                        _ => None,
+                        Change::Add(..) => None,
+                        Change::Delete(..) => None,
                     })
                     .collect(),
             );

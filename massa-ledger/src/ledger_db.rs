@@ -92,10 +92,7 @@ macro_rules! data_prefix {
 /// Extract an address from a key
 pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
     let address_deserializer = AddressDeserializer::new();
-    address_deserializer
-        .deserialize(&key[..])
-        .map(|res| res.1)
-        .ok()
+    address_deserializer.deserialize(key).map(|res| res.1).ok()
 }
 
 /// Basic key serializer
@@ -438,7 +435,7 @@ impl LedgerDB {
     /// # Returns
     /// A tuple containing:
     /// * The ledger part as bytes
-    /// * The last taken key
+    /// * The last taken key (this is an optimization to easily keep a reference to the last key)
     pub fn get_ledger_part(
         &self,
         last_key: &Option<Vec<u8>>,
@@ -474,10 +471,15 @@ impl LedgerDB {
         Ok((part, last_key))
     }
 
-    /// Set a part of the ledger in the database
+    /// Set a part of the ledger in the database.
+    /// We deserialize in this function because we insert in the ledger while deserializing.
+    /// Used for bootstrap.
+    ///
+    /// # Arguments
+    /// * data: must be the serialized version provided by `get_ledger_part`
     ///
     /// # Returns
-    /// The last key of the inserted entry
+    /// The last key of the inserted entry (this is an optimization to easily keep a reference to the last key)
     pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Option<Vec<u8>>, ModelsError> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =

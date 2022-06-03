@@ -24,7 +24,7 @@ use crate::{
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum's variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
-async fn stream_ledger(
+async fn stream_final_state(
     cfg: &BootstrapSettings,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut Option<BootstrapClientMessage>,
@@ -68,8 +68,7 @@ async fn stream_ledger(
                     let last_key = write_final_state.ledger.set_ledger_part(ledger_data)?;
                     let old_last_async_id = write_final_state
                         .async_pool
-                        .set_pool_part(async_pool_part.as_bytes())?
-                        .map(|(id, _)| *id);
+                        .set_pool_part(async_pool_part.as_bytes())?;
                     write_final_state
                         .ledger
                         .apply_changes(final_state_changes.ledger_changes, slot);
@@ -229,7 +228,8 @@ async fn bootstrap_from_server(
     loop {
         match next_bootstrap_message {
             Some(BootstrapClientMessage::AskFinalStatePart { .. }) => {
-                stream_ledger(cfg, client, next_bootstrap_message, global_bootstrap_state).await?;
+                stream_final_state(cfg, client, next_bootstrap_message, global_bootstrap_state)
+                    .await?;
             }
             Some(BootstrapClientMessage::AskBootstrapPeers) => {
                 let peers = match send_client_message(

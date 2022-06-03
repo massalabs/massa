@@ -160,12 +160,19 @@ impl AsyncPool {
         Ok((part, next_last_id))
     }
 
-    /// Used for bootstrap
-    /// Add an `AsyncPoolPart` to the async pool
+    /// Set a part of the async pool.
+    /// We deserialize in this function because we insert in the async pool while deserializing.
+    /// Used for bootstrap.
+    ///
+    /// # Arguments
+    /// * data: must be the serialized version provided by `get_pool_part`
+    ///
+    /// # Returns
+    /// The last id of the inserted entry (this is an optimization to easily keep a reference to the last id)
     pub fn set_pool_part<'a>(
         &mut self,
         part: &'a [u8],
-    ) -> Result<Option<(&AsyncMessageId, &AsyncMessage)>, ModelsError> {
+    ) -> Result<Option<AsyncMessageId>, ModelsError> {
         let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
         let (rest, messages) = many0(|input: &'a [u8]| {
             if input.is_empty() {
@@ -187,7 +194,7 @@ impl AsyncPool {
         })(part)?;
         if rest.is_empty() {
             self.messages.extend(messages);
-            Ok(self.messages.last_key_value())
+            Ok(self.messages.last_key_value().map(|(id, _)| *id))
         } else {
             Err(ModelsError::SerializeError(
                 "pool part deserialization has data left".to_string(),

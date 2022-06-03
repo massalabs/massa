@@ -248,7 +248,7 @@ impl BootstrapServer {
     }
 }
 
-pub async fn send_stream_ledger(
+pub async fn send_final_state_stream(
     server: &mut BootstrapServerBinder,
     last_key: Option<Vec<u8>>,
     final_state: Arc<RwLock<FinalState>>,
@@ -265,7 +265,7 @@ pub async fn send_stream_ledger(
         let ledger_data;
         let async_pool_data;
         let final_state_changes;
-        let actual_slot;
+        let current_slot;
         {
             // Get all data for the next message
             let final_state_read = final_state.read();
@@ -288,7 +288,7 @@ pub async fn send_stream_ledger(
             if let Some(slot) = old_slot && let Some(key) = &old_key && let Some(async_pool_id) = old_last_async_id && slot != final_state_read.slot {
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
-                    get_address_from_key(key).ok_or_else(|| BootstrapError::GeneralError("Key malformed in slot changes".to_string()))?,
+                    get_address_from_key(key).ok_or_else(|| BootstrapError::GeneralError("Malformed key in slot changes".to_string()))?,
                     async_pool_id,
                 );
             } else {
@@ -299,7 +299,7 @@ pub async fn send_stream_ledger(
             old_last_async_id = last_async_pool_id;
             old_key = new_last_key;
             old_slot = Some(final_state_read.slot);
-            actual_slot = final_state_read.slot;
+            current_slot = final_state_read.slot;
         }
 
         if !ledger_data.is_empty() || !async_pool_data.is_empty() {
@@ -308,7 +308,7 @@ pub async fn send_stream_ledger(
                     write_timeout,
                     server.send(BootstrapServerMessage::FinalStatePart {
                         ledger_data,
-                        slot: actual_slot,
+                        slot: current_slot,
                         async_pool_part: async_pool_data,
                         final_state_changes,
                     }),
@@ -341,6 +341,7 @@ pub async fn send_stream_ledger(
                 break;
             }
         } else {
+            // There is no ledger data nor async pool data.
             match tokio::time::timeout(
                 write_timeout,
                 server.send(BootstrapServerMessage::FinalStateFinished),
@@ -452,7 +453,7 @@ async fn manage_bootstrap(
                     slot,
                     last_async_message_id,
                 } => {
-                    send_stream_ledger(
+                    send_final_state_stream(
                         server,
                         last_key,
                         final_state.clone(),
