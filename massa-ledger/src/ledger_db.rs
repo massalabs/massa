@@ -21,10 +21,9 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::{LedgerChanges, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
-use massa_models::Amount;
 
 #[cfg(feature = "testing")]
-use massa_models::DeserializeCompact;
+use massa_models::{Amount, DeserializeCompact};
 
 // TODO: remove rocks_db dir when sled is cut out
 const LEDGER_CF: &str = "ledger";
@@ -196,18 +195,11 @@ impl LedgerDB {
     /// Set the initial disk ledger
     ///
     /// # Arguments
-    /// * initial_ledger: initial balances to put in the disk
-    pub fn set_initial_ledger(&mut self, initial_ledger: HashMap<Address, Amount>) {
+    /// * initial_ledger: initial entries to put in the disk
+    pub fn set_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
         let mut batch = WriteBatch::default();
-        for (address, amount) in &initial_ledger {
-            self.put_entry(
-                address,
-                LedgerEntry {
-                    parallel_balance: *amount,
-                    ..Default::default()
-                },
-                &mut batch,
-            );
+        for (address, entry) in initial_ledger {
+            self.put_entry(&address, entry, &mut batch);
         }
         self.write_batch(batch);
     }

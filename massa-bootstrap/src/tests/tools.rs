@@ -78,10 +78,7 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
         messages.insert(message.compute_id(), message);
     }
     for _ in 0usize..rng.gen_range(5..10) {
-        sorted_ledger.insert(
-            get_random_address(),
-            get_random_ledger_entry().parallel_balance,
-        );
+        sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
     let slot = Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count));

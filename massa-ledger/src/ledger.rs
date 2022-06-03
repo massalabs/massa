@@ -44,11 +44,23 @@ impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
         // load the ledger tree from file
-        let initial_ledger = serde_json::from_str::<HashMap<Address, Amount>>(
-            &std::fs::read_to_string(&config.initial_sce_ledger_path)
-                .map_err(init_file_error!("loading", config))?,
-        )
-        .map_err(init_file_error!("parsing", config))?;
+        let initial_ledger: HashMap<Address, LedgerEntry> =
+            serde_json::from_str::<HashMap<Address, Amount>>(
+                &std::fs::read_to_string(&config.initial_sce_ledger_path)
+                    .map_err(init_file_error!("loading", config))?,
+            )
+            .map_err(init_file_error!("parsing", config))?
+            .into_iter()
+            .map(|(addr, amount)| {
+                (
+                    addr,
+                    LedgerEntry {
+                        parallel_balance: amount,
+                        ..Default::default()
+                    },
+                )
+            })
+            .collect();
 
         // create and initialize the disk ledger
         let mut sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());

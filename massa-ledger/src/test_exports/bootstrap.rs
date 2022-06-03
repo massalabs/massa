@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{Address, Amount};
+use massa_models::Address;
 use std::collections::HashMap;
 use tempfile::TempDir;
 
@@ -9,7 +9,7 @@ use crate::{ledger_db::LedgerDB, FinalLedger, LedgerConfig, LedgerEntry};
 /// This file defines tools to test the ledger bootstrap
 
 pub fn create_final_ledger(
-    initial_ledger: Option<HashMap<Address, Amount>>,
+    initial_ledger: Option<HashMap<Address, LedgerEntry>>,
     config: LedgerConfig,
 ) -> FinalLedger {
     let temp_dir = TempDir::new().unwrap();
