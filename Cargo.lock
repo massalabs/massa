@@ -72,9 +72,9 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "as-ffi-bindings"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d345183a879e22e047d16a0e4dea292384d546a00212e8218bee5130aad83e6"
+checksum = "8ffa85aa087490ce8a23dc1f975085dbfa80bff07d147865407fdf2e6b8ba546"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -1496,8 +1496,8 @@ dependencies = [
 
 [[package]]
 name = "massa-sc-runtime"
-version = "0.6.5"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.5#0909162d8e644242b932319f672d327bdb20ac7d"
+version = "0.6.6"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.6#fbd08f9bd1dbc8a33c764739f4c68a17b845044e"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
