@@ -1,6 +1,7 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
+use massa_ledger::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::Version;
 use massa_signature::PublicKey;
@@ -66,21 +67,29 @@ async fn stream_final_state(
                 } => {
                     let mut write_final_state = global_bootstrap_state.final_state.write();
                     let last_key = write_final_state.ledger.set_ledger_part(ledger_data)?;
-                    let old_last_async_id = write_final_state
+                    let last_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part.as_bytes())?;
                     write_final_state
                         .ledger
-                        .apply_changes(final_state_changes.ledger_changes, slot);
+                        .apply_changes(final_state_changes.ledger_changes.clone(), slot);
                     write_final_state
                         .async_pool
-                        .apply_changes_unchecked(final_state_changes.async_pool_changes);
+                        .apply_changes_unchecked(final_state_changes.async_pool_changes.clone());
                     write_final_state.slot = slot;
+                    if let Some(BootstrapClientMessage::AskFinalStatePart {
+                        last_key: old_key,
+                        last_async_message_id: old_message_id,
+                        ..
+                    }) = &next_bootstrap_message
+                    {
+                        debug!("Received ledger batch from {:#?} to {:#?}, an async pool batch from {:#?} to {:#?} a batch of ledger changes of size {:#?} and a batch of async pool changes of size {:#?}. for slot: {:#?}", old_key.clone(), last_key.clone().map(|key| get_address_from_key(&key)), old_message_id, last_last_async_id, final_state_changes.ledger_changes.0.len(), final_state_changes.async_pool_changes.0.len(), slot);
+                    }
                     // Set new message in case of disconnection
                     *next_bootstrap_message = Some(BootstrapClientMessage::AskFinalStatePart {
                         last_key,
                         slot: Some(slot),
-                        last_async_message_id: old_last_async_id,
+                        last_async_message_id: last_last_async_id,
                     });
                 }
                 BootstrapServerMessage::FinalStateFinished => {
