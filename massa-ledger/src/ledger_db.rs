@@ -33,6 +33,7 @@ const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 const BALANCE_IDENT: u8 = 0u8;
 const BYTECODE_IDENT: u8 = 1u8;
+const DATASTORE_IDENT: u8 = 2u8;
 const SLOT_KEY: &[u8; 1] = b"s";
 
 /// Ledger sub entry enum
@@ -72,14 +73,19 @@ macro_rules! bytecode_key {
 /// TODO: add a separator identifier if the need comes to have multiple datastores
 macro_rules! data_key {
     ($addr:expr, $key:expr) => {
-        [&$addr.to_bytes()[..], &$key.to_bytes()[..]].concat()
+        [
+            &$addr.to_bytes()[..],
+            &[DATASTORE_IDENT],
+            &$key.to_bytes()[..],
+        ]
+        .concat()
     };
 }
 
 /// Datastore entry prefix formatting macro
 macro_rules! data_prefix {
     ($addr:expr) => {
-        &$addr.to_bytes()[..]
+        &[&$addr.to_bytes()[..], &[DATASTORE_IDENT]].concat()
     };
 }
 
@@ -126,21 +132,22 @@ impl KeyDeserializer {
     }
 }
 
-// NOTE: deserialize into a specified key structure
+// NOTE: deserialize keys into a specified structure
 impl Deserializer<Vec<u8>> for KeyDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
         let (rest, address) = self.address_deserializer.deserialize(buffer)?;
+        let error = nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::IsNot));
         match rest.get(0) {
-            Some(ident) if *ident == BALANCE_IDENT => Ok((rest, balance_key!(address))),
-            Some(ident) if *ident == BYTECODE_IDENT => Ok((rest, bytecode_key!(address))),
-            Some(_) => {
-                let (rest, hash) = self.hash_deserializer.deserialize(rest)?;
-                Ok((rest, data_key!(address, hash)))
-            }
-            None => Err(nom::Err::Error(nom::error::Error::new(
-                buffer,
-                nom::error::ErrorKind::IsNot,
-            ))),
+            Some(ident) => match *ident {
+                BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
+                BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
+                DATASTORE_IDENT => {
+                    let (rest, hash) = self.hash_deserializer.deserialize(&rest[1..])?;
+                    Ok((rest, data_key!(address, hash)))
+                }
+                _ => Err(error),
+            },
+            None => Err(error),
         }
     }
 }
