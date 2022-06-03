@@ -1,9 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_async_pool::{
-    AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer, AsyncPoolPart,
-    AsyncPoolPartDeserializer, AsyncPoolPartSerializer,
-};
+use massa_async_pool::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_graph::BootstrapableGraph;
 use massa_ledger::{KeyDeserializer, KeySerializer};
@@ -12,9 +9,7 @@ use massa_models::{
     constants::THREAD_COUNT, slot::SlotSerializer, DeserializeCompact, DeserializeVarInt,
     ModelsError, SerializeCompact, SerializeVarInt, Slot, Version,
 };
-use massa_models::{
-    U64VarIntDeserializer, U64VarIntSerializer, VecU8Deserializer, VecU8Serializer,
-};
+use massa_models::{VecU8Deserializer, VecU8Serializer};
 use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_serialization::{Deserializer, Serializer};
@@ -51,7 +46,7 @@ pub enum BootstrapServerMessage {
         /// Part of the execution ledger sent in a serialized way
         ledger_data: Vec<u8>,
         /// Part of the async pool
-        async_pool_part: AsyncPoolPart,
+        async_pool_part: Vec<u8>,
         /// Slot the state changes are attached to
         slot: Slot,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
@@ -104,7 +99,6 @@ impl SerializeCompact for BootstrapServerMessage {
                 slot,
                 final_state_changes,
             } => {
-                let async_pool_serializer = AsyncPoolPartSerializer::new();
                 #[cfg(feature = "sandbox")]
                 let thread_count = *THREAD_COUNT;
                 #[cfg(not(feature = "sandbox"))]
@@ -116,11 +110,9 @@ impl SerializeCompact for BootstrapServerMessage {
                 let final_state_changes_serializer = StateChangesSerializer::new();
                 let vec_u8_serializer =
                     VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX));
-                let u64_serializer =
-                    U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX));
                 res.extend(u32::from(MessageServerTypeId::FinalStatePart).to_varint_bytes());
                 res.extend(vec_u8_serializer.serialize(ledger_data)?);
-                res.extend(async_pool_serializer.serialize(async_pool_part)?);
+                res.extend(vec_u8_serializer.serialize(async_pool_part)?);
                 res.extend(slot_serializer.serialize(slot)?);
                 res.extend(final_state_changes_serializer.serialize(final_state_changes)?);
             }
@@ -180,7 +172,6 @@ impl DeserializeCompact for BootstrapServerMessage {
                 BootstrapServerMessage::ConsensusState { pos, graph }
             }
             MessageServerTypeId::FinalStatePart => {
-                let async_pool_deserializer = AsyncPoolPartDeserializer::new();
                 #[cfg(feature = "sandbox")]
                 let thread_count = *THREAD_COUNT;
                 #[cfg(not(feature = "sandbox"))]
@@ -192,15 +183,13 @@ impl DeserializeCompact for BootstrapServerMessage {
                 let final_state_changes_deserializer = StateChangesDeserializer::new();
                 let vec_u8_deserializer =
                     VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
-                let u64_deserializer =
-                    U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
                 let (rest, (ledger_data, async_pool_part, slot, final_state_changes)) =
                     tuple((
                         context("ledger data in final state part", |input| {
                             vec_u8_deserializer.deserialize(input)
                         }),
                         context("async pool in final state part", |input| {
-                            async_pool_deserializer.deserialize(input)
+                            vec_u8_deserializer.deserialize(input)
                         }),
                         context("slot in final state part", |input| {
                             slot_deserializer.deserialize(input)
@@ -209,7 +198,7 @@ impl DeserializeCompact for BootstrapServerMessage {
                             final_state_changes_deserializer.deserialize(input)
                         }),
                     ))(&buffer[cursor..])?;
-                // Temp while serializecompact exists
+                // Temp while serialize compact exists
                 let delta = buffer[cursor..].len() - rest.len();
                 cursor += delta;
                 BootstrapServerMessage::FinalStatePart {
@@ -246,11 +235,11 @@ pub enum BootstrapClientMessage {
     AskConsensusState,
     /// Ask for a part of the final state
     AskFinalStatePart {
-        /// Last position of the cursor received from the server
+        /// Last key of the ledger we received from the server
         last_key: Option<Vec<u8>>,
         /// Slot we are attached to for ledger changes
         slot: Option<Slot>,
-        /// Last async message id sent
+        /// Last async message id  of the async message pool we received from the server
         last_async_message_id: Option<AsyncMessageId>,
     },
     /// Bootstrap error

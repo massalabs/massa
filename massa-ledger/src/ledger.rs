@@ -188,7 +188,7 @@ impl FinalLedger {
     pub fn get_ledger_part(
         &self,
         last_key: &Option<Vec<u8>>,
-    ) -> Result<(Vec<u8>, Vec<u8>), ModelsError> {
+    ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
         self.sorted_ledger.get_ledger_part(last_key)
     }
 

@@ -279,12 +279,16 @@ pub async fn send_stream_ledger(
                         )
                     })?;
             ledger_data = data;
-            async_pool_data = final_state_read.async_pool.get_pool_part(old_last_async_id);
+
+            let (pool_data, last_async_pool_id) = final_state_read
+                .async_pool
+                .get_pool_part(old_last_async_id)?;
+            async_pool_data = pool_data;
 
             if let Some(slot) = old_slot && let Some(key) = &old_key && let Some(async_pool_id) = old_last_async_id && slot != final_state_read.slot {
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
-                    get_address_from_key(key).ok_or(BootstrapError::GeneralError("Key malformed in slot changes".to_string()))?,
+                    get_address_from_key(key).ok_or_else(|| BootstrapError::GeneralError("Key malformed in slot changes".to_string()))?,
                     async_pool_id,
                 );
             } else {
@@ -292,10 +296,8 @@ pub async fn send_stream_ledger(
             }
 
             // Assign value for next turn
-            if let Some((last_id, _)) = async_pool_data.last() {
-                old_last_async_id = Some(*last_id);
-            }
-            old_key = Some(new_last_key);
+            old_last_async_id = last_async_pool_id;
+            old_key = new_last_key;
             old_slot = Some(final_state_read.slot);
             actual_slot = final_state_read.slot;
         }

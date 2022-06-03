@@ -102,7 +102,7 @@ pub use config::AsyncPoolConfig;
 pub use message::{
     AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
 };
-pub use pool::{AsyncPool, AsyncPoolPart, AsyncPoolPartDeserializer, AsyncPoolPartSerializer};
+pub use pool::AsyncPool;
 
 #[cfg(test)]
 mod tests;

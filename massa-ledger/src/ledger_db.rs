@@ -85,7 +85,7 @@ macro_rules! data_prefix {
 }
 
 /// Extract an address from a key
-pub fn get_address_from_key(key: &Vec<u8>) -> Option<Address> {
+pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
     let address_deserializer = AddressDeserializer::new();
     match key.get(0) {
         Some(ident) if *ident == BALANCE_IDENT => {
@@ -99,7 +99,7 @@ pub fn get_address_from_key(key: &Vec<u8>) -> Option<Address> {
             Some(address)
         }
         Some(_) => {
-            let (_, address) = address_deserializer.deserialize(&key[..]).ok()?;
+            let (_, address) = address_deserializer.deserialize(key).ok()?;
             Some(address)
         }
         None => None,
@@ -414,7 +414,7 @@ impl LedgerDB {
     pub fn get_ledger_part(
         &self,
         last_key: &Option<Vec<u8>>,
-    ) -> Result<(Vec<u8>, Vec<u8>), ModelsError> {
+    ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
         let ser = VecU8Serializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_serializer = KeySerializer::new();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
@@ -425,20 +425,20 @@ impl LedgerDB {
         let db_iterator = if let Some(key) = last_key {
             let mut iter =
                 self.0
-                    .iterator_cf_opt(handle, opt, IteratorMode::From(&key, Direction::Forward));
+                    .iterator_cf_opt(handle, opt, IteratorMode::From(key, Direction::Forward));
             iter.next();
             iter
         } else {
             self.0.iterator_cf_opt(handle, opt, IteratorMode::Start)
         };
-        let mut last_key = Vec::new();
+        let mut last_key = None;
 
         // Iterates over the whole database
         for (key, entry) in db_iterator {
             if part.len() < (LEDGER_PART_SIZE_MESSAGE_BYTES as usize) {
                 part.extend(key_serializer.serialize(&key.to_vec())?);
                 part.extend(ser.serialize(&entry.to_vec())?);
-                last_key = key.to_vec();
+                last_key = Some(key.to_vec());
             } else {
                 break;
             }
