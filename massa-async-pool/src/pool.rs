@@ -9,7 +9,7 @@ use crate::{
 };
 use massa_models::{
     constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, DeserializeCompact, ModelsError,
-    SerializeCompact, Slot
+    SerializeCompact, Slot,
 };
 use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
@@ -162,12 +162,18 @@ impl AsyncPool {
 
     /// Used for bootstrap
     /// Add an `AsyncPoolPart` to the async pool
-    pub fn set_pool_part(
+    pub fn set_pool_part<'a>(
         &mut self,
-        part: &[u8],
+        part: &'a [u8],
     ) -> Result<Option<(&AsyncMessageId, &AsyncMessage)>, ModelsError> {
         let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
-        let (rest, messages) = many0(|input| {
+        let (rest, messages) = many0(|input: &'a [u8]| {
+            if input.is_empty() {
+                return Err(nom::Err::Error(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::LengthValue,
+                )));
+            }
             let (rest, id) = async_message_id_deserializer.deserialize(input)?;
             //TODO: Change when async message has new serialize form
             let (message, delta) = AsyncMessage::from_bytes_compact(rest).map_err(|_| {

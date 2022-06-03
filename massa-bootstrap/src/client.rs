@@ -65,7 +65,6 @@ async fn stream_ledger(
                     final_state_changes,
                 } => {
                     let mut write_final_state = global_bootstrap_state.final_state.write();
-                    //TODO: Change to none when empty
                     let last_key = write_final_state.ledger.set_ledger_part(ledger_data)?;
                     let old_last_async_id = write_final_state
                         .async_pool
