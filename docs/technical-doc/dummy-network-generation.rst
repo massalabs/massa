@@ -13,7 +13,7 @@ Clone massa:
 
     git clone git@github.com:massalabs/massa.git
 
-Compile it with sandbox feature enabled:
+Compile it with the sandbox feature enabled:
 
 .. code-block:: bash
 
@@ -32,7 +32,7 @@ For the rest of the tutorial we will use theses abreviations:
 - `PUBK` : The public key corresponding to PRIVK
 - `ADDR` : The address corresponding to PUBK
 
-Setup your node to use the private key you just generate as its private key and staking key:
+Setup your node to use the private key you just generated as its private key and staking key:
  * modify or create the file `massa-node/config/node_privkey.key` :
 
  .. code-block:: bash
@@ -77,8 +77,8 @@ You can now launch your node :
     
     cd massa-node && cargo run --features sandbox
 
-The network with your node all start in 10 seconds and you can now interact it with the CLI client like a testnet node.
-If you want to run multiple nodes on your local network you need to use the simulator that use docker all the documentation is here : https://github.com/massalabs/massa-network-simulator
+Your sandbox network containing your node will start after 10 seconds. You can now interact with it through the CLI client in the same way you would with a testnet node.
+If you want to run multiple nodes on your local network you should use our advanced simulator. All the documentation is here : https://github.com/massalabs/massa-network-simulator
 
 **On Docker**
 
