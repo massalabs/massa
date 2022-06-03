@@ -1,3 +1,4 @@
+use massa_graph::ledger::ConsensusLedgerSubset;
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
@@ -159,6 +160,33 @@ impl ConsensusCommandSender {
         response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_bootstrap_state response read error".to_string(),
+            )
+        })
+    }
+
+    /// get part of the ledger
+    pub async fn get_ledger_part(
+        &self,
+        start_address: Option<Address>,
+        batch_size: usize,
+    ) -> Result<ConsensusLedgerSubset, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<ConsensusLedgerSubset>();
+        massa_trace!("consensus.consensus_controller.get_ledger_part", {});
+        self.0
+            .send(ConsensusCommand::GetLedgerPart {
+                start_address,
+                batch_size,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_ledger_part".into(),
+                )
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_ledger_part response read error".to_string(),
             )
         })
     }

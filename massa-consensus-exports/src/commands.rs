@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Contains definitions of commands used by the controller
+use massa_graph::ledger::ConsensusLedgerSubset;
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
@@ -46,6 +47,15 @@ pub enum ConsensusCommand {
     },
     /// Returns the bootstrap state
     GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootstrapableGraph)>),
+    /// Returns a part of the ledger
+    GetLedgerPart {
+        /// Start address
+        start_address: Option<Address>,
+        /// Size of the part of the ledger
+        batch_size: usize,
+        /// response channel
+        response_tx: oneshot::Sender<ConsensusLedgerSubset>,
+    },
     /// Returns info for a set of addresses (rolls and balance)
     GetAddressesInfo {
         /// wanted addresses

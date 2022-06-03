@@ -777,6 +777,21 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
+            ConsensusCommand::GetLedgerPart {
+                start_address,
+                batch_size,
+                response_tx,
+            } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_ledger_part",
+                    {}
+                );
+                let resp = self.block_db.get_ledger_part(start_address, batch_size)?;
+                if response_tx.send(resp).is_err() {
+                    warn!("consensus: could not send GetLedgerPart answer");
+                }
+                Ok(())
+            }
             ConsensusCommand::GetAddressesInfo {
                 addresses,
                 response_tx,

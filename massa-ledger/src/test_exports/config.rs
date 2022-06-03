@@ -1,11 +1,23 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 /// This file defines testing tools related to the configuration
-use crate::LedgerConfig;
+use crate::{ledger_db::LedgerDB, FinalLedger, LedgerConfig};
 use massa_models::{Address, Amount};
 use std::collections::BTreeMap;
 use std::io::Seek;
 use tempfile::{NamedTempFile, TempDir};
+
+/// Default value of `FinalLedger` used for tests
+impl Default for FinalLedger {
+    fn default() -> Self {
+        let temp_dir = TempDir::new().unwrap();
+        let db = LedgerDB::new(temp_dir.path().to_path_buf());
+        FinalLedger {
+            _config: Default::default(),
+            sorted_ledger: db,
+        }
+    }
+}
 
 /// Default value of `LedgerConfig` used for tests
 impl Default for LedgerConfig {

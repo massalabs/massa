@@ -90,17 +90,19 @@
 #![feature(btree_drain_filter)]
 #![feature(drain_filter)]
 
-mod bootstrap;
 mod changes;
 mod config;
 mod message;
 mod pool;
 
-pub use bootstrap::AsyncPoolBootstrap;
-pub use changes::AsyncPoolChanges;
+pub use changes::{
+    AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer, Change,
+};
 pub use config::AsyncPoolConfig;
-pub use message::{AsyncMessage, AsyncMessageId};
-pub use pool::AsyncPool;
+pub use message::{
+    AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+};
+pub use pool::{AsyncPool, AsyncPoolPart, AsyncPoolPartDeserializer, AsyncPoolPartSerializer};
 
 #[cfg(test)]
 mod tests;

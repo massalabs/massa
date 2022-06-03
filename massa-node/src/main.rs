@@ -68,8 +68,36 @@ async fn launch() -> (
     // Storage shared by multiple components.
     let shared_storage: Storage = Default::default();
 
+    #[cfg(not(feature = "sandbox"))]
+    let thread_count = THREAD_COUNT;
+    #[cfg(not(feature = "sandbox"))]
+    let t0 = T0;
+    #[cfg(feature = "sandbox")]
+    let thread_count = *THREAD_COUNT;
+    #[cfg(feature = "sandbox")]
+    let t0 = *T0;
+
+    // init final state
+    let ledger_config = LedgerConfig {
+        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
+        disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
+    };
+    let async_pool_config = AsyncPoolConfig {
+        max_length: MAX_ASYNC_POOL_LENGTH,
+    };
+    let final_state_config = FinalStateConfig {
+        final_history_length: SETTINGS.ledger.final_history_length,
+        thread_count,
+        ledger_config,
+        async_pool_config,
+    };
+
     // Init the global serialization context
     init_serialization_context(SerializationContext::default());
+
+    let final_state = Arc::new(RwLock::new(
+        FinalState::new(final_state_config).expect("could not init final state"),
+    ));
 
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
@@ -81,6 +109,7 @@ async fn launch() -> (
         },
         res = get_state(
             &SETTINGS.bootstrap,
+            final_state.clone(),
             massa_bootstrap::types::Establisher::new(),
             *VERSION,
             *GENESIS_TIMESTAMP,
@@ -128,35 +157,6 @@ async fn launch() -> (
     )
     .await
     .expect("could not start pool controller");
-
-    #[cfg(not(feature = "sandbox"))]
-    let thread_count = THREAD_COUNT;
-    #[cfg(not(feature = "sandbox"))]
-    let t0 = T0;
-    #[cfg(feature = "sandbox")]
-    let thread_count = *THREAD_COUNT;
-    #[cfg(feature = "sandbox")]
-    let t0 = *T0;
-
-    // init final state
-    // HERE
-    let ledger_config = LedgerConfig {
-        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
-        disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
-    };
-    let async_pool_config = AsyncPoolConfig {
-        max_length: MAX_ASYNC_POOL_LENGTH,
-    };
-    let final_state_config = FinalStateConfig {
-        final_history_length: SETTINGS.ledger.final_history_length,
-        thread_count,
-        ledger_config,
-        async_pool_config,
-    };
-    let final_state = Arc::new(RwLock::new(match bootstrap_state.final_state {
-        Some(l) => FinalState::from_bootstrap_state(final_state_config, l),
-        None => FinalState::new(final_state_config).expect("could not init final state"),
-    }));
 
     // launch execution module
     let execution_config = ExecutionConfig {

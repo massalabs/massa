@@ -2,17 +2,122 @@
 
 //! This file defines the structure representing an asynchronous message
 
-use massa_models::constants::ADDRESS_SIZE_BYTES;
+use std::ops::Bound::Included;
+
+use massa_models::amount::{AmountDeserializer, AmountSerializer};
+use massa_models::constants::{ADDRESS_SIZE_BYTES, THREAD_COUNT};
+use massa_models::slot::{SlotDeserializer, SlotSerializer};
 use massa_models::{
     array_from_slice, Address, Amount, DeserializeVarInt, ModelsError, SerializeVarInt, Slot,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_models::{DeserializeCompact, SerializeCompact};
+use massa_serialization::{Deserializer, Serializer};
+use nom::error::context;
+use nom::sequence::tuple;
+use nom::IResult;
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
 /// `(rev(max_gas*gas_price), emission_slot, emission_index)`
 pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
+
+pub struct AsyncMessageIdSerializer {
+    amount_serializer: AmountSerializer,
+    slot_serializer: SlotSerializer,
+    u64_serializer: U64VarIntSerializer,
+}
+
+impl AsyncMessageIdSerializer {
+    pub fn new() -> Self {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        Self {
+            amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            slot_serializer: SlotSerializer::new(
+                (Included(u64::MIN), Included(u64::MAX)),
+                (Included(0), Included(thread_count)),
+            ),
+            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Default for AsyncMessageIdSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
+    fn serialize(
+        &self,
+        value: &AsyncMessageId,
+    ) -> Result<Vec<u8>, massa_serialization::SerializeError> {
+        let amount = self.amount_serializer.serialize(&value.0 .0)?;
+        let slot = self.slot_serializer.serialize(&value.1)?;
+        let index = self.u64_serializer.serialize(&value.2)?;
+        let mut res = Vec::with_capacity(amount.len() + slot.len() + index.len());
+        res.extend(amount);
+        res.extend(slot);
+        res.extend(index);
+        Ok(res)
+    }
+}
+
+pub struct AsyncMessageIdDeserializer {
+    amount_deserializer: AmountDeserializer,
+    slot_deserializer: SlotDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl AsyncMessageIdDeserializer {
+    pub fn new() -> Self {
+        Self {
+            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            slot_deserializer: SlotDeserializer::new(
+                (Included(u64::MIN), Included(u64::MAX)),
+                #[cfg(feature = "sandbox")]
+                (Included(0), Included(*THREAD_COUNT)),
+                #[cfg(not(feature = "sandbox"))]
+                (Included(0), Included(THREAD_COUNT)),
+            ),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Default for AsyncMessageIdDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], AsyncMessageId> {
+        let mut parser = tuple((
+            context("amount in async message id", |input| {
+                self.amount_deserializer.deserialize(input)
+            }),
+            context("slot in async message id", |input| {
+                self.slot_deserializer.deserialize(input)
+            }),
+            context("index in async message id", |input| {
+                self.u64_deserializer.deserialize(input)
+            }),
+        ));
+
+        match parser(buffer) {
+            Ok((rest, (amount, slot, index))) => {
+                Ok((rest, (std::cmp::Reverse(amount), slot, index)))
+            }
+            Err(e) => Err(e),
+        }
+    }
+}
 
 /// Structure defining an asynchronous smart contract message
 #[derive(Debug, Clone, Serialize, Deserialize)]

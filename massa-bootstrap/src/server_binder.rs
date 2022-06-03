@@ -1,8 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
+use crate::messages::BootstrapClientMessage;
+use crate::messages::BootstrapServerMessage;
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::Version;
@@ -40,7 +41,9 @@ impl BootstrapServerBinder {
             prev_message: None,
         }
     }
+}
 
+impl BootstrapServerBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     /// MUST always be followed by a send of the BootstrapMessage::BootstrapTime
@@ -64,7 +67,7 @@ impl BootstrapServerBinder {
     }
 
     /// Writes the next message. NOT cancel-safe
-    pub async fn send(&mut self, msg: BootstrapMessage) -> Result<(), BootstrapError> {
+    pub async fn send(&mut self, msg: BootstrapServerMessage) -> Result<(), BootstrapError> {
         // serialize message
         let msg_bytes = msg.to_bytes_compact()?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
@@ -106,7 +109,7 @@ impl BootstrapServerBinder {
 
     #[allow(dead_code)]
     /// Read a message sent from the client (not signed). NOT cancel-safe
-    pub async fn next(&mut self) -> Result<BootstrapMessage, BootstrapError> {
+    pub async fn next(&mut self) -> Result<BootstrapClientMessage, BootstrapError> {
         // read prev hash
         let received_prev_hash = {
             if self.prev_message.is_some() {
@@ -150,7 +153,7 @@ impl BootstrapServerBinder {
         }
 
         // deserialize message
-        let (msg, _len) = BootstrapMessage::from_bytes_compact(&msg_bytes)?;
+        let (msg, _len) = BootstrapClientMessage::from_bytes_compact(&msg_bytes)?;
 
         Ok(msg)
     }
