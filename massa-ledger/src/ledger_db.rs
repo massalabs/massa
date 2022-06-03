@@ -360,7 +360,7 @@ impl LedgerDB {
             )
             .map(|(key, data)| {
                 (
-                    Hash::from_bytes(key.split_at(HASH_SIZE_BYTES).1.try_into().unwrap()),
+                    Hash::from_bytes(key.split_at(HASH_SIZE_BYTES + 1).1.try_into().unwrap()),
                     data.to_vec(),
                 )
             })
