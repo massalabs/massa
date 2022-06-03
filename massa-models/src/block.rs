@@ -96,9 +96,9 @@ impl BlockId {
         ))
     }
 
-    /// first bit of the hashed block
+    /// first bit of the hashed block id
     pub fn get_first_bit(&self) -> bool {
-        Hash::compute_from(self.to_bytes()).to_bytes()[0] >> 7 == 1
+        self.to_bytes()[0] >> 7 == 1
     }
 }
 

@@ -87,7 +87,7 @@ impl Endpoints for API<Public> {
         &self,
         reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
-        if reqs.len() > self.0.api_settings.max_arguments as usize {
+        if reqs.len() as u64 > self.0.api_settings.max_arguments {
             let closure =
                 async move || Err(ApiError::TooManyArguments("too many arguments".into()));
             return Box::pin(closure());
@@ -148,7 +148,7 @@ impl Endpoints for API<Public> {
         &self,
         reqs: Vec<ReadOnlyCall>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
-        if reqs.len() > self.0.api_settings.max_arguments as usize {
+        if reqs.len() as u64 > self.0.api_settings.max_arguments {
             let closure =
                 async move || Err(ApiError::TooManyArguments("too many arguments".into()));
             return Box::pin(closure());
@@ -384,9 +384,13 @@ impl Endpoints for API<Public> {
         &self,
         eds: Vec<EndorsementId>,
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
+        let api_cfg = self.0.api_settings;
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let pool_command_sender = self.0.pool_command_sender.clone();
         let closure = async move || {
+            if eds.len() as u64 > api_cfg.max_arguments {
+                return Err(ApiError::TooManyArguments("too many arguments".into()));
+            }
             let mapped: Set<EndorsementId> = eds.into_iter().collect();
             let mut res = consensus_command_sender
                 .get_endorsements_by_id(mapped.clone())
