@@ -1,9 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::collections::HashMap;
-
 use massa_models::Address;
-use rocksdb::WriteBatch;
+use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::{ledger_db::LedgerDB, FinalLedger, LedgerConfig, LedgerEntry};
@@ -11,18 +9,12 @@ use crate::{ledger_db::LedgerDB, FinalLedger, LedgerConfig, LedgerEntry};
 /// This file defines tools to test the ledger bootstrap
 
 pub fn create_final_ledger(
-    init_ledger: Option<HashMap<Address, LedgerEntry>>,
+    initial_ledger: Option<HashMap<Address, LedgerEntry>>,
     config: LedgerConfig,
 ) -> FinalLedger {
     let temp_dir = TempDir::new().unwrap();
     let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
-    if let Some(init_ledger) = init_ledger {
-        let mut batch = WriteBatch::default();
-        for (address, entry) in init_ledger {
-            db.put_entry(&address, entry, &mut batch);
-        }
-        db.write_batch(batch);
-    }
+    db.set_initial_ledger(initial_ledger.unwrap_or_default());
     FinalLedger {
         _config: config,
         sorted_ledger: db,
@@ -50,6 +42,7 @@ pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
 
 /// asserts that two `FinalLedgerBootstrapState` are equal
 pub fn assert_eq_ledger(v1: &FinalLedger, v2: &FinalLedger) {
+    // IMPORTANT NOTE: MAKE SURE THIS WORKS
     let ledger1: HashMap<Address, LedgerEntry> = v1
         .sorted_ledger
         .get_every_address()

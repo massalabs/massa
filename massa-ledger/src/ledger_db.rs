@@ -14,11 +14,13 @@ use nom::sequence::tuple;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
+use std::collections::HashMap;
 use std::ops::Bound;
 use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
 
-use crate::{ledger_changes::LedgerEntryUpdate, LedgerEntry, SetOrDelete, SetOrKeep};
+use crate::ledger_changes::LedgerEntryUpdate;
+use crate::{LedgerChanges, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 
 #[cfg(feature = "testing")]
 use massa_models::{Amount, DeserializeCompact};
@@ -31,6 +33,7 @@ const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 const BALANCE_IDENT: u8 = 0u8;
 const BYTECODE_IDENT: u8 = 1u8;
+const DATASTORE_IDENT: u8 = 2u8;
 const SLOT_KEY: &[u8; 1] = b"s";
 
 /// Ledger sub entry enum
@@ -47,24 +50,21 @@ pub enum LedgerSubEntry {
 ///
 /// Contains a RocksDB DB instance
 #[derive(Debug)]
-pub(crate) struct LedgerDB(pub(crate) DB);
+pub(crate) struct LedgerDB(DB);
 
 /// Balance key formatting macro
-///
-/// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
 macro_rules! balance_key {
     ($addr:expr) => {
-        [&[BALANCE_IDENT], &$addr.to_bytes()[..]].concat()
+        [&$addr.to_bytes()[..], &[BALANCE_IDENT]].concat()
     };
 }
 
 /// Bytecode key formatting macro
 ///
-/// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
 /// NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
     ($addr:expr) => {
-        [&[BYTECODE_IDENT], &$addr.to_bytes()[..]].concat()
+        [&$addr.to_bytes()[..], &[BYTECODE_IDENT]].concat()
     };
 }
 
@@ -73,37 +73,29 @@ macro_rules! bytecode_key {
 /// TODO: add a separator identifier if the need comes to have multiple datastores
 macro_rules! data_key {
     ($addr:expr, $key:expr) => {
-        [&$addr.to_bytes()[..], &$key.to_bytes()[..]].concat()
+        [
+            &$addr.to_bytes()[..],
+            &[DATASTORE_IDENT],
+            &$key.to_bytes()[..],
+        ]
+        .concat()
     };
 }
 
 /// Datastore entry prefix formatting macro
 macro_rules! data_prefix {
     ($addr:expr) => {
-        &$addr.to_bytes()[..]
+        &[&$addr.to_bytes()[..], &[DATASTORE_IDENT]].concat()
     };
 }
 
 /// Extract an address from a key
 pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
     let address_deserializer = AddressDeserializer::new();
-    match key.get(0) {
-        Some(ident) if *ident == BALANCE_IDENT => {
-            // Safe because we matched that there is a first byte just above.
-            let (_, address) = address_deserializer.deserialize(&key[1..]).ok()?;
-            Some(address)
-        }
-        Some(ident) if *ident == BYTECODE_IDENT => {
-            // Safe because we matched that there is a first byte just above.
-            let (_, address) = address_deserializer.deserialize(&key[1..]).ok()?;
-            Some(address)
-        }
-        Some(_) => {
-            let (_, address) = address_deserializer.deserialize(key).ok()?;
-            Some(address)
-        }
-        None => None,
-    }
+    address_deserializer
+        .deserialize(&key[..])
+        .map(|res| res.1)
+        .ok()
 }
 
 /// Basic key serializer
@@ -140,30 +132,22 @@ impl KeyDeserializer {
     }
 }
 
+// NOTE: deserialize keys into a specified structure
 impl Deserializer<Vec<u8>> for KeyDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
-        match buffer.get(0) {
-            Some(ident) if *ident == BALANCE_IDENT => {
-                // Safe because we matched that there is a first byte just above.
-                let (rest, address) = self.address_deserializer.deserialize(&buffer[1..])?;
-                Ok((rest, balance_key!(address)))
-            }
-            Some(ident) if *ident == BYTECODE_IDENT => {
-                // Safe because we matched that there is a first byte just above.
-                let (rest, address) = self.address_deserializer.deserialize(&buffer[1..])?;
-                Ok((rest, bytecode_key!(address)))
-            }
-            Some(_) => {
-                let (rest, (address, key)) = tuple((
-                    |input| self.address_deserializer.deserialize(input),
-                    |input| self.hash_deserializer.deserialize(input),
-                ))(buffer)?;
-                Ok((rest, data_key!(address, key)))
-            }
-            None => Err(nom::Err::Error(nom::error::Error::new(
-                buffer,
-                nom::error::ErrorKind::IsNot,
-            ))),
+        let (rest, address) = self.address_deserializer.deserialize(buffer)?;
+        let error = nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::IsNot));
+        match rest.get(0) {
+            Some(ident) => match *ident {
+                BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
+                BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
+                DATASTORE_IDENT => {
+                    let (rest, hash) = self.hash_deserializer.deserialize(&rest[1..])?;
+                    Ok((rest, data_key!(address, hash)))
+                }
+                _ => Err(error),
+            },
+            None => Err(error),
         }
     }
 }
@@ -215,10 +199,57 @@ impl LedgerDB {
         LedgerDB(db)
     }
 
+    /// Set the initial disk ledger
+    ///
+    /// # Arguments
+    /// * initial_ledger: initial entries to put in the disk
+    pub fn set_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
+        let mut batch = WriteBatch::default();
+        for (address, entry) in initial_ledger {
+            self.put_entry(&address, entry, &mut batch);
+        }
+        self.write_batch(batch);
+    }
+
+    /// Allows applying `LedgerChanges` to the disk ledger
+    ///
+    /// # Arguments
+    /// * changes: ledger changes to be applied
+    /// * slot: new slot associated to the final ledger
+    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+        // create the batch
+        let mut batch = WriteBatch::default();
+        // for all incoming changes
+        for (addr, change) in changes.0 {
+            match change {
+                // the incoming change sets a ledger entry to a new one
+                SetUpdateOrDelete::Set(new_entry) => {
+                    // inserts/overwrites the entry with the incoming one
+                    self.put_entry(&addr, new_entry, &mut batch);
+                }
+                // the incoming change updates an existing ledger entry
+                SetUpdateOrDelete::Update(entry_update) => {
+                    // applies the updates to the entry
+                    // if the entry does not exist, inserts a default one and applies the updates to it
+                    self.update_entry(&addr, entry_update, &mut batch);
+                }
+                // the incoming change deletes a ledger entry
+                SetUpdateOrDelete::Delete => {
+                    // delete the entry, if it exists
+                    self.delete_entry(&addr, &mut batch);
+                }
+            }
+        }
+        // set the associated slot in metadata
+        self.set_metadata(slot, &mut batch);
+        // write the batch
+        self.write_batch(batch);
+    }
+
     /// Apply the given operation batch to the disk ledger.
     ///
     /// NOTE: the batch is not saved within the object because it cannot be shared between threads safely
-    pub(crate) fn write_batch(&self, batch: WriteBatch) {
+    fn write_batch(&self, batch: WriteBatch) {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
@@ -229,7 +260,7 @@ impl LedgerDB {
     /// * batch: the given operation batch to update
     ///
     /// NOTE: right now the metadata is only a Slot, use a struct in the future
-    pub(crate) fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch) {
+    fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         // Slot::to_bytes_compact() never fails
@@ -242,12 +273,7 @@ impl LedgerDB {
     /// * addr: associated address
     /// * ledger_entry: complete entry to be added
     /// * batch: the given operation batch to update
-    pub(crate) fn put_entry(
-        &mut self,
-        addr: &Address,
-        ledger_entry: LedgerEntry,
-        batch: &mut WriteBatch,
-    ) {
+    fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance
@@ -292,12 +318,10 @@ impl LedgerDB {
     }
 
     /// Get every address and their corresponding balance.
-    /// This should only be used for debug purposes.
+    /// IMPORTANT: This should only be used for debug purposes.
     ///
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
-    ///
-    /// NOTE: ONLY USE THIS FOR TESTS
     #[cfg(feature = "testing")]
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
@@ -308,12 +332,11 @@ impl LedgerDB {
             .collect::<Vec<_>>();
 
         let mut addresses = BTreeMap::new();
+        let address_deserializer = AddressDeserializer::new();
         for (key, entry) in ledger {
-            if key.first() == Some(&BALANCE_IDENT) {
-                addresses.insert(
-                    Address::from_bytes(&key[1..].try_into().unwrap()),
-                    Amount::from_bytes_compact(&entry).unwrap().0,
-                );
+            let (rest, address) = address_deserializer.deserialize(&key[..]).unwrap();
+            if rest.get(0) == Some(&BALANCE_IDENT) {
+                addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
             }
         }
         addresses
@@ -337,7 +360,7 @@ impl LedgerDB {
             )
             .map(|(key, data)| {
                 (
-                    Hash::from_bytes(key.split_at(HASH_SIZE_BYTES).1.try_into().unwrap()),
+                    Hash::from_bytes(key.split_at(HASH_SIZE_BYTES + 1).1.try_into().unwrap()),
                     data.to_vec(),
                 )
             })
@@ -349,7 +372,7 @@ impl LedgerDB {
     /// # Arguments
     /// * entry_update: a descriptor of the entry updates to be applied
     /// * batch: the given operation batch to update
-    pub(crate) fn update_entry(
+    fn update_entry(
         &mut self,
         addr: &Address,
         entry_update: LedgerEntryUpdate,
@@ -385,7 +408,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    pub(crate) fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
+    fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance
@@ -411,6 +434,11 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * last_key: key where the part retrieving must start
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * The ledger part as bytes
+    /// * The last taken key
     pub fn get_ledger_part(
         &self,
         last_key: &Option<Vec<u8>>,
@@ -448,7 +476,8 @@ impl LedgerDB {
 
     /// Set a part of the ledger in the database
     ///
-    /// Return: The last key of the entry inserted
+    /// # Returns
+    /// The last key of the inserted entry
     pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Option<Vec<u8>>, ModelsError> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
@@ -457,7 +486,7 @@ impl LedgerDB {
         let mut last_key = Rc::new(None);
         let mut batch = WriteBatch::default();
 
-        // NOTE: We deserialize to address to go back directly to vec u8 because we want to perform security check because this data can come from the network.
+        // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
         let (rest, _) = many0(|input: &'a [u8]| {
             let (rest, (key, value)) = tuple((
                 |input| key_deserializer.deserialize(input),
@@ -471,7 +500,7 @@ impl LedgerDB {
         })(data)
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
 
-        // We should not have any data left.
+        // Every byte should have been read
         if rest.is_empty() {
             self.0.write(batch).expect(CRUD_ERROR);
             Ok((*last_key).clone())

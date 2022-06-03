@@ -5,14 +5,12 @@
 use crate::ledger_changes::LedgerChanges;
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
 use crate::ledger_entry::LedgerEntry;
-use crate::types::SetUpdateOrDelete;
 use crate::{LedgerConfig, LedgerError};
 use massa_hash::Hash;
 use massa_models::{Address, Amount, ModelsError};
 use massa_models::{DeserializeCompact, Slot};
 use nom::AsBytes;
-use rocksdb::WriteBatch;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -45,28 +43,28 @@ pub(crate) use init_file_error;
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
-        let mut sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());
-        let mut batch = WriteBatch::default();
-
         // load the ledger tree from file
-        let initial_ledger = serde_json::from_str::<BTreeMap<Address, Amount>>(
-            &std::fs::read_to_string(&config.initial_sce_ledger_path)
-                .map_err(init_file_error!("loading", config))?,
-        )
-        .map_err(init_file_error!("parsing", config))?;
+        let initial_ledger: HashMap<Address, LedgerEntry> =
+            serde_json::from_str::<HashMap<Address, Amount>>(
+                &std::fs::read_to_string(&config.initial_sce_ledger_path)
+                    .map_err(init_file_error!("loading", config))?,
+            )
+            .map_err(init_file_error!("parsing", config))?
+            .into_iter()
+            .map(|(addr, amount)| {
+                (
+                    addr,
+                    LedgerEntry {
+                        parallel_balance: amount,
+                        ..Default::default()
+                    },
+                )
+            })
+            .collect();
 
-        // put_entry initial ledger values in the disk db
-        for (address, amount) in &initial_ledger {
-            sorted_ledger.put_entry(
-                address,
-                LedgerEntry {
-                    parallel_balance: *amount,
-                    ..Default::default()
-                },
-                &mut batch,
-            );
-        }
-        sorted_ledger.write_batch(batch);
+        // create and initialize the disk ledger
+        let mut sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());
+        sorted_ledger.set_initial_ledger(initial_ledger);
 
         // generate the final ledger
         Ok(FinalLedger {
@@ -76,33 +74,8 @@ impl FinalLedger {
     }
 
     /// Allows applying `LedgerChanges` to the final ledger
-    pub fn apply_changes_at_slot(&mut self, changes: LedgerChanges, slot: Slot) {
-        // create the batch
-        let mut batch = WriteBatch::default();
-        // for all incoming changes
-        for (addr, change) in changes.0 {
-            match change {
-                // the incoming change sets a ledger entry to a new one
-                SetUpdateOrDelete::Set(new_entry) => {
-                    // inserts/overwrites the entry with the incoming one
-                    self.sorted_ledger.put_entry(&addr, new_entry, &mut batch);
-                }
-                // the incoming change updates an existing ledger entry
-                SetUpdateOrDelete::Update(entry_update) => {
-                    // applies the updates to the entry
-                    // if the entry does not exist, inserts a default one and applies the updates to it
-                    self.sorted_ledger
-                        .update_entry(&addr, entry_update, &mut batch);
-                }
-                // the incoming change deletes a ledger entry
-                SetUpdateOrDelete::Delete => {
-                    // delete the entry, if it exists
-                    self.sorted_ledger.delete_entry(&addr, &mut batch);
-                }
-            }
-        }
-        self.sorted_ledger.set_metadata(slot, &mut batch);
-        self.sorted_ledger.write_batch(batch);
+    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+        self.sorted_ledger.apply_changes(changes, slot);
     }
 
     /// Gets the parallel balance of a ledger entry
@@ -133,7 +106,6 @@ impl FinalLedger {
     /// # Returns
     /// true if it exists, false otherwise.
     pub fn entry_exists(&self, addr: &Address) -> bool {
-        // note: document the "may"
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Balance)
             .is_some()

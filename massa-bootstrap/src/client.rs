@@ -72,7 +72,7 @@ async fn stream_ledger(
                         .map(|(id, _)| *id);
                     write_final_state
                         .ledger
-                        .apply_changes_at_slot(final_state_changes.ledger_changes, slot);
+                        .apply_changes(final_state_changes.ledger_changes, slot);
                     write_final_state
                         .async_pool
                         .apply_changes_unchecked(final_state_changes.async_pool_changes);
