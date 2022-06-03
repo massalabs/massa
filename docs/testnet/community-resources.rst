@@ -16,11 +16,11 @@ About Massa
 - `Russian - Presentation of Massa team <https://medium.com/@bezniuk66/massa-%D0%B7%D0%BD%D0%B0%D0%BA%D0%BE%D0%BC%D1%81%D1%82%D0%B2%D0%BE-%D1%81-%D0%BE%D1%81%D0%BD%D0%BE%D0%B2%D0%B0%D1%82%D0%B5%D0%BB%D1%8F%D0%BC%D0%B8-f2c9ef2add2a>`_
 - `Russian - Massa raised €5 million <https://medium.com/@bezniuk66/%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82-massa-%D0%BF%D1%80%D0%B8%D0%B2%D0%BB%D0%B5%D0%BA-5-%D0%BC%D0%BB%D0%BD-%D0%B5%D0%B2%D1%80%D0%BE-%D0%B4%D0%BB%D1%8F-%D1%81%D0%BE%D0%B7%D0%B4%D0%B0%D0%BD%D0%B8%D1%8F-%D0%BF%D0%B5%D1%80%D0%B2%D0%BE%D0%B3%D0%BE-%D0%BF%D0%BE-%D0%BD%D0%B0%D1%81%D1%82%D0%BE%D1%8F%D1%89%D0%B5%D0%BC%D1%83-%D0%B4%D0%B5%D1%86%D0%B5%D0%BD%D1%82%D1%80%D0%B0%D0%BB%D0%B8%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%BD%D0%BE%D0%B3%D0%BE-%D0%B1%D0%BB%D0%BE%D0%BA%D1%87%D0%B5%D0%B9%D0%BD%D0%B0-f307db55c78d`_
 ----
-- `Spanish - Presentation of Massa technology <https://kimiko-cumulo.medium.com/introducci%C3%B3n-a-la-blockchain-massa-7e5fab213462>`
-- `Spanish - Summary of AMA during Ep6 <https://medium.com/@cumulo.pro/ama-con-los-cofundadores-de-massa-testnet-episodio-6-y-actualizaciones-18bc928122d7>`
-- `Spanish - Summary of AMA with RØ CRYPTØ <https://medium.com/@cumulo.pro/r%C3%B8-crypt%C3%B8-ama-session-c991cabf9e44>`
-- `Spanish - Testnet incentive program <https://medium.com/@cumulo.pro/programa-de-recompensas-testnet-staking-de-massa-75708b85b6a0>`
-- `Spanish - Summary of AMA during Ep10 <https://medium.com/@cumulo.pro/ama-con-los-cofundadores-de-massa-testnet-episodio-10-d026d8f9ba16>`
+- `Spanish - Presentation of Massa technology <https://kimiko-cumulo.medium.com/introducci%C3%B3n-a-la-blockchain-massa-7e5fab213462>`_
+- `Spanish - Summary of AMA during Ep6 <https://medium.com/@cumulo.pro/ama-con-los-cofundadores-de-massa-testnet-episodio-6-y-actualizaciones-18bc928122d7>`_
+- `Spanish - Summary of AMA with RØ CRYPTØ <https://medium.com/@cumulo.pro/r%C3%B8-crypt%C3%B8-ama-session-c991cabf9e44>`_
+- `Spanish - Testnet incentive program <https://medium.com/@cumulo.pro/programa-de-recompensas-testnet-staking-de-massa-75708b85b6a0>`_
+- `Spanish - Summary of AMA during Ep10 <https://medium.com/@cumulo.pro/ama-con-los-cofundadores-de-massa-testnet-episodio-10-d026d8f9ba16>`_
 
 Setting up a node
 =================
