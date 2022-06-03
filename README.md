@@ -52,7 +52,7 @@ For project announcements, we mainly use
 ## More tutorials
 
 -   [Updating the node](https://massa.readthedocs.io/en/latest/testnet/update.html)
--   [Tutorials and resources from the community](https://massa.readthedocs.io/en/latest/testnet/community-ressources.html)
+-   [Tutorials and resources from the community](https://massa.readthedocs.io/en/latest/testnet/community-resources.html)
 
 ## [FAQ](https://massa.readthedocs.io/en/latest/testnet/faq.html) and Troubleshooting
 
