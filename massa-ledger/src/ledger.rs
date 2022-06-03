@@ -10,7 +10,6 @@ use massa_hash::Hash;
 use massa_models::{Address, Amount, ModelsError};
 use massa_models::{DeserializeCompact, Slot};
 use nom::AsBytes;
-use rocksdb::WriteBatch;
 use std::collections::BTreeMap;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
@@ -44,9 +43,6 @@ pub(crate) use init_file_error;
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
-        let mut sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());
-        let mut batch = WriteBatch::default();
-
         // load the ledger tree from file
         let initial_ledger = serde_json::from_str::<BTreeMap<Address, Amount>>(
             &std::fs::read_to_string(&config.initial_sce_ledger_path)
@@ -54,18 +50,9 @@ impl FinalLedger {
         )
         .map_err(init_file_error!("parsing", config))?;
 
-        // put_entry initial ledger values in the disk db
-        for (address, amount) in &initial_ledger {
-            sorted_ledger.put_entry(
-                address,
-                LedgerEntry {
-                    parallel_balance: *amount,
-                    ..Default::default()
-                },
-                &mut batch,
-            );
-        }
-        sorted_ledger.write_batch(batch);
+        // create and initialize the disk ledger
+        let mut sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());
+        sorted_ledger.set_initial_ledger(initial_ledger);
 
         // generate the final ledger
         Ok(FinalLedger {
@@ -107,7 +94,6 @@ impl FinalLedger {
     /// # Returns
     /// true if it exists, false otherwise.
     pub fn entry_exists(&self, addr: &Address) -> bool {
-        // note: document the "may"
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Balance)
             .is_some()

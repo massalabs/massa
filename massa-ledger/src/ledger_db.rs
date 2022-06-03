@@ -20,9 +20,10 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::{LedgerChanges, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
+use massa_models::Amount;
 
 #[cfg(feature = "testing")]
-use massa_models::{Amount, DeserializeCompact};
+use massa_models::DeserializeCompact;
 
 // TODO: remove rocks_db dir when sled is cut out
 const LEDGER_CF: &str = "ledger";
@@ -51,21 +52,18 @@ pub enum LedgerSubEntry {
 pub(crate) struct LedgerDB(DB);
 
 /// Balance key formatting macro
-///
-/// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
 macro_rules! balance_key {
     ($addr:expr) => {
-        [&[BALANCE_IDENT], &$addr.to_bytes()[..]].concat()
+        [&$addr.to_bytes()[..], &[BALANCE_IDENT]].concat()
     };
 }
 
 /// Bytecode key formatting macro
 ///
-/// NOTE: ident being in front of addr is required for the intermediate bootstrap implementation
 /// NOTE: still handle separate bytecode for now to avoid too many refactoring at once
 macro_rules! bytecode_key {
     ($addr:expr) => {
-        [&[BYTECODE_IDENT], &$addr.to_bytes()[..]].concat()
+        [&$addr.to_bytes()[..], &[BYTECODE_IDENT]].concat()
     };
 }
 
@@ -88,23 +86,10 @@ macro_rules! data_prefix {
 /// Extract an address from a key
 pub fn get_address_from_key(key: Vec<u8>) -> Option<Address> {
     let address_deserializer = AddressDeserializer::new();
-    match key.get(0) {
-        Some(ident) if *ident == BALANCE_IDENT => {
-            // Safe because we matched that there is a first byte just above.
-            let (_, address) = address_deserializer.deserialize(&key[1..]).ok()?;
-            Some(address)
-        }
-        Some(ident) if *ident == BYTECODE_IDENT => {
-            // Safe because we matched that there is a first byte just above.
-            let (_, address) = address_deserializer.deserialize(&key[1..]).ok()?;
-            Some(address)
-        }
-        Some(_) => {
-            let (_, address) = address_deserializer.deserialize(&key[..]).ok()?;
-            Some(address)
-        }
-        None => None,
-    }
+    address_deserializer
+        .deserialize(&key[..])
+        .map(|res| res.1)
+        .ok()
 }
 
 /// Basic key serializer
@@ -141,6 +126,7 @@ impl KeyDeserializer {
     }
 }
 
+// IMPORTANT NOTE: FIX THIS
 impl Deserializer<Vec<u8>> for KeyDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
         match buffer.get(0) {
@@ -216,6 +202,25 @@ impl LedgerDB {
         LedgerDB(db)
     }
 
+    /// Set the initial disk ledger
+    ///
+    /// # Arguments
+    /// * initial_ledger: initial balances to put in the disk
+    pub(crate) fn set_initial_ledger(&mut self, initial_ledger: BTreeMap<Address, Amount>) {
+        let mut batch = WriteBatch::default();
+        for (address, amount) in &initial_ledger {
+            self.put_entry(
+                address,
+                LedgerEntry {
+                    parallel_balance: *amount,
+                    ..Default::default()
+                },
+                &mut batch,
+            );
+        }
+        self.write_batch(batch);
+    }
+
     /// Allows applying `LedgerChanges` to the disk ledger
     ///
     /// # Arguments
@@ -254,8 +259,7 @@ impl LedgerDB {
     /// Apply the given operation batch to the disk ledger.
     ///
     /// NOTE: the batch is not saved within the object because it cannot be shared between threads safely
-    /// TODO FOR THIS PR: remove pub(crate) after bootstrap streaming
-    pub(crate) fn write_batch(&self, batch: WriteBatch) {
+    fn write_batch(&self, batch: WriteBatch) {
         self.0.write(batch).expect(CRUD_ERROR);
     }
 
@@ -279,14 +283,7 @@ impl LedgerDB {
     /// * addr: associated address
     /// * ledger_entry: complete entry to be added
     /// * batch: the given operation batch to update
-    ///
-    /// TODO FOR THIS PR: remove pub(crate) after bootstrap streaming
-    pub(crate) fn put_entry(
-        &mut self,
-        addr: &Address,
-        ledger_entry: LedgerEntry,
-        batch: &mut WriteBatch,
-    ) {
+    fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance
@@ -335,8 +332,6 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
-    ///
-    /// NOTE: ONLY USE THIS FOR TESTS
     #[cfg(feature = "testing")]
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
@@ -347,13 +342,12 @@ impl LedgerDB {
             .collect::<Vec<_>>();
 
         let mut addresses = BTreeMap::new();
+        let address_deserializer = AddressDeserializer::new();
         for (key, entry) in ledger {
-            if key.first() == Some(&BALANCE_IDENT) {
-                addresses.insert(
-                    Address::from_bytes(&key[1..].try_into().unwrap()),
-                    Amount::from_bytes_compact(&entry).unwrap().0,
-                );
-            }
+            addresses.insert(
+                address_deserializer.deserialize(&key[..]).unwrap().1,
+                Amount::from_bytes_compact(&entry).unwrap().0,
+            );
         }
         addresses
     }
@@ -362,7 +356,7 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A BTreeMap with the entry hash as key and the data bytes as value
-    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+    pub(crate) fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
@@ -450,7 +444,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * last_key: key where the part retrieving must start
-    pub fn get_ledger_part(
+    pub(crate) fn get_ledger_part(
         &self,
         last_key: Option<Vec<u8>>,
     ) -> Result<(Vec<u8>, Vec<u8>), ModelsError> {
@@ -486,7 +480,7 @@ impl LedgerDB {
     /// Set a part of the ledger in the database
     ///
     /// Return: The last key of the entry inserted
-    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Vec<u8>, ModelsError> {
+    pub(crate) fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Vec<u8>, ModelsError> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
