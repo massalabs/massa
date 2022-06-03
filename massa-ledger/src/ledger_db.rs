@@ -129,12 +129,12 @@ impl KeyDeserializer {
 // NOTE: deserialize into a specified key structure
 impl Deserializer<Vec<u8>> for KeyDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
-        let (rest, address) = self.address_deserializer.deserialize(&buffer[1..])?;
+        let (rest, address) = self.address_deserializer.deserialize(buffer)?;
         match rest.get(0) {
             Some(ident) if *ident == BALANCE_IDENT => Ok((rest, balance_key!(address))),
             Some(ident) if *ident == BYTECODE_IDENT => Ok((rest, bytecode_key!(address))),
             Some(_) => {
-                let (rest, hash) = self.hash_deserializer.deserialize(&buffer[..])?;
+                let (rest, hash) = self.hash_deserializer.deserialize(rest)?;
                 Ok((rest, data_key!(address, hash)))
             }
             None => Err(nom::Err::Error(nom::error::Error::new(
