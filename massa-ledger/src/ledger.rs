@@ -10,7 +10,7 @@ use massa_hash::Hash;
 use massa_models::{Address, Amount, ModelsError};
 use massa_models::{DeserializeCompact, Slot};
 use nom::AsBytes;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -44,7 +44,7 @@ impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
     pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
         // load the ledger tree from file
-        let initial_ledger = serde_json::from_str::<BTreeMap<Address, Amount>>(
+        let initial_ledger = serde_json::from_str::<HashMap<Address, Amount>>(
             &std::fs::read_to_string(&config.initial_sce_ledger_path)
                 .map_err(init_file_error!("loading", config))?,
         )

@@ -14,6 +14,7 @@ use nom::sequence::tuple;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
+use std::collections::HashMap;
 use std::ops::Bound;
 use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
@@ -196,7 +197,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * initial_ledger: initial balances to put in the disk
-    pub fn set_initial_ledger(&mut self, initial_ledger: BTreeMap<Address, Amount>) {
+    pub fn set_initial_ledger(&mut self, initial_ledger: HashMap<Address, Amount>) {
         let mut batch = WriteBatch::default();
         for (address, amount) in &initial_ledger {
             self.put_entry(
@@ -318,7 +319,7 @@ impl LedgerDB {
     }
 
     /// Get every address and their corresponding balance.
-    /// This should only be used for debug purposes.
+    /// IMPORTANT: This should only be used for debug purposes.
     ///
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
@@ -334,10 +335,10 @@ impl LedgerDB {
         let mut addresses = BTreeMap::new();
         let address_deserializer = AddressDeserializer::new();
         for (key, entry) in ledger {
-            addresses.insert(
-                address_deserializer.deserialize(&key[..]).unwrap().1,
-                Amount::from_bytes_compact(&entry).unwrap().0,
-            );
+            let (rest, address) = address_deserializer.deserialize(&key[..]).unwrap();
+            if rest.get(0) == Some(&BALANCE_IDENT) {
+                addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
+            }
         }
         addresses
     }

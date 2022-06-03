@@ -29,7 +29,7 @@ use massa_signature::{
 };
 use massa_time::MassaTime;
 use rand::Rng;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::str::FromStr;
 use std::{
     collections::BTreeMap,
@@ -71,7 +71,7 @@ fn get_random_ledger_entry() -> LedgerEntry {
 pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
     let mut rng = rand::thread_rng();
 
-    let mut sorted_ledger = BTreeMap::new();
+    let mut sorted_ledger = HashMap::new();
     let mut messages = BTreeMap::new();
     for _ in 0usize..rng.gen_range(3..10) {
         let message = get_random_message();
