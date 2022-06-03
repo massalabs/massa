@@ -100,8 +100,12 @@ impl FinalState {
     ) -> Result<StateChanges, FinalStateError> {
         let pos_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
+            #[cfg(feature = "sandbox")]
+            let thread_count = *THREAD_COUNT;
+            #[cfg(not(feature = "sandbox"))]
+            let thread_count = THREAD_COUNT;
             let index = last_slot
-                .slots_since(&self.changes_history[0].0, THREAD_COUNT)
+                .slots_since(&self.changes_history[0].0, thread_count)
                 .map_err(|_| {
                     FinalStateError::LedgerError("Last slot is overflowing history.".to_string())
                 })?;
