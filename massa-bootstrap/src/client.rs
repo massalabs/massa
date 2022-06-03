@@ -115,7 +115,7 @@ async fn stream_ledger(
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
 async fn bootstrap_from_server(
-    cfg: &BootstrapSettings, // TODO: should be a &'static ... see #1848
+    cfg: &BootstrapSettings,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut Option<BootstrapClientMessage>,
     global_bootstrap_state: &mut GlobalBootstrapState,
@@ -237,7 +237,7 @@ async fn bootstrap_from_server(
                     client,
                     write_timeout,
                     cfg.read_timeout.into(),
-                    "ask bootstrap peers timed out".to_string(),
+                    "ask bootstrap peers timed out",
                 )
                 .await?
                 {
@@ -256,7 +256,7 @@ async fn bootstrap_from_server(
                     client,
                     write_timeout,
                     cfg.read_timeout.into(),
-                    "ask consensus state timed out".to_string(),
+                    "ask consensus state timed out",
                 )
                 .await?
                 {
@@ -295,10 +295,10 @@ async fn send_client_message(
     client: &mut BootstrapClientBinder,
     write_timeout: Duration,
     read_timeout: Duration,
-    error: String,
+    error: &str,
 ) -> Result<BootstrapServerMessage, BootstrapError> {
     match tokio::time::timeout(write_timeout, client.send(message_to_send)).await {
-        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error.clone()).into()),
+        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
         Ok(Err(e)) => Err(e),
         Ok(Ok(_)) => Ok(()),
     }?;
