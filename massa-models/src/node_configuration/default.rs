@@ -115,7 +115,7 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
-pub const ASYNC_POOL_BATCH_SIZE: u64 = 50;
+pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 
 // ***********************
 // Bootstrap constants

@@ -8,13 +8,13 @@ use crate::{
     message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
 };
 use massa_models::{
-    constants::default::ASYNC_POOL_BATCH_SIZE, DeserializeCompact, SerializeCompact, Slot,
-    U64VarIntDeserializer, U64VarIntSerializer,
+    constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, DeserializeCompact, ModelsError,
+    SerializeCompact, Slot,
 };
-use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::{error::context, multi::length_count, IResult};
+use massa_serialization::{Deserializer, Serializer};
+use nom::multi::many0;
 use std::collections::BTreeMap;
-use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::ops::Bound::{Excluded, Unbounded};
 
 /// Represents a pool of sorted messages in a deterministic way.
 /// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -26,92 +26,6 @@ pub struct AsyncPool {
 
     /// Messages sorted by decreasing ID (decreasing priority)
     pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
-}
-
-/// Part of the async pool used for bootstrap
-pub type AsyncPoolPart = Vec<(AsyncMessageId, AsyncMessage)>;
-
-pub struct AsyncPoolPartSerializer {
-    u64_serializer: U64VarIntSerializer,
-    id_serializer: AsyncMessageIdSerializer,
-}
-
-impl AsyncPoolPartSerializer {
-    pub fn new() -> Self {
-        Self {
-            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
-            id_serializer: AsyncMessageIdSerializer::new(),
-        }
-    }
-}
-
-impl Default for AsyncPoolPartSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Serializer<AsyncPoolPart> for AsyncPoolPartSerializer {
-    fn serialize(&self, value: &AsyncPoolPart) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-        res.extend(self.u64_serializer.serialize(
-            &(value.len().try_into().map_err(|_| {
-                SerializeError::GeneralError("Fail to transform usize to u64".to_string())
-            })?),
-        )?);
-        for element in value {
-            res.extend(self.id_serializer.serialize(&element.0)?);
-            res.extend(
-                &element
-                    .1
-                    .to_bytes_compact()
-                    .map_err(|err| SerializeError::GeneralError(err.to_string()))?,
-            );
-        }
-        Ok(res)
-    }
-}
-
-pub struct AsyncPoolPartDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    id_deserializer: AsyncMessageIdDeserializer,
-}
-
-impl Default for AsyncPoolPartDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl AsyncPoolPartDeserializer {
-    pub fn new() -> Self {
-        Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            id_deserializer: AsyncMessageIdDeserializer::new(),
-        }
-    }
-}
-
-impl Deserializer<AsyncPoolPart> for AsyncPoolPartDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], AsyncPoolPart> {
-        let mut parser = length_count(
-            context("length in async pool part", |input| {
-                self.u64_deserializer.deserialize(input)
-            }),
-            |input| {
-                // Use tuple when async message has a new serialize version
-                let (rest, id) = self.id_deserializer.deserialize(input)?;
-                let (message, delta) = AsyncMessage::from_bytes_compact(rest).map_err(|_| {
-                    nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::IsNot))
-                })?;
-                // Safe because the delta has been incermented while accessing in the from_bytes_compact
-                // Remove when async message has a new serialize version
-                Ok((&rest[delta..], (id, message)))
-            },
-        );
-
-        parser(buffer)
-    }
 }
 
 impl AsyncPool {
@@ -219,34 +133,66 @@ impl AsyncPool {
     }
 
     /// Used for bootstrap
-    /// Take a part of the async pool starting from the next element after `last_id` and with a max length of the constant `ASYNC_POOL_BATCH_SIZE`.
-    pub fn get_pool_part(&self, last_id: Option<AsyncMessageId>) -> AsyncPoolPart {
+    /// Take a part of the async pool starting from the next element after `last_id` and with a max length of the constant `ASYNC_POOL_PART_SIZE_MESSAGE_BYTES`.
+    /// Should always follow the same behavior as the `get_ledger_part` from `FinalLedger`method.
+    pub fn get_pool_part(
+        &self,
+        last_id: Option<AsyncMessageId>,
+    ) -> Result<(Vec<u8>, Option<AsyncMessageId>), ModelsError> {
         let last_id = if let Some(last_id) = last_id {
             Excluded(last_id)
         } else if self.messages.first_key_value().is_some() {
             Unbounded
         } else {
-            return vec![];
+            return Ok((Vec::new(), None));
         };
-        self.messages
-            .range((last_id, Unbounded))
-            .take(
-                ASYNC_POOL_BATCH_SIZE
-                    .try_into()
-                    .expect("Fail to convert a u64 to a usize."),
-            )
-            .map(|(id, value)| (*id, value.clone()))
-            .collect()
+        let mut part = Vec::new();
+        let mut next_last_id = None;
+        let id_async_message_serializer = AsyncMessageIdSerializer::new();
+
+        for (id, message) in self.messages.range((last_id, Unbounded)) {
+            if part.len() < ASYNC_POOL_PART_SIZE_MESSAGE_BYTES as usize {
+                part.extend(id_async_message_serializer.serialize(id)?);
+                part.extend(message.to_bytes_compact()?);
+                next_last_id = Some(*id);
+            }
+        }
+        Ok((part, next_last_id))
     }
 
     /// Used for bootstrap
     /// Add an `AsyncPoolPart` to the async pool
-    pub fn set_pool_part(
+    pub fn set_pool_part<'a>(
         &mut self,
-        part: AsyncPoolPart,
-    ) -> Option<(&AsyncMessageId, &AsyncMessage)> {
-        self.messages.extend(part);
-        self.messages.last_key_value()
+        part: &'a [u8],
+    ) -> Result<Option<(&AsyncMessageId, &AsyncMessage)>, ModelsError> {
+        let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
+        let (rest, messages) = many0(|input: &'a [u8]| {
+            if input.is_empty() {
+                return Err(nom::Err::Error(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::LengthValue,
+                )));
+            }
+            let (rest, id) = async_message_id_deserializer.deserialize(input)?;
+            //TODO: Change when async message has new serialize form
+            let (message, delta) = AsyncMessage::from_bytes_compact(rest).map_err(|_| {
+                nom::Err::Error(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::LengthValue,
+                ))
+            })?;
+            // Safe because we obtain delta by moving forward in the buffer.
+            Ok((&rest[delta..], (id, message)))
+        })(part)?;
+        if rest.is_empty() {
+            self.messages.extend(messages);
+            Ok(self.messages.last_key_value())
+        } else {
+            Err(ModelsError::SerializeError(
+                "pool part deserialization has data left".to_string(),
+            ))
+        }
     }
 }
 

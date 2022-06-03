@@ -9,7 +9,7 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
-use massa_final_state::FinalState;
+use massa_final_state::{FinalState, StateChanges};
 use massa_graph::BootstrapableGraph;
 use massa_ledger::get_address_from_key;
 use massa_logging::massa_trace;
@@ -258,42 +258,58 @@ pub async fn send_stream_ledger(
 ) -> Result<(), BootstrapError> {
     let mut old_key = last_key;
     let mut old_last_async_id = last_async_message_id;
-    let mut last_slot = slot;
+    let mut old_slot = slot;
 
     loop {
-        let (data, new_last_key) =
-            final_state
-                .read()
-                .ledger
-                .get_ledger_part(old_key)
-                .map_err(|_| {
-                    BootstrapError::GeneralError(
-                        "Error on fetching ledger part of execution".to_string(),
-                    )
-                })?;
-        old_key = Some(new_last_key);
-        let async_pool_part = final_state
-            .read()
-            .async_pool
-            .get_pool_part(old_last_async_id);
-        if let Some((last_id, _)) = async_pool_part.last() {
-            old_last_async_id = Some(*last_id);
+        // Scope of the read in the final state
+        let ledger_data;
+        let async_pool_data;
+        let final_state_changes;
+        let actual_slot;
+        {
+            // Get all data for the next message
+            let final_state_read = final_state.read();
+            let (data, new_last_key) =
+                final_state_read
+                    .ledger
+                    .get_ledger_part(&old_key)
+                    .map_err(|_| {
+                        BootstrapError::GeneralError(
+                            "Error on fetching ledger part of execution".to_string(),
+                        )
+                    })?;
+            ledger_data = data;
+
+            let (pool_data, last_async_pool_id) = final_state_read
+                .async_pool
+                .get_pool_part(old_last_async_id)?;
+            async_pool_data = pool_data;
+
+            if let Some(slot) = old_slot && let Some(key) = &old_key && let Some(async_pool_id) = old_last_async_id && slot != final_state_read.slot {
+                final_state_changes = final_state_read.get_state_changes_part(
+                    slot,
+                    get_address_from_key(key).ok_or_else(|| BootstrapError::GeneralError("Key malformed in slot changes".to_string()))?,
+                    async_pool_id,
+                );
+            } else {
+                final_state_changes = Ok(StateChanges::default());
+            }
+
+            // Assign value for next turn
+            old_last_async_id = last_async_pool_id;
+            old_key = new_last_key;
+            old_slot = Some(final_state_read.slot);
+            actual_slot = final_state_read.slot;
         }
-        if !data.is_empty() || !async_pool_part.is_empty() {
-            let actual_slot = final_state.read().slot;
-            let final_state_changes = final_state.read().get_state_changes_part(
-                last_slot,
-                old_key.clone().and_then(get_address_from_key),
-                old_last_async_id,
-            );
-            last_slot = Some(actual_slot);
+
+        if !ledger_data.is_empty() || !async_pool_data.is_empty() {
             if let Ok(final_state_changes) = final_state_changes {
                 match tokio::time::timeout(
                     write_timeout,
                     server.send(BootstrapServerMessage::FinalStatePart {
-                        ledger_data: data,
+                        ledger_data,
                         slot: actual_slot,
-                        async_pool_part,
+                        async_pool_part: async_pool_data,
                         final_state_changes,
                     }),
                 )

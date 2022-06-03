@@ -147,15 +147,15 @@ impl FinalLedger {
     /// Return: Tuple with data and last key
     pub fn get_ledger_part(
         &self,
-        last_key: Option<Vec<u8>>,
-    ) -> Result<(Vec<u8>, Vec<u8>), ModelsError> {
+        last_key: &Option<Vec<u8>>,
+    ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
         self.sorted_ledger.get_ledger_part(last_key)
     }
 
     /// Set a part of the ledger
     /// Used for bootstrap
     /// Return: Last key inserted
-    pub fn set_ledger_part(&self, data: Vec<u8>) -> Result<Vec<u8>, ModelsError> {
+    pub fn set_ledger_part(&self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError> {
         self.sorted_ledger.set_ledger_part(data.as_bytes())
     }
 }

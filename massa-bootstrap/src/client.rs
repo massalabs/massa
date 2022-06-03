@@ -5,6 +5,7 @@ use massa_logging::massa_trace;
 use massa_models::Version;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
+use nom::AsBytes;
 use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},
@@ -67,20 +68,18 @@ async fn stream_ledger(
                     let last_key = write_final_state.ledger.set_ledger_part(ledger_data)?;
                     let old_last_async_id = write_final_state
                         .async_pool
-                        .set_pool_part(async_pool_part)
+                        .set_pool_part(async_pool_part.as_bytes())?
                         .map(|(id, _)| *id);
-                    for changes in final_state_changes {
-                        write_final_state
-                            .ledger
-                            .apply_changes(changes.ledger_changes, slot);
-                        write_final_state
-                            .async_pool
-                            .apply_changes_unchecked(changes.async_pool_changes);
-                    }
+                    write_final_state
+                        .ledger
+                        .apply_changes(final_state_changes.ledger_changes, slot);
+                    write_final_state
+                        .async_pool
+                        .apply_changes_unchecked(final_state_changes.async_pool_changes);
                     write_final_state.slot = slot;
                     // Set new message in case of disconnection
                     *next_bootstrap_message = Some(BootstrapClientMessage::AskFinalStatePart {
-                        last_key: Some(last_key),
+                        last_key,
                         slot: Some(slot),
                         last_async_message_id: old_last_async_id,
                     });

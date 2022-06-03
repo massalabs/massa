@@ -84,7 +84,7 @@ macro_rules! data_prefix {
 }
 
 /// Extract an address from a key
-pub fn get_address_from_key(key: Vec<u8>) -> Option<Address> {
+pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
     let address_deserializer = AddressDeserializer::new();
     address_deserializer
         .deserialize(&key[..])
@@ -126,26 +126,16 @@ impl KeyDeserializer {
     }
 }
 
-// IMPORTANT NOTE: FIX THIS
+// NOTE: deserialize into a specified key structure
 impl Deserializer<Vec<u8>> for KeyDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
-        match buffer.get(0) {
-            Some(ident) if *ident == BALANCE_IDENT => {
-                // Safe because we matched that there is a first byte just above.
-                let (rest, address) = self.address_deserializer.deserialize(&buffer[1..])?;
-                Ok((rest, balance_key!(address)))
-            }
-            Some(ident) if *ident == BYTECODE_IDENT => {
-                // Safe because we matched that there is a first byte just above.
-                let (rest, address) = self.address_deserializer.deserialize(&buffer[1..])?;
-                Ok((rest, bytecode_key!(address)))
-            }
+        let (rest, address) = self.address_deserializer.deserialize(&buffer[1..])?;
+        match rest.get(0) {
+            Some(ident) if *ident == BALANCE_IDENT => Ok((rest, balance_key!(address))),
+            Some(ident) if *ident == BYTECODE_IDENT => Ok((rest, bytecode_key!(address))),
             Some(_) => {
-                let (rest, (address, key)) = tuple((
-                    |input| self.address_deserializer.deserialize(input),
-                    |input| self.hash_deserializer.deserialize(input),
-                ))(buffer)?;
-                Ok((rest, data_key!(address, key)))
+                let (rest, hash) = self.hash_deserializer.deserialize(&buffer[..])?;
+                Ok((rest, data_key!(address, hash)))
             }
             None => Err(nom::Err::Error(nom::error::Error::new(
                 buffer,
@@ -451,8 +441,8 @@ impl LedgerDB {
     /// * The last taken key
     pub fn get_ledger_part(
         &self,
-        last_key: Option<Vec<u8>>,
-    ) -> Result<(Vec<u8>, Vec<u8>), ModelsError> {
+        last_key: &Option<Vec<u8>>,
+    ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
         let ser = VecU8Serializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_serializer = KeySerializer::new();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
@@ -463,20 +453,22 @@ impl LedgerDB {
         let db_iterator = if let Some(key) = last_key {
             let mut iter =
                 self.0
-                    .iterator_cf_opt(handle, opt, IteratorMode::From(&key, Direction::Forward));
+                    .iterator_cf_opt(handle, opt, IteratorMode::From(key, Direction::Forward));
             iter.next();
             iter
         } else {
             self.0.iterator_cf_opt(handle, opt, IteratorMode::Start)
         };
-        let mut last_key = Vec::new();
+        let mut last_key = None;
 
         // Iterates over the whole database
         for (key, entry) in db_iterator {
             if part.len() < (LEDGER_PART_SIZE_MESSAGE_BYTES as usize) {
                 part.extend(key_serializer.serialize(&key.to_vec())?);
                 part.extend(ser.serialize(&entry.to_vec())?);
-                last_key = key.to_vec();
+                last_key = Some(key.to_vec());
+            } else {
+                break;
             }
         }
         Ok((part, last_key))
@@ -486,12 +478,12 @@ impl LedgerDB {
     ///
     /// # Returns
     /// The last key of the inserted entry
-    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Vec<u8>, ModelsError> {
+    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Option<Vec<u8>>, ModelsError> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_deserializer = KeyDeserializer::new();
-        let mut last_key = Rc::new(Vec::new());
+        let mut last_key = Rc::new(None);
         let mut batch = WriteBatch::default();
 
         // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
@@ -502,7 +494,7 @@ impl LedgerDB {
             ))(input)?;
             *Rc::get_mut(&mut last_key).ok_or_else(|| {
                 nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
-            })? = key.clone();
+            })? = Some(key.clone());
             batch.put_cf(handle, key, value);
             Ok((rest, ()))
         })(data)
@@ -602,7 +594,7 @@ mod tests {
         let pub_a = derive_public_key(&generate_random_private_key());
         let a = Address::from_public_key(&pub_a);
         let (db, _) = init_test_ledger(a);
-        let res = db.get_ledger_part(None).unwrap();
+        let res = db.get_ledger_part(&None).unwrap();
         db.set_ledger_part(&res.0[..]).unwrap();
     }
 }
