@@ -87,75 +87,66 @@ impl FinalState {
     }
 
     /// Used for bootstrap
-    /// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `max_address` and a `AsyncMessageId`.
-    /// Every ledgers changes that are after `min_slot` and below `end_cursor` must be returned.
-    /// Every async pool changes that are after `min_slot` and below `max_id_async_pool` must be returned.
+    /// Take a part of the final state changes (ledger and async pool) using a `Slot`, a `Address` and a `AsyncMessageId`.
+    /// Every ledgers changes that are after `last_slot` and before or equal of `last_address` must be returned.
+    /// Every async pool changes that are after `last_slot` and before or equal of `last_id_async_pool` must be returned.
     ///
-    /// Error case: When the min_slot is too old for `self.changes_history`
+    /// Error case: When the last_slot is too old for `self.changes_history`
     pub fn get_state_changes_part(
         &self,
-        min_slot: Option<Slot>,
-        max_address: Option<Address>,
-        max_id_async_pool: Option<AsyncMessageId>,
-    ) -> Result<Vec<StateChanges>, FinalStateError> {
-        let pos_slot = if let Some(min_slot) = min_slot && !self.changes_history.is_empty() {
-            match self.changes_history.partition_point(|(s, _)| s < &min_slot) {
-                0 => return Err(FinalStateError::LedgerError("The slot passed as parameter is too old.".to_string())),
+        last_slot: Slot,
+        last_address: Address,
+        last_id_async_pool: AsyncMessageId,
+    ) -> Result<StateChanges, FinalStateError> {
+        let pos_slot = if !self.changes_history.is_empty() {
+            // Change because there is always state change for a slot
+            match self
+                .changes_history
+                .partition_point(|(s, _)| s < &last_slot)
+            {
+                0 => {
+                    return Err(FinalStateError::LedgerError(
+                        "The slot passed as parameter is too old.".to_string(),
+                    ))
+                }
                 x => x,
             }
-        } else if self.changes_history.is_empty() {
-            return Ok(Vec::new());
         } else {
-            0
+            return Ok(StateChanges::default());
         };
-        let mut res_changes: Vec<StateChanges> = Vec::new();
+        let mut res_changes: StateChanges = StateChanges::default();
         for (_, changes) in self.changes_history.range(pos_slot..) {
-            let mut elem: StateChanges = StateChanges::default();
-            //Get ledger change that concern address < max_address.
+            //Get ledger change that concern address <= last_address.
             let ledger_changes: LedgerChanges = LedgerChanges(
                 changes
                     .ledger_changes
                     .0
                     .iter()
-                    .filter_map(|(address, change)| match max_address {
-                        // TODO: Improve by taking in count the step
-                        Some(max_address) if max_address < *address => {
+                    .filter_map(|(address, change)| {
+                        if *address <= last_address {
                             Some((*address, change.clone()))
+                        } else {
+                            None
                         }
-                        Some(_) => None,
-                        _ => Some((*address, change.clone())),
                     })
                     .collect(),
             );
-            elem.ledger_changes = ledger_changes;
+            res_changes.ledger_changes = ledger_changes;
 
-            //Get async pool changes that concern ids < max_id_async_pool
+            //Get async pool changes that concern ids <= last_id_async_pool
             let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
                 changes
                     .async_pool_changes
                     .0
                     .iter()
-                    .filter_map(|change| {
-                        if let Some(max_id_async_pool) = max_id_async_pool {
-                            match change {
-                                Change::Add(id, _) if id < &max_id_async_pool => {
-                                    Some(change.clone())
-                                }
-                                Change::Delete(id) if id < &max_id_async_pool => {
-                                    Some(change.clone())
-                                }
-                                _ => None,
-                            }
-                        } else {
-                            Some(change.clone())
-                        }
+                    .filter_map(|change| match change {
+                        Change::Add(id, _) if id <= &last_id_async_pool => Some(change.clone()),
+                        Change::Delete(id) if id <= &last_id_async_pool => Some(change.clone()),
+                        _ => None,
                     })
                     .collect(),
             );
-            elem.async_pool_changes = async_pool_changes;
-            if !elem.async_pool_changes.0.is_empty() || !elem.ledger_changes.0.is_empty() {
-                res_changes.push(elem);
-            }
+            res_changes.async_pool_changes = async_pool_changes;
         }
         Ok(res_changes)
     }
@@ -167,6 +158,7 @@ mod tests {
     use std::collections::VecDeque;
 
     use crate::{FinalState, StateChanges};
+    use massa_async_pool::test_exports::get_random_message;
     use massa_ledger::SetUpdateOrDelete;
     use massa_models::{Address, Slot};
     use massa_signature::{derive_public_key, generate_random_private_key};
@@ -179,6 +171,7 @@ mod tests {
 
     #[test]
     fn get_state_changes_part() {
+        let message = get_random_message();
         // Building the state changes
         let mut history_state_changes: VecDeque<(Slot, StateChanges)> = VecDeque::new();
         let (low_address, high_address) = {
@@ -195,6 +188,13 @@ mod tests {
             .ledger_changes
             .0
             .insert(low_address, SetUpdateOrDelete::Delete);
+        state_changes
+            .async_pool_changes
+            .0
+            .push(massa_async_pool::Change::Add(
+                message.compute_id(),
+                message.clone(),
+            ));
         history_state_changes.push_front((Slot::new(3, 0), state_changes));
         let mut state_changes = StateChanges::default();
         state_changes
@@ -207,13 +207,13 @@ mod tests {
         final_state.changes_history = history_state_changes;
         // Test slot filter
         let part = final_state
-            .get_state_changes_part(Some(Slot::new(2, 0)), None, None)
+            .get_state_changes_part(Slot::new(2, 0), low_address, message.compute_id())
             .unwrap();
-        assert_eq!(part.len(), 2);
+        assert_eq!(part.ledger_changes.0.len(), 1);
         // Test address filter
         let part = final_state
-            .get_state_changes_part(Some(Slot::new(2, 0)), Some(low_address), None)
+            .get_state_changes_part(Slot::new(2, 0), high_address, message.compute_id())
             .unwrap();
-        assert_eq!(part.len(), 1);
+        assert_eq!(part.ledger_changes.0.len(), 1);
     }
 }

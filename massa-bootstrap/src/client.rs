@@ -64,23 +64,22 @@ async fn stream_ledger(
                     final_state_changes,
                 } => {
                     let mut write_final_state = global_bootstrap_state.final_state.write();
+                    //TODO: Change to none when empty
                     let last_key = write_final_state.ledger.set_ledger_part(ledger_data)?;
                     let old_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part)
                         .map(|(id, _)| *id);
-                    for changes in final_state_changes {
-                        write_final_state
-                            .ledger
-                            .apply_changes_at_slot(changes.ledger_changes, slot);
-                        write_final_state
-                            .async_pool
-                            .apply_changes_unchecked(changes.async_pool_changes);
-                    }
+                    write_final_state
+                        .ledger
+                        .apply_changes_at_slot(final_state_changes.ledger_changes, slot);
+                    write_final_state
+                        .async_pool
+                        .apply_changes_unchecked(final_state_changes.async_pool_changes);
                     write_final_state.slot = slot;
                     // Set new message in case of disconnection
                     *next_bootstrap_message = Some(BootstrapClientMessage::AskFinalStatePart {
-                        last_key: Some(last_key),
+                        last_key: last_key,
                         slot: Some(slot),
                         last_async_message_id: old_last_async_id,
                     });

@@ -85,7 +85,7 @@ macro_rules! data_prefix {
 }
 
 /// Extract an address from a key
-pub fn get_address_from_key(key: Vec<u8>) -> Option<Address> {
+pub fn get_address_from_key(key: &Vec<u8>) -> Option<Address> {
     let address_deserializer = AddressDeserializer::new();
     match key.get(0) {
         Some(ident) if *ident == BALANCE_IDENT => {
@@ -413,7 +413,7 @@ impl LedgerDB {
     /// * last_key: key where the part retrieving must start
     pub fn get_ledger_part(
         &self,
-        last_key: Option<Vec<u8>>,
+        last_key: &Option<Vec<u8>>,
     ) -> Result<(Vec<u8>, Vec<u8>), ModelsError> {
         let ser = VecU8Serializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_serializer = KeySerializer::new();
@@ -439,6 +439,8 @@ impl LedgerDB {
                 part.extend(key_serializer.serialize(&key.to_vec())?);
                 part.extend(ser.serialize(&entry.to_vec())?);
                 last_key = key.to_vec();
+            } else {
+                break;
             }
         }
         Ok((part, last_key))
@@ -447,12 +449,12 @@ impl LedgerDB {
     /// Set a part of the ledger in the database
     ///
     /// Return: The last key of the entry inserted
-    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Vec<u8>, ModelsError> {
+    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Option<Vec<u8>>, ModelsError> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_deserializer = KeyDeserializer::new();
-        let mut last_key = Rc::new(Vec::new());
+        let mut last_key = Rc::new(None);
         let mut batch = WriteBatch::default();
 
         // NOTE: We deserialize to address to go back directly to vec u8 because we want to perform security check because this data can come from the network.
@@ -463,7 +465,7 @@ impl LedgerDB {
             ))(input)?;
             *Rc::get_mut(&mut last_key).ok_or_else(|| {
                 nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
-            })? = key.clone();
+            })? = Some(key.clone());
             batch.put_cf(handle, key, value);
             Ok((rest, ()))
         })(data)
@@ -563,7 +565,7 @@ mod tests {
         let pub_a = derive_public_key(&generate_random_private_key());
         let a = Address::from_public_key(&pub_a);
         let (db, _) = init_test_ledger(a);
-        let res = db.get_ledger_part(None).unwrap();
+        let res = db.get_ledger_part(&None).unwrap();
         db.set_ledger_part(&res.0[..]).unwrap();
     }
 }

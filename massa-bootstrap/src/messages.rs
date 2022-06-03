@@ -20,7 +20,6 @@ use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_serialization::{Deserializer, Serializer};
 use massa_time::MassaTime;
 use nom::error::context;
-use nom::multi::length_count;
 use nom::sequence::tuple;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
@@ -56,7 +55,7 @@ pub enum BootstrapServerMessage {
         /// Slot the state changes are attached to
         slot: Slot,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
-        final_state_changes: Vec<StateChanges>,
+        final_state_changes: StateChanges,
     },
     /// Message sent when there is no state part left
     FinalStateFinished,
@@ -123,14 +122,7 @@ impl SerializeCompact for BootstrapServerMessage {
                 res.extend(vec_u8_serializer.serialize(ledger_data)?);
                 res.extend(async_pool_serializer.serialize(async_pool_part)?);
                 res.extend(slot_serializer.serialize(slot)?);
-                res.extend(u64_serializer.serialize(
-                    &(final_state_changes.len().try_into().map_err(|_| {
-                        ModelsError::SerializeError("Fail to convert usize to u64".to_string())
-                    })?),
-                )?);
-                for changes in final_state_changes {
-                    res.extend(final_state_changes_serializer.serialize(changes)?);
-                }
+                res.extend(final_state_changes_serializer.serialize(final_state_changes)?);
             }
             BootstrapServerMessage::FinalStateFinished => {
                 res.extend(u32::from(MessageServerTypeId::FinalStateFinished).to_varint_bytes());
@@ -214,10 +206,7 @@ impl DeserializeCompact for BootstrapServerMessage {
                             slot_deserializer.deserialize(input)
                         }),
                         context("changes in final state part", |input| {
-                            length_count(
-                                |input| u64_deserializer.deserialize(input),
-                                |input| final_state_changes_deserializer.deserialize(input),
-                            )(input)
+                            final_state_changes_deserializer.deserialize(input)
                         }),
                     ))(&buffer[cursor..])?;
                 // Temp while serializecompact exists
