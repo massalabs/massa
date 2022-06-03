@@ -119,9 +119,20 @@
 <span id="112">112</span>
 <span id="113">113</span>
 <span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Contains definitions of commands used by the controller</span>
+<span class="kw">use</span> <span class="ident">massa_graph::ledger::ConsensusLedgerSubset</span>;
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">BlockGraphExport</span>, <span class="ident">BootstrapableGraph</span>, <span class="ident">ExportBlockStatus</span>, <span class="ident">Status</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressState</span>, <span class="ident">api::EndorsementInfo</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">clique::Clique</span>, <span class="ident">stats::ConsensusStats</span>};
@@ -167,6 +178,15 @@
     },
     <span class="doccomment">/// Returns the bootstrap state</span>
     <span class="ident">GetBootstrapState</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span>(<span class="ident">ExportProofOfStake</span>, <span class="ident">BootstrapableGraph</span>)<span class="op">&gt;</span>),
+    <span class="doccomment">/// Returns a part of the ledger</span>
+    <span class="ident">GetLedgerPart</span> {
+        <span class="doccomment">/// Start address</span>
+        <span class="ident">start_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+        <span class="doccomment">/// Size of the part of the ledger</span>
+        <span class="ident">batch_size</span>: <span class="ident">usize</span>,
+        <span class="doccomment">/// response channel</span>
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span><span class="op">&gt;</span>,
+    },
     <span class="doccomment">/// Returns info for a set of addresses (rolls and balance)</span>
     <span class="ident">GetAddressesInfo</span> {
         <span class="doccomment">/// wanted addresses</span>

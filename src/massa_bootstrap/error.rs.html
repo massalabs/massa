@@ -50,9 +50,11 @@
 <span id="43">43</span>
 <span id="44">44</span>
 <span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::BootstrapMessage</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages</span>::{<span class="ident">BootstrapClientMessage</span>, <span class="ident">BootstrapServerMessage</span>};
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
 <span class="kw">use</span> <span class="ident">massa_consensus_exports::error::ConsensusError</span>;
 <span class="kw">use</span> <span class="ident">massa_final_state::FinalStateError</span>;
@@ -70,8 +72,10 @@
     <span class="ident">GeneralError</span>(<span class="ident">String</span>),
     <span class="doccomment">/// models error: {0}</span>
     <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_models::ModelsError</span>),
-    <span class="doccomment">/// unexpected message from bootstrap node: {0:?}</span>
-    <span class="ident">UnexpectedMessage</span>(<span class="ident">BootstrapMessage</span>),
+    <span class="doccomment">/// unexpected message received from server: {0:?}</span>
+    <span class="ident">UnexpectedServerMessage</span>(<span class="ident">BootstrapServerMessage</span>),
+    <span class="doccomment">/// unexpected message received from client: {0:?}</span>
+    <span class="ident">UnexpectedClientMessage</span>(<span class="ident">BootstrapClientMessage</span>),
     <span class="doccomment">/// connection with bootstrap node dropped</span>
     <span class="ident">UnexpectedConnectionDrop</span>,
     <span class="doccomment">/// `massa_hash` error: {0}</span>

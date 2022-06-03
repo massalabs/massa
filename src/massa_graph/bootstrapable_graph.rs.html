@@ -234,7 +234,7 @@
 };
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">export_active_block::ExportActiveBlock</span>, <span class="ident">ledger::LedgerSubset</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">export_active_block::ExportActiveBlock</span>, <span class="ident">ledger::ConsensusLedgerSubset</span>};
 
 <span class="doccomment">/// Bootstrap graph</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
@@ -250,7 +250,7 @@
     <span class="doccomment">/// List of maximal cliques of compatible blocks.</span>
     <span class="kw">pub</span> <span class="ident">max_cliques</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Ledger at last final blocks</span>
-    <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">LedgerSubset</span>,
+    <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">ConsensusLedgerSubset</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">BootstrapableGraph</span> {
@@ -427,7 +427,7 @@
         }
 
         <span class="comment">// ledger</span>
-        <span class="kw">let</span> (<span class="ident">ledger</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">LedgerSubset::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+        <span class="kw">let</span> (<span class="ident">ledger</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">ConsensusLedgerSubset::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
 
         <span class="prelude-val">Ok</span>((

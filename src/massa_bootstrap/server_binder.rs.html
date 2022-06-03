@@ -162,11 +162,15 @@
 <span id="155">155</span>
 <span id="156">156</span>
 <span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::messages::BootstrapMessage</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::BootstrapError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::establisher::types::Duplex</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::BootstrapClientMessage</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::BootstrapServerMessage</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Version</span>;
@@ -204,7 +208,9 @@
             <span class="ident">prev_message</span>: <span class="prelude-val">None</span>,
         }
     }
+}
 
+<span class="kw">impl</span> <span class="ident">BootstrapServerBinder</span> {
     <span class="doccomment">/// Performs a handshake. Should be called after connection</span>
     <span class="doccomment">/// NOT cancel-safe</span>
     <span class="doccomment">/// MUST always be followed by a send of the BootstrapMessage::BootstrapTime</span>
@@ -228,7 +234,7 @@
     }
 
     <span class="doccomment">/// Writes the next message. NOT cancel-safe</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">BootstrapMessage</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">BootstrapError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">BootstrapServerMessage</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">BootstrapError</span><span class="op">&gt;</span> {
         <span class="comment">// serialize message</span>
         <span class="kw">let</span> <span class="ident">msg_bytes</span> <span class="op">=</span> <span class="ident">msg</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">msg_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">msg_bytes</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -270,7 +276,7 @@
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
     <span class="doccomment">/// Read a message sent from the client (not signed). NOT cancel-safe</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BootstrapMessage</span>, <span class="ident">BootstrapError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BootstrapClientMessage</span>, <span class="ident">BootstrapError</span><span class="op">&gt;</span> {
         <span class="comment">// read prev hash</span>
         <span class="kw">let</span> <span class="ident">received_prev_hash</span> <span class="op">=</span> {
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">prev_message</span>.<span class="ident">is_some</span>() {
@@ -314,7 +320,7 @@
         }
 
         <span class="comment">// deserialize message</span>
-        <span class="kw">let</span> (<span class="ident">msg</span>, <span class="ident">_len</span>) <span class="op">=</span> <span class="ident">BootstrapMessage::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">msg_bytes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> (<span class="ident">msg</span>, <span class="ident">_len</span>) <span class="op">=</span> <span class="ident">BootstrapClientMessage::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">msg_bytes</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="ident">msg</span>)
     }

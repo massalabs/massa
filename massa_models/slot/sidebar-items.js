@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Slot","a point in time where a block is expected"]]});
+initSidebarItems({"struct":[["Slot","a point in time where a block is expected"],["SlotDeserializer","Basic `Slot` Deserializer"],["SlotSerializer","Basic serializer for `Slot`"]]});

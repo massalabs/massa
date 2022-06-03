@@ -222,21 +222,231 @@
 <span id="215">215</span>
 <span id="216">216</span>
 <span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the structure representing an asynchronous message</span>
 
-<span class="kw">use</span> <span class="ident">massa_models::constants::ADDRESS_SIZE_BYTES</span>;
+<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
+
+<span class="kw">use</span> <span class="ident">massa_models::amount</span>::{<span class="ident">AmountDeserializer</span>, <span class="ident">AmountSerializer</span>};
+<span class="kw">use</span> <span class="ident">massa_models::constants</span>::{<span class="ident">ADDRESS_SIZE_BYTES</span>, <span class="ident">THREAD_COUNT</span>};
+<span class="kw">use</span> <span class="ident">massa_models::slot</span>::{<span class="ident">SlotDeserializer</span>, <span class="ident">SlotSerializer</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Slot</span>,
+    <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">DeserializeCompact</span>, <span class="ident">SerializeCompact</span>};
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">Serializer</span>};
+<span class="kw">use</span> <span class="ident">nom::error::context</span>;
+<span class="kw">use</span> <span class="ident">nom::sequence::tuple</span>;
+<span class="kw">use</span> <span class="ident">nom::IResult</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="doccomment">/// Unique identifier of a message.</span>
 <span class="doccomment">/// Also has the property of ordering by priority (highest first) following the triplet:</span>
 <span class="doccomment">/// `(rev(max_gas*gas_price), emission_slot, emission_index)`</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">AsyncMessageId</span> <span class="op">=</span> (<span class="ident">std::cmp::Reverse</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>, <span class="ident">Slot</span>, <span class="ident">u64</span>);
+
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncMessageIdSerializer</span> {
+    <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer</span>,
+    <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer</span>,
+    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">AsyncMessageIdSerializer</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
+        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
+        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
+        <span class="self">Self</span> {
+            <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(
+                (<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">thread_count</span>)),
+            ),
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">AsyncMessageIdSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">AsyncMessageId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AsyncMessageIdSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">serialize</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">AsyncMessageId</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">massa_serialization::SerializeError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">amount</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">amount_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="number">0</span> .<span class="number">0</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">slot_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="number">1</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="number">2</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">amount</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">slot</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">index</span>.<span class="ident">len</span>());
+        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">amount</span>);
+        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">slot</span>);
+        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">index</span>);
+        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+    }
+}
+
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncMessageIdDeserializer</span> {
+    <span class="ident">amount_deserializer</span>: <span class="ident">AmountDeserializer</span>,
+    <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer</span>,
+    <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">AsyncMessageIdDeserializer</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">amount_deserializer</span>: <span class="ident">AmountDeserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+            <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer::new</span>(
+                (<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
+                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>)),
+                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
+                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">THREAD_COUNT</span>)),
+            ),
+            <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">AsyncMessageIdDeserializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">AsyncMessageId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AsyncMessageIdDeserializer</span> {
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">AsyncMessageId</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parser</span> <span class="op">=</span> <span class="ident">tuple</span>((
+            <span class="ident">context</span>(<span class="string">&quot;amount in async message id&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                <span class="self">self</span>.<span class="ident">amount_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            }),
+            <span class="ident">context</span>(<span class="string">&quot;slot in async message id&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                <span class="self">self</span>.<span class="ident">slot_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            }),
+            <span class="ident">context</span>(<span class="string">&quot;index in async message id&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+            }),
+        ));
+
+        <span class="kw">match</span> <span class="ident">parser</span>(<span class="ident">buffer</span>) {
+            <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, (<span class="ident">amount</span>, <span class="ident">slot</span>, <span class="ident">index</span>))) =&gt; {
+                <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, (<span class="ident">std::cmp::Reverse</span>(<span class="ident">amount</span>), <span class="ident">slot</span>, <span class="ident">index</span>)))
+            }
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+        }
+    }
+}
 
 <span class="doccomment">/// Structure defining an asynchronous smart contract message</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>

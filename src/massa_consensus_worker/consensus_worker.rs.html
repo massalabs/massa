@@ -1422,6 +1422,21 @@
 <span id="1415">1415</span>
 <span id="1416">1416</span>
 <span id="1417">1417</span>
+<span id="1418">1418</span>
+<span id="1419">1419</span>
+<span id="1420">1420</span>
+<span id="1421">1421</span>
+<span id="1422">1422</span>
+<span id="1423">1423</span>
+<span id="1424">1424</span>
+<span id="1425">1425</span>
+<span id="1426">1426</span>
+<span id="1427">1427</span>
+<span id="1428">1428</span>
+<span id="1429">1429</span>
+<span id="1430">1430</span>
+<span id="1431">1431</span>
+<span id="1432">1432</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{
     <span class="ident">commands::ConsensusCommand</span>,
@@ -2198,6 +2213,21 @@
                 );
                 <span class="kw">if</span> <span class="ident">response_tx</span>.<span class="ident">send</span>(<span class="ident">resp</span>).<span class="ident">is_err</span>() {
                     <span class="macro">warn!</span>(<span class="string">&quot;consensus: could not send GetBootstrapState answer&quot;</span>);
+                }
+                <span class="prelude-val">Ok</span>(())
+            }
+            <span class="ident">ConsensusCommand::GetLedgerPart</span> {
+                <span class="ident">start_address</span>,
+                <span class="ident">batch_size</span>,
+                <span class="ident">response_tx</span>,
+            } =&gt; {
+                <span class="macro">massa_trace!</span>(
+                    <span class="string">&quot;consensus.consensus_worker.process_consensus_command.get_ledger_part&quot;</span>,
+                    {}
+                );
+                <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_ledger_part</span>(<span class="ident">start_address</span>, <span class="ident">batch_size</span>)<span class="question-mark">?</span>;
+                <span class="kw">if</span> <span class="ident">response_tx</span>.<span class="ident">send</span>(<span class="ident">resp</span>).<span class="ident">is_err</span>() {
+                    <span class="macro">warn!</span>(<span class="string">&quot;consensus: could not send GetLedgerPart answer&quot;</span>);
                 }
                 <span class="prelude-val">Ok</span>(())
             }

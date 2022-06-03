@@ -82,9 +82,6 @@
 <span id="75">75</span>
 <span id="76">76</span>
 <span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! # General description</span>
@@ -139,9 +136,7 @@
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">slice_take</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">let_chains</span>)]</span>
 
-<span class="kw">mod</span> <span class="ident">bootstrap</span>;
 <span class="kw">mod</span> <span class="ident">config</span>;
-<span class="kw">mod</span> <span class="ident">cursor</span>;
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">ledger</span>;
 <span class="kw">mod</span> <span class="ident">ledger_changes</span>;
@@ -149,20 +144,19 @@
 <span class="kw">mod</span> <span class="ident">ledger_entry</span>;
 <span class="kw">mod</span> <span class="ident">types</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">bootstrap::FinalLedgerBootstrapState</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config::LedgerConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::LedgerError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger::FinalLedger</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_changes::LedgerChanges</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_changes::LedgerEntryUpdate</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_db::LedgerSubEntry</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_changes</span>::{
+    <span class="ident">LedgerChanges</span>, <span class="ident">LedgerChangesDeserializer</span>, <span class="ident">LedgerChangesSerializer</span>, <span class="ident">LedgerEntryUpdate</span>,
+};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_db</span>::{<span class="ident">get_address_from_key</span>, <span class="ident">KeyDeserializer</span>, <span class="ident">KeySerializer</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_entry::LedgerEntry</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">types</span>::{<span class="ident">Applicable</span>, <span class="ident">SetOrDelete</span>, <span class="ident">SetOrKeep</span>, <span class="ident">SetUpdateOrDelete</span>};
-
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">test</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
 <span class="doccomment">/// test exports</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
 </code></pre></div>

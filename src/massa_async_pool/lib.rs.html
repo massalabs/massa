@@ -114,6 +114,8 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! # General description</span>
@@ -206,16 +208,18 @@
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">btree_drain_filter</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">drain_filter</span>)]</span>
 
-<span class="kw">mod</span> <span class="ident">bootstrap</span>;
 <span class="kw">mod</span> <span class="ident">changes</span>;
 <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">message</span>;
 <span class="kw">mod</span> <span class="ident">pool</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">bootstrap::AsyncPoolBootstrap</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">changes::AsyncPoolChanges</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">changes</span>::{
+    <span class="ident">AsyncPoolChanges</span>, <span class="ident">AsyncPoolChangesDeserializer</span>, <span class="ident">AsyncPoolChangesSerializer</span>, <span class="ident">Change</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config::AsyncPoolConfig</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">message</span>::{<span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">message</span>::{
+    <span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessageIdDeserializer</span>, <span class="ident">AsyncMessageIdSerializer</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pool::AsyncPool</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>

@@ -495,7 +495,36 @@
 <span id="488">488</span>
 <span id="489">489</span>
 <span id="490">490</span>
-</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_graph::ledger::ConsensusLedgerSubset</span>;
+<span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">BlockGraphExport</span>, <span class="ident">BootstrapableGraph</span>, <span class="ident">ExportBlockStatus</span>, <span class="ident">Status</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressState</span>, <span class="ident">api::EndorsementInfo</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">clique::Clique</span>, <span class="ident">stats::ConsensusStats</span>};
@@ -656,6 +685,33 @@
         <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="ident">ConsensusError::ReceiveChannelError</span>(
                 <span class="string">&quot;consensus command get_bootstrap_state response read error&quot;</span>.<span class="ident">to_string</span>(),
+            )
+        })
+    }
+
+    <span class="doccomment">/// get part of the ledger</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_ledger_part</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">start_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+        <span class="ident">batch_size</span>: <span class="ident">usize</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>::<span class="op">&lt;</span><span class="ident">ConsensusLedgerSubset</span><span class="op">&gt;</span>();
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_controller.get_ledger_part&quot;</span>, {});
+        <span class="self">self</span>.<span class="number">0</span>
+            .<span class="ident">send</span>(<span class="ident">ConsensusCommand::GetLedgerPart</span> {
+                <span class="ident">start_address</span>,
+                <span class="ident">batch_size</span>,
+                <span class="ident">response_tx</span>,
+            })
+            .<span class="kw">await</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                <span class="ident">ConsensusError::SendChannelError</span>(
+                    <span class="string">&quot;send error consensus command get_ledger_part&quot;</span>.<span class="ident">into</span>(),
+                )
+            })<span class="question-mark">?</span>;
+        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            <span class="ident">ConsensusError::ReceiveChannelError</span>(
+                <span class="string">&quot;consensus command get_ledger_part response read error&quot;</span>.<span class="ident">to_string</span>(),
             )
         })
     }
