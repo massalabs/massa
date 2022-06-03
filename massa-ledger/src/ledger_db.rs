@@ -206,7 +206,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * initial_ledger: initial balances to put in the disk
-    pub(crate) fn set_initial_ledger(&mut self, initial_ledger: BTreeMap<Address, Amount>) {
+    pub fn set_initial_ledger(&mut self, initial_ledger: BTreeMap<Address, Amount>) {
         let mut batch = WriteBatch::default();
         for (address, amount) in &initial_ledger {
             self.put_entry(
@@ -226,7 +226,7 @@ impl LedgerDB {
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * slot: new slot associated to the final ledger
-    pub(crate) fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         // create the batch
         let mut batch = WriteBatch::default();
         // for all incoming changes
@@ -356,7 +356,7 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A BTreeMap with the entry hash as key and the data bytes as value
-    pub(crate) fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
@@ -444,7 +444,12 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * last_key: key where the part retrieving must start
-    pub(crate) fn get_ledger_part(
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * The ledger part as bytes
+    /// * The last taken key
+    pub fn get_ledger_part(
         &self,
         last_key: Option<Vec<u8>>,
     ) -> Result<(Vec<u8>, Vec<u8>), ModelsError> {
@@ -479,8 +484,9 @@ impl LedgerDB {
 
     /// Set a part of the ledger in the database
     ///
-    /// Return: The last key of the entry inserted
-    pub(crate) fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Vec<u8>, ModelsError> {
+    /// # Returns
+    /// The last key of the inserted entry
+    pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Vec<u8>, ModelsError> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
@@ -488,7 +494,7 @@ impl LedgerDB {
         let mut last_key = Rc::new(Vec::new());
         let mut batch = WriteBatch::default();
 
-        // NOTE: We deserialize to address to go back directly to vec u8 because we want to perform security check because this data can come from the network.
+        // Since this data is coming from the network, deser to address and ser back to bytes for a security check.
         let (rest, _) = many0(|input: &'a [u8]| {
             let (rest, (key, value)) = tuple((
                 |input| key_deserializer.deserialize(input),
@@ -502,7 +508,7 @@ impl LedgerDB {
         })(data)
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
 
-        // We should not have any data left.
+        // Every byte should have been read
         if rest.is_empty() {
             self.0.write(batch).expect(CRUD_ERROR);
             Ok((*last_key).clone())
