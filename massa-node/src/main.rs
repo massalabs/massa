@@ -99,6 +99,12 @@ async fn launch() -> (
         FinalState::new(final_state_config).expect("could not init final state"),
     ));
 
+    // Remove current disk ledger if there is one
+    // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
+    if SETTINGS.ledger.disk_ledger_path.exists() {
+        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone()).expect("disk ledger delete failed");
+    }
+
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
     tokio::pin!(stop_signal);
