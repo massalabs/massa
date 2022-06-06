@@ -18,6 +18,7 @@ use rocksdb::{
 use std::collections::HashMap;
 use std::ops::Bound;
 use std::rc::Rc;
+use std::str::FromStr;
 use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::ledger_changes::LedgerEntryUpdate;
@@ -331,6 +332,9 @@ impl LedgerDB {
             let (rest, address) = address_deserializer.deserialize(&key[..]).unwrap();
             if rest.get(0) == Some(&BALANCE_IDENT) {
                 addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
+            }
+            if rest.get(0) == Some(&BYTECODE_IDENT) {
+                addresses.insert(address, Amount::from_str("0").unwrap());
             }
         }
         addresses
