@@ -496,6 +496,10 @@
 <span id="489">489</span>
 <span id="490">490</span>
 <span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">collections</span>::{<span class="ident">hash_map</span>, <span class="ident">HashMap</span>},
     <span class="ident">net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>},
@@ -794,8 +798,12 @@
             }
 
             <span class="comment">// Assign value for next turn</span>
-            <span class="ident">old_last_async_id</span> <span class="op">=</span> <span class="ident">last_async_pool_id</span>;
-            <span class="ident">old_key</span> <span class="op">=</span> <span class="ident">new_last_key</span>;
+            <span class="kw">if</span> <span class="ident">last_async_pool_id</span>.<span class="ident">is_some</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">async_pool_data</span>.<span class="ident">is_empty</span>() {
+                <span class="ident">old_last_async_id</span> <span class="op">=</span> <span class="ident">last_async_pool_id</span>;
+            }
+            <span class="kw">if</span> <span class="ident">new_last_key</span>.<span class="ident">is_some</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">ledger_data</span>.<span class="ident">is_empty</span>() {
+                <span class="ident">old_key</span> <span class="op">=</span> <span class="ident">new_last_key</span>;
+            }
             <span class="ident">old_slot</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">final_state_read</span>.<span class="ident">slot</span>);
             <span class="ident">current_slot</span> <span class="op">=</span> <span class="ident">final_state_read</span>.<span class="ident">slot</span>;
         }
@@ -988,5 +996,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (a6b8c6954 2022-06-03)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (fee3a459d 2022-06-05)" ></div>
 </body></html>
