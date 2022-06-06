@@ -316,6 +316,7 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
+    #[allow(dead_code)]
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -617,7 +618,7 @@ mod tests {
                 )
             })
             .collect();
-        let mut file = std::fs::File::create("DISK_LEDGER_DUMP.json").unwrap();
+        let mut file = std::fs::File::create("../DISK_LEDGER_DUMP.json").unwrap();
         let data = serde_json::to_string_pretty(&res).unwrap();
         file.write_all(data.as_bytes()).unwrap();
     }
