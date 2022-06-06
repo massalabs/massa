@@ -6,13 +6,11 @@ use crate::{
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
+    AsyncMessageDeserializer, AsyncMessageSerializer,
 };
-use massa_models::{
-    constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, DeserializeCompact, ModelsError,
-    SerializeCompact, Slot,
-};
+use massa_models::{constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, ModelsError, Slot};
 use massa_serialization::{Deserializer, Serializer};
-use nom::multi::many0;
+use nom::{multi::many0, sequence::tuple};
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Unbounded};
 
@@ -149,11 +147,11 @@ impl AsyncPool {
         let mut part = Vec::new();
         let mut next_last_id = None;
         let id_async_message_serializer = AsyncMessageIdSerializer::new();
-
+        let async_message_serializer = AsyncMessageSerializer::new();
         for (id, message) in self.messages.range((last_id, Unbounded)) {
             if part.len() < ASYNC_POOL_PART_SIZE_MESSAGE_BYTES as usize {
                 part.extend(id_async_message_serializer.serialize(id)?);
-                part.extend(message.to_bytes_compact()?);
+                part.extend(async_message_serializer.serialize(message)?);
                 next_last_id = Some(*id);
             }
         }
@@ -174,6 +172,7 @@ impl AsyncPool {
         part: &'a [u8],
     ) -> Result<Option<AsyncMessageId>, ModelsError> {
         let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
+        let async_message_deserializer = AsyncMessageDeserializer::new();
         let (rest, messages) = many0(|input: &'a [u8]| {
             if input.is_empty() {
                 return Err(nom::Err::Error(nom::error::Error::new(
@@ -181,16 +180,10 @@ impl AsyncPool {
                     nom::error::ErrorKind::LengthValue,
                 )));
             }
-            let (rest, id) = async_message_id_deserializer.deserialize(input)?;
-            //TODO: Change when async message has new serialize form
-            let (message, delta) = AsyncMessage::from_bytes_compact(rest).map_err(|_| {
-                nom::Err::Error(nom::error::Error::new(
-                    input,
-                    nom::error::ErrorKind::LengthValue,
-                ))
-            })?;
-            // Safe because we obtain delta by moving forward in the buffer.
-            Ok((&rest[delta..], (id, message)))
+            tuple((
+                |input| async_message_id_deserializer.deserialize(input),
+                |input| async_message_deserializer.deserialize(input),
+            ))(input)
         })(part)?;
         if rest.is_empty() {
             self.messages.extend(messages);
