@@ -8,6 +8,7 @@ use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
 use massa_models::{
     Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
 };
+use massa_models::{Amount, DeserializeCompact};
 use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
@@ -22,10 +23,6 @@ use std::{collections::BTreeMap, path::PathBuf};
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::{LedgerChanges, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 
-#[cfg(feature = "testing")]
-use massa_models::{Amount, DeserializeCompact};
-
-// TODO: remove rocks_db dir when sled is cut out
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
@@ -315,11 +312,10 @@ impl LedgerDB {
     }
 
     /// Get every address and their corresponding balance.
-    /// IMPORTANT: This should only be used for debug purposes.
+    /// IMPORTANT: This should only be used for debug and testing purposes.
     ///
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
-    #[cfg(feature = "testing")]
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -516,7 +512,7 @@ impl LedgerDB {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::{collections::BTreeMap, io::Write, path::PathBuf, str::FromStr};
 
     use massa_hash::Hash;
     use massa_models::{Address, Amount, DeserializeCompact};
@@ -598,5 +594,31 @@ mod tests {
         let (db, _) = init_test_ledger(a);
         let res = db.get_ledger_part(&None).unwrap();
         db.set_ledger_part(&res.0[..]).unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    // NOTE: this test only purpose is dumping the db into a json file, do not remove ignore
+    fn dump_db_to_json() {
+        let db = LedgerDB::new(PathBuf::from_str("../massa-node/storage/ledger/rocks_db").unwrap());
+        let res: BTreeMap<Address, LedgerEntry> = db
+            .get_every_address()
+            .iter()
+            .map(|(addr, balance)| {
+                (
+                    *addr,
+                    LedgerEntry {
+                        parallel_balance: *balance,
+                        bytecode: db
+                            .get_sub_entry(addr, LedgerSubEntry::Bytecode)
+                            .unwrap_or_default(),
+                        datastore: db.get_entire_datastore(addr),
+                    },
+                )
+            })
+            .collect();
+        let mut file = std::fs::File::create("DISK_LEDGER_DUMP.json").unwrap();
+        let data = serde_json::to_string_pretty(&res).unwrap();
+        file.write_all(data.as_bytes()).unwrap();
     }
 }
