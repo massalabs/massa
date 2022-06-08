@@ -240,14 +240,14 @@
                 .<span class="ident">saturating_add</span>(<span class="ident">MassaTime::from</span>(<span class="number">1000</span> <span class="op">*</span> <span class="number">10</span>))
         )
     } <span class="kw">else</span> {
-        <span class="number">1651795200000</span>.<span class="ident">into</span>()  <span class="comment">// Fri May 06 2022 00:00:00 GMT+0000</span>
+        <span class="number">1654704000000</span>.<span class="ident">into</span>()
     };
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
         <span class="prelude-val">None</span>
     } <span class="kw">else</span> {
-        <span class="prelude-val">Some</span>(<span class="number">1654034400000</span>.<span class="ident">into</span>())  <span class="comment">// Tue May 31 2022 22:00:00 GMT+0000</span>
+        <span class="prelude-val">Some</span>(<span class="number">1656626400000</span>.<span class="ident">into</span>())
     };
     <span class="doccomment">/// `PrivateKey` to sign genesis blocks.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">PrivateKey</span> <span class="op">=</span> <span class="string">&quot;2Rmcp5w4MjcTQvPJeCV14UQf75XjKwDVJF14F2V1o5Kr3i9LZL&quot;</span>
@@ -260,7 +260,7 @@
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
             <span class="string">&quot;SAND.0.0&quot;</span>
         } <span class="kw">else</span> {
-            <span class="string">&quot;TEST.10.1&quot;</span>
+            <span class="string">&quot;TEST.11.0&quot;</span>
         }
         .<span class="ident">parse</span>()
         .<span class="ident">unwrap</span>()
@@ -386,5 +386,5 @@
     <span class="macro">assert!</span>((<span class="ident">T0</span>).<span class="ident">to_millis</span>() <span class="op">%</span> (<span class="ident">THREAD_COUNT</span> <span class="kw">as</span> <span class="ident">u64</span>) <span class="op">==</span> <span class="number">0</span>);
 };
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (fee3a459d 2022-06-05)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
 </body></html>
