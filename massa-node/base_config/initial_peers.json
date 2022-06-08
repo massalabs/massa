@@ -30,5 +30,37 @@
         "ip": "158.69.23.120",
         "last_alive": null,
         "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "198.27.74.5",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "198.27.74.52",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "54.36.174.177",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "51.75.60.228",
+        "last_alive": null,
+        "last_failure": null
     }
 ]
