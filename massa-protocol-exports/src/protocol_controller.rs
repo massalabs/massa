@@ -131,16 +131,14 @@ impl ProtocolCommandSender {
         massa_trace!("protocol.command_sender.integrated_block", {
             "block_id": block_id
         });
-        let res = self
-            .0
+        self.0
             .send(ProtocolCommand::IntegratedBlock {
                 block_id,
                 operation_ids,
                 endorsement_ids,
             })
             .await
-            .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()));
-        res
+            .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()))
     }
 
     /// Notify to protocol an attack attempt.
@@ -148,14 +146,12 @@ impl ProtocolCommandSender {
         massa_trace!("protocol.command_sender.notify_block_attack", {
             "block_id": block_id
         });
-        let res = self
-            .0
+        self.0
             .send(ProtocolCommand::AttackBlockDetected(block_id))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("notify_block_attack command send error".into())
-            });
-        res
+            })
     }
 
     /// Send the response to a `ProtocolEvent::GetBlocks`.
@@ -166,14 +162,12 @@ impl ProtocolCommandSender {
         massa_trace!("protocol.command_sender.send_get_blocks_results", {
             "results": results
         });
-        let res = self
-            .0
+        self.0
             .send(ProtocolCommand::GetBlocksResults(results))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("send_get_blocks_results command send error".into())
-            });
-        res
+            })
     }
 
     /// Send the response to a `[ProtocolEvent::GetBlocks]`.
@@ -185,14 +179,12 @@ impl ProtocolCommandSender {
         massa_trace!("protocol.command_sender.send_get_operations_results", {
             "results": results
         });
-        let res = self
-            .0
+        self.0
             .send(ProtocolCommand::GetOperationsResults((node_id, results)))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("send_get_operations_results command send error".into())
-            });
-        res
+            })
     }
 
     /// update the block wish list
@@ -202,14 +194,12 @@ impl ProtocolCommandSender {
         remove: Set<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
-        let res = self
-            .0
+        self.0
             .send(ProtocolCommand::WishlistDelta { new, remove })
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("send_wishlist_delta command send error".into())
-            });
-        res
+            })
     }
 
     /// Propagate a batch of operation ids from pool.
@@ -220,14 +210,12 @@ impl ProtocolCommandSender {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operation_ids
         });
-        let res = self
-            .0
+        self.0
             .send(ProtocolCommand::PropagateOperations(operation_ids))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
-            });
-        res
+            })
     }
 
     /// propagate endorsements to connected node
@@ -238,14 +226,12 @@ impl ProtocolCommandSender {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
             "endorsements": endorsements
         });
-        let res = self
-            .0
+        self.0
             .send(ProtocolCommand::PropagateEndorsements(endorsements))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_endorsements command send error".into())
-            });
-        res
+            })
     }
 }
 
@@ -258,12 +244,11 @@ impl ProtocolEventReceiver {
     /// indicating that no further values can be sent on the channel
     pub async fn wait_event(&mut self) -> Result<ProtocolEvent, ProtocolError> {
         massa_trace!("protocol.event_receiver.wait_event", {});
-        let res = self.0.recv().await.ok_or_else(|| {
+        self.0.recv().await.ok_or_else(|| {
             ProtocolError::ChannelError(
                 "DefaultProtocolController wait_event channel recv failed".into(),
             )
-        });
-        res
+        })
     }
 
     /// drains remaining events and returns them in a `VecDeque`
@@ -289,12 +274,11 @@ impl ProtocolPoolEventReceiver {
     /// indicating that no further values can be sent on the channel
     pub async fn wait_event(&mut self) -> Result<ProtocolPoolEvent, ProtocolError> {
         massa_trace!("protocol.pool_event_receiver.wait_event", {});
-        let res = self.0.recv().await.ok_or_else(|| {
+        self.0.recv().await.ok_or_else(|| {
             ProtocolError::ChannelError(
                 "DefaultProtocolController wait_pool_event channel recv failed".into(),
             )
-        });
-        res
+        })
     }
 
     /// drains remaining events and returns them in a `VecDeque`
