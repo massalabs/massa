@@ -43,14 +43,14 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from(1000 * 10))
         )
     } else {
-        1654704000000.into()  // Fri May 06 2022 00:00:00 GMT+0000
+        1654704000000.into()
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1656626400000.into())  // Tue May 31 2022 22:00:00 GMT+0000
+        Some(1656626400000.into())
     };
     /// `PrivateKey` to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = "2Rmcp5w4MjcTQvPJeCV14UQf75XjKwDVJF14F2V1o5Kr3i9LZL"
