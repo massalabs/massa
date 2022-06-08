@@ -95,6 +95,14 @@ async fn launch() -> (
     // Init the global serialization context
     init_serialization_context(SerializationContext::default());
 
+    // Remove current disk ledger if there is one
+    // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
+    if SETTINGS.ledger.disk_ledger_path.exists() {
+        std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
+            .expect("disk ledger delete failed");
+    }
+
+    // Create final state
     let final_state = Arc::new(RwLock::new(
         FinalState::new(final_state_config).expect("could not init final state"),
     ));
@@ -102,6 +110,8 @@ async fn launch() -> (
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
     tokio::pin!(stop_signal);
+
+    // bootstrap
     let bootstrap_state = tokio::select! {
         _ = &mut stop_signal => {
             info!("interrupt signal received in bootstrap loop");
