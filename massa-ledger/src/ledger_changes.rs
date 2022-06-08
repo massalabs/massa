@@ -14,6 +14,7 @@ use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::{prehash::Map, Address, Amount};
 use massa_models::{SerializeVarInt, U64VarIntDeserializer, VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::IResult;
@@ -90,20 +91,24 @@ impl DatastoreDeserializer {
 }
 
 impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreDeserializer {
-    fn deserialize<'a>(
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Map<Hash, SetOrDelete<Vec<u8>>>> {
-        let mut parser = length_count(
-            |input| self.u64_deserializer.deserialize(input),
-            |input| {
-                let (rest, hash) = self.hash_deserializer.deserialize(input)?;
-                let (rest, data) = self.value_deserializer.deserialize(rest)?;
-                Ok((rest, (hash, data)))
-            },
-        );
-        let (rest, res) = parser(buffer)?;
-        Ok((rest, res.into_iter().collect()))
+    ) -> IResult<&'a [u8], Map<Hash, SetOrDelete<Vec<u8>>>, E> {
+        context("Failed Datastore deserialization", |input| {
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                |input| {
+                    tuple((
+                        |input| self.hash_deserializer.deserialize(input),
+                        |input| self.value_deserializer.deserialize(input),
+                    ))(input)
+                },
+            )(input)
+        })(buffer)
+        .map(|(rest, elems)| (rest, elems.into_iter().collect()))
     }
 }
 
@@ -165,21 +170,33 @@ impl LedgerEntryUpdateDeserializer {
 }
 
 impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], LedgerEntryUpdate> {
-        let mut parser = tuple((
-            |input| self.parallel_balance_deserializer.deserialize(input),
-            |input| self.bytecode_deserializer.deserialize(input),
-            |input| self.datastore_deserializer.deserialize(input),
-        ));
-        let (rest, (parallel_balance, bytecode, datastore)) = parser(buffer)?;
-        Ok((
-            rest,
-            LedgerEntryUpdate {
-                parallel_balance,
-                bytecode,
-                datastore,
-            },
-        ))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], LedgerEntryUpdate, E> {
+        context("Failed LedgerEntryUpdate deserialization", |input| {
+            tuple((
+                context("Failed parallel_balance deserialization", |input| {
+                    self.parallel_balance_deserializer.deserialize(input)
+                }),
+                context("Failed bytecode deserialization", |input| {
+                    self.bytecode_deserializer.deserialize(input)
+                }),
+                context("Failed datastore deserialization", |input| {
+                    self.datastore_deserializer.deserialize(input)
+                }),
+            ))(input)
+        })(buffer)
+        .map(|(rest, (parallel_balance, bytecode, datastore))| {
+            (
+                rest,
+                LedgerEntryUpdate {
+                    parallel_balance,
+                    bytecode,
+                    datastore,
+                },
+            )
+        })
     }
 }
 
@@ -272,17 +289,24 @@ impl Default for LedgerChangesDeserializer {
 }
 
 impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], LedgerChanges> {
-        let mut parser = length_count(
-            |input| self.u64_deserializer.deserialize(input),
-            |input| {
-                let (rest, address) = self.address_deserializer.deserialize(input)?;
-                let (rest, data) = self.entry_deserializer.deserialize(rest)?;
-                Ok((rest, (address, data)))
-            },
-        );
-        let (rest, res) = parser(buffer)?;
-        Ok((rest, LedgerChanges(res.into_iter().collect())))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], LedgerChanges, E> {
+        context("Failed LedgerChanges deserialization", |input| {
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                |input| {
+                    tuple((
+                        |input| self.address_deserializer.deserialize(input),
+                        |input| self.entry_deserializer.deserialize(input),
+                    ))(input)
+                },
+            )(input)
+        })(buffer)
+        .map(|(rest, res)| (rest, LedgerChanges(res.into_iter().collect())))
     }
 }
 

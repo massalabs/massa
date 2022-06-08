@@ -3,7 +3,10 @@
 use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
 use massa_serialization::Deserializer;
-use nom::IResult;
+use nom::{
+    error::{context, ContextError, ParseError},
+    IResult,
+};
 use std::{cmp::Ordering, convert::TryInto, str::FromStr};
 
 /// Hash wrapper, the underlying hash type is Blake3
@@ -132,19 +135,28 @@ impl HashDeserializer {
 }
 
 impl Deserializer<Hash> for HashDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Hash> {
-        if buffer.len() < HASH_SIZE_BYTES {
-            return Err(nom::Err::Error(nom::error::Error::new(
-                buffer,
-                nom::error::ErrorKind::LengthValue,
-            )));
-        }
-        Ok((
-            &buffer[HASH_SIZE_BYTES..],
-            Hash::from_bytes(&buffer[..HASH_SIZE_BYTES].try_into().map_err(|_| {
-                nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::Fail))
-            })?),
-        ))
+    //fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Hash, VerboseError<&'a [u8]>> {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Hash, E> {
+        context("Failed hash deserialization", |input: &'a [u8]| {
+            if buffer.len() < HASH_SIZE_BYTES {
+                return Err(nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    nom::error::ErrorKind::LengthValue,
+                )));
+            }
+            Ok((
+                &buffer[HASH_SIZE_BYTES..],
+                Hash::from_bytes(&buffer[..HASH_SIZE_BYTES].try_into().map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        input,
+                        nom::error::ErrorKind::Fail,
+                    ))
+                })?),
+            ))
+        })(buffer)
     }
 }
 

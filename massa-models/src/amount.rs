@@ -4,6 +4,7 @@ use crate::constants::AMOUNT_DECIMAL_FACTOR;
 use crate::serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use crate::ModelsError;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::error::{context, ContextError, ParseError};
 use nom::IResult;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
@@ -216,9 +217,14 @@ impl AmountDeserializer {
 }
 
 impl Deserializer<Amount> for AmountDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Amount> {
-        let (rest, raw) = self.u64_deserializer.deserialize(buffer)?;
-        Ok((rest, Amount::from_raw(raw)))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Amount, E> {
+        context("Failed Amount deserialization", |input| {
+            let (rest, raw) = self.u64_deserializer.deserialize(input)?;
+            Ok((rest, Amount::from_raw(raw)))
+        })(buffer)
     }
 }
 

@@ -6,7 +6,10 @@ use integer_encoding::VarInt;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_time::MassaTime;
 use nom::multi::length_data;
-use nom::IResult;
+use nom::{
+    error::{context, ContextError, ParseError},
+    IResult,
+};
 use std::convert::TryInto;
 use std::net::IpAddr;
 
@@ -76,12 +79,14 @@ macro_rules! gen_varint {
                 }
 
                 impl Deserializer<$type> for $ds {
-                    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], $type> {
-                        let (rest, value) = unsigned_nom::$type(buffer)?;
-                        if !self.range.contains(&value) {
-                            return Err(nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::TooLarge)));
-                        }
-                        Ok((rest, value))
+                    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], $type, E> {
+                        context(concat!("Failed ", stringify!($type), " deserialization"), |input: &'a [u8]| {
+                            let (rest, value) = unsigned_nom::$type(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
+                            if !self.range.contains(&value) {
+                                return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
+                            }
+                            Ok((rest, value))
+                        })(buffer)
                     }
                 }
             )*
@@ -412,16 +417,22 @@ impl VecU8Deserializer {
 }
 
 impl Deserializer<Vec<u8>> for VecU8Deserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Vec<u8>> {
-        let (rest, result) =
-            length_data(|input| self.varint_u64_deserializer.deserialize(input))(buffer)?;
-        Ok((rest, result.to_vec()))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Vec<u8>, E> {
+        context("Failed Vec<u8> deserialization", |input| {
+            let (rest, result) =
+                length_data(|input| self.varint_u64_deserializer.deserialize(input))(input)?;
+            Ok((rest, result.to_vec()))
+        })(buffer)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nom::error::VerboseError;
     use serial_test::serial;
     use std::ops::Bound::Included;
     #[test]
@@ -431,7 +442,9 @@ mod tests {
         let vec_u8_serializer = VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX));
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let serialized = vec_u8_serializer.serialize(&vec).unwrap();
-        let (rest, new_vec) = vec_u8_deserializer.deserialize(&serialized).unwrap();
+        let (rest, new_vec) = vec_u8_deserializer
+            .deserialize::<VerboseError<&[u8]>>(&serialized)
+            .unwrap();
         assert!(rest.is_empty());
         assert_eq!(vec, new_vec);
     }
@@ -447,7 +460,7 @@ mod tests {
         serialized.extend(vec);
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let _ = vec_u8_deserializer
-            .deserialize(&serialized)
+            .deserialize::<VerboseError<&[u8]>>(&serialized)
             .expect_err("Should fail too long size");
     }
 
@@ -461,7 +474,9 @@ mod tests {
             .unwrap();
         serialized.extend(vec);
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
-        let (rest, res) = vec_u8_deserializer.deserialize(&serialized).unwrap();
+        let (rest, res) = vec_u8_deserializer
+            .deserialize::<VerboseError<&[u8]>>(&serialized)
+            .unwrap();
         assert_eq!(rest, &[8, 7]);
         assert_eq!(res, &[9])
     }

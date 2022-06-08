@@ -2,7 +2,12 @@ use std::ops::Bound::Included;
 
 use massa_models::{U64VarIntDeserializer, U64VarIntSerializer};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::{error::context, multi::length_count, sequence::tuple, IResult};
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult,
+};
 
 ///! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
@@ -97,35 +102,39 @@ impl Default for AsyncPoolChangesDeserializer {
 }
 
 impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], AsyncPoolChanges> {
-        let mut parser = length_count(
-            context("length in AsyncPoolChanges", |input| {
-                self.u64_deserializer.deserialize(input)
-            }),
-            |input: &'a [u8]| match input.get(0) {
-                Some(0) => {
-                    let (rest, (id, message)) = tuple((
-                        |input| self.id_deserializer.deserialize(input),
-                        |input| self.message_deserializer.deserialize(input),
-                    ))(&input[1..])?;
-                    Ok((rest, Change::Add(id, message)))
-                }
-                Some(1) => {
-                    let (rest, id) = self.id_deserializer.deserialize(&input[1..])?;
-                    Ok((rest, Change::Delete(id)))
-                }
-                Some(_) => Err(nom::Err::Error(nom::error::Error::new(
-                    buffer,
-                    nom::error::ErrorKind::Digit,
-                ))),
-                None => Err(nom::Err::Error(nom::error::Error::new(
-                    buffer,
-                    nom::error::ErrorKind::LengthValue,
-                ))),
-            },
-        );
-
-        parser(buffer).map(|(rest, changes)| (rest, AsyncPoolChanges(changes)))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], AsyncPoolChanges, E> {
+        context("Failed AsyncPoolChanges deserialization", |input| {
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                |input: &'a [u8]| match input.get(0) {
+                    Some(0) => {
+                        let (rest, (id, message)) = tuple((
+                            |input| self.id_deserializer.deserialize(input),
+                            |input| self.message_deserializer.deserialize(input),
+                        ))(&input[1..])?;
+                        Ok((rest, Change::Add(id, message)))
+                    }
+                    Some(1) => {
+                        let (rest, id) = self.id_deserializer.deserialize(&input[1..])?;
+                        Ok((rest, Change::Delete(id)))
+                    }
+                    Some(_) => Err(nom::Err::Error(ParseError::from_error_kind(
+                        buffer,
+                        nom::error::ErrorKind::Digit,
+                    ))),
+                    None => Err(nom::Err::Error(ParseError::from_error_kind(
+                        buffer,
+                        nom::error::ErrorKind::LengthValue,
+                    ))),
+                },
+            )(input)
+        })(buffer)
+        .map(|(rest, changes)| (rest, AsyncPoolChanges(changes)))
     }
 }
 

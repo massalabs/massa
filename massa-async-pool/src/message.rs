@@ -13,7 +13,7 @@ use massa_models::{
     VecU8Serializer,
 };
 use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::error::context;
+use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_data;
 use nom::sequence::tuple;
 use nom::IResult;
@@ -98,25 +98,18 @@ impl Default for AsyncMessageIdDeserializer {
 }
 
 impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], AsyncMessageId> {
-        let mut parser = tuple((
-            context("amount in async message id", |input| {
-                self.amount_deserializer.deserialize(input)
-            }),
-            context("slot in async message id", |input| {
-                self.slot_deserializer.deserialize(input)
-            }),
-            context("index in async message id", |input| {
-                self.u64_deserializer.deserialize(input)
-            }),
-        ));
-
-        match parser(buffer) {
-            Ok((rest, (amount, slot, index))) => {
-                Ok((rest, (std::cmp::Reverse(amount), slot, index)))
-            }
-            Err(e) => Err(e),
-        }
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], AsyncMessageId, E> {
+        context("Failed AsyncMessageId deserialization", |input| {
+            tuple((
+                |input| self.amount_deserializer.deserialize(input),
+                |input| self.slot_deserializer.deserialize(input),
+                |input| self.u64_deserializer.deserialize(input),
+            ))(input)
+        })(buffer)
+        .map(|(rest, (amount, slot, index))| (rest, (std::cmp::Reverse(amount), slot, index)))
     }
 }
 
@@ -313,7 +306,10 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// let (rest, message_deserialized) = message_deserializer.deserialize(&serialized).unwrap();
     /// assert_eq!(message, message_deserialized);
     /// ```
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], AsyncMessage> {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], AsyncMessage, E> {
         let (
             rest,
             (
@@ -330,27 +326,24 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 data,
             ),
         ) = context(
-            "Failed to deserialize AsyncMessage",
+            "Failed AsyncMessage deserialization",
             tuple((
-                context(
-                    "Failed to deserialize emission_slot in AsyncMessage",
-                    |input| self.slot_deserializer.deserialize(input),
-                ),
-                context(
-                    "Failed to deserialize emission_index in AsyncMessage",
-                    |input| self.u64_deserializer.deserialize(input),
-                ),
-                context("Failed to deserialize sender in AsyncMessage", |input| {
+                context("Failed emission_slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed emission_index deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed sender deserialization", |input| {
                     self.address_deserializer.deserialize(input)
                 }),
-                context(
-                    "Failed to deserialize destination in AsyncMessage",
-                    |input| self.address_deserializer.deserialize(input),
-                ),
-                context("Failed to deserialize handler in AsyncMessage", |input| {
+                context("Failed destination deserialization", |input| {
+                    self.address_deserializer.deserialize(input)
+                }),
+                context("Failed handler deserialization", |input| {
                     let (rest, array) = length_data(|input: &'a [u8]| match input.get(0) {
                         Some(len) => Ok((&input[1..], *len)),
-                        None => Err(nom::Err::Error(nom::error::Error::new(
+                        None => Err(nom::Err::Error(ParseError::from_error_kind(
                             input,
                             nom::error::ErrorKind::LengthValue,
                         ))),
@@ -358,31 +351,29 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     Ok((
                         rest,
                         String::from_utf8(array.to_vec()).map_err(|_| {
-                            nom::Err::Error(nom::error::Error::new(
+                            nom::Err::Error(ParseError::from_error_kind(
                                 input,
                                 nom::error::ErrorKind::Fail,
                             ))
                         })?,
                     ))
                 }),
-                context("Failed to deserialize max_gas in AsyncMessage", |input| {
+                context("Failed max_gas deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
                 }),
-                context("Failed to deserialize gas_price in AsyncMessage", |input| {
+                context("Failed gas_price deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
                 }),
-                context("Failed to deserialize coins in AsyncMessage", |input| {
+                context("Failed coins deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
                 }),
-                context(
-                    "Failed to deserialize validity_start in AsyncMessage",
-                    |input| self.slot_deserializer.deserialize(input),
-                ),
-                context(
-                    "Failed to deserialize validity_end in AsyncMessage",
-                    |input| self.slot_deserializer.deserialize(input),
-                ),
-                context("Failed to deserialize data in AsyncMessage", |input| {
+                context("Failed validity_start deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed validity_end deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed data deserialization", |input| {
                     self.vec_u8_deserializer.deserialize(input)
                 }),
             )),
@@ -410,6 +401,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
 #[cfg(test)]
 mod tests {
     use massa_serialization::{Deserializer, Serializer};
+    use nom::error::VerboseError;
 
     use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
     use massa_models::{Address, Amount, Slot};
@@ -418,7 +410,7 @@ mod tests {
     #[test]
     fn bad_serialization_version() {
         let message = AsyncMessage {
-            emission_slot: Slot::new(1, 0),
+            emission_slot: Slot::new(1, 2),
             emission_index: 0,
             sender: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
                 .unwrap(),
@@ -435,7 +427,23 @@ mod tests {
         let message_serializer = AsyncMessageSerializer::new();
         let mut serialized = message_serializer.serialize(&message).unwrap();
         let message_deserializer = AsyncMessageDeserializer::new();
-        serialized[2] = 240;
-        let _ = message_deserializer.deserialize(&serialized).unwrap_err();
+        println!("{:#?}", serialized);
+        serialized[1] = 50;
+        /*match message_deserializer.deserialize::<VerboseError<&[u8]>>(&serialized) {
+          Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
+            let mut error: String = String::new();
+            for err in e.errors {
+               error.push_str(&format!("{:#?}\n", err.1));
+            }
+            println!("{}", error);
+          }
+          Err(nom::Err::Incomplete(e)) => {println!("{:#?}", e);},
+          Ok((rest, msg)) => {
+              println!("{:#?}", msg);
+          }
+        }*/
+        message_deserializer
+            .deserialize::<VerboseError<&[u8]>>(&serialized)
+            .unwrap();
     }
 }

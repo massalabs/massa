@@ -9,6 +9,7 @@ use massa_models::{
     Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
 };
 use massa_serialization::{Deserializer, Serializer};
+use nom::error::{ContextError, ParseError, VerboseError};
 use nom::multi::many0;
 use nom::sequence::tuple;
 use rocksdb::{
@@ -92,7 +93,10 @@ macro_rules! data_prefix {
 /// Extract an address from a key
 pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
     let address_deserializer = AddressDeserializer::new();
-    address_deserializer.deserialize(key).map(|res| res.1).ok()
+    address_deserializer
+        .deserialize::<VerboseError<&[u8]>>(key)
+        .map(|res| res.1)
+        .ok()
 }
 
 /// Basic key serializer
@@ -131,9 +135,15 @@ impl KeyDeserializer {
 
 // NOTE: deserialize keys into a specified structure
 impl Deserializer<Vec<u8>> for KeyDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> nom::IResult<&'a [u8], Vec<u8>, E> {
         let (rest, address) = self.address_deserializer.deserialize(buffer)?;
-        let error = nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::IsNot));
+        let error = nom::Err::Error(ParseError::from_error_kind(
+            buffer,
+            nom::error::ErrorKind::Fail,
+        ));
         match rest.get(0) {
             Some(ident) => match *ident {
                 BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
@@ -331,7 +341,9 @@ impl LedgerDB {
         let mut addresses = BTreeMap::new();
         let address_deserializer = AddressDeserializer::new();
         for (key, entry) in ledger {
-            let (rest, address) = address_deserializer.deserialize(&key[..]).unwrap();
+            let (rest, address) = address_deserializer
+                .deserialize::<VerboseError<&[u8]>>(&key[..])
+                .unwrap();
             if rest.get(0) == Some(&BALANCE_IDENT) {
                 addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
             }

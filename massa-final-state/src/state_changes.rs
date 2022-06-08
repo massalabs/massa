@@ -7,7 +7,11 @@ use massa_async_pool::{
 };
 use massa_ledger::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::{error::context, sequence::tuple, IResult};
+use nom::{
+    error::{context, ContextError, ParseError},
+    sequence::tuple,
+    IResult,
+};
 
 /// represents changes that can be applied to the execution state
 #[derive(Default, Debug, Clone)]
@@ -78,16 +82,21 @@ impl Default for StateChangesDeserializer {
 }
 
 impl Deserializer<StateChanges> for StateChangesDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], StateChanges> {
-        let mut parser = tuple((
-            context("ledger changes in state changes", |input| {
-                self.ledger_changes_deserializer.deserialize(input)
-            }),
-            context("async pool changes in state changes", |input| {
-                self.async_pool_changes_deserializer.deserialize(input)
-            }),
-        ));
-        parser(buffer).map(|(rest, (ledger_changes, async_pool_changes))| {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], StateChanges, E> {
+        context("Failed StateChanges deserialization", |input| {
+            tuple((
+                context("Failed ledger_changes deserialization", |input| {
+                    self.ledger_changes_deserializer.deserialize(input)
+                }),
+                context("Failed async_pool_changes deserialization", |input| {
+                    self.async_pool_changes_deserializer.deserialize(input)
+                }),
+            ))(input)
+        })(buffer)
+        .map(|(rest, (ledger_changes, async_pool_changes))| {
             (
                 rest,
                 StateChanges {

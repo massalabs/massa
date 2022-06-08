@@ -1,5 +1,8 @@
 use displaydoc::Display;
-use nom::IResult;
+use nom::{
+    error::{ContextError, ParseError},
+    IResult,
+};
 use thiserror::Error;
 
 #[non_exhaustive]
@@ -52,7 +55,10 @@ pub trait Deserializer<T> {
     ///
     /// ## Returns
     /// A nom result with the rest of the serialized data and the decoded value.
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], T>;
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], T, E>;
 }
 
 /// This trait must be implemented to serializes all data in Massa.
