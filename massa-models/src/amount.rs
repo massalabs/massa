@@ -1,10 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
+use crate::serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use crate::ModelsError;
+use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::IResult;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
+use std::ops::Bound;
 use std::str::FromStr;
 
 /// A structure representing a decimal Amount of coins with safe operations
@@ -174,6 +178,47 @@ impl FromStr for Amount {
             )
         })?;
         Ok(Amount(res))
+    }
+}
+
+/// Serializer for amount
+pub struct AmountSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
+
+impl AmountSerializer {
+    /// Create a new `AmountSerializer`
+    pub fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::new(min_amount, max_amount),
+        }
+    }
+}
+
+impl Serializer<Amount> for AmountSerializer {
+    fn serialize(&self, value: &Amount) -> Result<Vec<u8>, SerializeError> {
+        self.u64_serializer.serialize(&value.0)
+    }
+}
+
+/// Deserializer for amount
+pub struct AmountDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl AmountDeserializer {
+    /// Create a new `AmountDeserializer`
+    pub fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(min_amount, max_amount),
+        }
+    }
+}
+
+impl Deserializer<Amount> for AmountDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Amount> {
+        let (rest, raw) = self.u64_deserializer.deserialize(buffer)?;
+        Ok((rest, Amount::from_raw(raw)))
     }
 }
 

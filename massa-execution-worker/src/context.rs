@@ -193,7 +193,7 @@ impl ExecutionContext {
         // Add a marker to the seed indicating that we are in read-only mode
         // to prevent random draw collisions with active executions
         seed.push(0u8); // 0u8 = read-only
-        let seed = massa_hash::Hash::compute_from(&seed).to_bytes();
+        let seed = massa_hash::Hash::compute_from(&seed).into_bytes();
         // We use Xoshiro256PlusPlus because it is very fast,
         // has a period long enough to ensure no repetitions will ever happen,
         // of decent quality (given the unsafe constraints)
@@ -261,7 +261,7 @@ impl ExecutionContext {
         if let Some(block_id) = &opt_block_id {
             seed.extend(block_id.to_bytes()); // append block ID
         }
-        let seed = massa_hash::Hash::compute_from(&seed).to_bytes();
+        let seed = massa_hash::Hash::compute_from(&seed).into_bytes();
         let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
 
         // return active slot execution context
@@ -411,6 +411,70 @@ impl ExecutionContext {
 
         // set data entry
         self.speculative_ledger.set_data_entry(address, key, data)
+    }
+
+    /// Appends data to a datastore entry for an address in the speculative ledger.
+    /// Fail if the address is absent from the ledger.
+    /// Fails if the datastore entry is absent for that address.
+    ///
+    /// # Arguments
+    /// * address: the address of the ledger entry
+    /// * key: the datastore key
+    /// * data: the data to append
+    pub fn append_data_entry(
+        &mut self,
+        address: &Address,
+        key: Hash,
+        data: Vec<u8>,
+    ) -> Result<(), ExecutionError> {
+        // check access right
+        if !self.has_write_rights_on(address) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "appending to the datastore of address {} is not allowed in this context",
+                address
+            )));
+        }
+
+        // get current data entry
+        let mut res_data = self
+            .speculative_ledger
+            .get_data_entry(address, &key)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(format!(
+                    "appending to the datastore of address {} failed: entry {} not found",
+                    address, key
+                ))
+            })?;
+
+        // append data
+        res_data.extend(data);
+
+        // set data entry
+        self.speculative_ledger
+            .set_data_entry(address, key, res_data)
+    }
+
+    /// Deletes a datastore entry for an address.
+    /// Fails if the address or the entry does not exist or if write access rights are missing.
+    ///
+    /// # Arguments
+    /// * address: the address of the ledger entry
+    /// * key: the datastore key
+    pub fn delete_data_entry(
+        &mut self,
+        address: &Address,
+        key: &Hash,
+    ) -> Result<(), ExecutionError> {
+        // check access right
+        if !self.has_write_rights_on(address) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "appending to the datastore of address {} is not allowed in this context",
+                address
+            )));
+        }
+
+        // delete entry
+        self.speculative_ledger.delete_data_entry(address, key)
     }
 
     /// Transfers parallel coins from one address to another.

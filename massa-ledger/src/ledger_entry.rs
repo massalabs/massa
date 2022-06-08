@@ -4,15 +4,24 @@
 
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
-use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
-use massa_models::{array_from_slice, Amount, DeserializeVarInt, ModelsError, SerializeVarInt};
+use massa_hash::{Hash, HashDeserializer};
+use massa_models::amount::{AmountDeserializer, AmountSerializer};
+use massa_models::{
+    array_from_slice, Amount, DeserializeVarInt, ModelsError, SerializeVarInt,
+    U64VarIntDeserializer, VecU8Deserializer, VecU8Serializer,
+};
 use massa_models::{DeserializeCompact, SerializeCompact};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::multi::length_count;
+use nom::sequence::tuple;
+use nom::IResult;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::ops::Bound::Included;
 
 /// Structure defining an entry associated to an address in the `FinalLedger`
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct LedgerEntry {
     /// The parallel balance of that entry.
     /// See lib.rs for an explanation on parallel vs sequential balances.
@@ -23,6 +32,131 @@ pub struct LedgerEntry {
 
     /// A key-value store associating a hash to arbitrary bytes
     pub datastore: BTreeMap<Hash, Vec<u8>>,
+}
+
+struct DatastoreSerializer {
+    value_serializer: VecU8Serializer,
+}
+
+impl DatastoreSerializer {
+    pub fn new() -> Self {
+        Self {
+            value_serializer: VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
+    fn serialize(&self, value: &BTreeMap<Hash, Vec<u8>>) -> Result<Vec<u8>, SerializeError> {
+        let mut res = Vec::new();
+
+        let entry_count: u64 = value.len().try_into().map_err(|err| {
+            SerializeError::GeneralError(format!(
+                "too many entries in ConsensusLedgerSubset: {}",
+                err
+            ))
+        })?;
+
+        res.extend(entry_count.to_varint_bytes());
+
+        for (key, value) in value.iter() {
+            res.extend(key.to_bytes());
+            res.extend(self.value_serializer.serialize(value)?);
+        }
+        Ok(res)
+    }
+}
+
+struct DatastoreDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    hash_deserializer: HashDeserializer,
+    value_deserializer: VecU8Deserializer,
+}
+
+impl DatastoreDeserializer {
+    pub fn new() -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            hash_deserializer: HashDeserializer::new(),
+            value_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Deserializer<BTreeMap<Hash, Vec<u8>>> for DatastoreDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], BTreeMap<Hash, Vec<u8>>> {
+        let mut parser = length_count(
+            |input| self.u64_deserializer.deserialize(input),
+            |input| {
+                let (rest, key) = self.hash_deserializer.deserialize(input)?;
+                let (rest, data) = self.value_deserializer.deserialize(rest)?;
+                Ok((rest, (key, data)))
+            },
+        );
+        let (rest, res) = parser(buffer)?;
+        Ok((rest, res.into_iter().collect()))
+    }
+}
+
+pub struct LedgerEntrySerializer {
+    amount_serializer: AmountSerializer,
+    vec_u8_serializer: VecU8Serializer,
+    datastore_serializer: DatastoreSerializer,
+}
+
+impl LedgerEntrySerializer {
+    pub fn new() -> Self {
+        Self {
+            vec_u8_serializer: VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX)),
+            amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            datastore_serializer: DatastoreSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<LedgerEntry> for LedgerEntrySerializer {
+    fn serialize(&self, value: &LedgerEntry) -> Result<Vec<u8>, SerializeError> {
+        let mut res: Vec<u8> = Vec::new();
+        res.extend(self.amount_serializer.serialize(&value.parallel_balance)?);
+        res.extend(self.vec_u8_serializer.serialize(&value.bytecode)?);
+        res.extend(self.datastore_serializer.serialize(&value.datastore)?);
+        Ok(res)
+    }
+}
+
+pub struct LedgerEntryDeserializer {
+    amount_deserializer: AmountDeserializer,
+    vec_u8_deserializer: VecU8Deserializer,
+    datastore_deserializer: DatastoreDeserializer,
+}
+
+impl LedgerEntryDeserializer {
+    pub fn new() -> Self {
+        Self {
+            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            vec_u8_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            datastore_deserializer: DatastoreDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], LedgerEntry> {
+        let mut parser = tuple((
+            |input| self.amount_deserializer.deserialize(input),
+            |input| self.vec_u8_deserializer.deserialize(input),
+            |input| self.datastore_deserializer.deserialize(input),
+        ));
+        let (rest, (parallel_balance, bytecode, datastore)) = parser(buffer)?;
+        Ok((
+            rest,
+            LedgerEntry {
+                parallel_balance,
+                bytecode,
+                datastore,
+            },
+        ))
+    }
 }
 
 /// A `LedgerEntryUpdate` can be applied to a `LedgerEntry`
@@ -135,7 +269,7 @@ impl DeserializeCompact for LedgerEntry {
         let mut datastore: BTreeMap<Hash, Vec<u8>> = BTreeMap::new();
         for _ in 0..datastore_len {
             // key
-            let key = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            let key = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += HASH_SIZE_BYTES;
 
             // value length

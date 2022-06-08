@@ -25,7 +25,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use tempfile::NamedTempFile;
+use tempfile::{NamedTempFile, TempDir};
 
 /// Same as `get_random_address()` and return `priv_key` and `pub_key` associated
 /// to the address.
@@ -40,11 +40,11 @@ pub fn get_random_address() -> Address {
     get_random_address_full().0
 }
 
-fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), LedgerError> {
+fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let mut initial: BTreeMap<Address, Amount> = Default::default();
     initial.insert(get_random_address(), Amount::from_str("129").unwrap());
     initial.insert(get_random_address(), Amount::from_str("878").unwrap());
-    let (ledger_config, tempfile) = LedgerConfig::sample(&initial);
+    let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&initial);
     let async_pool_config = AsyncPoolConfig { max_length: 100 };
     let cfg = FinalStateConfig {
         ledger_config,
@@ -55,40 +55,33 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), Ledger
     Ok((
         Arc::new(RwLock::new(FinalState::new(cfg).unwrap())),
         tempfile,
+        tempdir,
     ))
 }
 
 #[test]
 #[serial]
-fn test_execution_basic() {
-    let (sample_state, _keep) = get_sample_state().unwrap();
-    let (_, _) =
-        start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
-}
-
-#[test]
-#[serial]
 fn test_execution_shutdown() {
-    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, _) =
         start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
-    manager.stop()
+    manager.stop();
 }
 
 #[test]
 #[serial]
 fn test_sending_command() {
-    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) =
         start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
     controller.update_blockclique_status(Default::default(), Default::default());
-    manager.stop()
+    manager.stop();
 }
 
 #[test]
 #[serial]
 fn test_sending_read_only_execution_command() {
-    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) =
         start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
     controller
@@ -101,7 +94,7 @@ fn test_sending_read_only_execution_command() {
             ),
         })
         .unwrap();
-    manager.stop()
+    manager.stop();
 }
 
 /// Test the gas usage in nested calls using call SC operation
@@ -121,7 +114,7 @@ fn test_nested_call_gas_usage() {
         ..ExecutionConfig::default()
     };
     // get a sample final state
-    let (sample_state, _) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     // init the storage
     let storage = Storage::default();
     // start the execution worker
@@ -189,25 +182,6 @@ fn test_nested_call_gas_usage() {
     manager.stop();
 }
 
-//#[test]
-//#[serial]
-//fn test_execution_with_bootstrap() {
-//    let bootstrap_state = crate::BootstrapExecutionState {
-//        final_slot: Slot::new(12, 5),
-//        final_ledger: get_sample_state(),
-//    };
-//    let (_config_file_keepalive, settings) = get_sample_settings();
-//    let (command_sender, _event_receiver, manager) =
-//        start_controller(settings, Some(bootstrap_state))
-//            .await
-//            .expect("Failed to start execution.");
-//    command_sender
-//        .update_blockclique(Default::default(), Default::default())
-//        .await
-//        .expect("Failed to send command");
-//    manager.stop().await.expect("Failed to stop execution.");
-//}
-
 /// # Context
 ///
 /// Functional test for asynchronous messages sending and handling
@@ -236,7 +210,8 @@ fn send_and_receive_async_message() {
         ..ExecutionConfig::default()
     };
     // get a sample final state
-    let (sample_state, _) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
+
     // init the storage
     let storage = Storage::default();
     // start the execution worker
@@ -262,8 +237,7 @@ fn send_and_receive_async_message() {
 
     // sleep for 300ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(300));
-    // stop the execution controller
-    manager.stop();
+
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(EventFilter {
         start: Some(Slot::new(1, 1)),
@@ -272,7 +246,9 @@ fn send_and_receive_async_message() {
     });
     // match the events
     assert!(!events.is_empty(), "One event was expected");
-    assert_eq!(events[0].data, "message received: hello my good friend!")
+    assert_eq!(events[0].data, "message received: hello my good friend!");
+    // stop the execution controller
+    manager.stop();
 }
 
 #[test]
@@ -286,7 +262,7 @@ fn generate_events() {
         ..ExecutionConfig::default()
     };
     let storage: Storage = Default::default();
-    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
@@ -311,13 +287,13 @@ fn generate_events() {
     controller.update_blockclique_status(finalized_blocks, blockclique);
 
     std::thread::sleep(Duration::from_millis(1000));
-    manager.stop();
     let events = controller.get_filtered_sc_output_event(EventFilter {
         start: Some(slot),
         emitter_address: Some(sender_address),
         ..Default::default()
     });
-    assert!(!events.is_empty(), "At least one event was expected")
+    assert!(!events.is_empty(), "At least one event was expected");
+    manager.stop();
 }
 
 /// Create an operation for the given sender with `data` as bytecode.

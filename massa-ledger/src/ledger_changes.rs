@@ -2,11 +2,23 @@
 
 //! This file provides structures representing changes to ledger entries
 
-use crate::ledger_entry::LedgerEntry;
-use crate::types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
-use massa_hash::Hash;
+use crate::ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
+use crate::types::{
+    Applicable, SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeep,
+    SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+    SetUpdateOrDeleteSerializer,
+};
+use massa_hash::{Hash, HashDeserializer};
+use massa_models::address::AddressDeserializer;
+use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::{prehash::Map, Address, Amount};
+use massa_models::{SerializeVarInt, U64VarIntDeserializer, VecU8Deserializer, VecU8Serializer};
+use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::multi::length_count;
+use nom::sequence::tuple;
+use nom::IResult;
 use std::collections::hash_map;
+use std::ops::Bound::Included;
 
 /// represents an update to one or more fields of a `LedgerEntry`
 #[derive(Default, Debug, Clone)]
@@ -15,8 +27,160 @@ pub struct LedgerEntryUpdate {
     pub parallel_balance: SetOrKeep<Amount>,
     /// change the executable bytecode
     pub bytecode: SetOrKeep<Vec<u8>>,
-    // change datastore entries
+    /// change datastore entries
     pub datastore: Map<Hash, SetOrDelete<Vec<u8>>>,
+}
+
+struct DatastoreSerializer {
+    value_serializer: SetOrDeleteSerializer<Vec<u8>, VecU8Serializer>,
+}
+
+impl DatastoreSerializer {
+    pub fn new() -> Self {
+        Self {
+            value_serializer: SetOrDeleteSerializer::new(VecU8Serializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
+        }
+    }
+}
+
+impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreSerializer {
+    fn serialize(
+        &self,
+        value: &Map<Hash, SetOrDelete<Vec<u8>>>,
+    ) -> Result<Vec<u8>, SerializeError> {
+        let mut res = Vec::new();
+
+        let entry_count: u64 = value.len().try_into().map_err(|err| {
+            SerializeError::GeneralError(format!(
+                "too many entries in ConsensusLedgerSubset: {}",
+                err
+            ))
+        })?;
+
+        res.extend(entry_count.to_varint_bytes());
+
+        for (key, value) in value.iter() {
+            res.extend(key.to_bytes());
+            res.extend(self.value_serializer.serialize(value)?);
+        }
+        Ok(res)
+    }
+}
+
+struct DatastoreDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    hash_deserializer: HashDeserializer,
+    value_deserializer: SetOrDeleteDeserializer<Vec<u8>, VecU8Deserializer>,
+}
+
+impl DatastoreDeserializer {
+    pub fn new() -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            hash_deserializer: HashDeserializer::default(),
+            value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
+        }
+    }
+}
+
+impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreDeserializer {
+    fn deserialize<'a>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Map<Hash, SetOrDelete<Vec<u8>>>> {
+        let mut parser = length_count(
+            |input| self.u64_deserializer.deserialize(input),
+            |input| {
+                let (rest, hash) = self.hash_deserializer.deserialize(input)?;
+                let (rest, data) = self.value_deserializer.deserialize(rest)?;
+                Ok((rest, (hash, data)))
+            },
+        );
+        let (rest, res) = parser(buffer)?;
+        Ok((rest, res.into_iter().collect()))
+    }
+}
+
+struct LedgerEntryUpdateSerializer {
+    parallel_balance_serializer: SetOrKeepSerializer<Amount, AmountSerializer>,
+    bytecode_serializer: SetOrKeepSerializer<Vec<u8>, VecU8Serializer>,
+    datastore_serializer: DatastoreSerializer,
+}
+
+impl LedgerEntryUpdateSerializer {
+    pub fn new() -> Self {
+        Self {
+            parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
+            bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
+            datastore_serializer: DatastoreSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
+    fn serialize(&self, value: &LedgerEntryUpdate) -> Result<Vec<u8>, SerializeError> {
+        let mut res = Vec::new();
+        res.extend(
+            self.parallel_balance_serializer
+                .serialize(&value.parallel_balance)?,
+        );
+        res.extend(self.bytecode_serializer.serialize(&value.bytecode)?);
+        res.extend(self.datastore_serializer.serialize(&value.datastore)?);
+        Ok(res)
+    }
+}
+
+struct LedgerEntryUpdateDeserializer {
+    parallel_balance_deserializer: SetOrKeepDeserializer<Amount, AmountDeserializer>,
+    bytecode_deserializer: SetOrKeepDeserializer<Vec<u8>, VecU8Deserializer>,
+    datastore_deserializer: DatastoreDeserializer,
+}
+
+impl LedgerEntryUpdateDeserializer {
+    pub fn new() -> Self {
+        Self {
+            parallel_balance_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
+            bytecode_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            )),
+            datastore_deserializer: DatastoreDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], LedgerEntryUpdate> {
+        let mut parser = tuple((
+            |input| self.parallel_balance_deserializer.deserialize(input),
+            |input| self.bytecode_deserializer.deserialize(input),
+            |input| self.datastore_deserializer.deserialize(input),
+        ));
+        let (rest, (parallel_balance, bytecode, datastore)) = parser(buffer)?;
+        Ok((
+            rest,
+            LedgerEntryUpdate {
+                parallel_balance,
+                bytecode,
+                datastore,
+            },
+        ))
+    }
 }
 
 impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
@@ -31,6 +195,96 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
 /// represents a list of changes to multiple ledger entries
 #[derive(Default, Debug, Clone)]
 pub struct LedgerChanges(pub Map<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>);
+
+/// `LedgerChanges` serializer
+pub struct LedgerChangesSerializer {
+    entry_serializer: SetUpdateOrDeleteSerializer<
+        LedgerEntry,
+        LedgerEntryUpdate,
+        LedgerEntrySerializer,
+        LedgerEntryUpdateSerializer,
+    >,
+}
+
+impl LedgerChangesSerializer {
+    /// Creates a new `LedgerChangesSerializer`
+    pub fn new() -> Self {
+        Self {
+            entry_serializer: SetUpdateOrDeleteSerializer::new(
+                LedgerEntrySerializer::new(),
+                LedgerEntryUpdateSerializer::new(),
+            ),
+        }
+    }
+}
+
+impl Default for LedgerChangesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<LedgerChanges> for LedgerChangesSerializer {
+    fn serialize(&self, value: &LedgerChanges) -> Result<Vec<u8>, SerializeError> {
+        let mut res = Vec::new();
+        let entry_count: u64 = value.0.len().try_into().map_err(|err| {
+            SerializeError::GeneralError(format!("too many entries in LedgerChanges: {}", err))
+        })?;
+        res.extend(entry_count.to_varint_bytes());
+        for (address, data) in value.0.iter() {
+            res.extend(address.to_bytes());
+            res.extend(self.entry_serializer.serialize(data)?);
+        }
+        Ok(res)
+    }
+}
+
+/// `LedgerChanges` deserializer
+pub struct LedgerChangesDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    address_deserializer: AddressDeserializer,
+    entry_deserializer: SetUpdateOrDeleteDeserializer<
+        LedgerEntry,
+        LedgerEntryUpdate,
+        LedgerEntryDeserializer,
+        LedgerEntryUpdateDeserializer,
+    >,
+}
+
+impl LedgerChangesDeserializer {
+    /// Creates a new `LedgerChangesDeserializer`
+    pub fn new() -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            address_deserializer: AddressDeserializer::default(),
+            entry_deserializer: SetUpdateOrDeleteDeserializer::new(
+                LedgerEntryDeserializer::new(),
+                LedgerEntryUpdateDeserializer::new(),
+            ),
+        }
+    }
+}
+
+impl Default for LedgerChangesDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], LedgerChanges> {
+        let mut parser = length_count(
+            |input| self.u64_deserializer.deserialize(input),
+            |input| {
+                let (rest, address) = self.address_deserializer.deserialize(input)?;
+                let (rest, data) = self.entry_deserializer.deserialize(rest)?;
+                Ok((rest, (address, data)))
+            },
+        );
+        let (rest, res) = parser(buffer)?;
+        Ok((rest, LedgerChanges(res.into_iter().collect())))
+    }
+}
 
 impl Applicable<LedgerChanges> for LedgerChanges {
     /// extends the current `LedgerChanges` with another one
@@ -435,6 +689,48 @@ impl LedgerChanges {
                 // Induce an Update to the ledger entry that sets the datastore entry to the desired value
                 vac.insert(SetUpdateOrDelete::Update(LedgerEntryUpdate {
                     datastore: vec![(key, SetOrDelete::Set(data))].into_iter().collect(),
+                    ..Default::default()
+                }));
+            }
+        }
+    }
+
+    /// Deletes a datastore entry for a given address.
+    /// Does nothing if the entry is missing.
+    ///
+    /// # Arguments
+    /// * `addr`: target address
+    /// * `key`: datastore key
+    pub fn delete_data_entry(&mut self, addr: Address, key: Hash) {
+        // Get the changes being applied to the ledger entry associated to that address
+        match self.0.entry(addr) {
+            // There are changes currently being applied to the ledger entry
+            hash_map::Entry::Occupied(mut occ) => {
+                match occ.get_mut() {
+                    // The ledger entry is being replaced by a new one
+                    SetUpdateOrDelete::Set(v) => {
+                        // Delete the entry in the datastore of the replacement entry
+                        v.datastore.remove(&key);
+                    }
+
+                    // The ledger entry is being updated
+                    SetUpdateOrDelete::Update(u) => {
+                        // Ensure that the update includes deleting the datastore entry
+                        u.datastore.insert(key, SetOrDelete::Delete);
+                    }
+
+                    // The ledger entry is being deleted
+                    SetUpdateOrDelete::Delete => {
+                        // Do nothing because the whole ledger entry is being deleted
+                    }
+                }
+            }
+
+            // This ledger entry is not being changed
+            hash_map::Entry::Vacant(vac) => {
+                // Induce an Update to the ledger entry that deletes the datastore entry
+                vac.insert(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    datastore: vec![(key, SetOrDelete::Delete)].into_iter().collect(),
                     ..Default::default()
                 }));
             }

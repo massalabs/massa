@@ -98,6 +98,10 @@ with the same staking keys will result in roll slashing in the future.
 Running multiple nodes with the same node_privkey.key also reduces
 network health and will be a point of attention for rewards.
 
+From episode 10 the formula is now :
+
+    Score = 50 * (produced_blocks/selected_slots) * (active_cycles/nb_cycles_episode) * (1 + routable_samples/routability_trials + total_maxim_factor/routability_trials)
+
 Registration
 ------------
 
@@ -110,7 +114,7 @@ instructions.
 From scores to rewards
 ----------------------
 
-The launch of mainnet is planned for mid-2022.
+The launch of mainnet is planned for 2022.
 
 By this time, people will be able to claim their rewards through a KYC
 process (most likely including video/liveness) to ensure that the same

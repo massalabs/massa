@@ -9,6 +9,7 @@
 
 [execution]
     initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
+    disk_ledger_path = "storage/ledger/rocks_db"
 
 [consensus]
     max_discarded_blocks = 100

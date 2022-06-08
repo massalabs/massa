@@ -15,7 +15,7 @@ use crate::{
     },
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
-use massa_final_state::{test_exports::assert_eq_final_state_bootstrap, FinalState};
+use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
 use massa_models::Version;
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
@@ -41,16 +41,13 @@ async fn test_bootstrap_server() {
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
     let final_state_bootstrap = get_random_final_state_bootstrap(2);
-    let final_state = Arc::new(RwLock::new(FinalState::from_bootstrap_state(
-        Default::default(),
-        final_state_bootstrap.clone(),
-    )));
+    let final_state = Arc::new(RwLock::new(final_state_bootstrap));
 
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
         ConsensusCommandSender(consensus_cmd_tx),
         NetworkCommandSender(network_cmd_tx),
-        final_state,
+        final_state.clone(),
         bootstrap_settings,
         bootstrap_establisher,
         *private_key,
@@ -61,11 +58,15 @@ async fn test_bootstrap_server() {
     .unwrap()
     .unwrap();
 
+    let final_state_client = Arc::new(RwLock::new(FinalState::default()));
+    let final_state_client_thread = final_state_client.clone();
+
     // launch the get_state process
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
             bootstrap_settings,
+            final_state_client_thread,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
@@ -160,8 +161,8 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
-    // check ledger
-    assert_eq_final_state_bootstrap(&final_state_bootstrap, &bootstrap_res.final_state.unwrap());
+    // check final states
+    assert_eq_final_state(&final_state.read(), &final_state_client.read());
 
     // check states
     assert_eq_thread_cycle_states(&sent_pos, &bootstrap_res.pos.unwrap());

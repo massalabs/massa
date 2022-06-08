@@ -1,9 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
+    array_from_slice,
     error::ModelsResult as Result,
+    node_configuration::ADDRESS_SIZE_BYTES,
     prehash::{Map, Set},
-    u8_from_slice, Address, Amount, DeserializeCompact, ModelsError, SerializeCompact,
+    u8_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, ModelsError,
+    SerializeCompact, SerializeVarInt,
 };
 use core::usize;
 use serde::{Deserialize, Serialize};
@@ -291,5 +294,77 @@ impl LedgerChanges {
                 balance_increment: true,
             },
         )
+    }
+}
+
+impl SerializeCompact for LedgerChanges {
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
+    /// # use std::str::FromStr;
+    /// # use massa_models::ledger_models::{LedgerChanges, LedgerChange};
+    /// # let ledger_changes = LedgerChanges(vec![
+    /// #   (
+    /// #       Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(),
+    /// #       LedgerChange {
+    /// #           balance_delta: Amount::from_str("1149").unwrap(),
+    /// #           balance_increment: true
+    /// #       },
+    /// #   ),
+    /// #   (
+    /// #       Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(),
+    /// #       LedgerChange {
+    /// #           balance_delta: Amount::from_str("1020").unwrap(),
+    /// #           balance_increment: true
+    /// #       },
+    /// #   )
+    /// # ].into_iter().collect());
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
+    /// let bytes = ledger_changes.clone().to_bytes_compact().unwrap();
+    /// let (res, _) = LedgerChanges::from_bytes_compact(&bytes).unwrap();
+    /// for (address, data) in &ledger_changes.0 {
+    ///    assert!(res.0.iter().filter(|(addr, dta)| &address == addr && dta.to_bytes_compact().unwrap() == data.to_bytes_compact().unwrap()).count() == 1)
+    /// }
+    /// assert_eq!(ledger_changes.0.len(), res.0.len());
+    /// ```
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        let entry_count: u64 = self.0.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!(
+                "too many entries in ConsensusLedgerSubset: {}",
+                err
+            ))
+        })?;
+        res.extend(entry_count.to_varint_bytes());
+        for (address, data) in self.0.iter() {
+            res.extend(address.to_bytes());
+            res.extend(&data.to_bytes_compact()?);
+        }
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for LedgerChanges {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let mut cursor = 0usize;
+
+        let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        // TODO: add entry_count checks ... see #1200
+        cursor += delta;
+
+        let mut ledger_subset = LedgerChanges(Map::default());
+        for _ in 0..entry_count {
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
+            cursor += ADDRESS_SIZE_BYTES;
+
+            let (data, delta) = LedgerChange::from_bytes_compact(&buffer[cursor..])?;
+            cursor += delta;
+
+            ledger_subset.0.insert(address, data);
+        }
+
+        Ok((ledger_subset, cursor))
     }
 }

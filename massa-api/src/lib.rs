@@ -20,7 +20,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::Set;
 use massa_models::{Address, BlockId, EndorsementId, SignedOperation, Version};
 use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
@@ -205,7 +205,7 @@ pub trait Endpoints {
 
     /// Returns the active stakers and their active roll counts for the current cycle.
     #[rpc(name = "get_stakers")]
-    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>>;
+    fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>>;
 
     /// Returns operations information associated to a given list of operations' IDs.
     #[rpc(name = "get_operations")]

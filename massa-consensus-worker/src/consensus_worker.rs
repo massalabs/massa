@@ -777,6 +777,21 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
+            ConsensusCommand::GetLedgerPart {
+                start_address,
+                batch_size,
+                response_tx,
+            } => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_ledger_part",
+                    {}
+                );
+                let resp = self.block_db.get_ledger_part(start_address, batch_size)?;
+                if response_tx.send(resp).is_err() {
+                    warn!("consensus: could not send GetLedgerPart answer");
+                }
+                Ok(())
+            }
             ConsensusCommand::GetAddressesInfo {
                 addresses,
                 response_tx,
@@ -819,7 +834,7 @@ impl ConsensusWorker {
                     { "operation_ids": operation_ids }
                 );
                 if response_tx
-                    .send(self.block_db.get_operations(&operation_ids)?)
+                    .send(self.block_db.get_operations(operation_ids)?)
                     .is_err()
                 {
                     warn!("consensus: could not send get operations response");
@@ -1099,6 +1114,8 @@ impl ConsensusWorker {
         match event {
             ProtocolEvent::ReceivedBlock {
                 block_id,
+                block,
+                serialized,
                 slot,
                 operation_set,
                 endorsement_ids,
@@ -1107,6 +1124,12 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_protocol_event.received_block",
                     { "block_id": block_id }
                 );
+
+                // Store block in shared storage.
+                self.block_db
+                    .storage
+                    .store_block(block_id, block, serialized);
+
                 self.block_db.incoming_block(
                     block_id,
                     slot,

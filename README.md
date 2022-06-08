@@ -30,7 +30,7 @@ and run a Massa node. Running a node during the testnet phase also helps
 us find bugs and improve usability, so it will be rewarded with real
 Massa on mainnet launch.
 
-The mechanics of those rewards are described in the [Testnet rules](https://github.com/massalabs/massa/wiki/testnet_rules).
+The mechanics of those rewards are described in the [Testnet rules](https://massa.readthedocs.io/en/latest/testnet/rewards.html).
 
 ## Testnet Discussions
 
@@ -42,30 +42,30 @@ For project announcements, we mainly use
 
 ## Tutorials to join the testnet
 
--   [Installing a node](https://github.com/massalabs/massa/wiki/install)
--   [Running a node](https://github.com/massalabs/massa/wiki/run)
--   [Creating a wallet](https://github.com/massalabs/massa/wiki/wallet)
--   [Staking](https://github.com/massalabs/massa/wiki/staking)
--   [Routability tutorial](https://github.com/massalabs/massa/wiki/routability) (Optional)
--   [Testnet rewards program](https://github.com/massalabs/massa/wiki/testnet_rules) (Optional)
+-   [Installing a node](https://massa.readthedocs.io/en/latest/testnet/install.html)
+-   [Running a node](https://massa.readthedocs.io/en/latest/testnet/running.html)
+-   [Creating a wallet](https://massa.readthedocs.io/en/latest/testnet/wallet.html)
+-   [Staking](https://massa.readthedocs.io/en/latest/testnet/staking.html)
+-   [Routability tutorial](https://massa.readthedocs.io/en/latest/testnet/routability.html) (Optional)
+-   [Testnet rewards program]((https://massa.readthedocs.io/en/latest/testnet/rewards.html) (Optional)
 
 ## More tutorials
 
--   [Updating the node](https://github.com/massalabs/massa/wiki/update)
--   [Sending transactions](https://github.com/massalabs/massa/wiki/transaction)
--   [Tutorials and resources from the community](https://github.com/massalabs/massa/wiki/Community-Ressources)
+-   [Updating the node](https://massa.readthedocs.io/en/latest/testnet/update.html)
+-   [Tutorials and resources from the community](https://massa.readthedocs.io/en/latest/testnet/community-resources.html)
 
-## [FAQ](https://github.com/massalabs/massa/wiki/faq) and Troubleshooting
+## [FAQ](https://massa.readthedocs.io/en/latest/testnet/faq.html) and Troubleshooting
 
 You'll find answers to common issues and questions regarding the Massa
-protocol in the [FAQ](https://github.com/massalabs/massa/wiki/faq).
+protocol in the [FAQ](https://massa.readthedocs.io/en/latest/testnet/faq.html).
 
 Don't hesitate to ask questions in the
 [Discord](https://discord.com/invite/massa) testnet channel.
 
 ## Technical documentation
 
--   [API](https://github.com/massalabs/massa/wiki/api)
--   [Concurrency](https://github.com/massalabs/massa/wiki/concurrency)
--   [Smart contract VM block feed process](https://github.com/massalabs/massa/wiki/vm-block-feed)
--   [Dummy network generation](https://github.com/massalabs/massa/wiki/Dummy-network-generation)
+-   [API](https://massa.readthedocs.io/en/latest/technical-doc/api.html)
+-   [Concurrency](https://massa.readthedocs.io/en/latest/technical-doc/concurrency.html)
+-   [Smart contract VM block feed process](https://massa.readthedocs.io/en/latest/technical-doc/vm-block-feed.html)
+-   [VM ledger interaction](https://massa.readthedocs.io/en/latest/technical-doc/vm-ledger-interaction.html)
+-   [Dummy network generation](https://massa.readthedocs.io/en/latest/technical-doc/dummy-network-generation.html)

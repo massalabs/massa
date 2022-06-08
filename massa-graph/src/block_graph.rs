@@ -5,7 +5,7 @@ use crate::{
     bootstrapable_graph::BootstrapableGraph,
     error::{GraphError, GraphResult as Result},
     export_active_block::ExportActiveBlock,
-    ledger::{read_genesis_ledger, Ledger, LedgerSubset, OperationLedgerInterface},
+    ledger::{read_genesis_ledger, ConsensusLedgerSubset, Ledger, OperationLedgerInterface},
     settings::GraphConfig,
     LedgerConfig,
 };
@@ -66,7 +66,7 @@ pub struct BlockStateAccumulator {
     /// Addresses impacted by ledger updates
     pub loaded_ledger_addrs: Set<Address>,
     /// Subset of the ledger. Contains only data in the thread of the given block
-    pub ledger_thread_subset: LedgerSubset,
+    pub ledger_thread_subset: ConsensusLedgerSubset,
     /// Cumulative changes made during that block execution
     pub ledger_changes: LedgerChanges,
     /// Addresses impacted by roll updates
@@ -268,9 +268,9 @@ pub struct BlockGraphExport {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LedgerDataExport {
     /// Candidate data
-    pub candidate_data: LedgerSubset,
+    pub candidate_data: ConsensusLedgerSubset,
     /// Final data
-    pub final_data: LedgerSubset,
+    pub final_data: ConsensusLedgerSubset,
 }
 
 /// Graph management
@@ -625,8 +625,26 @@ impl BlockGraph {
             latest_final_blocks_periods: self.latest_final_blocks_periods.clone(),
             gi_head: self.gi_head.clone(),
             max_cliques: self.max_cliques.clone(),
-            ledger: LedgerSubset::try_from(&self.ledger)?,
+            ledger: ConsensusLedgerSubset::try_from(&self.ledger)?,
         })
+    }
+
+    /// Get a part of the ledger
+    /// Used for bootstrap
+    /// Parameters:
+    /// * address: Address to start fetching
+    /// * batch_size: Size of the batch of address to return
+    ///
+    /// Returns:
+    /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
+    pub fn get_ledger_part(
+        &self,
+        start_address: Option<Address>,
+        batch_size: usize,
+    ) -> Result<ConsensusLedgerSubset> {
+        self.ledger
+            .get_ledger_part(start_address, batch_size)
+            .map_err(|e| e.into())
     }
 
     /// Try to apply an operation in the context of the block
@@ -858,7 +876,7 @@ impl BlockGraph {
                 Default::default(),
                 Default::default(),
                 Default::default(),
-                LedgerSubset::default(),
+                ConsensusLedgerSubset::default(),
                 Default::default(),
             )
         };
@@ -1261,43 +1279,53 @@ impl BlockGraph {
     /// Retrieves operations from operation Ids
     pub fn get_operations(
         &self,
-        operation_ids: &Set<OperationId>,
+        operation_ids: Set<OperationId>,
     ) -> Result<Map<OperationId, OperationSearchResult>> {
+        // The search result.
         let mut res: Map<OperationId, OperationSearchResult> = Default::default();
-        // for each active block
-        for block_id in self.active_index.iter() {
-            if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
-                let stored_block = self.storage.retrieve_block(block_id).ok_or_else(|| {
-                    GraphError::MissingBlock(format!(
-                        "missing block in get_operations: {}",
-                        block_id
-                    ))
-                })?;
-                let stored_block = stored_block.read();
 
-                // check the intersection with the wanted operation ids, and update/insert into results
-                operation_ids
-                    .iter()
-                    .filter_map(|op_id| {
-                        active_block.operation_set.get(op_id).map(|(idx, _)| {
-                            (op_id, idx, stored_block.block.operations[*idx].clone())
-                        })
-                    })
-                    .for_each(|(op_id, idx, op)| {
-                        let search_new = OperationSearchResult {
-                            op,
-                            in_pool: false,
-                            in_blocks: vec![(*block_id, (*idx, active_block.is_final))]
-                                .into_iter()
-                                .collect(),
-                            status: OperationSearchResultStatus::InBlock(
-                                OperationSearchResultBlockStatus::Active,
-                            ),
-                        };
-                        res.entry(*op_id)
-                            .and_modify(|search_old| search_old.extend(&search_new))
-                            .or_insert(search_new);
-                    });
+        // For each operation id we are searching for.
+        for op_id in operation_ids.into_iter() {
+            // The operation corresponding to the id, initially none.
+            let mut operation = None;
+
+            // The active blocks in which the operation is found.
+            let mut in_blocks: Map<BlockId, (usize, bool)> = Default::default();
+
+            for block_id in self.active_index.iter() {
+                if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
+                    // If the operation is found in the active block.
+                    if let Some((idx, _)) = active_block.operation_set.get(&op_id) {
+                        // If this is the first time we encounter the operation as present in an active block.
+                        if operation.is_none() {
+                            let stored_block =
+                                self.storage.retrieve_block(block_id).ok_or_else(|| {
+                                    GraphError::MissingBlock(format!(
+                                        "missing block in get_operations: {}",
+                                        block_id
+                                    ))
+                                })?;
+                            let stored_block = stored_block.read();
+
+                            // Clone the operation.
+                            operation = Some(stored_block.block.operations[*idx].clone());
+                        }
+                        in_blocks.insert(*block_id, (*idx, active_block.is_final));
+                    }
+                }
+            }
+
+            // If we found the operation in at least one active block.
+            if let Some(op) = operation {
+                let result = OperationSearchResult {
+                    op,
+                    in_pool: false,
+                    in_blocks,
+                    status: OperationSearchResultStatus::InBlock(
+                        OperationSearchResultBlockStatus::Active,
+                    ),
+                };
+                res.insert(op_id, result);
             }
         }
         Ok(res)
@@ -2521,7 +2549,7 @@ impl BlockGraph {
         &self,
         parents: &[BlockId],
         query_addrs: &Set<Address>,
-    ) -> Result<LedgerSubset> {
+    ) -> Result<ConsensusLedgerSubset> {
         // check that all addresses belong to threads with parents later or equal to the latest_final_block of that thread
         let involved_threads: HashSet<u8> = query_addrs
             .iter()
@@ -2828,7 +2856,7 @@ impl BlockGraph {
                         )
                         .ok_or(GraphError::FitnessOverflow)?;
                     sum_hash -=
-                        num::BigInt::from_bytes_be(num::bigint::Sign::Plus, &block_h.to_bytes());
+                        num::BigInt::from_bytes_be(num::bigint::Sign::Plus, block_h.to_bytes());
                 }
                 let cur_fit = (clique.fitness, sum_hash);
                 if cur_fit > max_clique_fitness {

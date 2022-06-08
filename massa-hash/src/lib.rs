@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-
 //! Hash management crate
+
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 pub use error::MassaHashError;

@@ -9,12 +9,12 @@ Massa JSON-RPC API
 This crate exposes Rust methods (through the `Endpoints` trait) as
 JSON-RPC API endpoints (thanks to the `ParityJSON-RPC <https://github.com/paritytech/jsonrpc>`_ crate).
 
-**E.g.** this curl command will call endpoint `stop_node` (and stop the
+**E.g.** this curl command will call endpoint `node_stop` (and stop the
 locally running `massa-node`):
 
 .. code-block:: bash
 
-    curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0", "method": "stop_node", "id": 123 }' 127.0.0.1:33034
+    curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0", "method": "node_stop", "id": 123 }' 127.0.0.1:33034
 
 Endpoints are organized in 2 authorizations levels:
 
@@ -165,6 +165,16 @@ Returns operations information associated to a given list of operations' IDs.
                 "coins": String, // represent an Amount in coins that are spent by consensus and are available in the execution context of the contract.
                 "gas_price": String, // represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.
             }
+            OR
+            "CallSC": {
+                "target_addr": String, // Address
+                "target_func": String, // Function name
+                "param": String, // Parameter to pass to the function
+                "max_gas": Number,
+                "sequential_coins": Number, // Amount
+                "parallel_coins": Number, // Amount
+                "gas_price": Number, // Amount
+            }
             },
             "sender_public_key": String
         },
@@ -258,16 +268,33 @@ Get information on a block given its hash.
                 "fee": String, // represent an Amount in coins
                 "op": {
                     "Transaction": {
-                    "amount": String, // represent an Amount in coins
-                    "recipient_address": String
+                        "amount": String, // represent an Amount in coins
+                        "recipient_address": String
                     }
                     OR
                     "RollBuy": {
-                    "roll_count": Number
+                        "roll_count": Number
                     }
                     OR
                     "RollSell": {
-                    "roll_count": Number
+                        "roll_count": Number
+                    }
+                    OR
+                    ExecuteSC {
+                        "data": [Number], // vec of bytes to execute
+                        "max_gas": Number, // maximum amount of gas that the execution of the contract is allowed to cost.
+                        "coins": String, // represent an Amount in coins that are spent by consensus and are available in the execution context of the contract.
+                        "gas_price": String, // represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.
+                    }
+                    OR
+                    "CallSC": {
+                        "target_addr": String, // Address
+                        "target_func": String, // Function name
+                        "param": String, // Parameter to pass to the function
+                        "max_gas": Number,
+                        "sequential_coins": Number, // Amount
+                        "parallel_coins": Number, // Amount
+                        "gas_price": Number, // Amount
                     }
                 },
                 "sender_public_key": String
@@ -400,23 +427,33 @@ pool.
         "fee": String, // represent an Amount in coins
         "op": {
             "Transaction": {
-            "amount": String, // represent an Amount in coins
-            "recipient_address": String
+                "amount": String, // represent an Amount in coins
+                "recipient_address": String
             }
             OR
             "RollBuy": {
-            "roll_count": Number
+                "roll_count": Number
             }
             OR
             "RollSell": {
-            "roll_count": Number
+                "roll_count": Number
             }
             OR
             "ExecuteSC": {
-            "data": [Number], // vec of bytes to execute
-            "max_gas": Number, // maximum amount of gas that the execution of the contract is allowed to cost.
-            "coins": String, // represent an Amount in coins that are spent by consensus and are available in the execution context of the contract.
-            "gas_price": String, // represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.
+                "data": [Number], // vec of bytes to execute
+                "max_gas": Number, // maximum amount of gas that the execution of the contract is allowed to cost.
+                "coins": String, // represent an Amount in coins that are spent by consensus and are available in the execution context of the contract.
+                "gas_price": String, // represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.
+            }
+            OR
+            "CallSC": {
+                "target_addr": String, // Address
+                "target_func": String, // Function name
+                "param": String, // Parameter to pass to the function
+                "max_gas": Number,
+                "sequential_coins": Number, // Amount
+                "parallel_coins": Number, // Amount
+                "gas_price": Number, // Amount
             }
         },
         "sender_public_key": String
@@ -430,6 +467,51 @@ pool.
 .. code-block:: javascript
 
     [String], // Operation ids
+
+`get_filtered_sc_output_event`
+------------------------------
+
+Returns events optionally filtered by: start slot, end slot, emitter address, original caller address, operation id
+
+It will take the interval `start slot..=end slot`
+
+-   Parameters:
+
+.. code-block:: javascript
+
+    {
+        "start": null OR {
+                "period": Number, // will use by default Slot(0,0)
+                "thread": Number // will use by default Slot(0,0)
+            },
+        "end": null OR {
+                "period": Number, // will use by default Slot(0,0)
+                "thread": Number // will use by default Slot(0,0)
+            },
+        "emitter_address": null OR String, // Address
+        "original_caller_address": null OR String, // Address
+        "original_operation_id": null OR String, // operation id
+    }
+
+-   Return:
+
+.. code-block:: javascript
+
+    [{
+        "data": String, // Arbitrary json string generated by the smart contract
+        "id": String // event id 
+        "context":{
+            "slot": {
+                "period": Number,
+                "thread": Number
+            },
+            "block": null OR String // block id,
+            "read_only": Boolean // wether the event was generated during  read only call
+            "call_stack": [String], //Addresses
+            "index_in_slot": Number, 
+            "origin_operation_id": null OR String // operation id
+        }
+    }]
 
 `execute_read_only_call`
 ------------------------
@@ -526,109 +608,12 @@ Execute a smart contract in a read only context. The changes on the ledger will 
         ]
     }]
 
-`get_sc_output_event_by_slot_range`
------------------------------------
-
-Returns output events by slot range. (not yet implemented)
-
--   Parameters:
-
-.. code-block:: javascript
-
-    {
-        "start": {
-                    "period": Number,
-                    "thread": Number
-                },
-        "end": {
-                    "period": Number,
-                    "thread": Number
-                }
-    }
-
--   Return:
-
-.. code-block:: javascript
-
-    [
-    {
-        "data": String, // Arbitrary json string generated by the smart contract
-        "context":{
-            "slot": {
-                "period": Number,
-                "thread": Number
-            },
-            "block": null OR String // block id,
-            "call_stack": [String], //Addresses
-        }
-    }
-    ]
-
-`get_sc_output_event_by_sc_address`
------------------------------------
-
-Returns output events by smart contract address. (not yet implemented)
-
--   Parameters:
-
-.. code-block:: javascript
-
-    String // Address
-
--   Return:
-
-.. code-block:: javascript
-
-    [
-    {
-        "data": String, // Arbitrary json string generated by the smart contract
-        "context":{
-            "slot": {
-                "period": Number,
-                "thread": Number
-            },
-            "block": null OR String // block id,
-            "call_stack": [String], //Addresses
-        }
-    }
-    ]
-
-`get_sc_output_event_by_caller_address`
----------------------------------------
-
-Returns output events by caller address. (not yet implemented)
-
--   Parameters:
-
-.. code-block:: javascript
-
-    String //Address
-
--   Return:
-
-.. code-block:: javascript
-
-    [
-    {
-        "data": String, // Arbitrary json string generated by the smart contract
-        "context":{
-            "slot": {
-                "period": Number,
-                "thread": Number
-            },
-            "block": null OR String // block id,
-            "call_stack": [String], //Addresses
-        }
-    }
-    ]
-
-
 **Private** API
 ===============
 
 _a.k.a. **"manager mode"** endpoints (running by default on `127.0.0.1:33034`)_
 
-`stop_node`
+`node_stop`
 -----------
 
 Gracefully stop the node.
@@ -657,7 +642,7 @@ Sign message with node's key.
 Where public_key is the public key used to sign the input and signature,
 the resulting signature.
 
-`add_staking_private_keys`
+`node_add_staking_private_keys`
 --------------------------
 
 Add a vec of new private keys for the node to use to stake.
@@ -672,7 +657,7 @@ The strings must be private keys.
 
 -   No return.
 
-`remove_staking_addresses`
+`node_remove_staking_addresses`
 --------------------------
 
 Remove a vec of addresses used to stake.
@@ -687,7 +672,7 @@ The strings must be addresses.
 
 -   No return.
 
-`get_staking_addresses`
+`node_get_staking_addresses`
 -----------------------
 
 Return hashset of staking addresses.
@@ -702,10 +687,10 @@ Return hashset of staking addresses.
 
 The strings are addresses.
 
-`ban`
------
+`node_ban_by_ip`
+-------
 
-Bans given IP addresses.
+Ban given IP address(es).
 
 -   Parameter:
 
@@ -713,14 +698,28 @@ Bans given IP addresses.
 
     [String];
 
-The strings must be ip addresses.
+The strings must be IP address(es).
+
+-   No return.
+`node_ban_by_id`
+-------
+
+Ban given id(s)
+
+-   Parameter:
+
+.. code-block:: javascript
+
+    [String];
+
+The strings must be node id(s).
 
 -   No return.
 
-`unban`
+`node_unban_by_ip`
 -------
 
-Unbans given IP addresses.
+Unban given IP address(es).
 
 -   Parameter:
 
@@ -728,6 +727,47 @@ Unbans given IP addresses.
 
     [String];
 
-The strings must be ip addresses.
+The strings must be IP address(es).
+
+-   No return.
+`node_unban_by_id`
+-------
+
+Unban given id(s)
+
+-   Parameter:
+
+.. code-block:: javascript
+
+    [String];
+
+The strings must be node id(s)
+
+-   No return.
+
+`node_whitelist`
+-------
+
+Whitelist given IP address(es).
+
+-   Parameter:
+
+.. code-block:: javascript
+
+    [String];
+
+The strings must be IP address(es).
+`node_remove_from_whitelist`
+-------
+
+Remove from whitelist given IP address(es).
+
+-   Parameter:
+
+.. code-block:: javascript
+
+    [String];
+
+The strings must be IP address(es).
 
 -   No return.

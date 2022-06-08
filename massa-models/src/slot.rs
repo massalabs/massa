@@ -6,10 +6,15 @@ use super::{
     },
     with_serialization_context,
 };
-use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
+use crate::{constants::SLOT_KEY_SIZE, U64VarIntDeserializer, U64VarIntSerializer};
 use massa_hash::Hash;
+use massa_serialization::{Deserializer, SerializeError, Serializer};
 use serde::{Deserialize, Serialize};
+use std::ops::{
+    Bound::{self, Included},
+    RangeBounds,
+};
 use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
 
@@ -20,6 +25,96 @@ pub struct Slot {
     pub period: u64,
     /// thread
     pub thread: u8,
+}
+
+/// Basic serializer for `Slot`
+pub struct SlotSerializer {
+    u64_serializer: U64VarIntSerializer,
+    range_period: (Bound<u64>, Bound<u64>),
+    range_thread: (Bound<u8>, Bound<u8>),
+}
+
+impl SlotSerializer {
+    /// Creates a `SlotSerializer`
+    pub fn new(
+        range_period: (Bound<u64>, Bound<u64>),
+        range_thread: (Bound<u8>, Bound<u8>),
+    ) -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            range_period,
+            range_thread,
+        }
+    }
+}
+
+impl Serializer<Slot> for SlotSerializer {
+    fn serialize(&self, value: &Slot) -> Result<Vec<u8>, SerializeError> {
+        if !self.range_period.contains(&value.period) {
+            return Err(SerializeError::NumberTooBig(format!(
+                "Period must be in range {:#?} but his value is {:#?}",
+                self.range_period, value.period
+            )));
+        }
+        if !self.range_thread.contains(&value.thread) {
+            return Err(SerializeError::NumberTooBig(format!(
+                "Thread must be in range {:#?} but his value is {:#?}",
+                self.range_thread, value.thread
+            )));
+        }
+        let period = self.u64_serializer.serialize(&value.period)?;
+        let mut res = Vec::with_capacity(period.len() + 1);
+        res.extend(period);
+        res.push(value.thread);
+        Ok(res)
+    }
+}
+
+/// Basic `Slot` Deserializer
+pub struct SlotDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    range_period: (Bound<u64>, Bound<u64>),
+    range_thread: (Bound<u8>, Bound<u8>),
+}
+
+impl SlotDeserializer {
+    /// Creates a `SlotDeserializer`
+    pub fn new(
+        range_period: (Bound<u64>, Bound<u64>),
+        range_thread: (Bound<u8>, Bound<u8>),
+    ) -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            range_period,
+            range_thread,
+        }
+    }
+}
+
+impl Deserializer<Slot> for SlotDeserializer {
+    fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Slot> {
+        let (rest, period) = self.u64_deserializer.deserialize(buffer)?;
+        let thread = *rest.first().ok_or_else(|| {
+            nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::LengthValue,
+            ))
+        })?;
+        if !self.range_period.contains(&period) {
+            return Err(nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            )));
+        }
+        if !self.range_thread.contains(&thread) {
+            return Err(nom::Err::Error(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::Digit,
+            )));
+        }
+        // Safe because we throw just above if there is no character.
+        Ok((&rest[1..], Slot { period, thread }))
+    }
 }
 
 impl PartialOrd for Slot {
@@ -150,6 +245,24 @@ impl Slot {
                     .ok_or(ModelsError::ThreadOverflowError)?,
             ))
         }
+    }
+
+    /// Counts the number of slots since the one passed in parameter and until self
+    /// If the two slots are equal, the returned value is `0`.
+    /// If the passed slot is strictly higher than self, an error is returned
+    pub fn slots_since(&self, s: &Slot, thread_count: u8) -> Result<u64, ModelsError> {
+        // if s > self, return an error
+        if s > self {
+            return Err(ModelsError::PeriodOverflowError);
+        }
+
+        // compute the number of slots from s to self
+        Ok((self.period - s.period)
+            .checked_mul(thread_count as u64)
+            .ok_or(ModelsError::PeriodOverflowError)?
+            .checked_add(self.thread as u64)
+            .ok_or(ModelsError::PeriodOverflowError)?
+            .saturating_sub(s.thread as u64))
     }
 }
 

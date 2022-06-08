@@ -1,18 +1,24 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::collections::BTreeMap;
-
 use massa_models::Address;
+use std::collections::HashMap;
+use tempfile::TempDir;
 
-use crate::{FinalLedgerBootstrapState, LedgerEntry};
+use crate::{ledger_db::LedgerDB, FinalLedger, LedgerConfig, LedgerEntry};
 
 /// This file defines tools to test the ledger bootstrap
 
-/// creates a ledger bootstrap state from components
-pub fn make_bootstrap_state(
-    sorted_ledger: BTreeMap<Address, LedgerEntry>,
-) -> FinalLedgerBootstrapState {
-    FinalLedgerBootstrapState { sorted_ledger }
+pub fn create_final_ledger(
+    initial_ledger: Option<HashMap<Address, LedgerEntry>>,
+    config: LedgerConfig,
+) -> FinalLedger {
+    let temp_dir = TempDir::new().unwrap();
+    let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
+    db.set_initial_ledger(initial_ledger.unwrap_or_default());
+    FinalLedger {
+        _config: config,
+        sorted_ledger: db,
+    }
 }
 
 /// asserts that two ledger entries are the same
@@ -35,18 +41,42 @@ pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
 }
 
 /// asserts that two `FinalLedgerBootstrapState` are equal
-pub fn assert_eq_ledger_bootstrap_state(
-    v1: &FinalLedgerBootstrapState,
-    v2: &FinalLedgerBootstrapState,
-) {
-    assert_eq!(
-        v1.sorted_ledger.len(),
-        v2.sorted_ledger.len(),
-        "ledger len mismatch"
-    );
-    for k in v1.sorted_ledger.keys() {
-        let itm1 = v1.sorted_ledger.get(k).unwrap();
-        let itm2 = v2.sorted_ledger.get(k).expect("ledger key mismatch");
+pub fn assert_eq_ledger(v1: &FinalLedger, v2: &FinalLedger) {
+    // IMPORTANT NOTE: MAKE SURE THIS WORKS
+    let ledger1: HashMap<Address, LedgerEntry> = v1
+        .sorted_ledger
+        .get_every_address()
+        .iter()
+        .map(|(addr, balance)| {
+            (
+                *addr,
+                LedgerEntry {
+                    parallel_balance: *balance,
+                    bytecode: v1.get_bytecode(addr).unwrap_or_default(),
+                    datastore: v1.get_entire_datastore(addr),
+                },
+            )
+        })
+        .collect();
+    let ledger2: HashMap<Address, LedgerEntry> = v2
+        .sorted_ledger
+        .get_every_address()
+        .iter()
+        .map(|(addr, balance)| {
+            (
+                *addr,
+                LedgerEntry {
+                    parallel_balance: *balance,
+                    bytecode: v2.get_bytecode(addr).unwrap_or_default(),
+                    datastore: v2.get_entire_datastore(addr),
+                },
+            )
+        })
+        .collect();
+    assert_eq!(ledger1.len(), ledger2.len(), "ledger len mismatch");
+    for k in ledger1.keys() {
+        let itm1 = ledger1.get(k).unwrap();
+        let itm2 = ledger2.get(k).expect("ledger key mismatch");
         assert_eq_ledger_entry(itm1, itm2);
     }
 }

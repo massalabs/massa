@@ -31,23 +31,23 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(hash_drain_filter)]
 #![feature(map_first_last)]
+#![feature(let_chains)]
 #![feature(async_closure)]
 
-mod bootstrap;
 mod config;
 mod error;
 mod final_state;
 mod state_changes;
 
-pub use bootstrap::FinalStateBootstrap;
 pub use config::FinalStateConfig;
 pub use error::FinalStateError;
 pub use final_state::FinalState;
-pub use state_changes::StateChanges;
+pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "testing")]
+#[cfg(any(test, feature = "testing"))]
 pub mod test_exports;

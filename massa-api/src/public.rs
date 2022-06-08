@@ -87,7 +87,7 @@ impl Endpoints for API<Public> {
         &self,
         reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
-        if reqs.len() > self.0.api_settings.max_arguments as usize {
+        if reqs.len() as u64 > self.0.api_settings.max_arguments {
             let closure =
                 async move || Err(ApiError::TooManyArguments("too many arguments".into()));
             return Box::pin(closure());
@@ -148,7 +148,7 @@ impl Endpoints for API<Public> {
         &self,
         reqs: Vec<ReadOnlyCall>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
-        if reqs.len() > self.0.api_settings.max_arguments as usize {
+        if reqs.len() as u64 > self.0.api_settings.max_arguments {
             let closure =
                 async move || Err(ApiError::TooManyArguments("too many arguments".into()));
             return Box::pin(closure());
@@ -275,7 +275,11 @@ impl Endpoints for API<Public> {
                 connected_nodes: peers?
                     .peers
                     .iter()
-                    .flat_map(|(ip, peer)| peer.active_nodes.iter().map(move |(id, _)| (*id, *ip)))
+                    .flat_map(|(ip, peer)| {
+                        peer.active_nodes
+                            .iter()
+                            .map(move |(id, is_outgoing)| (*id, (*ip, *is_outgoing)))
+                    })
                     .collect(),
                 last_slot,
                 next_slot: last_slot
@@ -300,9 +304,14 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>> {
+    fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || Ok(consensus_command_sender.get_active_stakers().await?);
+        let closure = async move || {
+            let stakers = consensus_command_sender.get_active_stakers().await?;
+            let mut staker_vec = Vec::from_iter(stakers);
+            staker_vec.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
+            Ok(staker_vec)
+        };
         Box::pin(closure())
     }
 
@@ -375,9 +384,13 @@ impl Endpoints for API<Public> {
         &self,
         eds: Vec<EndorsementId>,
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
+        let api_cfg = self.0.api_settings;
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let pool_command_sender = self.0.pool_command_sender.clone();
         let closure = async move || {
+            if eds.len() as u64 > api_cfg.max_arguments {
+                return Err(ApiError::TooManyArguments("too many arguments".into()));
+            }
             let mapped: Set<EndorsementId> = eds.into_iter().collect();
             let mut res = consensus_command_sender
                 .get_endorsements_by_id(mapped.clone())

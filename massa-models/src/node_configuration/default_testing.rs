@@ -89,6 +89,10 @@ pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 3;
 pub const MAX_BLOCK_SIZE: u32 = 3145728;
 /// max asynchronous pool length
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
+/// Maximum size batch of data in a part of the ledger
+pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 30;
+/// Maximum async messages in a batch of the bootstrap of the async pool
+pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 30;
 /// max bootstrapped blocks
 pub const MAX_BOOTSTRAP_BLOCKS: u32 = 100;
 /// max bootstrapped children per block

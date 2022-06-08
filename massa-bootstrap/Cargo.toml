@@ -10,6 +10,7 @@ edition = "2021"
 displaydoc = "0.2"
 futures = "0.3"
 num_enum = "0.5"
+nom = "7.1"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -19,14 +20,17 @@ tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
 
 # custom modules
+massa_async_pool = { path = "../massa-async-pool" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_final_state = { path = "../massa-final-state" }
 massa_graph = { path = "../massa-graph" }
 massa_hash = { path = "../massa-hash" }
+massa_ledger = { path = "../massa-ledger" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_network_exports = { path = "../massa-network-exports" }
 massa_proof_of_stake_exports = { path = "../massa-proof-of-stake-exports" }
+massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
@@ -34,6 +38,7 @@ massa_time = { path = "../massa-time" }
 bitvec = { version = "0.22", features = ["serde"] }
 serial_test = "0.5"
 massa_final_state = { path = "../massa-final-state", features=["testing"] }
+massa_async_pool = { path = "../massa-async-pool", features=["testing"] }
 massa_ledger = { path = "../massa-ledger", features=["testing"] }
 lazy_static = "1.4.0"
 
@@ -41,4 +46,5 @@ lazy_static = "1.4.0"
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 instrument = ["tokio/tracing", "massa_consensus_exports/instrument", "massa_graph/instrument", "massa_models/instrument", "massa_network_exports/instrument", "massa_proof_of_stake_exports/instrument", "massa_time/instrument"]
-testing = ["massa_final_state/testing", "massa_ledger/testing"]
+testing = ["massa_final_state/testing", "massa_ledger/testing", "massa_async_pool/testing"]
+sandbox = ["massa_async_pool/sandbox"]

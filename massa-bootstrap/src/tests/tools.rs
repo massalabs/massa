@@ -3,14 +3,15 @@
 use super::mock_establisher::Duplex;
 use crate::settings::BootstrapSettings;
 use bitvec::prelude::*;
+use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_consensus_exports::commands::ConsensusCommand;
-use massa_final_state::{
-    test_exports::make_bootstrap_state as make_final_state_bootstrap, FinalStateBootstrap,
-};
+use massa_final_state::test_exports::create_final_state;
+use massa_final_state::FinalState;
 use massa_graph::{
-    export_active_block::ExportActiveBlock, ledger::LedgerSubset, BootstrapableGraph,
+    export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset, BootstrapableGraph,
 };
 use massa_hash::Hash;
+use massa_ledger::test_exports::create_final_ledger;
 use massa_ledger::LedgerEntry;
 use massa_models::signed::Signable;
 use massa_models::{
@@ -28,6 +29,7 @@ use massa_signature::{
 };
 use massa_time::MassaTime;
 use rand::Rng;
+use std::collections::{HashMap, VecDeque};
 use std::str::FromStr;
 use std::{
     collections::BTreeMap,
@@ -66,20 +68,28 @@ fn get_random_ledger_entry() -> LedgerEntry {
 }
 
 /// generates a random bootstrap state for the final state
-pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalStateBootstrap {
+pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
     let mut rng = rand::thread_rng();
 
-    let mut sorted_ledger = BTreeMap::new();
-    let messages = Vec::new();
-
-    for _ in 0usize..rng.gen_range(0..10) {
+    let mut sorted_ledger = HashMap::new();
+    let mut messages = BTreeMap::new();
+    for _ in 0usize..rng.gen_range(3..10) {
+        let message = get_random_message();
+        messages.insert(message.compute_id(), message);
+    }
+    for _ in 0usize..rng.gen_range(5..10) {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    make_final_state_bootstrap(
-        Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count)),
-        sorted_ledger,
-        messages,
+    let slot = Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count));
+    let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
+    let async_pool = create_async_pool(Default::default(), messages);
+    create_final_state(
+        Default::default(),
+        slot,
+        final_ledger,
+        async_pool,
+        VecDeque::new(),
     )
 }
 
@@ -330,7 +340,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key);
 
-    let mut ledger_subset = LedgerSubset::default();
+    let mut ledger_subset = ConsensusLedgerSubset::default();
     ledger_subset.0.insert(
         address,
         LedgerData {
