@@ -7,10 +7,10 @@ use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
-use massa_hash::Hash;
 use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
+    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, ReadOnlyBytecodeExecution,
+    ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -171,9 +171,8 @@ impl Endpoints for API<Private> {
 
     fn get_datastore_entry(
         &self,
-        _: Address,
-        _: Hash,
-    ) -> BoxFuture<Result<(Option<Vec<u8>>, Option<Vec<u8>>), ApiError>> {
+        _: DatastoreEntryInput,
+    ) -> BoxFuture<Result<DatastoreEntryOutput, ApiError>> {
         crate::wrong_api()
     }
 
