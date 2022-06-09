@@ -296,8 +296,12 @@ pub async fn send_final_state_stream(
             }
 
             // Assign value for next turn
-            old_last_async_id = last_async_pool_id;
-            old_key = new_last_key;
+            if last_async_pool_id.is_some() || !async_pool_data.is_empty() {
+                old_last_async_id = last_async_pool_id;
+            }
+            if new_last_key.is_some() || !ledger_data.is_empty() {
+                old_key = new_last_key;
+            }
             old_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
         }
