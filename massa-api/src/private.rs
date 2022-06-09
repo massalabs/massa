@@ -7,6 +7,7 @@ use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
+use massa_hash::Hash;
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
     ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
@@ -166,6 +167,14 @@ impl Endpoints for API<Private> {
         _: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
         crate::wrong_api::<Vec<BlockSummary>>()
+    }
+
+    fn get_datastore_entry(
+        &self,
+        _: Address,
+        _: Hash,
+    ) -> BoxFuture<Result<(Option<Vec<u8>>, Option<Vec<u8>>), ApiError>> {
+        crate::wrong_api()
     }
 
     fn get_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {

@@ -10,6 +10,7 @@ use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_graph::{DiscardReason, ExportBlockStatus};
+use massa_hash::Hash;
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall, SCELedgerInfo};
 use massa_models::execution::ReadOnlyResult;
 use massa_models::SignedOperation;
@@ -501,6 +502,15 @@ impl Endpoints for API<Public> {
             }
             Ok(res)
         };
+        Box::pin(closure())
+    }
+
+    fn get_datastore_entry(
+        &self,
+        _: Address,
+        _: Hash,
+    ) -> BoxFuture<Result<(Option<Vec<u8>>, Option<Vec<u8>>), ApiError>> {
+        let closure = async move || Ok((None, None));
         Box::pin(closure())
     }
 

@@ -106,6 +106,14 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
+    fn get_final_and_active_data_entry(
+        &self,
+        _addr: &Address,
+        _key: &massa_hash::Hash,
+    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+        (None, None)
+    }
+
     fn get_final_and_active_ledger_entry(
         &self,
         addr: &Address,
