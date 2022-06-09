@@ -233,7 +233,6 @@ pub trait Endpoints {
         -> BoxFuture<Result<Vec<BlockSummary>, ApiError>>;
 
     /// Get a datastore entry
-    #[allow(clippy::type_complexity)]
     #[rpc(name = "get_datastore_entry")]
     fn get_datastore_entry(
         &self,
