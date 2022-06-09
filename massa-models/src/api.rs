@@ -482,6 +482,24 @@ pub struct TimeInterval {
     pub end: Option<MassaTime>,
 }
 
+/// Datastore entry query input struct
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct DatastoreEntryInput {
+    /// associated address of the entry
+    pub address: Address,
+    /// datastore key
+    pub key: Hash,
+}
+
+/// Datastore entry query output struct
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct DatastoreEntryOutput {
+    /// final datastore entry value
+    pub final_value: Option<Vec<u8>>,
+    /// active datastore entry value
+    pub active_value: Option<Vec<u8>>,
+}
+
 /// filter used when retrieving SC output events
 #[derive(Default, Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {

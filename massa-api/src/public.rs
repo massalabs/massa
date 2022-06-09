@@ -10,7 +10,10 @@ use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_graph::{DiscardReason, ExportBlockStatus};
-use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall, SCELedgerInfo};
+use massa_models::api::{
+    DatastoreEntryInput, DatastoreEntryOutput, ReadOnlyBytecodeExecution, ReadOnlyCall,
+    SCELedgerInfo,
+};
 use massa_models::execution::ReadOnlyResult;
 use massa_models::SignedOperation;
 
@@ -500,6 +503,22 @@ impl Endpoints for API<Public> {
                 }
             }
             Ok(res)
+        };
+        Box::pin(closure())
+    }
+
+    fn get_datastore_entry(
+        &self,
+        entry: DatastoreEntryInput,
+    ) -> BoxFuture<Result<DatastoreEntryOutput, ApiError>> {
+        let execution_controller = self.0.execution_controller.clone();
+        let closure = async move || {
+            let data =
+                execution_controller.get_final_and_active_data_entry(&entry.address, &entry.key);
+            Ok(DatastoreEntryOutput {
+                final_value: data.0,
+                active_value: data.1,
+            })
         };
         Box::pin(closure())
     }

@@ -342,6 +342,34 @@ Get the block graph within the specified time interval.
         },
     ];
 
+`get_datastore_entry`
+--------------------
+
+Get a data entry both at the latest final and active executed slots.
+
+If an existing final entry (`final_value`) is:
+* found in the active history, it will return its final value in `active_value` field
+* deleted in the active history, it will return null in `active_value` field
+
+-   Parameters:
+
+.. code-block:: javascript
+
+    {
+        "address": String,
+        "key": String,
+    }
+
+-   Return:
+
+.. code-block:: javascript
+
+    { 
+        "active_value": Byte array or null,
+        "final_value": Byte array or null,
+    }
+
+
 `get_addresses`
 ---------------
 
