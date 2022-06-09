@@ -507,10 +507,12 @@ impl Endpoints for API<Public> {
 
     fn get_datastore_entry(
         &self,
-        _: Address,
-        _: Hash,
+        addr: Address,
+        key: Hash,
     ) -> BoxFuture<Result<(Option<Vec<u8>>, Option<Vec<u8>>), ApiError>> {
-        let closure = async move || Ok((None, None));
+        let execution_controller = self.0.execution_controller.clone();
+        let closure =
+            async move || Ok(execution_controller.get_final_and_active_data_entry(&addr, &key));
         Box::pin(closure())
     }
 
