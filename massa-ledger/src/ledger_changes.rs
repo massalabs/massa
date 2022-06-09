@@ -12,8 +12,10 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::{prehash::Map, Address, Amount};
-use massa_models::{SerializeVarInt, U64VarIntDeserializer, VecU8Deserializer, VecU8Serializer};
-use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_models::{SerializeVarInt, VecU8Deserializer, VecU8Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
@@ -33,12 +35,14 @@ pub struct LedgerEntryUpdate {
 }
 
 struct DatastoreSerializer {
+    u64_serializer: U64VarIntSerializer,
     value_serializer: SetOrDeleteSerializer<Vec<u8>, VecU8Serializer>,
 }
 
 impl DatastoreSerializer {
     pub fn new() -> Self {
         Self {
+            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             value_serializer: SetOrDeleteSerializer::new(VecU8Serializer::new(
                 Included(u64::MIN),
                 Included(u64::MAX),
@@ -61,7 +65,7 @@ impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreSerializer {
             ))
         })?;
 
-        res.extend(entry_count.to_varint_bytes());
+        res.extend(self.u64_serializer.serialize(&entry_count)?);
 
         for (key, value) in value.iter() {
             res.extend(key.to_bytes());

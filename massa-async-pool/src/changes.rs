@@ -1,7 +1,8 @@
 use std::ops::Bound::Included;
 
-use massa_models::{U64VarIntDeserializer, U64VarIntSerializer};
-use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,

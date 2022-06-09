@@ -2,11 +2,16 @@
 //! Unsigned time management
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(bound_map)]
 
 mod error;
 pub use error::TimeError;
+use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
+use nom::error::{context, ContextError, ParseError};
+use nom::IResult;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::ops::Bound;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{
     convert::{TryFrom, TryInto},
@@ -20,6 +25,87 @@ use tokio::time::Instant;
 /// milliseconds since 01/01/1970.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct MassaTime(u64);
+
+/// Serializer for `MassaTime`
+pub struct MassaTimeSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
+
+impl MassaTimeSerializer {
+    /// Creates a `MassaTimeSerializer`
+    ///
+    /// Arguments:
+    /// * range: minimum value for the time to serialize
+    pub fn new(range: (Bound<MassaTime>, Bound<MassaTime>)) -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::new(
+                range.0.map(|time| time.to_millis()),
+                range.1.map(|time| time.to_millis()),
+            ),
+        }
+    }
+}
+
+impl Serializer<MassaTime> for MassaTimeSerializer {
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_time::{MassaTime, MassaTimeSerializer};
+    ///
+    /// let time: MassaTime = 30.into();
+    /// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));
+    /// let serialized = serializer.serialize(&time).unwrap();
+    /// ```
+    fn serialize(&self, value: &MassaTime) -> Result<Vec<u8>, massa_serialization::SerializeError> {
+        self.u64_serializer.serialize(&value.to_millis())
+    }
+}
+
+/// Deserializer for `MassaTime`
+pub struct MassaTimeDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl MassaTimeDeserializer {
+    /// Creates a `MassaTimeDeserializer`
+    ///
+    /// Arguments:
+    /// * range: minimum value for the time to deserialize
+    pub fn new(range: (Bound<MassaTime>, Bound<MassaTime>)) -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(
+                range.0.map(|time| time.to_millis()),
+                range.1.map(|time| time.to_millis()),
+            ),
+        }
+    }
+}
+
+impl Deserializer<MassaTime> for MassaTimeDeserializer {
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_time::{MassaTime, MassaTimeSerializer, MassaTimeDeserializer};
+    ///
+    /// let time: MassaTime = 30.into();
+    /// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));
+    /// let deserializer = MassaTimeDeserializer::new((Included(0.into()), Included(u64::MAX.into())));
+    /// let serialized = serializer.serialize(&time).unwrap();
+    /// let (rest, time_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(time, time_deser);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], MassaTime, E> {
+        context("Failed MassaTime deserialization", |input| {
+            self.u64_deserializer
+                .deserialize(input)
+                .map(|(rest, res)| (rest, res.into()))
+        })(buffer)
+    }
+}
 
 impl fmt::Display for MassaTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

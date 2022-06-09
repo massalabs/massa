@@ -3,8 +3,9 @@
 use crate::error::ModelsError;
 use crate::Amount;
 use integer_encoding::VarInt;
-use massa_serialization::{Deserializer, SerializeError, Serializer};
-use massa_time::MassaTime;
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::multi::length_data;
 use nom::{
     error::{context, ContextError, ParseError},
@@ -12,6 +13,7 @@ use nom::{
 };
 use std::convert::TryInto;
 use std::net::IpAddr;
+use std::ops::Bound;
 
 /// varint serialization
 pub trait SerializeVarInt {
@@ -23,80 +25,6 @@ impl SerializeVarInt for u16 {
     fn to_varint_bytes(self) -> Vec<u8> {
         self.encode_var_vec()
     }
-}
-
-macro_rules! gen_varint {
-        ($($type:ident, $s:ident, $bs:ident, $ds:ident, $d:expr);*) => {
-            use std::ops::{Bound, RangeBounds};
-            use unsigned_varint::nom as unsigned_nom;
-            $(
-                use unsigned_varint::encode::{$type, $bs};
-                #[doc = " Serializer for "]
-                #[doc = $d]
-                #[doc = " in a varint form."]
-                pub struct $s {
-                    range: (Bound<$type>, Bound<$type>),
-                }
-
-                impl $s {
-                    #[doc = "Create a basic serializer for "]
-                    #[doc = $d]
-                    #[doc = " in a varint form."]
-                    #[allow(dead_code)]
-                    pub fn new(min: Bound<$type>, max: Bound<$type>) -> Self {
-                        Self {
-                            range: (min, max)
-                        }
-                    }
-                }
-
-                impl Serializer<$type> for $s {
-                    fn serialize(&self, value: &$type) -> Result<Vec<u8>, SerializeError> {
-                        if !self.range.contains(value) {
-                            return Err(SerializeError::NumberTooBig(format!("Value {:#?} is not in range {:#?}", value, self.range)));
-                        }
-                        Ok($type(*value, &mut $bs()).to_vec())
-                    }
-                }
-
-                #[doc = " Deserializer for "]
-                #[doc = $d]
-                #[doc = " in a varint form."]
-                pub struct $ds {
-                    range: (Bound<$type>, Bound<$type>)
-                }
-
-                impl $ds {
-                    #[doc = "Create a basic deserializer for "]
-                    #[doc = $d]
-                    #[doc = " in a varint form."]
-                    #[allow(dead_code)]
-                    pub fn new(min: Bound<$type>, max: Bound<$type>) -> Self {
-                        Self {
-                            range: (min, max)
-                        }
-                    }
-                }
-
-                impl Deserializer<$type> for $ds {
-                    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], $type, E> {
-                        context(concat!("Failed ", stringify!($type), " deserialization"), |input: &'a [u8]| {
-                            let (rest, value) = unsigned_nom::$type(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
-                            if !self.range.contains(&value) {
-                                return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
-                            }
-                            Ok((rest, value))
-                        })(buffer)
-                    }
-                }
-            )*
-        };
-}
-
-gen_varint! {
-    u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, "`u16`";
-    u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, "`u32`";
-    u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`"
 }
 
 impl SerializeVarInt for u32 {
@@ -344,21 +272,6 @@ impl DeserializeCompact for IpAddr {
                 "unsupported IpAddr variant".into(),
             )),
         }
-    }
-}
-
-impl SerializeCompact for MassaTime {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        Ok(self.to_millis().to_varint_bytes())
-    }
-}
-
-/// Checks performed:
-/// - Buffer contains a valid `u64`.
-impl DeserializeCompact for MassaTime {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
-        Ok((res_u64.into(), delta))
     }
 }
 

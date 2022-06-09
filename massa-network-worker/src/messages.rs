@@ -7,8 +7,9 @@ use massa_models::{
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
     Endorsement, EndorsementId, ModelsError, SerializeCompact, SerializeVarInt, SignedEndorsement,
-    SignedHeader, Version,
+    SignedHeader, Version, VersionDeserializer, VersionSerializer,
 };
+use massa_serialization::{Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -111,10 +112,11 @@ impl SerializeCompact for Message {
                 random_bytes,
                 version,
             } => {
+                let version_serializer = VersionSerializer::new();
                 res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
                 res.extend(&public_key.to_bytes());
                 res.extend(random_bytes);
-                res.extend(version.to_bytes_compact()?);
+                res.extend(version_serializer.serialize(version)?);
             }
             Message::HandshakeReply { signature } => {
                 res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
@@ -202,6 +204,7 @@ impl DeserializeCompact for Message {
 
         let res = match type_id {
             MessageTypeId::HandshakeInitiation => {
+                let version_deserializer = VersionDeserializer::new();
                 // public key
                 let public_key = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += PUBLIC_KEY_SIZE_BYTES;
@@ -211,8 +214,8 @@ impl DeserializeCompact for Message {
                 cursor += HANDSHAKE_RANDOMNESS_SIZE_BYTES;
 
                 // version
-                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
+                let (rest, version) = version_deserializer.deserialize(&buffer[cursor..])?;
+                cursor += buffer[cursor..].len() - rest.len();
 
                 // return message
                 Message::HandshakeInitiation {

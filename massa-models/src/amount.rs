@@ -1,9 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
-use crate::serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use crate::ModelsError;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};
 use nom::IResult;
 use rust_decimal::prelude::*;

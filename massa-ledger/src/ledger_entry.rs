@@ -8,11 +8,13 @@ use massa_hash::HASH_SIZE_BYTES;
 use massa_hash::{Hash, HashDeserializer};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::{
-    array_from_slice, Amount, DeserializeVarInt, ModelsError, SerializeVarInt,
-    U64VarIntDeserializer, VecU8Deserializer, VecU8Serializer,
+    array_from_slice, Amount, DeserializeVarInt, ModelsError, SerializeVarInt, VecU8Deserializer,
+    VecU8Serializer,
 };
 use massa_models::{DeserializeCompact, SerializeCompact};
-use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
@@ -36,12 +38,14 @@ pub struct LedgerEntry {
 }
 
 struct DatastoreSerializer {
+    u64_serializer: U64VarIntSerializer,
     value_serializer: VecU8Serializer,
 }
 
 impl DatastoreSerializer {
     pub fn new() -> Self {
         Self {
+            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             value_serializer: VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
@@ -58,7 +62,7 @@ impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
             ))
         })?;
 
-        res.extend(entry_count.to_varint_bytes());
+        res.extend(self.u64_serializer.serialize(&entry_count)?);
 
         for (key, value) in value.iter() {
             res.extend(key.to_bytes());

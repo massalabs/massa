@@ -12,8 +12,10 @@ displaydoc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 tokio = { version = "1.15", features = ["full"] }
+nom = "7.1"
 
-
+# Custom dependencies
+massa_serialization = { path = "../massa-serialization" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

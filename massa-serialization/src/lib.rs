@@ -171,3 +171,78 @@ pub trait Serializer<T> {
     /// A Result with the serialized data.
     fn serialize(&self, value: &T) -> Result<Vec<u8>, SerializeError>;
 }
+
+macro_rules! gen_varint {
+    ($($type:ident, $s:ident, $bs:ident, $ds:ident, $d:expr);*) => {
+        use std::ops::{Bound, RangeBounds};
+        use nom::error::context;
+        use unsigned_varint::nom as unsigned_nom;
+        $(
+            use unsigned_varint::encode::{$type, $bs};
+            #[doc = " Serializer for "]
+            #[doc = $d]
+            #[doc = " in a varint form."]
+            pub struct $s {
+                range: (Bound<$type>, Bound<$type>),
+            }
+
+            impl $s {
+                #[doc = "Create a basic serializer for "]
+                #[doc = $d]
+                #[doc = " in a varint form."]
+                #[allow(dead_code)]
+                pub fn new(min: Bound<$type>, max: Bound<$type>) -> Self {
+                    Self {
+                        range: (min, max)
+                    }
+                }
+            }
+
+            impl Serializer<$type> for $s {
+                fn serialize(&self, value: &$type) -> Result<Vec<u8>, SerializeError> {
+                    if !self.range.contains(value) {
+                        return Err(SerializeError::NumberTooBig(format!("Value {:#?} is not in range {:#?}", value, self.range)));
+                    }
+                    Ok($type(*value, &mut $bs()).to_vec())
+                }
+            }
+
+            #[doc = " Deserializer for "]
+            #[doc = $d]
+            #[doc = " in a varint form."]
+            pub struct $ds {
+                range: (Bound<$type>, Bound<$type>)
+            }
+
+            impl $ds {
+                #[doc = "Create a basic deserializer for "]
+                #[doc = $d]
+                #[doc = " in a varint form."]
+                #[allow(dead_code)]
+                pub fn new(min: Bound<$type>, max: Bound<$type>) -> Self {
+                    Self {
+                        range: (min, max)
+                    }
+                }
+            }
+
+            impl Deserializer<$type> for $ds {
+                fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], $type, E> {
+                    context(concat!("Failed ", stringify!($type), " deserialization"), |input: &'a [u8]| {
+                        let (rest, value) = unsigned_nom::$type(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
+                        if !self.range.contains(&value) {
+                            return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
+                        }
+                        Ok((rest, value))
+                    })(buffer)
+                }
+            }
+        )*
+    };
+}
+
+gen_varint! {
+u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, "`u16`";
+u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, "`u32`";
+u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`"
+}

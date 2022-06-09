@@ -6,10 +6,12 @@ use super::{
     },
     with_serialization_context,
 };
+use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
-use crate::{constants::SLOT_KEY_SIZE, U64VarIntDeserializer, U64VarIntSerializer};
 use massa_hash::Hash;
-use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::error::{context, ContextError, ParseError};
 use serde::{Deserialize, Serialize};
 use std::ops::{

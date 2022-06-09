@@ -8,11 +8,10 @@ use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::constants::THREAD_COUNT;
 use massa_models::slot::{SlotDeserializer, SlotSerializer};
-use massa_models::{
-    Address, Amount, Slot, U64VarIntDeserializer, U64VarIntSerializer, VecU8Deserializer,
-    VecU8Serializer,
+use massa_models::{Address, Amount, Slot, VecU8Deserializer, VecU8Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_data;
 use nom::sequence::tuple;
