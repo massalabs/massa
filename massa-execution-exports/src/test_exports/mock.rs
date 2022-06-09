@@ -3,6 +3,7 @@
 //! This file defines utilities to mock the crate for testing purposes
 
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
+use massa_hash::Hash;
 use massa_ledger::LedgerEntry;
 use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, BlockId, Slot};
 use std::{
@@ -109,7 +110,7 @@ impl ExecutionController for MockExecutionController {
     fn get_final_and_active_data_entry(
         &self,
         _addr: &Address,
-        _key: &massa_hash::Hash,
+        _key: &Hash,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         (None, None)
     }
