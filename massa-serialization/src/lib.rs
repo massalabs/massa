@@ -1,3 +1,8 @@
+use std::{
+    collections::VecDeque,
+    fmt::{Debug, Display},
+};
+
 use displaydoc::Display;
 use nom::{
     error::{ContextError, ParseError},
@@ -12,6 +17,65 @@ pub enum SerializeError {
     NumberTooBig(String),
     /// General error {0}
     GeneralError(String),
+}
+
+pub struct MassaVerboseError<'a> {
+    errors: VecDeque<(&'a [u8], String)>,
+}
+
+impl<'a> ContextError<&'a [u8]> for MassaVerboseError<'a> {
+    fn add_context(input: &'a [u8], ctx: &'static str, mut other: Self) -> Self {
+        other.errors.push_front((input, ctx.to_string()));
+        other
+    }
+}
+
+impl<'a> ParseError<&'a [u8]> for MassaVerboseError<'a> {
+    fn append(input: &'a [u8], kind: nom::error::ErrorKind, mut other: Self) -> Self {
+        other
+            .errors
+            .push_front((input, kind.description().to_string()));
+        other
+    }
+    fn from_error_kind(input: &'a [u8], kind: nom::error::ErrorKind) -> Self {
+        let mut errors = VecDeque::new();
+        errors.push_front((input, kind.description().to_string()));
+        Self { errors }
+    }
+    fn from_char(input: &'a [u8], _: char) -> Self {
+        Self::from_error_kind(input, nom::error::ErrorKind::Char)
+    }
+    fn or(self, other: Self) -> Self {
+        other
+    }
+}
+
+impl<'a> Display for MassaVerboseError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut last_input = None;
+        for error in &self.errors {
+            write!(f, "{} / ", error.1)?;
+            last_input = Some(error.0);
+        }
+        if let Some(last_input) = last_input {
+            writeln!(f, "Input: {:?}", last_input)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> Debug for MassaVerboseError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut last_input = None;
+        for error in &self.errors {
+            write!(f, "{} / ", error.1)?;
+            last_input = Some(error.0);
+        }
+        if let Some(last_input) = last_input {
+            writeln!(f, "Input: {:?}", last_input)?;
+        }
+        Ok(())
+    }
 }
 
 /// Trait that define the deserialize method that must be implemented for all types have serialize form in Massa.

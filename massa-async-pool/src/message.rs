@@ -400,8 +400,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use massa_serialization::{Deserializer, Serializer};
-    use nom::error::VerboseError;
+    use massa_serialization::{Deserializer, MassaVerboseError, Serializer};
 
     use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
     use massa_models::{Address, Amount, Slot};
@@ -429,21 +428,8 @@ mod tests {
         let message_deserializer = AsyncMessageDeserializer::new();
         println!("{:#?}", serialized);
         serialized[1] = 50;
-        /*match message_deserializer.deserialize::<VerboseError<&[u8]>>(&serialized) {
-          Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-            let mut error: String = String::new();
-            for err in e.errors {
-               error.push_str(&format!("{:#?}\n", err.1));
-            }
-            println!("{}", error);
-          }
-          Err(nom::Err::Incomplete(e)) => {println!("{:#?}", e);},
-          Ok((rest, msg)) => {
-              println!("{:#?}", msg);
-          }
-        }*/
         message_deserializer
-            .deserialize::<VerboseError<&[u8]>>(&serialized)
-            .unwrap();
+            .deserialize::<MassaVerboseError>(&serialized)
+            .unwrap_err();
     }
 }

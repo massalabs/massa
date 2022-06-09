@@ -135,7 +135,6 @@ impl HashDeserializer {
 }
 
 impl Deserializer<Hash> for HashDeserializer {
-    //fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Hash, VerboseError<&'a [u8]>> {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

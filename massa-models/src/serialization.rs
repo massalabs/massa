@@ -432,7 +432,7 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom::error::VerboseError;
+    use massa_serialization::MassaVerboseError;
     use serial_test::serial;
     use std::ops::Bound::Included;
     #[test]
@@ -443,7 +443,7 @@ mod tests {
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let serialized = vec_u8_serializer.serialize(&vec).unwrap();
         let (rest, new_vec) = vec_u8_deserializer
-            .deserialize::<VerboseError<&[u8]>>(&serialized)
+            .deserialize::<MassaVerboseError>(&serialized)
             .unwrap();
         assert!(rest.is_empty());
         assert_eq!(vec, new_vec);
@@ -460,7 +460,7 @@ mod tests {
         serialized.extend(vec);
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let _ = vec_u8_deserializer
-            .deserialize::<VerboseError<&[u8]>>(&serialized)
+            .deserialize::<MassaVerboseError>(&serialized)
             .expect_err("Should fail too long size");
     }
 
@@ -475,7 +475,7 @@ mod tests {
         serialized.extend(vec);
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let (rest, res) = vec_u8_deserializer
-            .deserialize::<VerboseError<&[u8]>>(&serialized)
+            .deserialize::<MassaVerboseError>(&serialized)
             .unwrap();
         assert_eq!(rest, &[8, 7]);
         assert_eq!(res, &[9])
