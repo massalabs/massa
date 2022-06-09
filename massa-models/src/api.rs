@@ -343,13 +343,10 @@ impl std::fmt::Display for CompactAddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
-        writeln!(f, "Parallel balance:\n{}", self.final_sce_balance)?;
-        writeln!(
-            f,
-            "Candidate Sequential balance:\n{}",
-            self.candidate_sce_balance
-        )?;
-        writeln!(f, "Final Sequential balance:\n{}", self.balance)?;
+        writeln!(f, "Parallel balance:",)?;
+        writeln!(f, "\tFinal: {}", self.final_sce_balance)?;
+        writeln!(f, "\tCandidate: {}\n", self.candidate_sce_balance)?;
+        writeln!(f, "Sequential balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         Ok(())
     }
