@@ -349,7 +349,7 @@ Get a data entry both at the latest final and active executed slots.
 
 If an existing final entry is:
 * found in the active history, it will return its final value
-* deleted in the active history, it will return nothing
+* deleted in the active history, it will return null in `active_value` field
 
 -   Parameters:
 
