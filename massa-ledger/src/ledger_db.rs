@@ -13,7 +13,8 @@ use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
 use rocksdb::{
-    ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
+    ColumnFamilyDescriptor, DBWithThreadMode, Direction, IteratorMode, MultiThreaded, Options,
+    ReadOptions, WriteBatch,
 };
 use std::collections::HashMap;
 use std::ops::Bound;
@@ -44,11 +45,13 @@ pub enum LedgerSubEntry {
     Datastore(Hash),
 }
 
-/// Disk ledger DB module
+/// Disk ledger DB.
+///
+/// IMPORTANT: This should only be used by `massa-ledger` and `tools`.
 ///
 /// Contains a RocksDB DB instance
 #[derive(Debug)]
-pub(crate) struct LedgerDB(DB);
+pub struct LedgerDB(DBWithThreadMode<MultiThreaded>);
 
 /// Balance key formatting macro
 macro_rules! balance_key {
@@ -181,7 +184,7 @@ impl LedgerDB {
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
 
-        let db = DB::open_cf_descriptors(
+        let db = DBWithThreadMode::open_cf_descriptors(
             &db_opts,
             path,
             vec![
@@ -259,7 +262,7 @@ impl LedgerDB {
         let handle = self.0.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         // Slot::to_bytes_compact() never fails
-        batch.put_cf(handle, SLOT_KEY, slot.to_bytes_compact().unwrap());
+        batch.put_cf(&handle, SLOT_KEY, slot.to_bytes_compact().unwrap());
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -273,18 +276,18 @@ impl LedgerDB {
 
         // balance
         batch.put_cf(
-            handle,
+            &handle,
             balance_key!(addr),
             // Amount::to_bytes_compact() never fails
             ledger_entry.parallel_balance.to_bytes_compact().unwrap(),
         );
 
         // bytecode
-        batch.put_cf(handle, bytecode_key!(addr), ledger_entry.bytecode);
+        batch.put_cf(&handle, bytecode_key!(addr), ledger_entry.bytecode);
 
         // datastore
         for (hash, entry) in ledger_entry.datastore {
-            batch.put_cf(handle, data_key!(addr, hash), entry);
+            batch.put_cf(&handle, data_key!(addr, hash), entry);
         }
     }
 
@@ -300,19 +303,23 @@ impl LedgerDB {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         match ty {
-            LedgerSubEntry::Balance => self.0.get_cf(handle, balance_key!(addr)).expect(CRUD_ERROR),
+            LedgerSubEntry::Balance => self
+                .0
+                .get_cf(&handle, balance_key!(addr))
+                .expect(CRUD_ERROR),
             LedgerSubEntry::Bytecode => self
                 .0
-                .get_cf(handle, bytecode_key!(addr))
+                .get_cf(&handle, bytecode_key!(addr))
                 .expect(CRUD_ERROR),
             LedgerSubEntry::Datastore(hash) => self
                 .0
-                .get_cf(handle, data_key!(addr, hash))
+                .get_cf(&handle, data_key!(addr, hash))
                 .expect(CRUD_ERROR),
         }
     }
 
     /// Get every address and their corresponding balance.
+    ///
     /// IMPORTANT: This should only be used for debug and testing purposes.
     ///
     /// # Returns
@@ -323,7 +330,7 @@ impl LedgerDB {
 
         let ledger = self
             .0
-            .iterator_cf(handle, IteratorMode::Start)
+            .iterator_cf(&handle, IteratorMode::Start)
             .collect::<Vec<_>>();
 
         let mut addresses = BTreeMap::new();
@@ -352,7 +359,7 @@ impl LedgerDB {
 
         self.0
             .iterator_cf_opt(
-                handle,
+                &handle,
                 opt,
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
@@ -381,7 +388,7 @@ impl LedgerDB {
         // balance
         if let SetOrKeep::Set(balance) = entry_update.parallel_balance {
             batch.put_cf(
-                handle,
+                &handle,
                 balance_key!(addr),
                 // Amount::to_bytes_compact() never fails
                 balance.to_bytes_compact().unwrap(),
@@ -390,14 +397,14 @@ impl LedgerDB {
 
         // bytecode
         if let SetOrKeep::Set(bytecode) = entry_update.bytecode {
-            batch.put_cf(handle, bytecode_key!(addr), bytecode);
+            batch.put_cf(&handle, bytecode_key!(addr), bytecode);
         }
 
         // datastore
         for (hash, update) in entry_update.datastore {
             match update {
-                SetOrDelete::Set(entry) => batch.put_cf(handle, data_key!(addr, hash), entry),
-                SetOrDelete::Delete => batch.delete_cf(handle, data_key!(addr, hash)),
+                SetOrDelete::Set(entry) => batch.put_cf(&handle, data_key!(addr, hash), entry),
+                SetOrDelete::Delete => batch.delete_cf(&handle, data_key!(addr, hash)),
             }
         }
     }
@@ -410,20 +417,20 @@ impl LedgerDB {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance
-        batch.delete_cf(handle, balance_key!(addr));
+        batch.delete_cf(&handle, balance_key!(addr));
 
         // bytecode
-        batch.delete_cf(handle, balance_key!(addr));
+        batch.delete_cf(&handle, balance_key!(addr));
 
         // datastore
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
         for (key, _) in self.0.iterator_cf_opt(
-            handle,
+            &handle,
             opt,
             IteratorMode::From(data_prefix!(addr), Direction::Forward),
         ) {
-            batch.delete_cf(handle, key);
+            batch.delete_cf(&handle, key);
         }
     }
 
@@ -451,11 +458,11 @@ impl LedgerDB {
         let db_iterator = if let Some(key) = last_key {
             let mut iter =
                 self.0
-                    .iterator_cf_opt(handle, opt, IteratorMode::From(key, Direction::Forward));
+                    .iterator_cf_opt(&handle, opt, IteratorMode::From(key, Direction::Forward));
             iter.next();
             iter
         } else {
-            self.0.iterator_cf_opt(handle, opt, IteratorMode::Start)
+            self.0.iterator_cf_opt(&handle, opt, IteratorMode::Start)
         };
         let mut last_key = None;
 
@@ -498,7 +505,7 @@ impl LedgerDB {
             *Rc::get_mut(&mut last_key).ok_or_else(|| {
                 nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
             })? = Some(key.clone());
-            batch.put_cf(handle, key, value);
+            batch.put_cf(&handle, key, value);
             Ok((rest, ()))
         })(data)
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
@@ -517,7 +524,7 @@ impl LedgerDB {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeMap, io::Write, path::PathBuf, str::FromStr};
+    use std::collections::BTreeMap;
 
     use massa_hash::Hash;
     use massa_models::{Address, Amount, DeserializeCompact};
@@ -599,31 +606,5 @@ mod tests {
         let (db, _) = init_test_ledger(a);
         let res = db.get_ledger_part(&None).unwrap();
         db.set_ledger_part(&res.0[..]).unwrap();
-    }
-
-    #[test]
-    #[ignore]
-    // NOTE: this test only purpose is dumping the db into a json file, do not remove ignore
-    fn dump_db_to_json() {
-        let db = LedgerDB::new(PathBuf::from_str("../massa-node/storage/ledger/rocks_db").unwrap());
-        let res: BTreeMap<Address, LedgerEntry> = db
-            .get_every_address()
-            .iter()
-            .map(|(addr, balance)| {
-                (
-                    *addr,
-                    LedgerEntry {
-                        parallel_balance: *balance,
-                        bytecode: db
-                            .get_sub_entry(addr, LedgerSubEntry::Bytecode)
-                            .unwrap_or_default(),
-                        datastore: db.get_entire_datastore(addr),
-                    },
-                )
-            })
-            .collect();
-        let mut file = std::fs::File::create("../DISK_LEDGER_DUMP.json").unwrap();
-        let data = serde_json::to_string_pretty(&res).unwrap();
-        file.write_all(data.as_bytes()).unwrap();
     }
 }
