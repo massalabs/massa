@@ -293,6 +293,43 @@ impl ExecutionState {
         HistorySearchResult::NotFound
     }
 
+    /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
+    /// Returns None if the datastore entry could not be determined from the active history.
+    pub fn fetch_active_history_data_entry(
+        &self,
+        slot: Slot,
+        addr: &Address,
+        key: &Hash,
+    ) -> HistorySearchResult<Vec<u8>> {
+        self.verify_active_slot(slot);
+
+        if let Some(n) = self.get_active_index(slot) {
+            let iter = self.active_history.iter().rev().skip(n);
+
+            for output in iter {
+                match output.state_changes.ledger_changes.0.get(addr) {
+                    Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
+                        match datastore.get(key) {
+                            Some(value) => return HistorySearchResult::Found(value),
+                            None => (),
+                        }
+                    }
+                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
+                        match datastore.get(key) {
+                            Some(SetOrDelete::Set(value)) => {
+                                return HistorySearchResult::Found(value)
+                            }
+                            Some(SetOrDelete::Delete) => return HistorySearchResult::Deleted,
+                            None => (),
+                        }
+                    }
+                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                    None => (),
+                }
+            }
+        }
+    }
+
     /// Returns the state changes accumulated from the beginning of the output history,
     /// up until a provided slot (excluded).
     /// Only used in the VM main loop because the lock on the final ledger
