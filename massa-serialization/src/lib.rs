@@ -85,7 +85,7 @@ impl<'a> Debug for DeserializeError<'a> {
 /// ```
 /// use std::ops::Bound;
 /// use unsigned_varint::nom as varint_nom;
-/// use nom::IResult;
+/// use nom::{IResult, error::{context, ContextError, ParseError}};
 /// use massa_serialization::Deserializer;
 /// use std::ops::RangeBounds;
 ///
@@ -102,12 +102,14 @@ impl<'a> Debug for DeserializeError<'a> {
 /// }
 ///
 /// impl Deserializer<u64> for U64VarIntDeserializer {
-///     fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], u64> {
-///         let (rest, value) = varint_nom::u64(buffer)?;
-///         if !self.range.contains(&value) {
-///             return Err(nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::TooLarge)));
-///         }
-///         Ok((rest, value))
+///     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], u64, E> {
+///         context(concat!("Failed u64 deserialization"), |input: &'a [u8]| {
+///             let (rest, value) = varint_nom::u64(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
+///             if !self.range.contains(&value) {
+///                 return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
+///             }
+///             Ok((rest, value))
+///         })(buffer)
 ///     }
 /// }
 /// ```
