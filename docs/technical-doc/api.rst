@@ -348,7 +348,7 @@ Get the block graph within the specified time interval.
 Get a data entry both at the latest final and active executed slots.
 
 If an existing final entry is:
-* found in the active history, it will return its final value
+* found in the active history, it will return its final value in `active_value` field
 * deleted in the active history, it will return null in `active_value` field
 
 -   Parameters:
