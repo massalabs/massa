@@ -422,10 +422,9 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Vec<u8>, E> {
         context("Failed Vec<u8> deserialization", |input| {
-            let (rest, result) =
-                length_data(|input| self.varint_u64_deserializer.deserialize(input))(input)?;
-            Ok((rest, result.to_vec()))
+            length_data(|input| self.varint_u64_deserializer.deserialize(input))(input)
         })(buffer)
+        .map(|(rest, res)| (rest, res.to_vec()))
     }
 }
 

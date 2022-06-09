@@ -285,7 +285,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer};
     /// use massa_models::{Address, Amount, Slot};
-    /// use massa_serialization::{Serializer, Deserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     /// let message = AsyncMessage {
     ///     emission_slot: Slot::new(1, 0),
@@ -303,7 +303,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// let message_serializer = AsyncMessageSerializer::new();
     /// let serialized = message_serializer.serialize(&message).unwrap();
     /// let message_deserializer = AsyncMessageDeserializer::new();
-    /// let (rest, message_deserialized) = message_deserializer.deserialize(&serialized).unwrap();
+    /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(message, message_deserialized);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
