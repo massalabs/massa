@@ -144,7 +144,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
             buffer,
             nom::error::ErrorKind::Fail,
         ));
-        match rest.get(0) {
+        match rest.first() {
             Some(ident) => match *ident {
                 BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
                 BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),

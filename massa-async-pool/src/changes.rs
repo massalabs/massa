@@ -111,7 +111,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                 context("Failed length deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
                 }),
-                |input: &'a [u8]| match input.get(0) {
+                |input: &'a [u8]| match input.first() {
                     Some(0) => {
                         let (rest, (id, message)) = tuple((
                             |input| self.id_deserializer.deserialize(input),

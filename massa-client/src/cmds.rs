@@ -494,13 +494,13 @@ impl Command {
                             if !json {
                                 println!("Enter the following in discord:");
                             }
-                            return Ok(Box::new(format!(
+                            Ok(Box::new(format!(
                                 "{}/{}/{}/{}",
                                 node_sig.public_key,
                                 node_sig.signature,
                                 addr_sig.public_key,
                                 addr_sig.signature
-                            )));
+                            )))
                         }
                         Err(e) => rpc_error!(e),
                     }

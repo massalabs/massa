@@ -97,7 +97,7 @@ impl Deserializer<Slot> for SlotDeserializer {
     ) -> nom::IResult<&'a [u8], Slot, E> {
         context("Failed Slot deserialization", |input: &'a [u8]| {
             let (rest, period) = self.period_deserializer.deserialize(input)?;
-            let thread = *rest.get(0).ok_or_else(|| {
+            let thread = *rest.first().ok_or_else(|| {
                 nom::Err::Error(ParseError::from_error_kind(
                     input,
                     nom::error::ErrorKind::LengthValue,

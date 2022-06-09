@@ -274,12 +274,10 @@ pub struct NetworkEventReceiver(pub mpsc::Receiver<NetworkEvent>);
 impl NetworkEventReceiver {
     /// wait network event
     pub async fn wait_event(&mut self) -> Result<NetworkEvent, NetworkError> {
-        let res = self
-            .0
+        self.0
             .recv()
             .await
-            .ok_or_else(|| NetworkError::ChannelError("could not receive event".into()));
-        res
+            .ok_or_else(|| NetworkError::ChannelError("could not receive event".into()))
     }
 
     /// drains remaining events and returns them in a `VecDeque`
