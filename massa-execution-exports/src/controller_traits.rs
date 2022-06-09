@@ -5,6 +5,7 @@
 use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
+use massa_hash::Hash;
 use massa_ledger::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
@@ -34,9 +35,19 @@ pub trait ExecutionController: Send + Sync {
     /// * operation id
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent>;
 
+    /// Get a copy of a single datastore entry with its final and active values
+    ///
+    /// # Return value
+    /// * `(final_data_entry, active_data_entry)`
+    fn get_final_and_active_data_entry(
+        &self,
+        addr: &Address,
+        key: &Hash,
+    ) -> (Option<Vec<u8>>, Option<Vec<u8>>);
+
     /// Get a copy of a full ledger entry with its final and active values
     ///
-    /// # return value
+    /// # Return value
     /// * `(final_entry, active_entry)`
     fn get_final_and_active_ledger_entry(
         &self,
