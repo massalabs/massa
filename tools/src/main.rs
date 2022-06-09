@@ -1,5 +1,5 @@
 use massa_ledger::{LedgerDB, LedgerEntry, LedgerSubEntry};
-use massa_models::Address;
+use massa_models::{init_serialization_context, Address, SerializationContext};
 use std::collections::BTreeMap;
 use std::{io::Write, path::PathBuf, str::FromStr};
 
@@ -21,7 +21,12 @@ fn main() {
             )
         })
         .collect();
+
     let mut file = std::fs::File::create("../DISK_LEDGER_DUMP.json").unwrap();
-    let data = serde_json::to_string_pretty(&res).unwrap();
+    let context = SerializationContext::default();
+    init_serialization_context(context);
+    let mut data: String = serde_json::to_string_pretty(&db.get_metadata()).unwrap();
+    data.push('\n');
+    data.push_str(&serde_json::to_string_pretty(&res).unwrap());
     file.write_all(data.as_bytes()).unwrap();
 }

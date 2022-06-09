@@ -265,6 +265,21 @@ impl LedgerDB {
         batch.put_cf(&handle, SLOT_KEY, slot.to_bytes_compact().unwrap());
     }
 
+    /// Get the disk ledger metadata
+    ///
+    /// # Returns
+    /// The slot associated to the current ledger
+    ///
+    /// NOTE: right now the metadata is only a Slot, use a struct in the future
+    pub fn get_metadata(&self) -> Option<Slot> {
+        let handle = self.0.cf_handle(METADATA_CF).expect(CF_ERROR);
+
+        self.0
+            .get_cf(&handle, SLOT_KEY)
+            .expect(CRUD_ERROR)
+            .map(|v| Slot::from_bytes_compact(&v).unwrap().0)
+    }
+
     /// Add every sub-entry individually for a given entry.
     ///
     /// # Arguments
