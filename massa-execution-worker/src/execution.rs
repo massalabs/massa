@@ -16,7 +16,10 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
-use massa_ledger::{Applicable, LedgerEntry, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete};
+use massa_hash::Hash;
+use massa_ledger::{
+    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
+};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
@@ -310,14 +313,14 @@ impl ExecutionState {
                 match output.state_changes.ledger_changes.0.get(addr) {
                     Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
                         match datastore.get(key) {
-                            Some(value) => return HistorySearchResult::Found(value),
+                            Some(value) => return HistorySearchResult::Found(value.to_vec()),
                             None => (),
                         }
                     }
                     Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
                         match datastore.get(key) {
                             Some(SetOrDelete::Set(value)) => {
-                                return HistorySearchResult::Found(value)
+                                return HistorySearchResult::Found(value.to_vec())
                             }
                             Some(SetOrDelete::Delete) => return HistorySearchResult::Deleted,
                             None => (),
@@ -328,6 +331,7 @@ impl ExecutionState {
                 }
             }
         }
+        HistorySearchResult::NotFound
     }
 
     /// Returns the state changes accumulated from the beginning of the output history,
@@ -883,12 +887,35 @@ impl ExecutionState {
         )
     }
 
+    /// Gets a data entry both at the latest final and active executed slots
+    ///
+    /// NOTE: temporary, needs to be done in the speculative ledger
+    pub fn get_final_and_active_data_entry(
+        &self,
+        address: &Address,
+        key: &Hash,
+    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+        let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
+        let search_result = self.fetch_active_history_data_entry(next_slot, address, key);
+        (
+            final_entry.clone(),
+            match search_result {
+                HistorySearchResult::Found(active_entry) => Some(active_entry),
+                HistorySearchResult::NotFound => final_entry,
+                HistorySearchResult::Deleted => None,
+            },
+        )
+    }
+
     /// Gets a full ledger entry both at the latest final and active executed slots
     /// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`
     /// TODO: remove when API is updated
     ///
-    ///
-    /// # returns
+    /// # Returns
     /// `(final_entry, active_entry)`
     pub fn get_final_and_active_ledger_entry(
         &self,
