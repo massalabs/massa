@@ -349,7 +349,7 @@ impl LedgerDB {
             if rest.first() == Some(&BALANCE_IDENT) {
                 addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
             }
-            if rest.first() == Some(&BYTECODE_IDENT) {
+            if rest.first() == Some(&BYTECODE_IDENT) && !addresses.contains_key(&address) {
                 addresses.insert(address, Amount::from_str("0").unwrap());
             }
         }
