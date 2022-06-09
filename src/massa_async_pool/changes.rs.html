@@ -278,7 +278,7 @@
                 <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
             }),
             <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
-                <span class="kw">match</span> <span class="ident">input</span>.<span class="ident">get</span>(<span class="number">0</span>) {
+                <span class="kw">match</span> <span class="ident">input</span>.<span class="ident">first</span>() {
                     <span class="prelude-val">Some</span>(<span class="number">0</span>) =&gt; {
                         <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">id_deserializer</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>[<span class="number">1</span>..])<span class="question-mark">?</span>;
                         <span class="kw">let</span> (<span class="ident">message</span>, <span class="ident">delta</span>) <span class="op">=</span>
@@ -340,5 +340,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
 </body></html>

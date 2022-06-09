@@ -333,22 +333,6 @@
 <span id="326">326</span>
 <span id="327">327</span>
 <span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ProtocolError</span>;
@@ -482,16 +466,14 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.integrated_block&quot;</span>, {
             <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>
         });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ProtocolCommand::IntegratedBlock</span> {
                 <span class="ident">block_id</span>,
                 <span class="ident">operation_ids</span>,
                 <span class="ident">endorsement_ids</span>,
             })
             .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;block_integrated command send error&quot;</span>.<span class="ident">into</span>()));
-        <span class="ident">res</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;block_integrated command send error&quot;</span>.<span class="ident">into</span>()))
     }
 
     <span class="doccomment">/// Notify to protocol an attack attempt.</span>
@@ -499,14 +481,12 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.notify_block_attack&quot;</span>, {
             <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>
         });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ProtocolCommand::AttackBlockDetected</span>(<span class="ident">block_id</span>))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;notify_block_attack command send error&quot;</span>.<span class="ident">into</span>())
-            });
-        <span class="ident">res</span>
+            })
     }
 
     <span class="doccomment">/// Send the response to a `ProtocolEvent::GetBlocks`.</span>
@@ -517,14 +497,12 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_get_blocks_results&quot;</span>, {
             <span class="string">&quot;results&quot;</span>: <span class="ident">results</span>
         });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ProtocolCommand::GetBlocksResults</span>(<span class="ident">results</span>))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;send_get_blocks_results command send error&quot;</span>.<span class="ident">into</span>())
-            });
-        <span class="ident">res</span>
+            })
     }
 
     <span class="doccomment">/// Send the response to a `[ProtocolEvent::GetBlocks]`.</span>
@@ -536,14 +514,12 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_get_operations_results&quot;</span>, {
             <span class="string">&quot;results&quot;</span>: <span class="ident">results</span>
         });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ProtocolCommand::GetOperationsResults</span>((<span class="ident">node_id</span>, <span class="ident">results</span>)))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;send_get_operations_results command send error&quot;</span>.<span class="ident">into</span>())
-            });
-        <span class="ident">res</span>
+            })
     }
 
     <span class="doccomment">/// update the block wish list</span>
@@ -553,14 +529,12 @@
         <span class="ident">remove</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: <span class="ident">new</span>, <span class="string">&quot;remove&quot;</span>: <span class="ident">remove</span> });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ProtocolCommand::WishlistDelta</span> { <span class="ident">new</span>, <span class="ident">remove</span> })
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;send_wishlist_delta command send error&quot;</span>.<span class="ident">into</span>())
-            });
-        <span class="ident">res</span>
+            })
     }
 
     <span class="doccomment">/// Propagate a batch of operation ids from pool.</span>
@@ -571,14 +545,12 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.propagate_operations&quot;</span>, {
             <span class="string">&quot;operations&quot;</span>: <span class="ident">operation_ids</span>
         });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ProtocolCommand::PropagateOperations</span>(<span class="ident">operation_ids</span>))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;propagate_operation command send error&quot;</span>.<span class="ident">into</span>())
-            });
-        <span class="ident">res</span>
+            })
     }
 
     <span class="doccomment">/// propagate endorsements to connected node</span>
@@ -589,14 +561,12 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.propagate_endorsements&quot;</span>, {
             <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>
         });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ProtocolCommand::PropagateEndorsements</span>(<span class="ident">endorsements</span>))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">ProtocolError::ChannelError</span>(<span class="string">&quot;propagate_endorsements command send error&quot;</span>.<span class="ident">into</span>())
-            });
-        <span class="ident">res</span>
+            })
     }
 }
 
@@ -609,12 +579,11 @@
     <span class="doccomment">/// indicating that no further values can be sent on the channel</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.event_receiver.wait_event&quot;</span>, {});
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">recv</span>().<span class="kw">await</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">recv</span>().<span class="kw">await</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
             <span class="ident">ProtocolError::ChannelError</span>(
                 <span class="string">&quot;DefaultProtocolController wait_event channel recv failed&quot;</span>.<span class="ident">into</span>(),
             )
-        });
-        <span class="ident">res</span>
+        })
     }
 
     <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`</span>
@@ -640,12 +609,11 @@
     <span class="doccomment">/// indicating that no further values can be sent on the channel</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.pool_event_receiver.wait_event&quot;</span>, {});
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">recv</span>().<span class="kw">await</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">recv</span>().<span class="kw">await</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
             <span class="ident">ProtocolError::ChannelError</span>(
                 <span class="string">&quot;DefaultProtocolController wait_pool_event channel recv failed&quot;</span>.<span class="ident">into</span>(),
             )
-        });
-        <span class="ident">res</span>
+        })
     }
 
     <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`</span>
@@ -694,5 +662,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
 </body></html>

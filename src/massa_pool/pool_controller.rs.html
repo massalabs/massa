@@ -353,14 +353,6 @@
 <span id="346">346</span>
 <span id="347">347</span>
 <span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::PoolConfig</span>;
@@ -442,23 +434,19 @@
         <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.add_operations&quot;</span>, { <span class="string">&quot;ops&quot;</span>: <span class="ident">operations</span> });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">PoolCommand::AddOperations</span>(<span class="ident">operations</span>))
             .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;add_operations command send error&quot;</span>.<span class="ident">into</span>()));
-        <span class="ident">res</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;add_operations command send error&quot;</span>.<span class="ident">into</span>()))
     }
 
     <span class="doccomment">/// update current slots</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_current_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.update_current_slot&quot;</span>, { <span class="string">&quot;slot&quot;</span>: <span class="ident">slot</span> });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">PoolCommand::UpdateCurrentSlot</span>(<span class="ident">slot</span>))
             .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;update_current_slot command send error&quot;</span>.<span class="ident">into</span>()));
-        <span class="ident">res</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;update_current_slot command send error&quot;</span>.<span class="ident">into</span>()))
     }
 
     <span class="doccomment">/// get pool stats</span>
@@ -498,14 +486,12 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.update_latest_final_periods&quot;</span>, {
             <span class="string">&quot;periods&quot;</span>: <span class="ident">periods</span>
         });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">PoolCommand::UpdateLatestFinalPeriods</span>(<span class="ident">periods</span>))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;update_latest_final_periods command send error&quot;</span>.<span class="ident">into</span>())
-            });
-        <span class="ident">res</span>
+            })
     }
 
     <span class="doccomment">/// Returns a batch of operations ordered from highest to lowest rentability</span>
@@ -637,12 +623,10 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.add_endorsements&quot;</span>, {
             <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>
         });
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">PoolCommand::AddEndorsements</span>(<span class="ident">endorsements</span>))
             .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;add_endorsements command send error&quot;</span>.<span class="ident">into</span>()));
-        <span class="ident">res</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;add_endorsements command send error&quot;</span>.<span class="ident">into</span>()))
     }
 
     <span class="doccomment">/// get endorsements by address</span>
@@ -718,5 +702,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
 </body></html>

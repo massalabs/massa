@@ -190,8 +190,6 @@
 <span id="183">183</span>
 <span id="184">184</span>
 <span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module implements an execution controller.</span>
@@ -335,12 +333,10 @@
         <span class="comment">// Wait for the result of the execution</span>
         <span class="kw">match</span> <span class="ident">resp_rx</span>.<span class="ident">recv</span>() {
             <span class="prelude-val">Ok</span>(<span class="ident">result</span>) =&gt; <span class="ident">result</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExecutionError::ChannelError</span>(<span class="macro">format!</span>(
-                    <span class="string">&quot;readonly execution response channel readout failed: {}&quot;</span>,
-                    <span class="ident">err</span>
-                )))
-            }
+            <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ExecutionError::ChannelError</span>(<span class="macro">format!</span>(
+                <span class="string">&quot;readonly execution response channel readout failed: {}&quot;</span>,
+                <span class="ident">err</span>
+            ))),
         }
     }
 
@@ -380,5 +376,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
 </body></html>

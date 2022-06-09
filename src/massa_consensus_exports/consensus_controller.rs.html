@@ -522,7 +522,6 @@
 <span id="515">515</span>
 <span id="516">516</span>
 <span id="517">517</span>
-<span id="518">518</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_graph::ledger::ConsensusLedgerSubset</span>;
 <span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">BlockGraphExport</span>, <span class="ident">BootstrapableGraph</span>, <span class="ident">ExportBlockStatus</span>, <span class="ident">Status</span>};
@@ -659,12 +658,11 @@
                     <span class="string">&quot;send error consensus command get_selection_draws&quot;</span>.<span class="ident">into</span>(),
                 )
             })<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="ident">ConsensusError::ReceiveChannelError</span>(
                 <span class="string">&quot;consensus command get_selection_draws response read error&quot;</span>.<span class="ident">to_string</span>(),
             )
-        })<span class="question-mark">?</span>;
-        <span class="ident">res</span>
+        })<span class="question-mark">?</span>
     }
 
     <span class="doccomment">/// get bootstrap snapshot</span>
@@ -1042,5 +1040,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
 </body></html>
