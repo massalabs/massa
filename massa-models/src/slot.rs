@@ -94,7 +94,7 @@ impl SlotDeserializer {
 impl Deserializer<Slot> for SlotDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Slot> {
         let (rest, period) = self.u64_deserializer.deserialize(buffer)?;
-        let thread = *rest.get(0).ok_or_else(|| {
+        let thread = *rest.first().ok_or_else(|| {
             nom::Err::Error(nom::error::Error::new(
                 buffer,
                 nom::error::ErrorKind::LengthValue,

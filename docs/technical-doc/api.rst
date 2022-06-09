@@ -116,9 +116,9 @@ Returns the active stakers and their roll counts for the current cycle.
 
 .. code-block:: javascript
 
-    {
+    [
     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": Number
-    } // Dictionnary associating staker addresses to their active roll counts
+    ] // Dictionnary associating staker addresses to their active roll counts
 
 `get_operations`
 ----------------

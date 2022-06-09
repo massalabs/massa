@@ -135,7 +135,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
         let (rest, address) = self.address_deserializer.deserialize(buffer)?;
         let error = nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::IsNot));
-        match rest.get(0) {
+        match rest.first() {
             Some(ident) => match *ident {
                 BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
                 BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
