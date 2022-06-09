@@ -8,7 +8,7 @@ use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
 use massa_models::{
     Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
 };
-use massa_serialization::{Deserializer, MassaVerboseError, Serializer};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use nom::error::{ContextError, ParseError};
 use nom::multi::many0;
 use nom::sequence::tuple;
@@ -94,7 +94,7 @@ macro_rules! data_prefix {
 pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
     let address_deserializer = AddressDeserializer::new();
     address_deserializer
-        .deserialize::<MassaVerboseError>(key)
+        .deserialize::<DeserializeError>(key)
         .map(|res| res.1)
         .ok()
 }
@@ -342,7 +342,7 @@ impl LedgerDB {
         let address_deserializer = AddressDeserializer::new();
         for (key, entry) in ledger {
             let (rest, address) = address_deserializer
-                .deserialize::<MassaVerboseError>(&key[..])
+                .deserialize::<DeserializeError>(&key[..])
                 .unwrap();
             if rest.get(0) == Some(&BALANCE_IDENT) {
                 addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);

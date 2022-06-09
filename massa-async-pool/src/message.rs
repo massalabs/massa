@@ -341,7 +341,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     self.address_deserializer.deserialize(input)
                 }),
                 context("Failed handler deserialization", |input| {
-                    let (rest, array) = length_data(|input: &'a [u8]| match input.get(0) {
+                    let (rest, array) = length_data(|input: &'a [u8]| match input.first() {
                         Some(len) => Ok((&input[1..], *len)),
                         None => Err(nom::Err::Error(ParseError::from_error_kind(
                             input,
@@ -400,7 +400,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use massa_serialization::{Deserializer, MassaVerboseError, Serializer};
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
     use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
     use massa_models::{Address, Amount, Slot};
@@ -429,7 +429,7 @@ mod tests {
         println!("{:#?}", serialized);
         serialized[1] = 50;
         message_deserializer
-            .deserialize::<MassaVerboseError>(&serialized)
+            .deserialize::<DeserializeError>(&serialized)
             .unwrap_err();
     }
 }

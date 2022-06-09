@@ -19,18 +19,18 @@ pub enum SerializeError {
     GeneralError(String),
 }
 
-pub struct MassaVerboseError<'a> {
+pub struct DeserializeError<'a> {
     errors: VecDeque<(&'a [u8], String)>,
 }
 
-impl<'a> ContextError<&'a [u8]> for MassaVerboseError<'a> {
+impl<'a> ContextError<&'a [u8]> for DeserializeError<'a> {
     fn add_context(input: &'a [u8], ctx: &'static str, mut other: Self) -> Self {
         other.errors.push_front((input, ctx.to_string()));
         other
     }
 }
 
-impl<'a> ParseError<&'a [u8]> for MassaVerboseError<'a> {
+impl<'a> ParseError<&'a [u8]> for DeserializeError<'a> {
     fn append(input: &'a [u8], kind: nom::error::ErrorKind, mut other: Self) -> Self {
         other
             .errors
@@ -50,7 +50,7 @@ impl<'a> ParseError<&'a [u8]> for MassaVerboseError<'a> {
     }
 }
 
-impl<'a> Display for MassaVerboseError<'a> {
+impl<'a> Display for DeserializeError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut last_input = None;
         for error in &self.errors {
@@ -64,7 +64,7 @@ impl<'a> Display for MassaVerboseError<'a> {
     }
 }
 
-impl<'a> Debug for MassaVerboseError<'a> {
+impl<'a> Debug for DeserializeError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut last_input = None;
         for error in &self.errors {
