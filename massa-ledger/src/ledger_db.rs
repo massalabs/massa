@@ -352,10 +352,10 @@ impl LedgerDB {
         let address_deserializer = AddressDeserializer::new();
         for (key, entry) in ledger {
             let (rest, address) = address_deserializer.deserialize(&key[..]).unwrap();
-            if rest.get(0) == Some(&BALANCE_IDENT) {
+            if rest.first() == Some(&BALANCE_IDENT) {
                 addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
             }
-            if rest.get(0) == Some(&BYTECODE_IDENT) {
+            if rest.first() == Some(&BYTECODE_IDENT) {
                 addresses.insert(address, Amount::from_str("0").unwrap());
             }
         }
