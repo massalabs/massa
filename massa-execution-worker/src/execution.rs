@@ -307,7 +307,7 @@ impl ExecutionState {
         self.verify_active_slot(slot);
 
         if let Some(n) = self.get_active_index(slot) {
-            let iter = self.active_history.iter().rev().skip(n);
+            let iter = self.active_history.iter().skip(n).rev();
 
             for output in iter {
                 match output.state_changes.ledger_changes.0.get(addr) {
