@@ -104,7 +104,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                 self.u64_deserializer.deserialize(input)
             }),
             |input: &'a [u8]| {
-                match input.get(0) {
+                match input.first() {
                     Some(0) => {
                         let (rest, id) = self.id_deserializer.deserialize(&input[1..])?;
                         let (message, delta) =

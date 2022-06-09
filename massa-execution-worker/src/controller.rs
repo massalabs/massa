@@ -141,12 +141,10 @@ impl ExecutionController for ExecutionControllerImpl {
         // Wait for the result of the execution
         match resp_rx.recv() {
             Ok(result) => result,
-            Err(err) => {
-                return Err(ExecutionError::ChannelError(format!(
-                    "readonly execution response channel readout failed: {}",
-                    err
-                )))
-            }
+            Err(err) => Err(ExecutionError::ChannelError(format!(
+                "readonly execution response channel readout failed: {}",
+                err
+            ))),
         }
     }
 

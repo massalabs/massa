@@ -79,23 +79,19 @@ impl PoolCommandSender {
         operations: Map<OperationId, SignedOperation>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_operations", { "ops": operations });
-        let res = self
-            .0
+        self.0
             .send(PoolCommand::AddOperations(operations))
             .await
-            .map_err(|_| PoolError::ChannelError("add_operations command send error".into()));
-        res
+            .map_err(|_| PoolError::ChannelError("add_operations command send error".into()))
     }
 
     /// update current slots
     pub async fn update_current_slot(&mut self, slot: Slot) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.update_current_slot", { "slot": slot });
-        let res = self
-            .0
+        self.0
             .send(PoolCommand::UpdateCurrentSlot(slot))
             .await
-            .map_err(|_| PoolError::ChannelError("update_current_slot command send error".into()));
-        res
+            .map_err(|_| PoolError::ChannelError("update_current_slot command send error".into()))
     }
 
     /// get pool stats
@@ -135,14 +131,12 @@ impl PoolCommandSender {
         massa_trace!("pool.command_sender.update_latest_final_periods", {
             "periods": periods
         });
-        let res = self
-            .0
+        self.0
             .send(PoolCommand::UpdateLatestFinalPeriods(periods))
             .await
             .map_err(|_| {
                 PoolError::ChannelError("update_latest_final_periods command send error".into())
-            });
-        res
+            })
     }
 
     /// Returns a batch of operations ordered from highest to lowest rentability
@@ -274,12 +268,10 @@ impl PoolCommandSender {
         massa_trace!("pool.command_sender.add_endorsements", {
             "endorsements": endorsements
         });
-        let res = self
-            .0
+        self.0
             .send(PoolCommand::AddEndorsements(endorsements))
             .await
-            .map_err(|_| PoolError::ChannelError("add_endorsements command send error".into()));
-        res
+            .map_err(|_| PoolError::ChannelError("add_endorsements command send error".into()))
     }
 
     /// get endorsements by address
