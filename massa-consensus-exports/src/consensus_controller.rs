@@ -134,12 +134,11 @@ impl ConsensusCommandSender {
                     "send error consensus command get_selection_draws".into(),
                 )
             })?;
-        let res = response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_selection_draws response read error".to_string(),
             )
-        })?;
-        res
+        })?
     }
 
     /// get bootstrap snapshot

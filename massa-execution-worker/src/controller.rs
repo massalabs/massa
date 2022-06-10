@@ -9,6 +9,7 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
+use massa_hash::Hash;
 use massa_ledger::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
@@ -94,9 +95,23 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_filtered_sc_output_event(filter)
     }
 
-    /// gets a copy of a full ledger entry
+    /// Get a copy of a single datastore entry with its final and active values
     ///
-    /// # return value
+    /// # Return value
+    /// * `(final_data_entry, active_data_entry)`
+    fn get_final_and_active_data_entry(
+        &self,
+        addr: &Address,
+        key: &Hash,
+    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+        self.execution_state
+            .read()
+            .get_final_and_active_data_entry(addr, key)
+    }
+
+    /// Get a copy of a full ledger entry with its final and active values
+    ///
+    /// # Return value
     /// * `(final_entry, active_entry)`
     fn get_final_and_active_ledger_entry(
         &self,
@@ -141,12 +156,10 @@ impl ExecutionController for ExecutionControllerImpl {
         // Wait for the result of the execution
         match resp_rx.recv() {
             Ok(result) => result,
-            Err(err) => {
-                return Err(ExecutionError::ChannelError(format!(
-                    "readonly execution response channel readout failed: {}",
-                    err
-                )))
-            }
+            Err(err) => Err(ExecutionError::ChannelError(format!(
+                "readonly execution response channel readout failed: {}",
+                err
+            ))),
         }
     }
 

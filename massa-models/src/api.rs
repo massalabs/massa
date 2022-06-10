@@ -343,13 +343,10 @@ impl std::fmt::Display for CompactAddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
-        writeln!(f, "Final Sequential balance:\n{}", self.final_sce_balance)?;
-        writeln!(
-            f,
-            "Candidate Sequential balance:\n{}",
-            self.candidate_sce_balance
-        )?;
-        writeln!(f, "Parallel balance:\n{}", self.balance)?;
+        writeln!(f, "Parallel balance:",)?;
+        writeln!(f, "\tFinal: {}", self.final_sce_balance)?;
+        writeln!(f, "\tCandidate: {}\n", self.candidate_sce_balance)?;
+        writeln!(f, "Sequential balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         Ok(())
     }
@@ -483,6 +480,24 @@ pub struct TimeInterval {
     pub start: Option<MassaTime>,
     /// optional end slot
     pub end: Option<MassaTime>,
+}
+
+/// Datastore entry query input struct
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct DatastoreEntryInput {
+    /// associated address of the entry
+    pub address: Address,
+    /// datastore key
+    pub key: Hash,
+}
+
+/// Datastore entry query output struct
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct DatastoreEntryOutput {
+    /// final datastore entry value
+    pub final_value: Option<Vec<u8>>,
+    /// active datastore entry value
+    pub active_value: Option<Vec<u8>>,
 }
 
 /// filter used when retrieving SC output events

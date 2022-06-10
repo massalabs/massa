@@ -11,8 +11,9 @@ use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
+    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, ReadOnlyBytecodeExecution,
+    ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -230,6 +231,13 @@ pub trait Endpoints {
     #[rpc(name = "get_graph_interval")]
     fn get_graph_interval(&self, _: TimeInterval)
         -> BoxFuture<Result<Vec<BlockSummary>, ApiError>>;
+
+    /// Get a datastore entry
+    #[rpc(name = "get_datastore_entry")]
+    fn get_datastore_entry(
+        &self,
+        _: DatastoreEntryInput,
+    ) -> BoxFuture<Result<DatastoreEntryOutput, ApiError>>;
 
     /// Get addresses.
     #[rpc(name = "get_addresses")]
