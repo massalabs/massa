@@ -38,7 +38,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
 #[test]
 #[serial]
 fn test_pool() {
-    let mut pool = OperationPool::new(&POOL_CONFIG);
+    let mut pool = OperationPool::new(&POOL_CONFIG, Default::default());
 
     // generate (id, transactions, range of validity) by threads
     let mut thread_tx_lists = vec![Vec::new(); POOL_CONFIG.thread_count as usize];
@@ -50,13 +50,13 @@ fn test_pool() {
         let id = op.verify_integrity().unwrap();
 
         let mut ops = Map::default();
-        ops.insert(id, op.clone());
+        ops.insert(id, (op.clone(), op.to_bytes_compact().unwrap()));
 
-        let newly_added = pool.add_operations(ops.clone()).unwrap();
+        let newly_added = pool.process_operations(ops.clone()).unwrap();
         assert_eq!(newly_added, ops.keys().copied().collect());
 
         // duplicate
-        let newly_added = pool.add_operations(ops).unwrap();
+        let newly_added = pool.process_operations(ops).unwrap();
         assert_eq!(newly_added, Set::<OperationId>::default());
 
         thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
@@ -123,8 +123,8 @@ fn test_pool() {
         let (op, thread) = get_transaction(expire_period, fee);
         let id = op.verify_integrity().unwrap();
         let mut ops = Map::default();
-        ops.insert(id, op);
-        let newly_added = pool.add_operations(ops).unwrap();
+        ops.insert(id, (op.clone(), op.to_bytes_compact().unwrap()));
+        let newly_added = pool.process_operations(ops).unwrap();
         assert_eq!(newly_added, Set::<OperationId>::default());
         let res = pool
             .get_operation_batch(

@@ -5,11 +5,10 @@ use massa_logging::massa_trace;
 
 use massa_models::{
     node::NodeId,
-    operation::{OperationIds, Operations},
+    operation::OperationIds,
     prehash::{Map, Set},
     Slot,
 };
-
 use massa_models::{
     Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
 };
@@ -53,7 +52,7 @@ pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
         /// the operations
-        operations: Map<OperationId, SignedOperation>,
+        operations: Map<OperationId, (SignedOperation, Vec<u8>)>,
         /// whether or not to propagate operations
         propagate: bool,
     },
@@ -102,7 +101,7 @@ pub enum ProtocolCommand {
     /// The response to a `[ProtocolEvent::GetBlocks]`.
     GetBlocksResults(BlocksResults),
     /// The response to a `[ProtocolEvent::GetOperations]`.
-    GetOperationsResults((NodeId, Operations)),
+    GetOperationsResults((NodeId, OperationIds)),
     /// Propagate operations ids (send batches)
     PropagateOperations(OperationIds),
     /// Propagate endorsements
@@ -174,7 +173,7 @@ impl ProtocolCommandSender {
     pub async fn send_get_operations_results(
         &mut self,
         node_id: NodeId,
-        results: Operations,
+        results: OperationIds,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_get_operations_results", {
             "results": results

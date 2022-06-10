@@ -4,7 +4,7 @@
 
 use massa_logging::massa_trace;
 use massa_models::prehash::Map;
-use massa_models::{Block, BlockId};
+use massa_models::{Block, BlockId, OperationId, SignedOperation};
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
@@ -21,10 +21,20 @@ pub struct StoredBlock {
     pub serialized_header: Option<Vec<u8>>,
 }
 
+/// Stored operation + serialized operation
+#[derive(Clone, Debug)]
+pub struct StoredOperation {
+    /// The operation.
+    pub operation: SignedOperation,
+    /// The serialized representation of the operation.
+    pub serialized: Vec<u8>,
+}
+
 /// A storage of block, shared by various components.
 #[derive(Clone, Default)]
 pub struct Storage {
     blocks: Arc<RwLock<Map<BlockId, Arc<RwLock<StoredBlock>>>>>,
+    operations: Arc<RwLock<Map<OperationId, StoredOperation>>>,
 }
 
 impl Storage {
@@ -59,6 +69,77 @@ impl Storage {
         let mut blocks = self.blocks.write();
         for id in block_ids {
             blocks.remove(id);
+        }
+    }
+
+    /// Store an operation, along with it's serialized representation.
+    pub fn store_operation(
+        &self,
+        operation_id: OperationId,
+        operation: SignedOperation,
+        serialized: Vec<u8>,
+    ) {
+        massa_trace!("storage.storage.store_operation", {
+            "operation_id": operation_id
+        });
+        let mut operations = self.operations.write();
+        match operations.entry(operation_id) {
+            Entry::Occupied(_) => {}
+            Entry::Vacant(entry) => {
+                let stored_operation = StoredOperation {
+                    operation,
+                    serialized,
+                };
+                entry.insert(stored_operation);
+            }
+        }
+    }
+
+    /// Get a clone of the potentially stored operation.
+    pub fn retrieve_operation(&self, operation_id: &OperationId) -> Option<StoredOperation> {
+        massa_trace!("storage.storage.retrieve_operation", {
+            "operation_id": operation_id
+        });
+        let operations = self.operations.read();
+        operations.get(operation_id).cloned()
+    }
+
+    /// Run a closure over a reference to a potentially stored operation.
+    pub fn with_operation<F, V>(&self, operation_id: &OperationId, f: F) -> V
+    where
+        F: FnOnce(&Option<&StoredOperation>) -> V,
+    {
+        massa_trace!("storage.storage.with_operation", {
+            "operation_id": operation_id
+        });
+        let operations = self.operations.read();
+        f(&operations.get(operation_id))
+    }
+
+    /// Run a closure over a list of references to potentially stored serialized operations.
+    pub fn with_serialized_operations<F, V>(&self, operation_ids: &[OperationId], f: F) -> V
+    where
+        F: FnOnce(&[Option<&Vec<u8>>]) -> V,
+    {
+        massa_trace!("storage.storage.with_serialized_operations", {
+            "operation_ids": operation_ids
+        });
+        let operations = self.operations.read();
+        let results: Vec<Option<&Vec<u8>>> = operation_ids
+            .iter()
+            .map(|id| operations.get(id).map(|stored| &stored.serialized))
+            .collect();
+        f(&results)
+    }
+
+    /// Remove a list of operations from storage.
+    pub fn remove_operations(&self, operation_ids: &[OperationId]) {
+        massa_trace!("storage.storage.remove_operation", {
+            "operation_ids": operation_ids
+        });
+        let mut operations = self.operations.write();
+        for id in operation_ids {
+            operations.remove(id);
         }
     }
 }

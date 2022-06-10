@@ -7,7 +7,7 @@ use massa_models::{
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
     Endorsement, EndorsementId, ModelsError, SerializeCompact, SerializeVarInt, SignedEndorsement,
-    SignedHeader, Version,
+    SignedHeader, SignedOperation, Version,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -57,12 +57,20 @@ pub enum Message {
     Endorsements(Vec<SignedEndorsement>),
 }
 
-/// Deserialize, and return, a message.
-/// In the case of a block,
-/// also return the serialized object.
+/// The serialized form of an object, as received from the network.
+#[derive(Debug)]
+pub enum SerializedForm {
+    /// A serialized block.
+    Block(Vec<u8>),
+    /// A serialized list of operations.
+    Operations(Vec<Vec<u8>>),
+}
+
+/// Deserialize, and return, a message,
+/// while retaining the serialized format of the object(s) contained in it.
 pub fn deserialize_message_with_optional_serialized_object(
     buffer: &[u8],
-) -> Result<(Message, Option<Vec<u8>>), ModelsError> {
+) -> Result<(Message, Option<SerializedForm>), ModelsError> {
     let mut cursor = 0usize;
 
     let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
@@ -73,11 +81,37 @@ pub fn deserialize_message_with_optional_serialized_object(
         .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
 
     match type_id {
+        // Deserialize the block, while retaining its serialized format.
         MessageTypeId::Block => {
             let mut serialized = Vec::new();
             serialized.extend_from_slice(&buffer[cursor..]);
             let (block, _) = Block::from_bytes_compact(&buffer[cursor..])?;
-            Ok((Message::Block(block), Some(serialized)))
+            Ok((
+                Message::Block(block),
+                Some(SerializedForm::Block(serialized)),
+            ))
+        }
+        // Deserialize a list of operations, while retaining their serialized format.
+        MessageTypeId::Operations => {
+            let max_operations_per_message =
+                with_serialization_context(|context| context.max_operations_per_message);
+            let (length, delta) =
+                u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
+            cursor += delta;
+            let mut ops: Operations = Operations::with_capacity(length as usize);
+            let mut serialized = Vec::with_capacity(length as usize);
+            for _ in 0..length {
+                let mut serialized_op = Vec::new();
+                let (operation, delta) = SignedOperation::from_bytes_compact(&buffer[cursor..])?;
+                serialized_op.extend_from_slice(&buffer[cursor..delta + cursor]);
+                cursor += delta;
+                ops.push(operation);
+                serialized.push(serialized_op);
+            }
+            Ok((
+                Message::Operations(ops),
+                Some(SerializedForm::Operations(serialized)),
+            ))
         }
         _ => Message::from_bytes_compact(buffer).map(|result| (result.0, None)),
     }

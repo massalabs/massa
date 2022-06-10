@@ -46,6 +46,8 @@ pub enum NetworkError {
     MissingPeersError,
     /// missing block
     MissingBlock,
+    /// missing operation
+    MissingOperation,
     /// models error: {0}
     ModelsError(#[from] ModelsError),
     /// container inconsistency error: {0}
