@@ -25,9 +25,10 @@ members = [
   "massa-signature",
   "massa-time",
   "massa-wallet",
-  "massa-ledger",
   "massa-final-state"
 ]
+# NOTE: DO NOT FORGET THIS
+exclude = ["massa-ledger-worker"]
 resolver = "2"
 
 # From https://doc.rust-lang.org/cargo/reference/profiles.html#overrides

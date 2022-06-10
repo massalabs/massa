@@ -3,6 +3,9 @@
 //! Module to interact with the disk ledger
 
 use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
+use massa_ledger_exports::{
+    LedgerChanges, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
+};
 use massa_models::address::AddressDeserializer;
 use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
 use massa_models::{
@@ -18,9 +21,6 @@ use std::collections::HashMap;
 use std::ops::Bound;
 use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
-
-use crate::ledger_changes::LedgerEntryUpdate;
-use crate::{LedgerChanges, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 
 #[cfg(feature = "testing")]
 use massa_models::{Amount, DeserializeCompact};

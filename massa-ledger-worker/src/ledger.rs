@@ -2,11 +2,9 @@
 
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
-use crate::ledger_changes::LedgerChanges;
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use crate::ledger_entry::LedgerEntry;
-use crate::{LedgerConfig, LedgerError};
 use massa_hash::Hash;
+use massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntry, LedgerError};
 use massa_models::{Address, Amount, ModelsError};
 use massa_models::{DeserializeCompact, Slot};
 use nom::AsBytes;
