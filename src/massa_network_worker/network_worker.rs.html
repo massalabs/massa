@@ -1591,8 +1591,8 @@
             <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::BlockNotFound</span>(<span class="ident">block_id</span>)) =&gt; {
                 <span class="ident">event_impl::on_block_not_found</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">block_id</span>).<span class="kw">await</span>
             }
-            <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::ReceivedOperations</span>(<span class="ident">operations</span>)) =&gt; {
-                <span class="ident">event_impl::on_received_operations</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">operations</span>).<span class="kw">await</span>
+            <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::ReceivedOperations</span>(<span class="ident">operations</span>, <span class="ident">serialized</span>)) =&gt; {
+                <span class="ident">event_impl::on_received_operations</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">operations</span>, <span class="ident">serialized</span>).<span class="kw">await</span>
             }
             <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::ReceivedEndorsements</span>(<span class="ident">endorsements</span>)) =&gt; {
                 <span class="ident">event_impl::on_received_endorsements</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">endorsements</span>).<span class="kw">await</span>

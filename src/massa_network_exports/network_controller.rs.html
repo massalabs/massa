@@ -315,9 +315,6 @@
 <span id="308">308</span>
 <span id="309">309</span>
 <span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -325,11 +322,8 @@
     <span class="ident">NetworkEvent</span>, <span class="ident">Peers</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">composite::PubkeySig</span>,
-    <span class="ident">node::NodeId</span>,
-    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
-    <span class="ident">stats::NetworkStats</span>,
-    <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>,
+    <span class="ident">composite::PubkeySig</span>, <span class="ident">node::NodeId</span>, <span class="ident">operation::OperationIds</span>, <span class="ident">stats::NetworkStats</span>, <span class="ident">BlockId</span>,
+    <span class="ident">SignedEndorsement</span>,
 };
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">collections</span>::{<span class="ident">HashMap</span>, <span class="ident">VecDeque</span>},
@@ -503,7 +497,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">operations</span>: <span class="ident">Operations</span>,
+        <span class="ident">operations</span>: <span class="ident">OperationIds</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendOperations</span> { <span class="ident">node</span>, <span class="ident">operations</span> })

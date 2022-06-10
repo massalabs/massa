@@ -470,7 +470,6 @@
 <span id="463">463</span>
 <span id="464">464</span>
 <span id="465">465</span>
-<span id="466">466</span>
 </pre><pre class="rust"><code><span class="doccomment">//! On `NetworkWorker` receive a command behaviors implementation</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! All following function take by default a reference to the `NetworkWorker`</span>
@@ -496,7 +495,6 @@
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">massa_models::operation::Operations</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">composite::PubkeySig</span>, <span class="ident">node::NodeId</span>, <span class="ident">operation::OperationIds</span>, <span class="ident">stats::NetworkStats</span>, <span class="ident">BlockId</span>,
     <span class="ident">SignedEndorsement</span>,
@@ -838,7 +836,7 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_operations_cmd</span>(
     <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
     <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">operations</span>: <span class="ident">Operations</span>,
+    <span class="ident">operations</span>: <span class="ident">OperationIds</span>,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperations&quot;</span>,

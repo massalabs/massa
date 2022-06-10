@@ -116,6 +116,8 @@
 <span id="109">109</span>
 <span id="110">110</span>
 <span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">peers::PeerType</span>, <span class="ident">ConnectionId</span>};
@@ -164,6 +166,8 @@
     <span class="ident">MissingPeersError</span>,
     <span class="doccomment">/// missing block</span>
     <span class="ident">MissingBlock</span>,
+    <span class="doccomment">/// missing operation</span>
+    <span class="ident">MissingOperation</span>,
     <span class="doccomment">/// models error: {0}</span>
     <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
     <span class="doccomment">/// container inconsistency error: {0}</span>

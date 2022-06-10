@@ -369,6 +369,15 @@
 <span id="362">362</span>
 <span id="363">363</span>
 <span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::error::PoolError</span>;
@@ -376,11 +385,13 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">endorsement_pool::EndorsementPool</span>, <span class="ident">settings::PoolConfig</span>};
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models::stats::PoolStats</span>;
+<span class="kw">use</span> <span class="ident">massa_models::SerializeCompact</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">SignedEndorsement</span>,
     <span class="ident">SignedOperation</span>, <span class="ident">Slot</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolPoolEventReceiver</span>};
+<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>};
 <span class="kw">use</span> <span class="ident">tracing::warn</span>;
 
@@ -492,6 +503,7 @@
         <span class="ident">protocol_pool_event_receiver</span>: <span class="ident">ProtocolPoolEventReceiver</span>,
         <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">PoolCommand</span><span class="op">&gt;</span>,
         <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">PoolManagementCommand</span><span class="op">&gt;</span>,
+        <span class="ident">storage</span>: <span class="ident">Storage</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PoolWorker</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.pool_worker.new&quot;</span>, {});
         <span class="prelude-val">Ok</span>(<span class="ident">PoolWorker</span> {
@@ -499,7 +511,7 @@
             <span class="ident">protocol_pool_event_receiver</span>,
             <span class="ident">controller_command_rx</span>,
             <span class="ident">controller_manager_rx</span>,
-            <span class="ident">operation_pool</span>: <span class="ident">OperationPool::new</span>(<span class="ident">cfg</span>),
+            <span class="ident">operation_pool</span>: <span class="ident">OperationPool::new</span>(<span class="ident">cfg</span>, <span class="ident">storage</span>),
             <span class="ident">endorsement_pool</span>: <span class="ident">EndorsementPool::new</span>(<span class="ident">cfg</span>),
         })
     }
@@ -553,12 +565,19 @@
     <span class="doccomment">/// * `cmd`: consensus command to process</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">process_pool_command</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cmd</span>: <span class="ident">PoolCommand</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">cmd</span> {
-            <span class="ident">PoolCommand::AddOperations</span>(<span class="kw-2">mut</span> <span class="ident">operations</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">newly_added</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">add_operations</span>(<span class="ident">operations</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
-                <span class="ident">operations</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">op_id</span>, <span class="ident">_op</span><span class="op">|</span> <span class="ident">newly_added</span>.<span class="ident">contains</span>(<span class="ident">op_id</span>));
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">operations</span>.<span class="ident">is_empty</span>() {
+            <span class="ident">PoolCommand::AddOperations</span>(<span class="ident">operations</span>) =&gt; {
+                <span class="kw">let</span> <span class="ident">operations</span> <span class="op">=</span> <span class="ident">operations</span>
+                    .<span class="ident">into_iter</span>()
+                    .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">op</span>)<span class="op">|</span> {
+                        <span class="ident">op</span>.<span class="ident">to_bytes_compact</span>()
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">serialized</span><span class="op">|</span> (<span class="ident">id</span>, (<span class="ident">op</span>, <span class="ident">serialized</span>)))
+                            .<span class="ident">ok</span>()
+                    })
+                    .<span class="ident">collect</span>();
+                <span class="kw">let</span> <span class="ident">newly_added</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">process_operations</span>(<span class="ident">operations</span>)<span class="question-mark">?</span>;
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">newly_added</span>.<span class="ident">is_empty</span>() {
                     <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
-                        .<span class="ident">propagate_operations</span>(<span class="ident">operations</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>())
+                        .<span class="ident">propagate_operations</span>(<span class="ident">newly_added</span>)
                         .<span class="kw">await</span><span class="question-mark">?</span>;
                 }
             }
@@ -690,19 +709,18 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">event</span> {
             <span class="ident">ProtocolPoolEvent::ReceivedOperations</span> {
-                <span class="kw-2">mut</span> <span class="ident">operations</span>,
+                <span class="ident">operations</span>,
                 <span class="ident">propagate</span>,
             } =&gt; {
                 <span class="kw">if</span> <span class="ident">propagate</span> {
-                    <span class="kw">let</span> <span class="ident">newly_added</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">add_operations</span>(<span class="ident">operations</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
-                    <span class="ident">operations</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">op_id</span>, <span class="ident">_op</span><span class="op">|</span> <span class="ident">newly_added</span>.<span class="ident">contains</span>(<span class="ident">op_id</span>));
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">operations</span>.<span class="ident">is_empty</span>() {
+                    <span class="kw">let</span> <span class="ident">newly_added</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">process_operations</span>(<span class="ident">operations</span>)<span class="question-mark">?</span>;
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">newly_added</span>.<span class="ident">is_empty</span>() {
                         <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
-                            .<span class="ident">propagate_operations</span>(<span class="ident">operations</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>())
+                            .<span class="ident">propagate_operations</span>(<span class="ident">newly_added</span>)
                             .<span class="kw">await</span><span class="question-mark">?</span>;
                     }
                 } <span class="kw">else</span> {
-                    <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">add_operations</span>(<span class="ident">operations</span>)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">process_operations</span>(<span class="ident">operations</span>)<span class="question-mark">?</span>;
                 }
             }
             <span class="ident">ProtocolPoolEvent::ReceivedEndorsements</span> {
@@ -724,9 +742,9 @@
                 }
             }
             <span class="ident">ProtocolPoolEvent::GetOperations</span>((<span class="ident">node_id</span>, <span class="ident">operation_ids</span>)) =&gt; {
-                <span class="kw">let</span> <span class="ident">operations</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">get_operations</span>(<span class="kw-2">&amp;</span><span class="ident">operation_ids</span>);
+                <span class="kw">let</span> <span class="ident">results</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">find_operations</span>(<span class="ident">operation_ids</span>);
                 <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
-                    .<span class="ident">send_get_operations_results</span>(<span class="ident">node_id</span>, <span class="ident">operations</span>.<span class="ident">into_values</span>().<span class="ident">collect</span>())
+                    .<span class="ident">send_get_operations_results</span>(<span class="ident">node_id</span>, <span class="ident">results</span>)
                     .<span class="kw">await</span><span class="question-mark">?</span>;
             }
         }
