@@ -22,7 +22,7 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_final_state = { path = "../massa-final-state" }
 massa_async_pool = { path = "../massa-async-pool" }
-massa_ledger = { path = "../massa-ledger" }
+massa_ledger_worker = { path = "../massa-ledger-worker" }
 
 [dev-dependencies]
 serial_test = "0.5"
@@ -32,7 +32,7 @@ tempfile = "3.2"
 massa_execution_exports = { path = "../massa-execution-exports", features = [
     "testing",
 ] }
-massa_ledger = { path = "../massa-ledger", features = ["testing"] }
+massa_ledger_worker = { path = "../massa-ledger-worker", features = ["testing"] }
 
 [features]
 sandbox = ["massa_async_pool/sandbox"]

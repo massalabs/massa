@@ -25,7 +25,7 @@ massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_final_state = { path = "../massa-final-state" }
 massa_graph = { path = "../massa-graph" }
 massa_hash = { path = "../massa-hash" }
-massa_ledger = { path = "../massa-ledger" }
+massa_ledger_worker = { path = "../massa-ledger-worker" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_network_exports = { path = "../massa-network-exports" }
@@ -37,14 +37,28 @@ massa_time = { path = "../massa-time" }
 [dev-dependencies]
 bitvec = { version = "0.22", features = ["serde"] }
 serial_test = "0.5"
-massa_final_state = { path = "../massa-final-state", features=["testing"] }
-massa_async_pool = { path = "../massa-async-pool", features=["testing"] }
-massa_ledger = { path = "../massa-ledger", features=["testing"] }
+massa_final_state = { path = "../massa-final-state", features = ["testing"] }
+massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
+massa_ledger_worker = { path = "../massa-ledger-worker", features = [
+    "testing",
+] }
 lazy_static = "1.4.0"
 
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-instrument = ["tokio/tracing", "massa_consensus_exports/instrument", "massa_graph/instrument", "massa_models/instrument", "massa_network_exports/instrument", "massa_proof_of_stake_exports/instrument", "massa_time/instrument"]
-testing = ["massa_final_state/testing", "massa_ledger/testing", "massa_async_pool/testing"]
+instrument = [
+    "tokio/tracing",
+    "massa_consensus_exports/instrument",
+    "massa_graph/instrument",
+    "massa_models/instrument",
+    "massa_network_exports/instrument",
+    "massa_proof_of_stake_exports/instrument",
+    "massa_time/instrument",
+]
+testing = [
+    "massa_final_state/testing",
+    "massa_ledger_worker/testing",
+    "massa_async_pool/testing",
+]
 sandbox = ["massa_async_pool/sandbox"]

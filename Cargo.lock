@@ -1477,7 +1477,7 @@ dependencies = [
  "massa_execution_exports",
  "massa_execution_worker",
  "massa_final_state",
- "massa_ledger",
+ "massa_ledger_worker",
  "massa_logging",
  "massa_models",
  "massa_network_exports",
@@ -1577,7 +1577,7 @@ dependencies = [
  "massa_final_state",
  "massa_graph",
  "massa_hash",
- "massa_ledger",
+ "massa_ledger_worker",
  "massa_logging",
  "massa_models",
  "massa_network_exports",
@@ -1653,7 +1653,7 @@ dependencies = [
  "displaydoc",
  "massa_final_state",
  "massa_hash",
- "massa_ledger",
+ "massa_ledger_worker",
  "massa_models",
  "massa_time",
  "thiserror",
@@ -1669,7 +1669,7 @@ dependencies = [
  "massa_execution_exports",
  "massa_final_state",
  "massa_hash",
- "massa_ledger",
+ "massa_ledger_worker",
  "massa_models",
  "massa_signature",
  "massa_storage",
@@ -1688,7 +1688,7 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "massa_async_pool",
- "massa_ledger",
+ "massa_ledger_worker",
  "massa_models",
  "massa_serialization",
  "massa_signature",
@@ -1735,7 +1735,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_ledger"
+name = "massa_ledger_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
@@ -1749,6 +1749,21 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+]
+
+[[package]]
+name = "massa_ledger_worker"
+version = "0.1.0"
+dependencies = [
+ "massa_hash",
+ "massa_ledger_exports",
+ "massa_models",
+ "massa_serialization",
+ "massa_signature",
+ "nom 7.1.1",
+ "rocksdb",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
