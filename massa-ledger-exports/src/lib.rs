@@ -7,7 +7,10 @@ mod types;
 
 pub use config::LedgerConfig;
 pub use error::LedgerError;
-pub use key::{get_address_from_key, KeyDeserializer, KeySerializer};
+pub use key::{
+    get_address_from_key, KeyDeserializer, KeySerializer, BALANCE_IDENT, BYTECODE_IDENT,
+    DATASTORE_IDENT,
+};
 pub use ledger_changes::{
     LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, LedgerEntryUpdate,
 };

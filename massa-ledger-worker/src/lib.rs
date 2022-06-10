@@ -51,7 +51,6 @@ mod ledger;
 mod ledger_db;
 
 pub use ledger::FinalLedger;
-pub use ledger_db::{get_address_from_key, KeyDeserializer, KeySerializer};
 
 #[cfg(test)]
 mod tests;

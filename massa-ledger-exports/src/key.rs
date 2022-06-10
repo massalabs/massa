@@ -2,9 +2,9 @@ use massa_hash::HashDeserializer;
 use massa_models::{address::AddressDeserializer, Address};
 use massa_serialization::{Deserializer, Serializer};
 
-const BALANCE_IDENT: u8 = 0u8;
-const BYTECODE_IDENT: u8 = 1u8;
-const DATASTORE_IDENT: u8 = 2u8;
+pub const BALANCE_IDENT: u8 = 0u8;
+pub const BYTECODE_IDENT: u8 = 1u8;
+pub const DATASTORE_IDENT: u8 = 2u8;
 
 /// Balance key formatting macro
 #[macro_export]
@@ -81,7 +81,7 @@ impl KeyDeserializer {
     }
 }
 
-// NOTE: in the future deserialize keys into a rust type
+// TODO: deserialize keys into a rust type
 impl Deserializer<Vec<u8>> for KeyDeserializer {
     fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
         let (rest, address) = self.address_deserializer.deserialize(buffer)?;
