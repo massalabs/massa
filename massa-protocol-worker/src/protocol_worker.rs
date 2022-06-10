@@ -365,11 +365,11 @@ impl ProtocolWorker {
                         );
                         node_info.insert_known_endorsements(
                             endorsement_ids.clone(),
-                            self.protocol_settings.max_known_endorsements_size,
+                            self.protocol_settings.max_node_known_endorsements_size,
                         );
                         node_info.insert_known_ops(
                             operation_ids.clone(),
-                            self.protocol_settings.max_known_ops_size,
+                            self.protocol_settings.max_node_known_ops_size,
                         );
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id });
                         self.network_command_sender
@@ -841,12 +841,12 @@ impl ProtocolWorker {
                 );
                 node_info.insert_known_endorsements(
                     block_info.endorsements.keys().copied().collect(),
-                    self.protocol_settings.max_known_endorsements_size,
+                    self.protocol_settings.max_node_known_endorsements_size,
                 );
                 if let Some(operations) = block_info.operations.as_ref() {
                     node_info.insert_known_ops(
                         operations.iter().cloned().collect(),
-                        self.protocol_settings.max_known_ops_size,
+                        self.protocol_settings.max_node_known_ops_size,
                     );
                 }
             }
@@ -953,7 +953,7 @@ impl ProtocolWorker {
 
     /// Prune `checked_headers` if it is too large
     fn prune_checked_headers(&mut self) {
-        if self.checked_headers.len() > self.protocol_settings.max_node_known_blocks_size {
+        if self.checked_headers.len() > self.protocol_settings.max_known_blocks_size {
             self.checked_headers.clear();
         }
     }
@@ -1122,7 +1122,7 @@ impl ProtocolWorker {
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_ops(
                 received_ids.keys().copied().collect(),
-                self.protocol_settings.max_known_ops_size,
+                self.protocol_settings.max_node_known_ops_size,
             );
         }
 
@@ -1181,7 +1181,7 @@ impl ProtocolWorker {
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_endorsements(
                 endorsement_ids.keys().copied().collect(),
-                self.protocol_settings.max_known_endorsements_size,
+                self.protocol_settings.max_node_known_endorsements_size,
             );
         }
 

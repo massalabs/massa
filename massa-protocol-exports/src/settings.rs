@@ -8,14 +8,20 @@ use serde::Deserialize;
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
-    /// max known blocks per node kept in memory
+    /// max known blocks of current nodes we keep in memory (by node)
+    pub max_known_blocks_size: usize,
+    /// max known blocks of foreign nodes we keep in memory (by node)
     pub max_node_known_blocks_size: usize,
     /// max wanted blocks per node kept in memory
     pub max_node_wanted_blocks_size: usize,
-    /// max known operations per node kept in memory
+    /// max known operations current node kept in memory
     pub max_known_ops_size: usize,
+    /// max known operations of foreign nodes we keep in memory (by node)
+    pub max_node_known_ops_size: usize,
     /// max known endorsements per node kept in memory
     pub max_known_endorsements_size: usize,
+    /// max known endorsements of foreign nodes we keep in memory (by node)
+    pub max_node_known_endorsements_size: usize,
     /// we ask for the same block `max_simultaneous_ask_blocks_per_node` times at the same time
     pub max_simultaneous_ask_blocks_per_node: usize,
     /// Max wait time for sending a Network or Node event.
