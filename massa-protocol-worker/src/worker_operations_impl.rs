@@ -212,10 +212,6 @@ impl ProtocolWorker {
         node_id: NodeId,
         op_ids: OperationIds,
     ) -> Result<(), ProtocolError> {
-        if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            // remove_known_ops is inefficient when actually removing an entry, but this is almost never the case
-            node_info.remove_known_ops(&op_ids);
-        }
         let mut operation_ids = OperationIds::default();
         for op_id in op_ids.iter() {
             if self.checked_operations.get(op_id).is_some() {
