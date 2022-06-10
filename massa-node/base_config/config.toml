@@ -81,6 +81,8 @@
     message_timeout = 5000
     # timeout after whick we consider a node does not have the block we asked for
     ask_block_timeout = 10000
+    # max cache size for which blocks our node knows about
+    max_known_blocks_size = 1024
     # max cache size for which blocks a foreign node knows about
     max_node_known_blocks_size = 1024
     # max cache size for which blocks a foreign node asked for
@@ -89,10 +91,14 @@
     max_simultaneous_ask_blocks_per_node = 128
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 0
+    # max cache size for which operations your node knows about
+    max_known_ops_size = 200000
     # max cache size for which operations a foreign node knows about
-    max_known_ops_size = 2048
-    # max cache size for which endorsements a foreign node knows about
+    max_node_known_ops_size = 100000
+    # max cache size for which endorsements our node knows about
     max_known_endorsements_size = 1024
+    # max cache size for which endorsements a foreign node knows about
+    max_node_known_endorsements_size = 1024
     # Maximum number of batches in the memory buffer.
     # Dismiss the new batches if overflow
     operation_batch_buffer_capacity = 10024
@@ -102,7 +108,7 @@
     asked_operations_pruning_period = 100000
     # Max number of operation per message, same as network param but can be smaller
     max_operations_per_message = 1024
-    
+
 [network]
     # port on which to listen for protocol communication
     bind = "[::]:31244"

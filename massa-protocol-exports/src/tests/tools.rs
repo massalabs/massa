@@ -246,12 +246,15 @@ pub fn create_protocol_settings() -> ProtocolSettings {
 
     ProtocolSettings {
         ask_block_timeout: 500.into(),
+        max_known_blocks_size: 100,
         max_node_known_blocks_size: 100,
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
         max_send_wait: MassaTime::from(100),
         max_known_ops_size: 1000,
+        max_node_known_ops_size: 1000,
         max_known_endorsements_size: 1000,
+        max_node_known_endorsements_size: 1000,
         operation_batch_buffer_capacity: 1000,
         operation_batch_proc_period: 200.into(),
         asked_operations_pruning_period: 500.into(),
