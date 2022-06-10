@@ -447,7 +447,7 @@ impl ProtocolWorker {
                                         // otherwise, it means that they are not relevant anyways (old final block)
                                         node_info.insert_known_endorsements(
                                             endorsement_ids.clone(),
-                                            self.protocol_settings.max_known_endorsements_size,
+                                            self.protocol_settings.max_node_known_endorsements_size,
                                         );
                                     }
                                     if let Some(ref operation_ids) = opt_operation_ids {
@@ -455,7 +455,7 @@ impl ProtocolWorker {
                                         // otherwise, it means that they are not relevant anyways (old final block)
                                         node_info.insert_known_ops(
                                             operation_ids.clone(),
-                                            self.protocol_settings.max_known_ops_size,
+                                            self.protocol_settings.max_node_known_ops_size,
                                         );
                                     }
                                     massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "block_id": block_id});
@@ -520,7 +520,7 @@ impl ProtocolWorker {
                         .collect();
                     node_info.insert_known_ops(
                         new_ops.iter().cloned().collect(),
-                        self.protocol_settings.max_known_ops_size,
+                        self.protocol_settings.max_node_known_ops_size,
                     );
                     if !new_ops.is_empty() {
                         self.network_command_sender
@@ -542,7 +542,7 @@ impl ProtocolWorker {
                         .collect();
                     node_info.insert_known_endorsements(
                         new_endorsements.keys().copied().collect(),
-                        self.protocol_settings.max_known_endorsements_size,
+                        self.protocol_settings.max_node_known_endorsements_size,
                     );
                     let to_send = new_endorsements
                         .into_iter()
