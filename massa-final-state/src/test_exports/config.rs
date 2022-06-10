@@ -4,7 +4,8 @@
 
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
-use massa_ledger::{FinalLedger, LedgerConfig};
+use massa_ledger_exports::LedgerConfig;
+use massa_ledger_worker::FinalLedger;
 use massa_models::Slot;
 
 /// Default value of `FinalState` used for tests

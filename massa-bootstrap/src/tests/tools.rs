@@ -11,8 +11,8 @@ use massa_graph::{
     export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset, BootstrapableGraph,
 };
 use massa_hash::Hash;
-use massa_ledger::test_exports::create_final_ledger;
-use massa_ledger::LedgerEntry;
+use massa_ledger_exports::LedgerEntry;
+use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::signed::Signable;
 use massa_models::{
     clique::Clique,

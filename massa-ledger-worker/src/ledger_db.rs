@@ -20,7 +20,7 @@ use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
 
 #[cfg(feature = "testing")]
-use massa_models::{Amount, DeserializeCompact};
+use massa_models::{address::AddressDeserializer, Amount, DeserializeCompact};
 
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";

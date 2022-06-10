@@ -6,7 +6,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
-use massa_ledger::{LedgerConfig, LedgerError};
+use massa_ledger_exports::{LedgerConfig, LedgerError};
 use massa_models::{
     api::EventFilter,
     constants::{AMOUNT_DECIMAL_FACTOR, FINAL_HISTORY_LENGTH, THREAD_COUNT},

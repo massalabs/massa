@@ -1,3 +1,7 @@
+//! # General description
+//!
+//! TODO
+
 mod config;
 mod error;
 mod key;
@@ -16,3 +20,6 @@ pub use ledger_changes::{
 };
 pub use ledger_entry::LedgerEntry;
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
+
+#[cfg(feature = "testing")]
+pub mod test_exports;

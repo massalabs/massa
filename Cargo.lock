@@ -1671,7 +1671,6 @@ dependencies = [
  "massa_final_state",
  "massa_hash",
  "massa_ledger_exports",
- "massa_ledger_worker",
  "massa_models",
  "massa_signature",
  "massa_storage",

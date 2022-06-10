@@ -26,13 +26,10 @@ massa_ledger_exports = { path = "../massa-ledger-exports" }
 
 [dev-dependencies]
 serial_test = "0.5"
-tempfile = "3.2" 
+tempfile = "3.2"
 
 # custom modules with testing enabled
-massa_execution_exports = { path = "../massa-execution-exports", features = [
-    "testing",
-] }
-massa_ledger_worker = { path = "../massa-ledger-worker", features = ["testing"] }
+massa_execution_exports = { path = "../massa-execution-exports", features = ["testing"] }
 
 [features]
 sandbox = ["massa_async_pool/sandbox"]

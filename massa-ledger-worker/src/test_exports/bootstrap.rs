@@ -1,10 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_ledger_exports::{LedgerConfig, LedgerEntry};
 use massa_models::Address;
 use std::collections::HashMap;
 use tempfile::TempDir;
 
-use crate::{ledger_db::LedgerDB, FinalLedger, LedgerConfig, LedgerEntry};
+use crate::{ledger_db::LedgerDB, FinalLedger};
 
 /// This file defines tools to test the ledger bootstrap
 

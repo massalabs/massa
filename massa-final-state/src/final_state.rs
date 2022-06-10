@@ -166,7 +166,7 @@ mod tests {
 
     use crate::{FinalState, StateChanges};
     use massa_async_pool::test_exports::get_random_message;
-    use massa_ledger::SetUpdateOrDelete;
+    use massa_ledger_exports::SetUpdateOrDelete;
     use massa_models::{Address, Slot};
     use massa_signature::{derive_public_key, generate_random_private_key};
 
