@@ -1890,11 +1890,11 @@
                         );
                         <span class="ident">node_info</span>.<span class="ident">insert_known_endorsements</span>(
                             <span class="ident">endorsement_ids</span>.<span class="ident">clone</span>(),
-                            <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_endorsements_size</span>,
+                            <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_endorsements_size</span>,
                         );
                         <span class="ident">node_info</span>.<span class="ident">insert_known_ops</span>(
                             <span class="ident">operation_ids</span>.<span class="ident">clone</span>(),
-                            <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_ops_size</span>,
+                            <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_ops_size</span>,
                         );
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.send_block&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">node_id</span>, <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span> });
                         <span class="self">self</span>.<span class="ident">network_command_sender</span>
@@ -1972,7 +1972,7 @@
                                         <span class="comment">// otherwise, it means that they are not relevant anyways (old final block)</span>
                                         <span class="ident">node_info</span>.<span class="ident">insert_known_endorsements</span>(
                                             <span class="ident">endorsement_ids</span>.<span class="ident">clone</span>(),
-                                            <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_endorsements_size</span>,
+                                            <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_endorsements_size</span>,
                                         );
                                     }
                                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">operation_ids</span>) <span class="op">=</span> <span class="ident">opt_operation_ids</span> {
@@ -1980,7 +1980,7 @@
                                         <span class="comment">// otherwise, it means that they are not relevant anyways (old final block)</span>
                                         <span class="ident">node_info</span>.<span class="ident">insert_known_ops</span>(
                                             <span class="ident">operation_ids</span>.<span class="ident">clone</span>(),
-                                            <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_ops_size</span>,
+                                            <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_ops_size</span>,
                                         );
                                     }
                                     <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.found_block.send_block&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">node_id</span>, <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>});
@@ -2045,7 +2045,7 @@
                         .<span class="ident">collect</span>();
                     <span class="ident">node_info</span>.<span class="ident">insert_known_ops</span>(
                         <span class="ident">new_ops</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>(),
-                        <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_ops_size</span>,
+                        <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_ops_size</span>,
                     );
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">new_ops</span>.<span class="ident">is_empty</span>() {
                         <span class="self">self</span>.<span class="ident">network_command_sender</span>
@@ -2067,7 +2067,7 @@
                         .<span class="ident">collect</span>();
                     <span class="ident">node_info</span>.<span class="ident">insert_known_endorsements</span>(
                         <span class="ident">new_endorsements</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>(),
-                        <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_endorsements_size</span>,
+                        <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_endorsements_size</span>,
                     );
                     <span class="kw">let</span> <span class="ident">to_send</span> <span class="op">=</span> <span class="ident">new_endorsements</span>
                         .<span class="ident">into_iter</span>()
@@ -2366,12 +2366,12 @@
                 );
                 <span class="ident">node_info</span>.<span class="ident">insert_known_endorsements</span>(
                     <span class="ident">block_info</span>.<span class="ident">endorsements</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>(),
-                    <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_endorsements_size</span>,
+                    <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_endorsements_size</span>,
                 );
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">operations</span>) <span class="op">=</span> <span class="ident">block_info</span>.<span class="ident">operations</span>.<span class="ident">as_ref</span>() {
                     <span class="ident">node_info</span>.<span class="ident">insert_known_ops</span>(
                         <span class="ident">operations</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>(),
-                        <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_ops_size</span>,
+                        <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_ops_size</span>,
                     );
                 }
             }
@@ -2478,7 +2478,7 @@
 
     <span class="doccomment">/// Prune `checked_headers` if it is too large</span>
     <span class="kw">fn</span> <span class="ident">prune_checked_headers</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_headers</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_headers</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_blocks_size</span> {
             <span class="self">self</span>.<span class="ident">checked_headers</span>.<span class="ident">clear</span>();
         }
     }
@@ -2647,7 +2647,7 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">node_info</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">get_mut</span>(<span class="ident">source_node_id</span>) {
             <span class="ident">node_info</span>.<span class="ident">insert_known_ops</span>(
                 <span class="ident">received_ids</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>(),
-                <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_ops_size</span>,
+                <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_ops_size</span>,
             );
         }
 
@@ -2706,7 +2706,7 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">node_info</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">get_mut</span>(<span class="ident">source_node_id</span>) {
             <span class="ident">node_info</span>.<span class="ident">insert_known_endorsements</span>(
                 <span class="ident">endorsement_ids</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>(),
-                <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_endorsements_size</span>,
+                <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_endorsements_size</span>,
             );
         }
 
@@ -3042,5 +3042,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (420c970cb 2022-06-09)" ></div>
 </body></html>
