@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use massa_final_state::FinalState;
-use massa_ledger::get_address_from_key;
+use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::Version;
 use massa_signature::PublicKey;

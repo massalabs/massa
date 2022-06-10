@@ -17,7 +17,7 @@ use massa_consensus_worker::start_consensus_controller;
 use massa_execution_exports::{ExecutionConfig, ExecutionManager};
 use massa_execution_worker::start_execution_worker;
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_ledger::LedgerConfig;
+use massa_ledger_exports::LedgerConfig;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{

@@ -16,7 +16,9 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
-use massa_ledger::{Applicable, LedgerEntry, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete};
+use massa_ledger_exports::{
+    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete,
+};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;

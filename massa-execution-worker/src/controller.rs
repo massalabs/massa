@@ -9,7 +9,7 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
-use massa_ledger::LedgerEntry;
+use massa_ledger_exports::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;

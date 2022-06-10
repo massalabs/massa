@@ -13,7 +13,7 @@ use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
-use massa_ledger::LedgerChanges;
+use massa_ledger_exports::LedgerChanges;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     Address, Amount, BlockId, OperationId, Slot,

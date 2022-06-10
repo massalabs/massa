@@ -11,7 +11,7 @@ use massa_async_pool::AsyncMessageId;
 use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::{FinalState, StateChanges};
 use massa_graph::BootstrapableGraph;
-use massa_ledger::get_address_from_key;
+use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{Slot, Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};

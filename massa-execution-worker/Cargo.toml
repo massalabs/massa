@@ -22,7 +22,7 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_final_state = { path = "../massa-final-state" }
 massa_async_pool = { path = "../massa-async-pool" }
-massa_ledger_worker = { path = "../massa-ledger-worker" }
+massa_ledger_exports = { path = "../massa-ledger-exports" }
 
 [dev-dependencies]
 serial_test = "0.5"
