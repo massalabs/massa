@@ -7,7 +7,8 @@
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
-use massa_ledger::{FinalLedger, LedgerChanges};
+use massa_ledger_exports::LedgerChanges;
+use massa_ledger_worker::FinalLedger;
 use massa_models::{constants::THREAD_COUNT, Address, Slot};
 use std::collections::VecDeque;
 

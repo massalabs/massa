@@ -516,19 +516,15 @@ impl LedgerDB {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
+    use super::LedgerDB;
+    use crate::ledger_db::LedgerSubEntry;
     use massa_hash::Hash;
+    use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{Address, Amount, DeserializeCompact};
     use massa_signature::{derive_public_key, generate_random_private_key};
     use rocksdb::WriteBatch;
+    use std::collections::BTreeMap;
     use tempfile::TempDir;
-
-    use crate::{
-        ledger_changes::LedgerEntryUpdate, ledger_db::LedgerSubEntry, LedgerEntry, SetOrKeep,
-    };
-
-    use super::LedgerDB;
 
     #[cfg(test)]
     fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Hash, Vec<u8>>) {

@@ -1653,7 +1653,7 @@ dependencies = [
  "displaydoc",
  "massa_final_state",
  "massa_hash",
- "massa_ledger_worker",
+ "massa_ledger_exports",
  "massa_models",
  "massa_time",
  "thiserror",
@@ -1688,6 +1688,7 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "massa_async_pool",
+ "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",
  "massa_serialization",

@@ -9,6 +9,7 @@ displaydoc = "0.2"
 nom = "7.1"
 thiserror = "1.0"
 # custom modules
+massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_ledger_worker = { path = "../massa-ledger-worker" }
 massa_models = { path = "../massa-models" }
 massa_async_pool = { path = "../massa-async-pool" }

@@ -5,7 +5,7 @@
 use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
-use massa_ledger::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, Applicable};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{error::context, sequence::tuple, IResult};
 
@@ -102,7 +102,6 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
 impl StateChanges {
     /// extends the current `StateChanges` with another one
     pub fn apply(&mut self, changes: StateChanges) {
-        use massa_ledger::Applicable;
         self.ledger_changes.apply(changes.ledger_changes);
         self.async_pool_changes.extend(changes.async_pool_changes);
     }
