@@ -92,7 +92,7 @@
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 0
     # max cache size for which operations your node knows about
-    max_known_ops_size = 50000
+    max_known_ops_size = 200000
     # max cache size for which operations a foreign node knows about
     max_node_known_ops_size = 10000
     # max cache size for which endorsements our node knows about
