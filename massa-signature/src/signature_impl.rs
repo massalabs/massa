@@ -766,7 +766,9 @@ pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
 /// ```
 pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaSignatureError> {
     let message = Message::from_slice(hash.to_bytes())?;
-    Ok(Signature(SECP256K1.sign_schnorr(&message, &private_key.0)))
+    Ok(Signature(
+        SECP256K1.sign_schnorr_no_aux_rand(&message, &private_key.0),
+    ))
 }
 
 /// Checks if the `Signature` associated with data bytes
