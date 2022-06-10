@@ -95,7 +95,7 @@
     max_known_ops_size = 50000
     # max cache size for which operations a foreign node knows about
     max_node_known_ops_size = 10000
-    # max cache size for which endorsements a foreign node knows about
+    # max cache size for which endorsements our node knows about
     max_known_endorsements_size = 1024
     # max cache size for which endorsements a foreign node knows about
     max_node_known_endorsements_size = 1024
