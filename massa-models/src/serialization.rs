@@ -6,13 +6,15 @@ use integer_encoding::VarInt;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+use nom::bytes::complete::take;
 use nom::multi::length_data;
+use nom::sequence::preceded;
 use nom::{
     error::{context, ContextError, ParseError},
     IResult,
 };
 use std::convert::TryInto;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
 
 /// varint serialization
@@ -240,11 +242,30 @@ pub trait DeserializeCompact: Sized {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError>;
 }
 
-/// Checks performed:
-/// - Buffer contains a valid `u8`(implicit check).
-impl SerializeCompact for IpAddr {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        Ok(match self {
+/// Serializer for `IpAddr`
+#[derive(Default)]
+pub struct IpAddrSerializer;
+
+impl IpAddrSerializer {
+    /// Creates a `IpAddrSerializer`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Serializer<IpAddr> for IpAddrSerializer {
+    /// ```
+    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    /// use std::net::{IpAddr, Ipv4Addr};
+    ///
+    /// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let ip_serializer = IpAddrSerializer::new();
+    /// ip_serializer.serialize(&ip).unwrap();
+    /// ```
+    fn serialize(&self, value: &IpAddr) -> Result<Vec<u8>, SerializeError> {
+        Ok(match value {
             IpAddr::V4(ip_v4) => {
                 let mut res = Vec::with_capacity(1 + 4);
                 res.push(4u8);
@@ -261,17 +282,59 @@ impl SerializeCompact for IpAddr {
     }
 }
 
-/// Checks performed:
-/// - Buffer contains a valid `u8`.
-impl DeserializeCompact for IpAddr {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        match u8_from_slice(buffer)? {
-            4u8 => Ok((IpAddr::V4(array_from_slice(&buffer[1..])?.into()), 1 + 4)),
-            6u8 => Ok((IpAddr::V6(array_from_slice(&buffer[1..])?.into()), 1 + 16)),
-            _ => Err(ModelsError::DeserializeError(
-                "unsupported IpAddr variant".into(),
-            )),
-        }
+/// Deserializer for `IpAddr`
+#[derive(Default)]
+pub struct IpAddrDeserializer;
+
+impl IpAddrDeserializer {
+    /// Creates a `IpAddrDeserializer`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Deserializer<IpAddr> for IpAddrDeserializer {
+    /// ```
+    /// use massa_models::{Address, Amount, Slot, IpAddrSerializer, IpAddrDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    /// use std::net::{IpAddr, Ipv4Addr};
+    ///
+    /// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let ip_serializer = IpAddrSerializer::new();
+    /// let ip_deserializer = IpAddrDeserializer::new();
+    /// let serialized = ip_serializer.serialize(&ip).unwrap();
+    /// let (rest, ip_deser) = ip_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(ip, ip_deser);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], IpAddr, E> {
+        nom::branch::alt((
+            |input| {
+                preceded(
+                    |input| nom::bytes::complete::tag([4u8])(input),
+                    |input: &'a [u8]| {
+                        let (rest, addr) = take(4usize)(input)?;
+                        let addr: [u8; 4] = addr.try_into().unwrap();
+                        Ok((rest, IpAddr::V4(Ipv4Addr::from(addr))))
+                    },
+                )(input)
+            },
+            |input| {
+                preceded(
+                    |input| nom::bytes::complete::tag([6u8])(input),
+                    |input: &'a [u8]| {
+                        let (rest, addr) = take(16usize)(input)?;
+                        // Safe because take would fail just above if less then 16
+                        let addr: [u8; 16] = addr.try_into().unwrap();
+                        Ok((rest, IpAddr::V6(Ipv6Addr::from(addr))))
+                    },
+                )(input)
+            },
+        ))(buffer)
     }
 }
 

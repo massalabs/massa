@@ -1,14 +1,18 @@
 use crate::settings::PeerTypeConnectionConfig;
 use displaydoc::Display;
 use enum_map::Enum;
-use massa_models::{
-    node::NodeId, with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt,
+use massa_models::node::NodeId;
+use massa_models::{IpAddrDeserializer, IpAddrSerializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
 use massa_time::MassaTime;
+use nom::error::{ContextError, ParseError};
+use nom::multi::length_count;
+use nom::IResult;
 use serde::{Deserialize, Serialize};
+use std::ops::Bound::Included;
 use std::{collections::HashMap, net::IpAddr};
-
 /// Associate a peer info with nodes
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Peer {
@@ -28,57 +32,108 @@ pub struct Peers {
 }
 
 /// Peers that are transmitted during bootstrap
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BootstrapPeers(pub Vec<IpAddr>);
 
-impl SerializeCompact for BootstrapPeers {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
+/// Serializer for `BootstrapPeers`
+pub struct BootstrapPeersSerializer {
+    u32_serializer: U32VarIntSerializer,
+    ip_addr_serializer: IpAddrSerializer,
+}
 
-        // peers
-        let peers_count: u32 = self.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many peers blocks in BootstrapPeers: {}", err))
+impl BootstrapPeersSerializer {
+    /// Creates a new `BootstrapPeersSerializer`
+    ///
+    /// Arguments:
+    ///
+    /// * max_peers: maximum peers that can be serialized
+    pub fn new(max_peers: u32) -> Self {
+        Self {
+            u32_serializer: U32VarIntSerializer::new(Included(0), Included(max_peers)),
+            ip_addr_serializer: IpAddrSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
+    /// ```
+    /// use massa_network_exports::{BootstrapPeers, BootstrapPeersSerializer};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);
+    /// let peers_serializer = BootstrapPeersSerializer::new(1000);
+    /// peers_serializer.serialize(&peers).unwrap();
+    /// ```
+    fn serialize(
+        &self,
+        value: &BootstrapPeers,
+    ) -> Result<Vec<u8>, massa_serialization::SerializeError> {
+        let mut res = Vec::new();
+
+        let peers_count: u32 = value.0.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(format!(
+                "too many peers blocks in BootstrapPeers: {}",
+                err
+            ))
         })?;
-        let max_peer_list_length =
-            with_serialization_context(|context| context.max_advertise_length);
-        if peers_count > max_peer_list_length {
-            return Err(ModelsError::SerializeError(format!(
-                "too many peers for serialization context in BootstrapPeers: {}",
-                peers_count
-            )));
+        res.extend(self.u32_serializer.serialize(&peers_count)?);
+        for peer in value.0.iter() {
+            res.extend(self.ip_addr_serializer.serialize(peer)?);
         }
-        res.extend(peers_count.to_varint_bytes());
-        for peer in self.0.iter() {
-            res.extend(peer.to_bytes_compact()?);
-        }
-
         Ok(res)
     }
 }
 
-impl DeserializeCompact for BootstrapPeers {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
-        let mut cursor = 0usize;
+/// Deserializer for `BootstrapPeers`
+pub struct BootstrapPeersDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    ip_addr_deserializer: IpAddrDeserializer,
+}
 
-        // peers
-        let (peers_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        let max_peer_list_length =
-            with_serialization_context(|context| context.max_advertise_length);
-        if peers_count > max_peer_list_length {
-            return Err(ModelsError::DeserializeError(format!(
-                "too many peers for deserialization context in BootstrapPeers: {}",
-                peers_count
-            )));
+impl BootstrapPeersDeserializer {
+    /// Creates a new `BootstrapPeersDeserializer`
+    ///
+    /// Arguments:
+    ///
+    /// * max_peers: maximum peers that can be serialized
+    pub fn new(max_peers: u32) -> Self {
+        Self {
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(max_peers)),
+            ip_addr_deserializer: IpAddrDeserializer::new(),
         }
-        cursor += delta;
-        let mut peers: Vec<IpAddr> = Vec::with_capacity(peers_count as usize);
-        for _ in 0..(peers_count as usize) {
-            let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            peers.push(ip);
-        }
+    }
+}
 
-        Ok((BootstrapPeers(peers), cursor))
+impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
+    /// ```
+    /// use massa_network_exports::{BootstrapPeers, BootstrapPeersSerializer, BootstrapPeersDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);
+    /// let peers_serializer = BootstrapPeersSerializer::new(1000);
+    /// let peers_deserializer = BootstrapPeersDeserializer::new(1000);
+    /// let serialized = peers_serializer.serialize(&peers).unwrap();
+    /// let (rest, peers_deser) = peers_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(peers, peers_deser);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BootstrapPeers, E> {
+        length_count(
+            |input| self.u32_deserializer.deserialize(input),
+            |input| self.ip_addr_deserializer.deserialize(input),
+        )(buffer)
+        .map(|(rest, ips)| (rest, BootstrapPeers(ips)))
     }
 }
 

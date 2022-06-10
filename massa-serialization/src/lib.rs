@@ -19,6 +19,7 @@ pub enum SerializeError {
     GeneralError(String),
 }
 
+#[derive(Clone, Error)]
 pub struct DeserializeError<'a> {
     errors: VecDeque<(&'a [u8], String)>,
 }

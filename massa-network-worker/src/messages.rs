@@ -6,10 +6,11 @@ use massa_models::{
     operation::{OperationIds, Operations},
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, ModelsError, SerializeCompact, SerializeVarInt, SignedEndorsement,
-    SignedHeader, Version, VersionDeserializer, VersionSerializer,
+    Endorsement, EndorsementId, IpAddrDeserializer, IpAddrSerializer, ModelsError,
+    SerializeCompact, SerializeVarInt, SignedEndorsement, SignedHeader, Version,
+    VersionDeserializer, VersionSerializer,
 };
-use massa_serialization::{Deserializer, Serializer};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -148,8 +149,9 @@ impl SerializeCompact for Message {
             Message::PeerList(ip_vec) => {
                 res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
                 res.extend((ip_vec.len() as u64).to_varint_bytes());
+                let ip_serializer = IpAddrSerializer::new();
                 for ip in ip_vec {
-                    res.extend(ip.to_bytes_compact()?)
+                    res.extend(ip_serializer.serialize(ip)?)
                 }
             }
             Message::BlockNotFound(hash) => {
@@ -261,9 +263,16 @@ impl DeserializeCompact for Message {
                 cursor += delta;
                 // peer list
                 let mut peers: Vec<IpAddr> = Vec::with_capacity(length as usize);
+                let ip_deserializer = IpAddrDeserializer::new();
                 for _ in 0..length {
-                    let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
-                    cursor += delta;
+                    let (rest, ip) = ip_deserializer
+                        .deserialize::<DeserializeError>(&buffer[cursor..])
+                        .map_err(|_| {
+                            ModelsError::DeserializeError(
+                                "Failed to deserialize IpAddr".to_string(),
+                            )
+                        })?;
+                    cursor += buffer[cursor..].len() - rest.len();
                     peers.push(ip);
                 }
                 Message::PeerList(peers)
