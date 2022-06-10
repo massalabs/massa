@@ -18,7 +18,7 @@ pub struct ProtocolSettings {
     pub max_known_ops_size: usize,
     /// max known operations of foreign nodes we keep in memory (by node)
     pub max_node_known_ops_size: usize,
-    /// max known endorsements per node kept in memory
+    /// max known endorsements by our node that we kept in memory
     pub max_known_endorsements_size: usize,
     /// max known endorsements of foreign nodes we keep in memory (by node)
     pub max_node_known_endorsements_size: usize,
