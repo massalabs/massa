@@ -149,7 +149,12 @@ impl Block {
             .iter()
             .try_for_each::<_, Result<(), ModelsError>>(|(op_id, (op_idx, _op_expiry))| {
                 let op = &self.operations[*op_idx];
-                let addrs = op.content.get_ledger_involved_addresses();
+                let addrs = op.content.get_ledger_involved_addresses().map_err(|err| {
+                    ModelsError::DeserializeError(format!(
+                        "could not get involved addresses: {}",
+                        err
+                    ))
+                })?;
                 for ad in addrs.into_iter() {
                     if let Some(entry) = addresses_to_operations.get_mut(&ad) {
                         entry.insert(*op_id);

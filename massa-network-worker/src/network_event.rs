@@ -221,7 +221,6 @@ pub mod event_impl {
         worker: &mut NetworkWorker,
         from: NodeId,
         operations: Operations,
-        serialized: Vec<Vec<u8>>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
@@ -232,7 +231,6 @@ pub mod event_impl {
             .send(NetworkEvent::ReceivedOperations {
                 node: from,
                 operations,
-                serialized,
             })
             .await
         {

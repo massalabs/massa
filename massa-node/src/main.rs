@@ -164,7 +164,6 @@ async fn launch() -> (
         &POOL_CONFIG,
         protocol_command_sender.clone(),
         protocol_pool_event_receiver,
-        shared_storage.clone(),
     )
     .await
     .expect("could not start pool controller");
