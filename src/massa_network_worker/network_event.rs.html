@@ -312,8 +312,6 @@
 <span id="305">305</span>
 <span id="306">306</span>
 <span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>};
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
@@ -537,7 +535,6 @@
         <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
         <span class="ident">from</span>: <span class="ident">NodeId</span>,
         <span class="ident">operations</span>: <span class="ident">Operations</span>,
-        <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedOperations&quot;</span>,
@@ -548,7 +545,6 @@
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedOperations</span> {
                 <span class="ident">node</span>: <span class="ident">from</span>,
                 <span class="ident">operations</span>,
-                <span class="ident">serialized</span>,
             })
             .<span class="kw">await</span>
         {
@@ -624,5 +620,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ec55c6130 2022-06-10)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (99930ac7f 2022-06-11)" ></div>
 </body></html>

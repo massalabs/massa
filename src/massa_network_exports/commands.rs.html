@@ -302,8 +302,6 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by</span>
 <span class="doccomment">//! `massa-network` that allow external communication with other nodes.</span>
 <span class="doccomment">//!</span>
@@ -402,7 +400,7 @@
     <span class="doccomment">/// Block not found</span>
     <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
     <span class="doccomment">/// Send full Operations (send to a node that previously asked for)</span>
-    <span class="ident">SendOperations</span>(<span class="ident">OperationIds</span>),
+    <span class="ident">SendOperations</span>(<span class="ident">Operations</span>),
     <span class="doccomment">/// Send a batch of operation ids</span>
     <span class="ident">SendOperationAnnouncements</span>(<span class="ident">OperationIds</span>),
     <span class="doccomment">/// Ask for a set of operations</span>
@@ -428,8 +426,8 @@
     <span class="ident">ReceivedAskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Didn&#39;t found given block,</span>
     <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Received full operations.</span>
-    <span class="ident">ReceivedOperations</span>(<span class="ident">Operations</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Received full operation</span>
+    <span class="ident">ReceivedOperations</span>(<span class="ident">Operations</span>),
     <span class="doccomment">/// Received an operation id batch announcing new operations</span>
     <span class="ident">ReceivedOperationAnnouncements</span>(<span class="ident">OperationIds</span>),
     <span class="doccomment">/// Receive a list of wanted operations</span>
@@ -509,7 +507,7 @@
         <span class="doccomment">/// to node id</span>
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
         <span class="doccomment">/// operations</span>
-        <span class="ident">operations</span>: <span class="ident">OperationIds</span>,
+        <span class="ident">operations</span>: <span class="ident">Operations</span>,
     },
     <span class="doccomment">/// Send operation ids batch to a node</span>
     <span class="ident">SendOperationAnnouncements</span> {
@@ -574,8 +572,6 @@
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
         <span class="doccomment">/// operations</span>
         <span class="ident">operations</span>: <span class="ident">Operations</span>,
-        <span class="doccomment">/// serialized operations.</span>
-        <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// Receive a list of `OperationId`</span>
     <span class="ident">ReceivedOperationAnnouncements</span> {
@@ -604,5 +600,5 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkManagementCommand</span> {}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ec55c6130 2022-06-10)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (99930ac7f 2022-06-11)" ></div>
 </body></html>

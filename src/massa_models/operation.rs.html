@@ -1478,7 +1478,7 @@
     }
 
     <span class="doccomment">/// get the addresses that are involved in this operation from a ledger point of view</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ledger_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ledger_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="ident">::default</span>();
         <span class="kw">let</span> <span class="ident">emitter_address</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">sender_public_key</span>);
         <span class="ident">res</span>.<span class="ident">insert</span>(<span class="ident">emitter_address</span>);
@@ -1495,7 +1495,7 @@
                 <span class="ident">res</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">target_addr</span>);
             }
         }
-        <span class="ident">res</span>
+        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
     }
 
     <span class="doccomment">/// get the addresses that are involved in this operation from a rolls point of view</span>
@@ -1722,5 +1722,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ec55c6130 2022-06-10)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (99930ac7f 2022-06-11)" ></div>
 </body></html>

@@ -332,6 +332,7 @@
 <span id="325">325</span>
 <span id="326">326</span>
 <span id="327">327</span>
+<span id="328">328</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ProtocolError</span>;
@@ -339,10 +340,11 @@
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">node::NodeId</span>,
-    <span class="ident">operation::OperationIds</span>,
+    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
     <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
     <span class="ident">Slot</span>,
 };
+
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
 };
@@ -386,7 +388,7 @@
     <span class="doccomment">/// Operations were received</span>
     <span class="ident">ReceivedOperations</span> {
         <span class="doccomment">/// the operations</span>
-        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">SignedOperation</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>,
         <span class="doccomment">/// whether or not to propagate operations</span>
         <span class="ident">propagate</span>: <span class="ident">bool</span>,
     },
@@ -435,7 +437,7 @@
     <span class="doccomment">/// The response to a `[ProtocolEvent::GetBlocks]`.</span>
     <span class="ident">GetBlocksResults</span>(<span class="ident">BlocksResults</span>),
     <span class="doccomment">/// The response to a `[ProtocolEvent::GetOperations]`.</span>
-    <span class="ident">GetOperationsResults</span>((<span class="ident">NodeId</span>, <span class="ident">OperationIds</span>)),
+    <span class="ident">GetOperationsResults</span>((<span class="ident">NodeId</span>, <span class="ident">Operations</span>)),
     <span class="doccomment">/// Propagate operations ids (send batches)</span>
     <span class="ident">PropagateOperations</span>(<span class="ident">OperationIds</span>),
     <span class="doccomment">/// Propagate endorsements</span>
@@ -507,7 +509,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_get_operations_results</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
-        <span class="ident">results</span>: <span class="ident">OperationIds</span>,
+        <span class="ident">results</span>: <span class="ident">Operations</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_get_operations_results&quot;</span>, {
             <span class="string">&quot;results&quot;</span>: <span class="ident">results</span>
@@ -660,5 +662,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ec55c6130 2022-06-10)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (99930ac7f 2022-06-11)" ></div>
 </body></html>

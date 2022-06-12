@@ -1591,8 +1591,8 @@
             <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::BlockNotFound</span>(<span class="ident">block_id</span>)) =&gt; {
                 <span class="ident">event_impl::on_block_not_found</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">block_id</span>).<span class="kw">await</span>
             }
-            <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::ReceivedOperations</span>(<span class="ident">operations</span>, <span class="ident">serialized</span>)) =&gt; {
-                <span class="ident">event_impl::on_received_operations</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">operations</span>, <span class="ident">serialized</span>).<span class="kw">await</span>
+            <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::ReceivedOperations</span>(<span class="ident">operations</span>)) =&gt; {
+                <span class="ident">event_impl::on_received_operations</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">operations</span>).<span class="kw">await</span>
             }
             <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::ReceivedEndorsements</span>(<span class="ident">endorsements</span>)) =&gt; {
                 <span class="ident">event_impl::on_received_endorsements</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">endorsements</span>).<span class="kw">await</span>
@@ -1608,5 +1608,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ec55c6130 2022-06-10)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (99930ac7f 2022-06-11)" ></div>
 </body></html>

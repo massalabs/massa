@@ -353,9 +353,6 @@
 <span id="346">346</span>
 <span id="347">347</span>
 <span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::PoolConfig</span>;
@@ -373,7 +370,6 @@
     <span class="ident">SignedOperation</span>, <span class="ident">Slot</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolPoolEventReceiver</span>};
-<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">tokio</span>::{
     <span class="ident">sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>},
     <span class="ident">task::JoinHandle</span>,
@@ -390,7 +386,6 @@
     <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>,
     <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
     <span class="ident">protocol_pool_event_receiver</span>: <span class="ident">ProtocolPoolEventReceiver</span>,
-    <span class="ident">storage</span>: <span class="ident">Storage</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">PoolCommandSender</span>, <span class="ident">PoolManager</span>), <span class="ident">PoolError</span><span class="op">&gt;</span> {
     <span class="macro">debug!</span>(<span class="string">&quot;starting pool controller&quot;</span>);
     <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.pool_controller.start_pool_controller&quot;</span>, {});
@@ -405,7 +400,6 @@
             <span class="ident">protocol_pool_event_receiver</span>,
             <span class="ident">command_rx</span>,
             <span class="ident">manager_rx</span>,
-            <span class="ident">storage</span>,
         )<span class="question-mark">?</span>
         .<span class="ident">run_loop</span>()
         .<span class="kw">await</span>;
@@ -708,5 +702,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ec55c6130 2022-06-10)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (99930ac7f 2022-06-11)" ></div>
 </body></html>
