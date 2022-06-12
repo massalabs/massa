@@ -374,7 +374,8 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .await
             {
                 Some(NetworkCommand::SendOperations { node, operations }) => {
-                    assert!(operations.contains(&operation_id));
+                    let id = operations[0].content.compute_id().unwrap();
+                    assert_eq!(id, operation_id);
                     assert_eq!(nodes[0].id, node);
                     panic!("Unexpected propagated of operation.");
                 }
@@ -743,7 +744,14 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                 }) => {
                     let expected_id = operation.verify_integrity().unwrap();
                     assert!(!propagate);
-                    assert!(operations.contains_key(&expected_id));
+                    assert_eq!(
+                        operations
+                            .get(&expected_id)
+                            .unwrap()
+                            .verify_integrity()
+                            .unwrap(),
+                        expected_id
+                    );
                     assert_eq!(operations.len(), 1);
                 }
                 Some(_) => panic!("Unexpected protocol pool event."),
@@ -818,55 +826,6 @@ async fn test_protocol_ask_operations_on_batch_received() {
 
 #[tokio::test]
 #[serial]
-async fn test_protocol_no_ask_operations_on_empty_batch_received() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test(
-        protocol_settings,
-        async move |mut network_controller,
-                    protocol_event_receiver,
-                    protocol_command_sender,
-                    protocol_manager,
-                    protocol_pool_event_receiver| {
-            // Create 1 node.
-            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
-
-            let creator_node = nodes.pop().expect("Failed to get node info.");
-
-            // 2. Send empty operation batch to protocol.
-            network_controller
-                .send_operation_batch(
-                    creator_node.id,
-                    OperationIds::from_iter(vec![].iter().cloned()),
-                )
-                .await;
-
-            match network_controller
-                .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::AskForOperations { .. } => Some(cmd),
-                    _ => None,
-                })
-                .await
-            {
-                Some(NetworkCommand::AskForOperations { .. }) => {
-                    panic!("Unexpected ask for operations.")
-                }
-                _ => {}
-            };
-
-            (
-                network_controller,
-                protocol_event_receiver,
-                protocol_command_sender,
-                protocol_manager,
-                protocol_pool_event_receiver,
-            )
-        },
-    )
-    .await;
-}
-
-#[tokio::test]
-#[serial]
 async fn test_protocol_on_ask_operations() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
@@ -920,10 +879,7 @@ async fn test_protocol_on_ask_operations() {
             }
 
             protocol_command_sender
-                .send_get_operations_results(
-                    asker_node.id,
-                    vec![expected_operation_id].iter().copied().collect(),
-                )
+                .send_get_operations_results(asker_node.id, vec![operation])
                 .await
                 .unwrap();
 

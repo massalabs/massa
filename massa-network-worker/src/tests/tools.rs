@@ -358,7 +358,6 @@ pub async fn network_test<F, V>(
         NetworkEventReceiver,
         NetworkManager,
         MockEstablisherInterface,
-        Storage,
     ) -> V,
     V: Future<
         Output = (
@@ -379,7 +378,7 @@ pub async fn network_test<F, V>(
             establisher,
             0,
             None,
-            storage.clone(),
+            storage,
             Version::from_str("TEST.1.2").unwrap(),
         )
         .await
@@ -392,7 +391,6 @@ pub async fn network_test<F, V>(
         network_event_receiver,
         network_manager,
         mock_interface,
-        storage,
     )
     .await;
 

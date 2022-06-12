@@ -1,9 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! `Flexbuffer` layer between raw data and our objects.
-use super::messages::{
-    deserialize_message_with_optional_serialized_object, Message, SerializedForm,
-};
+use super::messages::{deserialize_message_with_optional_serialized_object, Message};
 use massa_models::{with_serialization_context, DeserializeMinBEInt, SerializeMinBEInt};
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use std::convert::TryInto;
@@ -89,9 +87,7 @@ impl ReadBinder {
     /// or = 0 if there is no more data.
     /// We can't use `read_exact` and similar because they are not cancel-safe:
     /// `https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2`
-    pub async fn next(
-        &mut self,
-    ) -> Result<Option<(u64, Message, Option<SerializedForm>)>, NetworkError> {
+    pub async fn next(&mut self) -> Result<Option<(u64, Message, Option<Vec<u8>>)>, NetworkError> {
         let max_message_size = with_serialization_context(|context| context.max_message_size);
 
         // check if we are in the process of reading the message length
