@@ -8,6 +8,7 @@ use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
 use massa_models::{
     Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
 };
+use massa_models::{Amount, DeserializeCompact};
 use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
@@ -17,15 +18,12 @@ use rocksdb::{
 use std::collections::HashMap;
 use std::ops::Bound;
 use std::rc::Rc;
+use std::str::FromStr;
 use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::{LedgerChanges, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 
-#[cfg(feature = "testing")]
-use massa_models::{Amount, DeserializeCompact};
-
-// TODO: remove rocks_db dir when sled is cut out
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
@@ -50,7 +48,7 @@ pub enum LedgerSubEntry {
 ///
 /// Contains a RocksDB DB instance
 #[derive(Debug)]
-pub(crate) struct LedgerDB(DB);
+pub struct LedgerDB(DB);
 
 /// Balance key formatting macro
 macro_rules! balance_key {
@@ -264,6 +262,21 @@ impl LedgerDB {
         batch.put_cf(handle, SLOT_KEY, slot.to_bytes_compact().unwrap());
     }
 
+    /// Get the disk ledger metadata
+    ///
+    /// # Returns
+    /// The slot associated to the current ledger
+    ///
+    /// NOTE: right now the metadata is only a Slot, use a struct in the future
+    pub fn get_metadata(&self) -> Option<Slot> {
+        let handle = self.0.cf_handle(METADATA_CF).expect(CF_ERROR);
+
+        self.0
+            .get_cf(&handle, SLOT_KEY)
+            .expect(CRUD_ERROR)
+            .map(|v| Slot::from_bytes_compact(&v).unwrap().0)
+    }
+
     /// Add every sub-entry individually for a given entry.
     ///
     /// # Arguments
@@ -315,11 +328,12 @@ impl LedgerDB {
     }
 
     /// Get every address and their corresponding balance.
-    /// IMPORTANT: This should only be used for debug purposes.
+    ///
+    /// IMPORTANT: This should only be used for debug and testing purposes.
     ///
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
-    #[cfg(feature = "testing")]
+    #[allow(dead_code)]
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
@@ -332,8 +346,11 @@ impl LedgerDB {
         let address_deserializer = AddressDeserializer::new();
         for (key, entry) in ledger {
             let (rest, address) = address_deserializer.deserialize(&key[..]).unwrap();
-            if rest.get(0) == Some(&BALANCE_IDENT) {
+            if rest.first() == Some(&BALANCE_IDENT) {
                 addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
+            }
+            if rest.first() == Some(&BYTECODE_IDENT) && !addresses.contains_key(&address) {
+                addresses.insert(address, Amount::from_str("0").unwrap());
             }
         }
         addresses
