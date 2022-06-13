@@ -1,12 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_ledger_exports::{LedgerConfig, LedgerEntry};
+use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry};
 use massa_models::Address;
 use std::collections::HashMap;
 use tempfile::TempDir;
 
-use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use crate::FinalLedger;
+use crate::{ledger_db::LedgerDB, FinalLedger};
 
 /// This file defines tools to test the ledger bootstrap
 
@@ -43,9 +42,8 @@ pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
 }
 
 /// asserts that two `FinalLedgerBootstrapState` are equal
-pub fn assert_eq_ledger(v1: &FinalLedger, v2: &FinalLedger) {
+pub fn assert_eq_ledger(v1: &Box<dyn LedgerController>, v2: &Box<dyn LedgerController>) {
     let ledger1: HashMap<Address, LedgerEntry> = v1
-        .sorted_ledger
         .get_every_address()
         .iter()
         .map(|(addr, balance)| {
@@ -53,17 +51,13 @@ pub fn assert_eq_ledger(v1: &FinalLedger, v2: &FinalLedger) {
                 *addr,
                 LedgerEntry {
                     parallel_balance: *balance,
-                    bytecode: v1
-                        .sorted_ledger
-                        .get_sub_entry(addr, LedgerSubEntry::Bytecode)
-                        .unwrap_or_default(),
-                    datastore: v1.sorted_ledger.get_entire_datastore(addr),
+                    bytecode: v1.get_bytecode(addr).unwrap_or_default(),
+                    datastore: v1.get_entire_datastore(addr),
                 },
             )
         })
         .collect();
     let ledger2: HashMap<Address, LedgerEntry> = v2
-        .sorted_ledger
         .get_every_address()
         .iter()
         .map(|(addr, balance)| {
@@ -71,11 +65,8 @@ pub fn assert_eq_ledger(v1: &FinalLedger, v2: &FinalLedger) {
                 *addr,
                 LedgerEntry {
                     parallel_balance: *balance,
-                    bytecode: v1
-                        .sorted_ledger
-                        .get_sub_entry(addr, LedgerSubEntry::Bytecode)
-                        .unwrap_or_default(),
-                    datastore: v1.sorted_ledger.get_entire_datastore(addr),
+                    bytecode: v2.get_bytecode(addr).unwrap_or_default(),
+                    datastore: v2.get_entire_datastore(addr),
                 },
             )
         })

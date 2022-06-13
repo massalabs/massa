@@ -172,4 +172,15 @@ impl LedgerController for FinalLedger {
     fn set_ledger_part(&self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError> {
         self.sorted_ledger.set_ledger_part(data.as_bytes())
     }
+
+    /// Get every address and their corresponding balance.
+    ///
+    /// IMPORTANT: This should only be used for debug and test purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the address as key and the balance as value
+    #[cfg(feature = "testing")]
+    fn get_every_address(&self) -> BTreeMap<Address, Amount> {
+        self.sorted_ledger.get_every_address()
+    }
 }

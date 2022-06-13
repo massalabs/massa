@@ -87,7 +87,7 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
     create_final_state(
         Default::default(),
         slot,
-        final_ledger,
+        Box::new(final_ledger),
         async_pool,
         VecDeque::new(),
     )

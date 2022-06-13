@@ -14,7 +14,6 @@ thiserror = "1.0"
 tokio = { version = "1.15", features = ["full"] }
 
 
-
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 instrument = ["tokio/tracing"]
