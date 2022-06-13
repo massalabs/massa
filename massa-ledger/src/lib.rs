@@ -65,9 +65,10 @@ pub use error::LedgerError;
 pub use ledger::FinalLedger;
 pub use ledger_changes::{
     LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, LedgerEntryUpdate,
+    LedgerEntryUpdateDeserializer, LedgerEntryUpdateSerializer,
 };
 pub use ledger_db::{get_address_from_key, KeyDeserializer, KeySerializer};
-pub use ledger_entry::LedgerEntry;
+pub use ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 #[cfg(test)]
 mod tests;

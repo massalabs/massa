@@ -24,7 +24,7 @@ use std::collections::hash_map;
 use std::ops::Bound::Included;
 
 /// represents an update to one or more fields of a `LedgerEntry`
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LedgerEntryUpdate {
     /// change the parallel balance
     pub parallel_balance: SetOrKeep<Amount>,
@@ -34,12 +34,14 @@ pub struct LedgerEntryUpdate {
     pub datastore: Map<Hash, SetOrDelete<Vec<u8>>>,
 }
 
-struct DatastoreSerializer {
+/// Serializer for `datastore` field of `LedgerEntryUpdate`
+pub struct DatastoreUpdateSerializer {
     u64_serializer: U64VarIntSerializer,
     value_serializer: SetOrDeleteSerializer<Vec<u8>, VecU8Serializer>,
 }
 
-impl DatastoreSerializer {
+impl DatastoreUpdateSerializer {
+    /// Creates a new `DatastoreUpdateSerializer`
     pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
@@ -51,7 +53,7 @@ impl DatastoreSerializer {
     }
 }
 
-impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreSerializer {
+impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSerializer {
     fn serialize(
         &self,
         value: &Map<Hash, SetOrDelete<Vec<u8>>>,
@@ -72,13 +74,15 @@ impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreSerializer {
     }
 }
 
-struct DatastoreDeserializer {
+/// Serializer for `datastore` field of `LedgerEntryUpdate`
+pub struct DatastoreUpdateDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     hash_deserializer: HashDeserializer,
     value_deserializer: SetOrDeleteDeserializer<Vec<u8>, VecU8Deserializer>,
 }
 
-impl DatastoreDeserializer {
+impl DatastoreUpdateDeserializer {
+    /// Creates a new `DatastoreUpdateDeserializer`
     pub fn new() -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
@@ -91,7 +95,7 @@ impl DatastoreDeserializer {
     }
 }
 
-impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreDeserializer {
+impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -113,13 +117,15 @@ impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreDeserializer {
     }
 }
 
-struct LedgerEntryUpdateSerializer {
+/// Serializer for `LedgerEntryUpdate`
+pub struct LedgerEntryUpdateSerializer {
     parallel_balance_serializer: SetOrKeepSerializer<Amount, AmountSerializer>,
     bytecode_serializer: SetOrKeepSerializer<Vec<u8>, VecU8Serializer>,
-    datastore_serializer: DatastoreSerializer,
+    datastore_serializer: DatastoreUpdateSerializer,
 }
 
 impl LedgerEntryUpdateSerializer {
+    /// Creates a new `LedgerEntryUpdateSerializer`
     pub fn new() -> Self {
         Self {
             parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new(
@@ -130,12 +136,33 @@ impl LedgerEntryUpdateSerializer {
                 Included(u64::MIN),
                 Included(u64::MAX),
             )),
-            datastore_serializer: DatastoreSerializer::new(),
+            datastore_serializer: DatastoreUpdateSerializer::new(),
         }
     }
 }
 
 impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
+    /// ```
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{prehash::Map, Address, Amount};
+    /// use std::str::FromStr;
+    /// use massa_ledger::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
+    /// use massa_hash::Hash;
+    ///
+    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let mut store = Map::default();
+    /// store.insert(hash, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let amount = Amount::from_str("1").unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntryUpdate {
+    ///    parallel_balance: SetOrKeep::Keep,
+    ///    bytecode: SetOrKeep::Set(bytecode.clone()),
+    ///    datastore: store,
+    /// };
+    /// let mut serialized = Vec::new();
+    /// let serializer = LedgerEntryUpdateSerializer::new();
+    /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &LedgerEntryUpdate,
@@ -151,13 +178,15 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     }
 }
 
-struct LedgerEntryUpdateDeserializer {
+/// Deserializer for `LedgerEntryUpdate`
+pub struct LedgerEntryUpdateDeserializer {
     parallel_balance_deserializer: SetOrKeepDeserializer<Amount, AmountDeserializer>,
     bytecode_deserializer: SetOrKeepDeserializer<Vec<u8>, VecU8Deserializer>,
-    datastore_deserializer: DatastoreDeserializer,
+    datastore_deserializer: DatastoreUpdateDeserializer,
 }
 
 impl LedgerEntryUpdateDeserializer {
+    /// Creates a new `LedgerEntryUpdateDeserializer`
     pub fn new() -> Self {
         Self {
             parallel_balance_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new(
@@ -168,12 +197,37 @@ impl LedgerEntryUpdateDeserializer {
                 Included(u64::MIN),
                 Included(u64::MAX),
             )),
-            datastore_deserializer: DatastoreDeserializer::new(),
+            datastore_deserializer: DatastoreUpdateDeserializer::new(),
         }
     }
 }
 
 impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
+    /// ```
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use massa_models::{prehash::Map, Address, Amount};
+    /// use std::str::FromStr;
+    /// use massa_ledger::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
+    /// use massa_hash::Hash;
+    ///
+    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let mut store = Map::default();
+    /// store.insert(hash, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let amount = Amount::from_str("1").unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntryUpdate {
+    ///    parallel_balance: SetOrKeep::Keep,
+    ///    bytecode: SetOrKeep::Set(bytecode.clone()),
+    ///    datastore: store,
+    /// };
+    /// let mut serialized = Vec::new();
+    /// let serializer = LedgerEntryUpdateSerializer::new();
+    /// let deserializer = LedgerEntryUpdateDeserializer::new();
+    /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
+    /// let (rest, ledger_entry_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(ledger_entry, ledger_entry_deser);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -214,7 +268,7 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
 }
 
 /// represents a list of changes to multiple ledger entries
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LedgerChanges(pub Map<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>);
 
 /// `LedgerChanges` serializer
@@ -248,6 +302,32 @@ impl Default for LedgerChangesSerializer {
 }
 
 impl Serializer<LedgerChanges> for LedgerChangesSerializer {
+    /// ```
+    /// use massa_serialization::Serializer;
+    /// use massa_ledger::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer};
+    /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
+    /// use massa_models::{Amount, Address};
+    /// use massa_hash::Hash;
+    ///
+    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let mut store = BTreeMap::new();
+    /// store.insert(hash, vec![1, 2, 3]);
+    /// let amount = Amount::from_str("1").unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntry {
+    ///    parallel_balance: amount,
+    ///    bytecode,
+    ///    datastore: store,
+    /// };
+    /// let mut serialized = Vec::new();
+    /// let mut changes = LedgerChanges::default();
+    /// changes.0.insert(
+    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    SetUpdateOrDelete::Set(ledger_entry),
+    /// );
+    /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();
+    /// ```
     fn serialize(&self, value: &LedgerChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let entry_count: u64 = value.0.len().try_into().map_err(|err| {
             SerializeError::GeneralError(format!("too many entries in LedgerChanges: {}", err))
@@ -294,6 +374,35 @@ impl Default for LedgerChangesDeserializer {
 }
 
 impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
+    /// ```
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use massa_ledger::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer, LedgerChangesDeserializer};
+    /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
+    /// use massa_models::{Amount, Address};
+    /// use massa_hash::Hash;
+    ///
+    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let mut store = BTreeMap::new();
+    /// store.insert(hash, vec![1, 2, 3]);
+    /// let amount = Amount::from_str("1").unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntry {
+    ///    parallel_balance: amount,
+    ///    bytecode,
+    ///    datastore: store,
+    /// };
+    /// let mut serialized = Vec::new();
+    /// let mut changes = LedgerChanges::default();
+    /// changes.0.insert(
+    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    SetUpdateOrDelete::Set(ledger_entry),
+    /// );
+    /// LedgerChangesSerializer::new().serialize(&changes, &mut serialized).unwrap();
+    /// let (rest, changes_deser) = LedgerChangesDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(changes, changes_deser);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

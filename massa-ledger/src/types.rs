@@ -15,7 +15,7 @@ pub trait Applicable<V> {
 }
 
 /// Enumeration representing set/update/delete change on a value T
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SetUpdateOrDelete<T: Default + Applicable<V>, V: Applicable<V> + Clone> {
     /// Sets the value T a new absolute value T
     Set(T),
@@ -67,6 +67,14 @@ impl<
         DV: Deserializer<V>,
     > Deserializer<SetUpdateOrDelete<T, V>> for SetUpdateOrDeleteDeserializer<T, V, DT, DV>
 {
+    /// ```
+    /// use massa_serialization::{Deserializer, Serializer, SerializeError};
+    /// use massa_ledger::{SetUpdateOrDelete, SetUpdateOrDeleteDeserializer, SetUpdateOrDeleteSerializer};
+    ///
+    /// let mut serialized = Vec::new();
+    /// let serializer = SetUpdateOrDeleteSerializer::new();
+    /// let deserializer = SetUpdateOrDeleteDeserializer::new();
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -184,7 +192,7 @@ where
 }
 
 /// `Enum` representing a set/delete change on a value T
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SetOrDelete<T: Clone> {
     /// sets a new absolute value T
     Set(T),
@@ -270,7 +278,7 @@ impl<T: Clone> Applicable<SetOrDelete<T>> for SetOrDelete<T> {
 }
 
 /// represents a set/keep change
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SetOrKeep<T: Clone> {
     /// sets a new absolute value T
     Set(T),
