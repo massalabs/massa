@@ -91,7 +91,7 @@ impl Serializer<Version> for VersionSerializer {
     ///
     /// let version: Version = Version::from_str("TEST.1.0").unwrap();
     /// let serializer = VersionSerializer::new();
-    /// let buffer = Vec::new();
+    /// let mut buffer = Vec::new();
     /// serializer.serialize(&version, &mut buffer).unwrap();
     /// ```
     fn serialize(

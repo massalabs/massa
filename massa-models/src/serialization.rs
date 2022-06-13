@@ -352,24 +352,34 @@ impl DeserializeCompact for Amount {
 
 /// Basic `Vec<u8>` serializer
 pub struct VecU8Serializer {
-    varint_u64_serializer: U64VarIntSerializer,
+    len_serializer: U64VarIntSerializer,
 }
 
 impl VecU8Serializer {
     /// Creates a new `VecU8Serializer`
     pub fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
         Self {
-            varint_u64_serializer: U64VarIntSerializer::new(min_length, max_length),
+            len_serializer: U64VarIntSerializer::new(min_length, max_length),
         }
     }
 }
 
 impl Serializer<Vec<u8>> for VecU8Serializer {
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_models::VecU8Serializer;
+    ///
+    /// let vec = vec![1, 2, 3];
+    /// let mut buffer = Vec::new();
+    /// let serializer = VecU8Serializer::new(Included(0), Included(1000000));
+    /// serializer.serialize(&vec, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let len: u64 = value.len().try_into().map_err(|err| {
             SerializeError::NumberTooBig(format!("too many entries data in VecU8: {}", err))
         })?;
-        self.varint_u64_serializer.serialize(&len, buffer)?;
+        self.len_serializer.serialize(&len, buffer)?;
         buffer.extend(value);
         Ok(())
     }
@@ -390,6 +400,20 @@ impl VecU8Deserializer {
 }
 
 impl Deserializer<Vec<u8>> for VecU8Deserializer {
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{VecU8Serializer, VecU8Deserializer};
+    ///
+    /// let vec = vec![1, 2, 3];
+    /// let mut serialized = Vec::new();
+    /// let serializer = VecU8Serializer::new(Included(0), Included(1000000));
+    /// let deserializer = VecU8Deserializer::new(Included(0), Included(1000000));
+    /// serializer.serialize(&vec, &mut serialized).unwrap();
+    /// let (rest, vec_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(vec, vec_deser);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

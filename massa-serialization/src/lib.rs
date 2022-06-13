@@ -154,11 +154,12 @@ pub trait Deserializer<T> {
 /// }
 ///
 /// impl Serializer<u64> for U64VarIntSerializer {
-///     fn serialize(&self, value: &u64) -> Result<Vec<u8>, SerializeError> {
+///     fn serialize(&self, value: &u64, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
 ///         if !self.range.contains(value) {
 ///             return Err(SerializeError::NumberTooBig(format!("Value {:#?} is not in range {:#?}", value, self.range)));
 ///         }
-///         Ok(u64(*value, &mut u64_buffer()).to_vec())
+///         buffer.extend_from_slice(u64(*value, &mut u64_buffer()));
+///         Ok(())
 ///     }
 /// }
 /// ```

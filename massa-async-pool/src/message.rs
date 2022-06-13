@@ -53,6 +53,31 @@ impl Default for AsyncMessageIdSerializer {
 }
 
 impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{Address, Amount, Slot};
+    /// use std::str::FromStr;
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer};
+    ///
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let id: AsyncMessageId = message.compute_id();
+    /// let mut serialized = Vec::new();
+    /// let serializer = AsyncMessageIdSerializer::new();
+    /// serializer.serialize(&id, &mut serialized).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &AsyncMessageId,
@@ -94,6 +119,35 @@ impl Default for AsyncMessageIdDeserializer {
 }
 
 impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{Address, Amount, Slot};
+    /// use std::str::FromStr;
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer, AsyncMessageIdDeserializer};
+    ///
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let id: AsyncMessageId = message.compute_id();
+    /// let mut serialized = Vec::new();
+    /// let serializer = AsyncMessageIdSerializer::new();
+    /// let deserializer = AsyncMessageIdDeserializer::new();
+    /// serializer.serialize(&id, &mut serialized).unwrap();
+    /// let (rest, id_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(id, id_deser);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// Enum representing a value U with identifier T being added or deleted
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Change<T, U> {
     /// an item with identifier T and value U is added
     Add(T, U),
@@ -29,7 +29,7 @@ pub enum Change<T, U> {
 }
 
 /// represents a list of additions and deletions to the asynchronous message pool
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct AsyncPoolChanges(pub Vec<Change<AsyncMessageId, AsyncMessage>>);
 
 /// `AsyncPoolChanges` serializer
@@ -56,6 +56,31 @@ impl Default for AsyncPoolChangesSerializer {
 }
 
 impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{Address, Amount, Slot};
+    /// use std::str::FromStr;
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer};
+    ///
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// let mut serialized = Vec::new();
+    /// let serializer = AsyncPoolChangesSerializer::new();
+    /// serializer.serialize(&changes, &mut serialized).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &AsyncPoolChanges,
@@ -93,7 +118,7 @@ pub struct AsyncPoolChangesDeserializer {
 impl AsyncPoolChangesDeserializer {
     pub fn new() -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(1000000)),
             id_deserializer: AsyncMessageIdDeserializer::new(),
             message_deserializer: AsyncMessageDeserializer::new(),
         }
@@ -107,6 +132,35 @@ impl Default for AsyncPoolChangesDeserializer {
 }
 
 impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{Address, Amount, Slot};
+    /// use std::str::FromStr;
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
+    ///
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// let mut serialized = Vec::new();
+    /// let serializer = AsyncPoolChangesSerializer::new();
+    /// let deserializer = AsyncPoolChangesDeserializer::new();
+    /// serializer.serialize(&changes, &mut serialized).unwrap();
+    /// let (rest, changes_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(changes, changes_deser);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
