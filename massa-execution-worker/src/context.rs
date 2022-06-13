@@ -21,7 +21,6 @@ use massa_models::{
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
-use std::collections::VecDeque;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -56,7 +55,7 @@ pub(crate) struct ExecutionContextSnapshot {
 pub(crate) struct ExecutionContext {
     /// speculative ledger state,
     /// as seen after everything that happened so far in the context
-    speculative_ledger: SpeculativeLedger<'static>,
+    speculative_ledger: SpeculativeLedger,
 
     /// speculative asynchronous pool state,
     /// as seen after everything that happened so far in the context
@@ -114,13 +113,11 @@ impl ExecutionContext {
     pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
         previous_changes: StateChanges,
-        active_history: &'static VecDeque<ExecutionOutput>,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
                 final_state.clone(),
                 previous_changes.ledger_changes,
-                active_history,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.read().async_pool.clone(),
@@ -186,7 +183,6 @@ impl ExecutionContext {
         gas_price: Amount,
         call_stack: Vec<ExecutionStackElement>,
         previous_changes: StateChanges,
-        active_history: &'static VecDeque<ExecutionOutput>,
         final_state: Arc<RwLock<FinalState>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
@@ -212,7 +208,7 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, previous_changes, active_history)
+            ..ExecutionContext::new(final_state, previous_changes)
         }
     }
 
@@ -251,7 +247,6 @@ impl ExecutionContext {
         slot: Slot,
         opt_block_id: Option<BlockId>,
         previous_changes: StateChanges,
-        active_history: &'static VecDeque<ExecutionOutput>,
         final_state: Arc<RwLock<FinalState>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
@@ -274,7 +269,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, previous_changes, active_history)
+            ..ExecutionContext::new(final_state, previous_changes)
         }
     }
 
