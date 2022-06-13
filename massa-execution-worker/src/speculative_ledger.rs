@@ -5,13 +5,13 @@
 //! It never actually writes to the consensus state
 //! but keeps track of the changes that were applied to it since its creation.
 
-use massa_execution_exports::ExecutionError;
+use massa_execution_exports::{ExecutionError, ExecutionOutput};
 use massa_final_state::FinalState;
 use massa_hash::Hash;
 use massa_ledger_exports::{Applicable, LedgerChanges};
 use massa_models::{Address, Amount};
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
 /// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
@@ -19,7 +19,7 @@ use std::sync::Arc;
 /// The `SpeculativeLedger` makes it possible to transparently manipulate a virtual ledger
 /// that takes into account all those ledger changes and allows adding more
 /// while keeping track of all the newly added changes, and never writing in the final ledger.
-pub struct SpeculativeLedger {
+pub struct SpeculativeLedger<'a> {
     /// Thread-safe shared access to the final state. For reading only.
     final_state: Arc<RwLock<FinalState>>,
 
@@ -33,19 +33,27 @@ pub struct SpeculativeLedger {
 
     /// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
     added_changes: LedgerChanges,
+
+    /// active execution history
+    active_history: &'a VecDeque<ExecutionOutput>,
 }
 
-impl SpeculativeLedger {
+impl<'a> SpeculativeLedger<'a> {
     /// creates a new `SpeculativeLedger`
     ///
     /// # Arguments
     /// * `final_state`: thread-safe shared access to the final state (for reading only)
     /// * `previous_changes`: accumulation of changes that previously happened to the ledger since finality
-    pub fn new(final_state: Arc<RwLock<FinalState>>, previous_changes: LedgerChanges) -> Self {
+    pub fn new<'b: 'a>(
+        final_state: Arc<RwLock<FinalState>>,
+        previous_changes: LedgerChanges,
+        active_history: &'b VecDeque<ExecutionOutput>,
+    ) -> Self {
         SpeculativeLedger {
             final_state,
             previous_changes,
             added_changes: Default::default(),
+            active_history,
         }
     }
 
