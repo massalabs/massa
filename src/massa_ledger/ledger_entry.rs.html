@@ -312,6 +312,26 @@
 <span id="305">305</span>
 <span id="306">306</span>
 <span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the structure representing an entry in the `FinalLedger`</span>
@@ -327,6 +347,7 @@
 };
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">DeserializeCompact</span>, <span class="ident">SerializeCompact</span>};
 <span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>};
+<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
 <span class="kw">use</span> <span class="ident">nom::multi::length_count</span>;
 <span class="kw">use</span> <span class="ident">nom::sequence::tuple</span>;
 <span class="kw">use</span> <span class="ident">nom::IResult</span>;
@@ -398,17 +419,24 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DatastoreDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parser</span> <span class="op">=</span> <span class="ident">length_count</span>(
-            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">key</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">hash_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)<span class="question-mark">?</span>;
-                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">data</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">value_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">rest</span>)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, (<span class="ident">key</span>, <span class="ident">data</span>)))
-            },
-        );
-        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">parser</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">res</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>()))
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+        <span class="ident">context</span>(<span class="string">&quot;Failed Datastore deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+            <span class="ident">length_count</span>(
+                <span class="ident">context</span>(<span class="string">&quot;Failed length deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+                <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="ident">tuple</span>((
+                        <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">hash_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                        <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">value_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                    ))(<span class="ident">input</span>)
+                },
+            )(<span class="ident">input</span>)
+        })(<span class="ident">buffer</span>)
+        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, <span class="ident">elems</span>)<span class="op">|</span> (<span class="ident">rest</span>, <span class="ident">elems</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>()))
     }
 }
 
@@ -455,21 +483,33 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerEntryDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">LedgerEntry</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parser</span> <span class="op">=</span> <span class="ident">tuple</span>((
-            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">amount_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">vec_u8_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">datastore_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-        ));
-        <span class="kw">let</span> (<span class="ident">rest</span>, (<span class="ident">parallel_balance</span>, <span class="ident">bytecode</span>, <span class="ident">datastore</span>)) <span class="op">=</span> <span class="ident">parser</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((
-            <span class="ident">rest</span>,
-            <span class="ident">LedgerEntry</span> {
-                <span class="ident">parallel_balance</span>,
-                <span class="ident">bytecode</span>,
-                <span class="ident">datastore</span>,
-            },
-        ))
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">LedgerEntry</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+        <span class="ident">context</span>(<span class="string">&quot;Failed LedgerEntry deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+            <span class="ident">tuple</span>((
+                <span class="ident">context</span>(<span class="string">&quot;Failed parallel_balance deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">amount_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+                <span class="ident">context</span>(<span class="string">&quot;Failed bytecode deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">vec_u8_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+                <span class="ident">context</span>(<span class="string">&quot;Failed datastore deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">datastore_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+            ))(<span class="ident">input</span>)
+        })(<span class="ident">buffer</span>)
+        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, (<span class="ident">parallel_balance</span>, <span class="ident">bytecode</span>, <span class="ident">datastore</span>))<span class="op">|</span> {
+            (
+                <span class="ident">rest</span>,
+                <span class="ident">LedgerEntry</span> {
+                    <span class="ident">parallel_balance</span>,
+                    <span class="ident">bytecode</span>,
+                    <span class="ident">datastore</span>,
+                },
+            )
+        })
     }
 }
 

@@ -116,6 +116,7 @@
 <span id="109">109</span>
 <span id="110">110</span>
 <span id="111">111</span>
+<span id="112">112</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! # General description</span>
@@ -218,7 +219,8 @@
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config::AsyncPoolConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">message</span>::{
-    <span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessageIdDeserializer</span>, <span class="ident">AsyncMessageIdSerializer</span>,
+    <span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageDeserializer</span>, <span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessageIdDeserializer</span>,
+    <span class="ident">AsyncMessageIdSerializer</span>, <span class="ident">AsyncMessageSerializer</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pool::AsyncPool</span>;
 

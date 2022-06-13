@@ -106,8 +106,88 @@
 <span id="99">99</span>
 <span id="100">100</span>
 <span id="101">101</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
-<span class="kw">use</span> <span class="ident">nom::IResult</span>;
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">collections::VecDeque</span>,
+    <span class="ident">fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Display</span>},
+};
+
+<span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
+<span class="kw">use</span> <span class="ident">nom</span>::{
+    <span class="ident">error</span>::{<span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
+    <span class="ident">IResult</span>,
+};
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
@@ -119,6 +199,65 @@
     <span class="ident">GeneralError</span>(<span class="ident">String</span>),
 }
 
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="ident">errors</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">String</span>)<span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">add_context</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">other</span>.<span class="ident">errors</span>.<span class="ident">push_front</span>((<span class="ident">input</span>, <span class="ident">ctx</span>.<span class="ident">to_string</span>()));
+        <span class="ident">other</span>
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">append</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">kind</span>: <span class="ident">nom::error::ErrorKind</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">other</span>
+            .<span class="ident">errors</span>
+            .<span class="ident">push_front</span>((<span class="ident">input</span>, <span class="ident">kind</span>.<span class="ident">description</span>().<span class="ident">to_string</span>()));
+        <span class="ident">other</span>
+    }
+    <span class="kw">fn</span> <span class="ident">from_error_kind</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">kind</span>: <span class="ident">nom::error::ErrorKind</span>) -&gt; <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">errors</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();
+        <span class="ident">errors</span>.<span class="ident">push_front</span>((<span class="ident">input</span>, <span class="ident">kind</span>.<span class="ident">description</span>().<span class="ident">to_string</span>()));
+        <span class="self">Self</span> { <span class="ident">errors</span> }
+    }
+    <span class="kw">fn</span> <span class="ident">from_char</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="kw">_</span>: <span class="ident">char</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::from_error_kind</span>(<span class="ident">input</span>, <span class="ident">nom::error::ErrorKind::Char</span>)
+    }
+    <span class="kw">fn</span> <span class="ident">or</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">other</span>
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_input</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+        <span class="kw">for</span> <span class="ident">error</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">errors</span> {
+            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{} / &quot;</span>, <span class="ident">error</span>.<span class="number">1</span>)<span class="question-mark">?</span>;
+            <span class="ident">last_input</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">error</span>.<span class="number">0</span>);
+        }
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_input</span>) <span class="op">=</span> <span class="ident">last_input</span> {
+            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Input: {:?}&quot;</span>, <span class="ident">last_input</span>)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">DeserializeError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_input</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+        <span class="kw">for</span> <span class="ident">error</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">errors</span> {
+            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{} / &quot;</span>, <span class="ident">error</span>.<span class="number">1</span>)<span class="question-mark">?</span>;
+            <span class="ident">last_input</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">error</span>.<span class="number">0</span>);
+        }
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_input</span>) <span class="op">=</span> <span class="ident">last_input</span> {
+            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Input: {:?}&quot;</span>, <span class="ident">last_input</span>)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
 <span class="doccomment">/// Trait that define the deserialize method that must be implemented for all types have serialize form in Massa.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// This trait must be implemented on deserializers that will be defined for each type and can contains constraints.</span>
@@ -126,7 +265,7 @@
 <span class="doccomment">/// ```</span>
 <span class="doccomment">/// use std::ops::Bound;</span>
 <span class="doccomment">/// use unsigned_varint::nom as varint_nom;</span>
-<span class="doccomment">/// use nom::IResult;</span>
+<span class="doccomment">/// use nom::{IResult, error::{context, ContextError, ParseError}};</span>
 <span class="doccomment">/// use massa_serialization::Deserializer;</span>
 <span class="doccomment">/// use std::ops::RangeBounds;</span>
 <span class="doccomment">///</span>
@@ -143,12 +282,14 @@
 <span class="doccomment">/// }</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// impl Deserializer&lt;u64&gt; for U64VarIntDeserializer {</span>
-<span class="doccomment">///     fn deserialize&lt;&#39;a&gt;(&amp;self, buffer: &amp;&#39;a [u8]) -&gt; IResult&lt;&amp;&#39;a [u8], u64&gt; {</span>
-<span class="doccomment">///         let (rest, value) = varint_nom::u64(buffer)?;</span>
-<span class="doccomment">///         if !self.range.contains(&amp;value) {</span>
-<span class="doccomment">///             return Err(nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::TooLarge)));</span>
-<span class="doccomment">///         }</span>
-<span class="doccomment">///         Ok((rest, value))</span>
+<span class="doccomment">///     fn deserialize&lt;&#39;a, E: ParseError&lt;&amp;&#39;a [u8]&gt; + ContextError&lt;&amp;&#39;a [u8]&gt;&gt;(&amp;self, buffer: &amp;&#39;a [u8]) -&gt; IResult&lt;&amp;&#39;a [u8], u64, E&gt; {</span>
+<span class="doccomment">///         context(concat!(&quot;Failed u64 deserialization&quot;), |input: &amp;&#39;a [u8]| {</span>
+<span class="doccomment">///             let (rest, value) = varint_nom::u64(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;</span>
+<span class="doccomment">///             if !self.range.contains(&amp;value) {</span>
+<span class="doccomment">///                 return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));</span>
+<span class="doccomment">///             }</span>
+<span class="doccomment">///             Ok((rest, value))</span>
+<span class="doccomment">///         })(buffer)</span>
 <span class="doccomment">///     }</span>
 <span class="doccomment">/// }</span>
 <span class="doccomment">/// ```</span>
@@ -160,7 +301,10 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// ## Returns</span>
     <span class="doccomment">/// A nom result with the rest of the serialized data and the decoded value.</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">T</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>;
 }
 
 <span class="doccomment">/// This trait must be implemented to serializes all data in Massa.</span>

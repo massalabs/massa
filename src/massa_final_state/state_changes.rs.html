@@ -114,6 +114,15 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file provides structures representing changes to the final state</span>
@@ -123,7 +132,11 @@
 };
 <span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">LedgerChanges</span>, <span class="ident">LedgerChangesDeserializer</span>, <span class="ident">LedgerChangesSerializer</span>};
 <span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">nom</span>::{<span class="ident">error::context</span>, <span class="ident">sequence::tuple</span>, <span class="ident">IResult</span>};
+<span class="kw">use</span> <span class="ident">nom</span>::{
+    <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
+    <span class="ident">sequence::tuple</span>,
+    <span class="ident">IResult</span>,
+};
 
 <span class="doccomment">/// represents changes that can be applied to the execution state</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
@@ -194,16 +207,21 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">StateChanges</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">StateChangesDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">StateChanges</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parser</span> <span class="op">=</span> <span class="ident">tuple</span>((
-            <span class="ident">context</span>(<span class="string">&quot;ledger changes in state changes&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                <span class="self">self</span>.<span class="ident">ledger_changes_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
-            }),
-            <span class="ident">context</span>(<span class="string">&quot;async pool changes in state changes&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                <span class="self">self</span>.<span class="ident">async_pool_changes_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
-            }),
-        ));
-        <span class="ident">parser</span>(<span class="ident">buffer</span>).<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, (<span class="ident">ledger_changes</span>, <span class="ident">async_pool_changes</span>))<span class="op">|</span> {
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">StateChanges</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+        <span class="ident">context</span>(<span class="string">&quot;Failed StateChanges deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+            <span class="ident">tuple</span>((
+                <span class="ident">context</span>(<span class="string">&quot;Failed ledger_changes deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">ledger_changes_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+                <span class="ident">context</span>(<span class="string">&quot;Failed async_pool_changes deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">async_pool_changes_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+            ))(<span class="ident">input</span>)
+        })(<span class="ident">buffer</span>)
+        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, (<span class="ident">ledger_changes</span>, <span class="ident">async_pool_changes</span>))<span class="op">|</span> {
             (
                 <span class="ident">rest</span>,
                 <span class="ident">StateChanges</span> {

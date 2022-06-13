@@ -233,13 +233,6 @@
 <span id="226">226</span>
 <span id="227">227</span>
 <span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts</span>
@@ -248,13 +241,11 @@
     <span class="ident">changes</span>::{<span class="ident">AsyncPoolChanges</span>, <span class="ident">Change</span>},
     <span class="ident">config::AsyncPoolConfig</span>,
     <span class="ident">message</span>::{<span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessageIdDeserializer</span>, <span class="ident">AsyncMessageIdSerializer</span>},
+    <span class="ident">AsyncMessageDeserializer</span>, <span class="ident">AsyncMessageSerializer</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">ModelsError</span>,
-    <span class="ident">SerializeCompact</span>, <span class="ident">Slot</span>,
-};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES</span>, <span class="ident">ModelsError</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">nom::multi::many0</span>;
+<span class="kw">use</span> <span class="ident">nom</span>::{<span class="ident">multi::many0</span>, <span class="ident">sequence::tuple</span>};
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 <span class="kw">use</span> <span class="ident">std::ops::Bound</span>::{<span class="ident">Excluded</span>, <span class="ident">Unbounded</span>};
 
@@ -391,11 +382,11 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">part</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">next_last_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">let</span> <span class="ident">id_async_message_serializer</span> <span class="op">=</span> <span class="ident">AsyncMessageIdSerializer::new</span>();
-
+        <span class="kw">let</span> <span class="ident">async_message_serializer</span> <span class="op">=</span> <span class="ident">AsyncMessageSerializer::new</span>();
         <span class="kw">for</span> (<span class="ident">id</span>, <span class="ident">message</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">messages</span>.<span class="ident">range</span>((<span class="ident">last_id</span>, <span class="ident">Unbounded</span>)) {
             <span class="kw">if</span> <span class="ident">part</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">ASYNC_POOL_PART_SIZE_MESSAGE_BYTES</span> <span class="kw">as</span> <span class="ident">usize</span> {
                 <span class="ident">part</span>.<span class="ident">extend</span>(<span class="ident">id_async_message_serializer</span>.<span class="ident">serialize</span>(<span class="ident">id</span>)<span class="question-mark">?</span>);
-                <span class="ident">part</span>.<span class="ident">extend</span>(<span class="ident">message</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+                <span class="ident">part</span>.<span class="ident">extend</span>(<span class="ident">async_message_serializer</span>.<span class="ident">serialize</span>(<span class="ident">message</span>)<span class="question-mark">?</span>);
                 <span class="ident">next_last_id</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">id</span>);
             }
         }
@@ -416,6 +407,7 @@
         <span class="ident">part</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">AsyncMessageId</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">async_message_id_deserializer</span> <span class="op">=</span> <span class="ident">AsyncMessageIdDeserializer::new</span>();
+        <span class="kw">let</span> <span class="ident">async_message_deserializer</span> <span class="op">=</span> <span class="ident">AsyncMessageDeserializer::new</span>();
         <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">messages</span>) <span class="op">=</span> <span class="ident">many0</span>(<span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
             <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">is_empty</span>() {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">nom::error::Error::new</span>(
@@ -423,16 +415,10 @@
                     <span class="ident">nom::error::ErrorKind::LengthValue</span>,
                 )));
             }
-            <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">id</span>) <span class="op">=</span> <span class="ident">async_message_id_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)<span class="question-mark">?</span>;
-            <span class="comment">//TODO: Change when async message has new serialize form</span>
-            <span class="kw">let</span> (<span class="ident">message</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">AsyncMessage::from_bytes_compact</span>(<span class="ident">rest</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="ident">nom::Err::Error</span>(<span class="ident">nom::error::Error::new</span>(
-                    <span class="ident">input</span>,
-                    <span class="ident">nom::error::ErrorKind::LengthValue</span>,
-                ))
-            })<span class="question-mark">?</span>;
-            <span class="comment">// Safe because we obtain delta by moving forward in the buffer.</span>
-            <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">rest</span>[<span class="ident">delta</span>..], (<span class="ident">id</span>, <span class="ident">message</span>)))
+            <span class="ident">tuple</span>((
+                <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">async_message_id_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">async_message_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+            ))(<span class="ident">input</span>)
         })(<span class="ident">part</span>)<span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="ident">rest</span>.<span class="ident">is_empty</span>() {
             <span class="self">self</span>.<span class="ident">messages</span>.<span class="ident">extend</span>(<span class="ident">messages</span>);

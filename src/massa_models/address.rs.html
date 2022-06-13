@@ -302,6 +302,12 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::PreHashed</span>;
@@ -313,6 +319,7 @@
 <span class="kw">use</span> <span class="ident">massa_hash</span>::{<span class="ident">Hash</span>, <span class="ident">HashDeserializer</span>};
 <span class="kw">use</span> <span class="ident">massa_serialization::Deserializer</span>;
 <span class="kw">use</span> <span class="ident">massa_signature::PublicKey</span>;
+<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
 <span class="kw">use</span> <span class="ident">nom::IResult</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
@@ -569,9 +576,14 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AddressDeserializer</span> {
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Address</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">hash</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">hash_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">Address</span>(<span class="ident">hash</span>)))
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Address</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+        <span class="ident">context</span>(<span class="string">&quot;Failed Address deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+            <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">hash</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">hash_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">Address</span>(<span class="ident">hash</span>)))
+        })(<span class="ident">buffer</span>)
     }
 }
 
