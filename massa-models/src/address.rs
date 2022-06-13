@@ -9,6 +9,7 @@ use crate::{DeserializeVarInt, ModelsError, SerializeVarInt};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::Deserializer;
 use massa_signature::PublicKey;
+use nom::error::{context, ContextError, ParseError};
 use nom::IResult;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -265,9 +266,14 @@ impl AddressDeserializer {
 }
 
 impl Deserializer<Address> for AddressDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Address> {
-        let (rest, hash) = self.hash_deserializer.deserialize(buffer)?;
-        Ok((rest, Address(hash)))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Address, E> {
+        context("Failed Address deserialization", |input| {
+            let (rest, hash) = self.hash_deserializer.deserialize(input)?;
+            Ok((rest, Address(hash)))
+        })(buffer)
     }
 }
 

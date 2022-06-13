@@ -1,5 +1,13 @@
+use std::{
+    collections::VecDeque,
+    fmt::{Debug, Display},
+};
+
 use displaydoc::Display;
-use nom::IResult;
+use nom::{
+    error::{ContextError, ParseError},
+    IResult,
+};
 use thiserror::Error;
 
 #[non_exhaustive]
@@ -11,6 +19,65 @@ pub enum SerializeError {
     GeneralError(String),
 }
 
+pub struct DeserializeError<'a> {
+    errors: VecDeque<(&'a [u8], String)>,
+}
+
+impl<'a> ContextError<&'a [u8]> for DeserializeError<'a> {
+    fn add_context(input: &'a [u8], ctx: &'static str, mut other: Self) -> Self {
+        other.errors.push_front((input, ctx.to_string()));
+        other
+    }
+}
+
+impl<'a> ParseError<&'a [u8]> for DeserializeError<'a> {
+    fn append(input: &'a [u8], kind: nom::error::ErrorKind, mut other: Self) -> Self {
+        other
+            .errors
+            .push_front((input, kind.description().to_string()));
+        other
+    }
+    fn from_error_kind(input: &'a [u8], kind: nom::error::ErrorKind) -> Self {
+        let mut errors = VecDeque::new();
+        errors.push_front((input, kind.description().to_string()));
+        Self { errors }
+    }
+    fn from_char(input: &'a [u8], _: char) -> Self {
+        Self::from_error_kind(input, nom::error::ErrorKind::Char)
+    }
+    fn or(self, other: Self) -> Self {
+        other
+    }
+}
+
+impl<'a> Display for DeserializeError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut last_input = None;
+        for error in &self.errors {
+            write!(f, "{} / ", error.1)?;
+            last_input = Some(error.0);
+        }
+        if let Some(last_input) = last_input {
+            writeln!(f, "Input: {:?}", last_input)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> Debug for DeserializeError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut last_input = None;
+        for error in &self.errors {
+            write!(f, "{} / ", error.1)?;
+            last_input = Some(error.0);
+        }
+        if let Some(last_input) = last_input {
+            writeln!(f, "Input: {:?}", last_input)?;
+        }
+        Ok(())
+    }
+}
+
 /// Trait that define the deserialize method that must be implemented for all types have serialize form in Massa.
 ///
 /// This trait must be implemented on deserializers that will be defined for each type and can contains constraints.
@@ -18,7 +85,7 @@ pub enum SerializeError {
 /// ```
 /// use std::ops::Bound;
 /// use unsigned_varint::nom as varint_nom;
-/// use nom::IResult;
+/// use nom::{IResult, error::{context, ContextError, ParseError}};
 /// use massa_serialization::Deserializer;
 /// use std::ops::RangeBounds;
 ///
@@ -35,12 +102,14 @@ pub enum SerializeError {
 /// }
 ///
 /// impl Deserializer<u64> for U64VarIntDeserializer {
-///     fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], u64> {
-///         let (rest, value) = varint_nom::u64(buffer)?;
-///         if !self.range.contains(&value) {
-///             return Err(nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::TooLarge)));
-///         }
-///         Ok((rest, value))
+///     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], u64, E> {
+///         context(concat!("Failed u64 deserialization"), |input: &'a [u8]| {
+///             let (rest, value) = varint_nom::u64(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
+///             if !self.range.contains(&value) {
+///                 return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
+///             }
+///             Ok((rest, value))
+///         })(buffer)
 ///     }
 /// }
 /// ```
@@ -52,7 +121,10 @@ pub trait Deserializer<T> {
     ///
     /// ## Returns
     /// A nom result with the rest of the serialized data and the decoded value.
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], T>;
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], T, E>;
 }
 
 /// This trait must be implemented to serializes all data in Massa.
