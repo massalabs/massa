@@ -9,7 +9,7 @@ use massa_serialization::{
 use massa_time::MassaTime;
 use nom::error::{ContextError, ParseError};
 use nom::multi::length_count;
-use nom::IResult;
+use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
 use std::{collections::HashMap, net::IpAddr};
@@ -133,8 +133,9 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
         length_count(
             |input| self.u32_deserializer.deserialize(input),
             |input| self.ip_addr_deserializer.deserialize(input),
-        )(buffer)
-        .map(|(rest, ips)| (rest, BootstrapPeers(ips)))
+        )
+        .map(|ips| BootstrapPeers(ips))
+        .parse(buffer)
     }
 }
 

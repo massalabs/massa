@@ -15,7 +15,7 @@ use massa_serialization::{
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_data;
 use nom::sequence::tuple;
-use nom::IResult;
+use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier of a message.
@@ -152,14 +152,16 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], AsyncMessageId, E> {
-        context("Failed AsyncMessageId deserialization", |input| {
+        context(
+            "Failed AsyncMessageId deserialization",
             tuple((
                 |input| self.amount_deserializer.deserialize(input),
                 |input| self.slot_deserializer.deserialize(input),
                 |input| self.u64_deserializer.deserialize(input),
-            ))(input)
-        })(buffer)
-        .map(|(rest, (amount, slot, index))| (rest, (std::cmp::Reverse(amount), slot, index)))
+            )),
+        )
+        .map(|(amount, slot, index)| (std::cmp::Reverse(amount), slot, index))
+        .parse(buffer)
     }
 }
 
@@ -366,22 +368,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], AsyncMessage, E> {
-        let (
-            rest,
-            (
-                emission_slot,
-                emission_index,
-                sender,
-                destination,
-                handler,
-                max_gas,
-                gas_price,
-                coins,
-                validity_start,
-                validity_end,
-                data,
-            ),
-        ) = context(
+        context(
             "Failed AsyncMessage deserialization",
             tuple((
                 context("Failed emission_slot deserialization", |input| {
@@ -433,11 +420,21 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     self.vec_u8_deserializer.deserialize(input)
                 }),
             )),
-        )(buffer)?;
-
-        Ok((
-            rest,
-            AsyncMessage {
+        )
+        .map(
+            |(
+                emission_slot,
+                emission_index,
+                sender,
+                destination,
+                handler,
+                max_gas,
+                gas_price,
+                coins,
+                validity_start,
+                validity_end,
+                data,
+            )| AsyncMessage {
                 emission_slot,
                 emission_index,
                 sender,
@@ -450,7 +447,8 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 validity_end,
                 data,
             },
-        ))
+        )
+        .parse(buffer)
     }
 }
 

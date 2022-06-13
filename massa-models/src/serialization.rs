@@ -9,6 +9,7 @@ use massa_serialization::{
 use nom::bytes::complete::take;
 use nom::multi::length_data;
 use nom::sequence::preceded;
+use nom::Parser;
 use nom::{
     error::{context, ContextError, ParseError},
     IResult,
@@ -310,27 +311,23 @@ impl Deserializer<IpAddr> for IpAddrDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], IpAddr, E> {
         nom::branch::alt((
-            |input| {
-                preceded(
-                    |input| nom::bytes::complete::tag([4u8])(input),
-                    |input: &'a [u8]| {
-                        let (rest, addr) = take(4usize)(input)?;
-                        let addr: [u8; 4] = addr.try_into().unwrap();
-                        Ok((rest, IpAddr::V4(Ipv4Addr::from(addr))))
-                    },
-                )(input)
-            },
-            |input| {
-                preceded(
-                    |input| nom::bytes::complete::tag([6u8])(input),
-                    |input: &'a [u8]| {
-                        let (rest, addr) = take(16usize)(input)?;
-                        // Safe because take would fail just above if less then 16
-                        let addr: [u8; 16] = addr.try_into().unwrap();
-                        Ok((rest, IpAddr::V6(Ipv6Addr::from(addr))))
-                    },
-                )(input)
-            },
+            preceded(
+                |input| nom::bytes::complete::tag([4u8])(input),
+                |input: &'a [u8]| {
+                    let (rest, addr) = take(4usize)(input)?;
+                    let addr: [u8; 4] = addr.try_into().unwrap();
+                    Ok((rest, IpAddr::V4(Ipv4Addr::from(addr))))
+                },
+            ),
+            preceded(
+                |input| nom::bytes::complete::tag([6u8])(input),
+                |input: &'a [u8]| {
+                    let (rest, addr) = take(16usize)(input)?;
+                    // Safe because take would fail just above if less then 16
+                    let addr: [u8; 16] = addr.try_into().unwrap();
+                    Ok((rest, IpAddr::V6(Ipv6Addr::from(addr))))
+                },
+            ),
         ))(buffer)
     }
 }
@@ -420,8 +417,9 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
     ) -> IResult<&'a [u8], Vec<u8>, E> {
         context("Failed Vec<u8> deserialization", |input| {
             length_data(|input| self.varint_u64_deserializer.deserialize(input))(input)
-        })(buffer)
-        .map(|(rest, res)| (rest, res.to_vec()))
+        })
+        .map(|res| res.to_vec())
+        .parse(buffer)
     }
 }
 

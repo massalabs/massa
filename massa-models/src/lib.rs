@@ -5,7 +5,7 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub use address::Address;
+pub use address::{Address, AddressDeserializer};
 pub use amount::{Amount, AmountDeserializer, AmountSerializer};
 pub use block::{Block, BlockHeader, BlockId, SignedHeader};
 pub use composite::{

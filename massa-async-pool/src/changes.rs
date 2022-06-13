@@ -7,7 +7,7 @@ use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
     sequence::tuple,
-    IResult,
+    IResult, Parser,
 };
 
 ///! Copyright (c) 2022 MASSA LABS <info@massa.net>
@@ -165,7 +165,8 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], AsyncPoolChanges, E> {
-        context("Failed AsyncPoolChanges deserialization", |input| {
+        context(
+            "Failed AsyncPoolChanges deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
@@ -191,9 +192,10 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                         nom::error::ErrorKind::LengthValue,
                     ))),
                 },
-            )(input)
-        })(buffer)
-        .map(|(rest, changes)| (rest, AsyncPoolChanges(changes)))
+            ),
+        )
+        .map(|changes| AsyncPoolChanges(changes))
+        .parse(buffer)
     }
 }
 

@@ -1,11 +1,19 @@
-use serde::{Deserialize, Serialize};
-use std::collections::hash_map;
-
 use crate::{
     error::ModelsResult as Result,
     prehash::{Map, Set},
-    Address, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
+    Address, ModelsError,
 };
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::{
+    error::{context, ContextError, ParseError},
+    sequence::tuple,
+    IResult, Parser,
+};
+use serde::{Deserialize, Serialize};
+use std::collections::hash_map;
+use std::ops::Bound::Included;
 
 use std::collections::{btree_map, BTreeMap};
 
@@ -131,39 +139,76 @@ impl RollUpdates {
     }
 }
 
-impl SerializeCompact for RollUpdate {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>> {
-        let mut res: Vec<u8> = Vec::new();
+/// Serializer for `RollUpdate`
+pub struct RollUpdateSerializer {
+    u64_serializer: U64VarIntSerializer,
+}
 
-        // roll purchases
-        res.extend(self.roll_purchases.to_varint_bytes());
-
-        // roll sales
-        res.extend(self.roll_sales.to_varint_bytes());
-
-        Ok(res)
+impl RollUpdateSerializer {
+    /// Creates a new `RollUpdateSerializer`
+    pub fn new() -> Self {
+        RollUpdateSerializer {
+            u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
+        }
     }
 }
 
-impl DeserializeCompact for RollUpdate {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize)> {
-        let mut cursor = 0usize;
+impl Default for RollUpdateSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-        // roll purchases
-        let (roll_purchases, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
+impl Serializer<RollUpdate> for RollUpdateSerializer {
+    fn serialize(&self, value: &RollUpdate, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.u64_serializer
+            .serialize(&value.roll_purchases, buffer)?;
+        self.u64_serializer.serialize(&value.roll_sales, buffer)?;
+        Ok(())
+    }
+}
 
-        // roll sales
-        let (roll_sales, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
+/// Deserializer for `RollUpdate`
+pub struct RollUpdateDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+}
 
-        Ok((
-            RollUpdate {
-                roll_purchases,
-                roll_sales,
-            },
-            cursor,
-        ))
+impl RollUpdateDeserializer {
+    /// Creates a new `RollUpdateDeserializer`
+    pub fn new() -> Self {
+        RollUpdateDeserializer {
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Default for RollUpdateDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<RollUpdate> for RollUpdateDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], RollUpdate, E> {
+        context(
+            "Failed RollUpdate deserialization",
+            tuple((
+                context("Failed roll_purchases deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed roll_sales deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(roll_purchases, roll_sales)| RollUpdate {
+            roll_purchases,
+            roll_sales,
+        })
+        .parse(buffer)
     }
 }
 

@@ -19,7 +19,7 @@ use massa_serialization::{
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
-use nom::IResult;
+use nom::{IResult, Parser};
 use std::collections::hash_map;
 use std::ops::Bound::Included;
 
@@ -100,7 +100,8 @@ impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializ
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Map<Hash, SetOrDelete<Vec<u8>>>, E> {
-        context("Failed Datastore deserialization", |input| {
+        context(
+            "Failed Datastore deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
@@ -111,9 +112,10 @@ impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializ
                         |input| self.value_deserializer.deserialize(input),
                     ))(input)
                 },
-            )(input)
-        })(buffer)
-        .map(|(rest, elems)| (rest, elems.into_iter().collect()))
+            ),
+        )
+        .map(|elems| elems.into_iter().collect())
+        .parse(buffer)
     }
 }
 
@@ -232,7 +234,8 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], LedgerEntryUpdate, E> {
-        context("Failed LedgerEntryUpdate deserialization", |input| {
+        context(
+            "Failed LedgerEntryUpdate deserialization",
             tuple((
                 context("Failed parallel_balance deserialization", |input| {
                     self.parallel_balance_deserializer.deserialize(input)
@@ -243,18 +246,16 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
                 context("Failed datastore deserialization", |input| {
                     self.datastore_deserializer.deserialize(input)
                 }),
-            ))(input)
-        })(buffer)
-        .map(|(rest, (parallel_balance, bytecode, datastore))| {
-            (
-                rest,
-                LedgerEntryUpdate {
-                    parallel_balance,
-                    bytecode,
-                    datastore,
-                },
-            )
-        })
+            )),
+        )
+        .map(
+            |(parallel_balance, bytecode, datastore)| LedgerEntryUpdate {
+                parallel_balance,
+                bytecode,
+                datastore,
+            },
+        )
+        .parse(buffer)
     }
 }
 
@@ -407,20 +408,20 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], LedgerChanges, E> {
-        context("Failed LedgerChanges deserialization", |input| {
+        context(
+            "Failed LedgerChanges deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
                 }),
-                |input| {
-                    tuple((
-                        |input| self.address_deserializer.deserialize(input),
-                        |input| self.entry_deserializer.deserialize(input),
-                    ))(input)
-                },
-            )(input)
-        })(buffer)
-        .map(|(rest, res)| (rest, LedgerChanges(res.into_iter().collect())))
+                tuple((
+                    |input| self.address_deserializer.deserialize(input),
+                    |input| self.entry_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|res| LedgerChanges(res.into_iter().collect()))
+        .parse(buffer)
     }
 }
 

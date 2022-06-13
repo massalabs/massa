@@ -5,6 +5,7 @@ use massa_serialization::{Deserializer, Serializer, U32VarIntDeserializer, U32Va
 use nom::bytes::complete::take;
 use nom::error::context;
 use nom::sequence::tuple;
+use nom::Parser;
 use nom::{
     error::{ContextError, ParseError},
     IResult,
@@ -146,7 +147,8 @@ impl Deserializer<Version> for VersionDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Version, E> {
-        context("Failed Version deserialization", |input: &'a [u8]| {
+        context(
+            "Failed Version deserialization",
             tuple((
                 context("Failed instance deserialization", |input: &'a [u8]| {
                     let (rest, instance) = take(INSTANCE_LEN)(input)?;
@@ -173,18 +175,14 @@ impl Deserializer<Version> for VersionDeserializer {
                 context("Failed minor deserialization", |input: &'a [u8]| {
                     self.u32_deserializer.deserialize(input)
                 }),
-            ))(input)
-        })(buffer)
-        .map(|(rest, (instance, major, minor))| {
-            (
-                rest,
-                Version {
-                    instance,
-                    major,
-                    minor,
-                },
-            )
+            )),
+        )
+        .map(|(instance, major, minor)| Version {
+            instance,
+            major,
+            minor,
         })
+        .parse(buffer)
     }
 }
 

@@ -10,7 +10,7 @@ use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{
     error::{context, ContextError, ParseError},
     sequence::tuple,
-    IResult,
+    IResult, Parser,
 };
 
 /// represents changes that can be applied to the execution state
@@ -166,7 +166,8 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], StateChanges, E> {
-        context("Failed StateChanges deserialization", |input| {
+        context(
+            "Failed StateChanges deserialization",
             tuple((
                 context("Failed ledger_changes deserialization", |input| {
                     self.ledger_changes_deserializer.deserialize(input)
@@ -174,17 +175,13 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 context("Failed async_pool_changes deserialization", |input| {
                     self.async_pool_changes_deserializer.deserialize(input)
                 }),
-            ))(input)
-        })(buffer)
-        .map(|(rest, (ledger_changes, async_pool_changes))| {
-            (
-                rest,
-                StateChanges {
-                    ledger_changes,
-                    async_pool_changes,
-                },
-            )
+            )),
+        )
+        .map(|(ledger_changes, async_pool_changes)| StateChanges {
+            ledger_changes,
+            async_pool_changes,
         })
+        .parse(buffer)
     }
 }
 

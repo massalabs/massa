@@ -18,7 +18,7 @@ use massa_serialization::{
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
-use nom::IResult;
+use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ops::Bound::Included;
@@ -97,20 +97,20 @@ impl Deserializer<BTreeMap<Hash, Vec<u8>>> for DatastoreDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BTreeMap<Hash, Vec<u8>>, E> {
-        context("Failed Datastore deserialization", |input| {
+        context(
+            "Failed Datastore deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
                 }),
-                |input| {
-                    tuple((
-                        |input| self.hash_deserializer.deserialize(input),
-                        |input| self.value_deserializer.deserialize(input),
-                    ))(input)
-                },
-            )(input)
-        })(buffer)
-        .map(|(rest, elems)| (rest, elems.into_iter().collect()))
+                tuple((
+                    |input| self.hash_deserializer.deserialize(input),
+                    |input| self.value_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
     }
 }
 
@@ -214,7 +214,8 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], LedgerEntry, E> {
-        context("Failed LedgerEntry deserialization", |input| {
+        context(
+            "Failed LedgerEntry deserialization",
             tuple((
                 context("Failed parallel_balance deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
@@ -225,18 +226,14 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
                 context("Failed datastore deserialization", |input| {
                     self.datastore_deserializer.deserialize(input)
                 }),
-            ))(input)
-        })(buffer)
-        .map(|(rest, (parallel_balance, bytecode, datastore))| {
-            (
-                rest,
-                LedgerEntry {
-                    parallel_balance,
-                    bytecode,
-                    datastore,
-                },
-            )
+            )),
+        )
+        .map(|(parallel_balance, bytecode, datastore)| LedgerEntry {
+            parallel_balance,
+            bytecode,
+            datastore,
         })
+        .parse(buffer)
     }
 }
 
