@@ -94,10 +94,14 @@ impl ExecutionState {
         // This should be among the latest final slots.
         let last_final_slot = final_state.read().slot;
 
+        // Create active history
+        let active_history: VecDeque<ExecutionOutput> = Default::default();
+
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             final_state.clone(),
             Default::default(),
+            &active_history,
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -747,6 +751,7 @@ impl ExecutionState {
             slot,
             opt_block_id,
             previous_changes,
+            &self.active_history,
             self.final_state.clone(),
         );
 
@@ -822,6 +827,7 @@ impl ExecutionState {
             req.simulated_gas_price,
             req.call_stack,
             previous_changes,
+            &self.active_history,
             self.final_state.clone(),
         );
 
