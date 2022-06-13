@@ -23,7 +23,7 @@ impl Default for FinalState {
         // generate the final state
         FinalState {
             slot,
-            ledger,
+            ledger: Box::new(ledger),
             async_pool,
             config,
             changes_history: Default::default(), // no changes in history

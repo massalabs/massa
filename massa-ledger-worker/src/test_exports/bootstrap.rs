@@ -5,7 +5,8 @@ use massa_models::Address;
 use std::collections::HashMap;
 use tempfile::TempDir;
 
-use crate::{ledger_db::LedgerDB, FinalLedger};
+use crate::ledger_db::{LedgerDB, LedgerSubEntry};
+use crate::FinalLedger;
 
 /// This file defines tools to test the ledger bootstrap
 
@@ -43,7 +44,6 @@ pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
 
 /// asserts that two `FinalLedgerBootstrapState` are equal
 pub fn assert_eq_ledger(v1: &FinalLedger, v2: &FinalLedger) {
-    // IMPORTANT NOTE: MAKE SURE THIS WORKS
     let ledger1: HashMap<Address, LedgerEntry> = v1
         .sorted_ledger
         .get_every_address()
@@ -53,8 +53,11 @@ pub fn assert_eq_ledger(v1: &FinalLedger, v2: &FinalLedger) {
                 *addr,
                 LedgerEntry {
                     parallel_balance: *balance,
-                    bytecode: v1.get_bytecode(addr).unwrap_or_default(),
-                    datastore: v1.get_entire_datastore(addr),
+                    bytecode: v1
+                        .sorted_ledger
+                        .get_sub_entry(addr, LedgerSubEntry::Bytecode)
+                        .unwrap_or_default(),
+                    datastore: v1.sorted_ledger.get_entire_datastore(addr),
                 },
             )
         })
@@ -68,8 +71,11 @@ pub fn assert_eq_ledger(v1: &FinalLedger, v2: &FinalLedger) {
                 *addr,
                 LedgerEntry {
                     parallel_balance: *balance,
-                    bytecode: v2.get_bytecode(addr).unwrap_or_default(),
-                    datastore: v2.get_entire_datastore(addr),
+                    bytecode: v1
+                        .sorted_ledger
+                        .get_sub_entry(addr, LedgerSubEntry::Bytecode)
+                        .unwrap_or_default(),
+                    datastore: v1.sorted_ledger.get_entire_datastore(addr),
                 },
             )
         })

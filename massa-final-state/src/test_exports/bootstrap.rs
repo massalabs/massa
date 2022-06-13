@@ -5,7 +5,7 @@
 use std::collections::VecDeque;
 
 use massa_async_pool::AsyncPool;
-use massa_ledger_worker::FinalLedger;
+use massa_ledger_exports::LedgerController;
 use massa_models::Slot;
 
 use crate::{FinalState, FinalStateConfig, StateChanges};
@@ -14,7 +14,7 @@ use crate::{FinalState, FinalStateConfig, StateChanges};
 pub fn create_final_state(
     config: FinalStateConfig,
     slot: Slot,
-    ledger: FinalLedger,
+    ledger: Box<dyn LedgerController>,
     async_pool: AsyncPool,
     changes_history: VecDeque<(Slot, StateChanges)>,
 ) -> FinalState {

@@ -1747,7 +1747,6 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "nom 7.1.1",
- "rocksdb",
  "serde 1.0.136",
  "serde_json",
  "tempfile",
