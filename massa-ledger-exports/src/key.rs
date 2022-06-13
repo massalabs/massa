@@ -1,6 +1,7 @@
 use massa_hash::HashDeserializer;
 use massa_models::{address::AddressDeserializer, Address};
-use massa_serialization::{Deserializer, Serializer};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use nom::error::{ContextError, ParseError};
 
 pub const BALANCE_IDENT: u8 = 0u8;
 pub const BYTECODE_IDENT: u8 = 1u8;
@@ -47,6 +48,15 @@ macro_rules! data_prefix {
     };
 }
 
+/// Extract an address from a key
+pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
+    let address_deserializer = AddressDeserializer::new();
+    address_deserializer
+        .deserialize::<DeserializeError>(key)
+        .map(|res| res.1)
+        .ok()
+}
+
 /// Basic key serializer
 #[derive(Default)]
 pub struct KeySerializer;
@@ -83,9 +93,15 @@ impl KeyDeserializer {
 
 // TODO: deserialize keys into a rust type
 impl Deserializer<Vec<u8>> for KeyDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Vec<u8>> {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> nom::IResult<&'a [u8], Vec<u8>, E> {
         let (rest, address) = self.address_deserializer.deserialize(buffer)?;
-        let error = nom::Err::Error(nom::error::Error::new(buffer, nom::error::ErrorKind::IsNot));
+        let error = nom::Err::Error(ParseError::from_error_kind(
+            buffer,
+            nom::error::ErrorKind::Fail,
+        ));
         match rest.first() {
             Some(ident) => match *ident {
                 BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
@@ -99,10 +115,4 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
             None => Err(error),
         }
     }
-}
-
-/// Extract an address from a key
-pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
-    let address_deserializer = AddressDeserializer::new();
-    address_deserializer.deserialize(key).map(|res| res.1).ok()
 }

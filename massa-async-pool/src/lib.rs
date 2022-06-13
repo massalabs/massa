@@ -100,7 +100,8 @@ pub use changes::{
 };
 pub use config::AsyncPoolConfig;
 pub use message::{
-    AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+    AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
+    AsyncMessageIdSerializer, AsyncMessageSerializer,
 };
 pub use pool::AsyncPool;
 

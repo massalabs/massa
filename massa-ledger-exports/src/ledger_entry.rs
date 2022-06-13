@@ -13,6 +13,7 @@ use massa_models::{
 };
 use massa_models::{DeserializeCompact, SerializeCompact};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
+use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::IResult;
@@ -84,17 +85,24 @@ impl DatastoreDeserializer {
 }
 
 impl Deserializer<BTreeMap<Hash, Vec<u8>>> for DatastoreDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], BTreeMap<Hash, Vec<u8>>> {
-        let mut parser = length_count(
-            |input| self.u64_deserializer.deserialize(input),
-            |input| {
-                let (rest, key) = self.hash_deserializer.deserialize(input)?;
-                let (rest, data) = self.value_deserializer.deserialize(rest)?;
-                Ok((rest, (key, data)))
-            },
-        );
-        let (rest, res) = parser(buffer)?;
-        Ok((rest, res.into_iter().collect()))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BTreeMap<Hash, Vec<u8>>, E> {
+        context("Failed Datastore deserialization", |input| {
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                |input| {
+                    tuple((
+                        |input| self.hash_deserializer.deserialize(input),
+                        |input| self.value_deserializer.deserialize(input),
+                    ))(input)
+                },
+            )(input)
+        })(buffer)
+        .map(|(rest, elems)| (rest, elems.into_iter().collect()))
     }
 }
 
@@ -141,21 +149,33 @@ impl LedgerEntryDeserializer {
 }
 
 impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], LedgerEntry> {
-        let mut parser = tuple((
-            |input| self.amount_deserializer.deserialize(input),
-            |input| self.vec_u8_deserializer.deserialize(input),
-            |input| self.datastore_deserializer.deserialize(input),
-        ));
-        let (rest, (parallel_balance, bytecode, datastore)) = parser(buffer)?;
-        Ok((
-            rest,
-            LedgerEntry {
-                parallel_balance,
-                bytecode,
-                datastore,
-            },
-        ))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], LedgerEntry, E> {
+        context("Failed LedgerEntry deserialization", |input| {
+            tuple((
+                context("Failed parallel_balance deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed bytecode deserialization", |input| {
+                    self.vec_u8_deserializer.deserialize(input)
+                }),
+                context("Failed datastore deserialization", |input| {
+                    self.datastore_deserializer.deserialize(input)
+                }),
+            ))(input)
+        })(buffer)
+        .map(|(rest, (parallel_balance, bytecode, datastore))| {
+            (
+                rest,
+                LedgerEntry {
+                    parallel_balance,
+                    bytecode,
+                    datastore,
+                },
+            )
+        })
     }
 }
 

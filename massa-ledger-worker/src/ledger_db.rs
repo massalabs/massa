@@ -20,7 +20,9 @@ use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
 
 #[cfg(feature = "testing")]
-use massa_models::{address::AddressDeserializer, Amount, DeserializeCompact};
+use massa_models::address::AddressDeserializer;
+use massa_models::{Amount, DeserializeCompact};
+use massa_serialization::DeserializeError;
 
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
@@ -227,7 +229,9 @@ impl LedgerDB {
         let mut addresses = BTreeMap::new();
         let address_deserializer = AddressDeserializer::new();
         for (key, entry) in ledger {
-            let (rest, address) = address_deserializer.deserialize(&key[..]).unwrap();
+            let (rest, address) = address_deserializer
+                .deserialize::<DeserializeError>(&key[..])
+                .unwrap();
             if rest.first() == Some(&BALANCE_IDENT) {
                 addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
             }
