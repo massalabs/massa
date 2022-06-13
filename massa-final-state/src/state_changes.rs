@@ -45,17 +45,12 @@ impl Default for StateChangesSerializer {
 }
 
 impl Serializer<StateChanges> for StateChangesSerializer {
-    fn serialize(&self, value: &StateChanges) -> Result<Vec<u8>, SerializeError> {
-        let ledger_changes = self
-            .ledger_changes_serializer
-            .serialize(&value.ledger_changes)?;
-        let async_pool_changes = self
-            .async_pool_changes_serializer
-            .serialize(&value.async_pool_changes)?;
-        let mut res = Vec::with_capacity(ledger_changes.len() + async_pool_changes.len());
-        res.extend(ledger_changes);
-        res.extend(async_pool_changes);
-        Ok(res)
+    fn serialize(&self, value: &StateChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.ledger_changes_serializer
+            .serialize(&value.ledger_changes, buffer)?;
+        self.async_pool_changes_serializer
+            .serialize(&value.async_pool_changes, buffer)?;
+        Ok(())
     }
 }
 

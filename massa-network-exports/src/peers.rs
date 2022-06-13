@@ -64,27 +64,27 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
     ///
     /// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
     /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// let mut serialized = Vec::new();
     /// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);
     /// let peers_serializer = BootstrapPeersSerializer::new(1000);
-    /// peers_serializer.serialize(&peers).unwrap();
+    /// peers_serializer.serialize(&peers, &mut serialized).unwrap();
     /// ```
     fn serialize(
         &self,
         value: &BootstrapPeers,
-    ) -> Result<Vec<u8>, massa_serialization::SerializeError> {
-        let mut res = Vec::new();
-
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
         let peers_count: u32 = value.0.len().try_into().map_err(|err| {
             SerializeError::NumberTooBig(format!(
                 "too many peers blocks in BootstrapPeers: {}",
                 err
             ))
         })?;
-        res.extend(self.u32_serializer.serialize(&peers_count)?);
+        self.u32_serializer.serialize(&peers_count, buffer)?;
         for peer in value.0.iter() {
-            res.extend(self.ip_addr_serializer.serialize(peer)?);
+            self.ip_addr_serializer.serialize(peer, buffer)?;
         }
-        Ok(res)
+        Ok(())
     }
 }
 
@@ -117,10 +117,11 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
     ///
     /// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
     /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// let mut serialized = Vec::new();
     /// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);
     /// let peers_serializer = BootstrapPeersSerializer::new(1000);
     /// let peers_deserializer = BootstrapPeersDeserializer::new(1000);
-    /// let serialized = peers_serializer.serialize(&peers).unwrap();
+    /// peers_serializer.serialize(&peers, &mut serialized).unwrap();
     /// let (rest, peers_deser) = peers_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(peers, peers_deser);

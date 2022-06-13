@@ -24,7 +24,7 @@ pub use serialization_context::{
     get_serialization_context, init_serialization_context, with_serialization_context,
     SerializationContext,
 };
-pub use slot::Slot;
+pub use slot::{Slot, SlotDeserializer, SlotSerializer};
 pub use version::{Version, VersionDeserializer, VersionSerializer};
 /// active blocks related structures
 pub mod active_block;

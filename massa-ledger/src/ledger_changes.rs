@@ -12,7 +12,7 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::{prehash::Map, Address, Amount};
-use massa_models::{SerializeVarInt, VecU8Deserializer, VecU8Serializer};
+use massa_models::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -55,23 +55,20 @@ impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreSerializer {
     fn serialize(
         &self,
         value: &Map<Hash, SetOrDelete<Vec<u8>>>,
-    ) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         let entry_count: u64 = value.len().try_into().map_err(|err| {
             SerializeError::GeneralError(format!(
                 "too many entries in ConsensusLedgerSubset: {}",
                 err
             ))
         })?;
-
-        res.extend(self.u64_serializer.serialize(&entry_count)?);
-
+        self.u64_serializer.serialize(&entry_count, buffer)?;
         for (key, value) in value.iter() {
-            res.extend(key.to_bytes());
-            res.extend(self.value_serializer.serialize(value)?);
+            buffer.extend(key.to_bytes());
+            self.value_serializer.serialize(value, buffer)?;
         }
-        Ok(res)
+        Ok(())
     }
 }
 
@@ -139,15 +136,18 @@ impl LedgerEntryUpdateSerializer {
 }
 
 impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
-    fn serialize(&self, value: &LedgerEntryUpdate) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-        res.extend(
-            self.parallel_balance_serializer
-                .serialize(&value.parallel_balance)?,
-        );
-        res.extend(self.bytecode_serializer.serialize(&value.bytecode)?);
-        res.extend(self.datastore_serializer.serialize(&value.datastore)?);
-        Ok(res)
+    fn serialize(
+        &self,
+        value: &LedgerEntryUpdate,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        self.parallel_balance_serializer
+            .serialize(&value.parallel_balance, buffer)?;
+        self.bytecode_serializer
+            .serialize(&value.bytecode, buffer)?;
+        self.datastore_serializer
+            .serialize(&value.datastore, buffer)?;
+        Ok(())
     }
 }
 
@@ -219,6 +219,7 @@ pub struct LedgerChanges(pub Map<Address, SetUpdateOrDelete<LedgerEntry, LedgerE
 
 /// `LedgerChanges` serializer
 pub struct LedgerChangesSerializer {
+    u64_serializer: U64VarIntSerializer,
     entry_serializer: SetUpdateOrDeleteSerializer<
         LedgerEntry,
         LedgerEntryUpdate,
@@ -231,6 +232,7 @@ impl LedgerChangesSerializer {
     /// Creates a new `LedgerChangesSerializer`
     pub fn new() -> Self {
         Self {
+            u64_serializer: U64VarIntSerializer::new(Included(0), Included(1000000)),
             entry_serializer: SetUpdateOrDeleteSerializer::new(
                 LedgerEntrySerializer::new(),
                 LedgerEntryUpdateSerializer::new(),
@@ -246,17 +248,16 @@ impl Default for LedgerChangesSerializer {
 }
 
 impl Serializer<LedgerChanges> for LedgerChangesSerializer {
-    fn serialize(&self, value: &LedgerChanges) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
+    fn serialize(&self, value: &LedgerChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let entry_count: u64 = value.0.len().try_into().map_err(|err| {
             SerializeError::GeneralError(format!("too many entries in LedgerChanges: {}", err))
         })?;
-        res.extend(entry_count.to_varint_bytes());
+        self.u64_serializer.serialize(&entry_count, buffer)?;
         for (address, data) in value.0.iter() {
-            res.extend(address.to_bytes());
-            res.extend(self.entry_serializer.serialize(data)?);
+            buffer.extend(address.to_bytes());
+            self.entry_serializer.serialize(data, buffer)?;
         }
-        Ok(res)
+        Ok(())
     }
 }
 

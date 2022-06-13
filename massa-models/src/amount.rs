@@ -197,8 +197,8 @@ impl AmountSerializer {
 }
 
 impl Serializer<Amount> for AmountSerializer {
-    fn serialize(&self, value: &Amount) -> Result<Vec<u8>, SerializeError> {
-        self.u64_serializer.serialize(&value.0)
+    fn serialize(&self, value: &Amount, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.u64_serializer.serialize(&value.0, buffer)
     }
 }
 

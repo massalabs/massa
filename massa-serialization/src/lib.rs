@@ -170,7 +170,7 @@ pub trait Serializer<T> {
     ///
     /// ## Returns
     /// A Result with the serialized data.
-    fn serialize(&self, value: &T) -> Result<Vec<u8>, SerializeError>;
+    fn serialize(&self, value: &T, buffer: &mut Vec<u8>) -> Result<(), SerializeError>;
 }
 
 macro_rules! gen_varint {
@@ -200,11 +200,12 @@ macro_rules! gen_varint {
             }
 
             impl Serializer<$type> for $s {
-                fn serialize(&self, value: &$type) -> Result<Vec<u8>, SerializeError> {
+                fn serialize(&self, value: &$type, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
                     if !self.range.contains(value) {
                         return Err(SerializeError::NumberTooBig(format!("Value {:#?} is not in range {:#?}", value, self.range)));
                     }
-                    Ok($type(*value, &mut $bs()).to_vec())
+                    buffer.extend_from_slice($type(*value, &mut $bs()));
+                    Ok(())
                 }
             }
 

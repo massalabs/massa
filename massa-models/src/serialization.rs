@@ -262,21 +262,18 @@ impl Serializer<IpAddr> for IpAddrSerializer {
     ///
     /// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
     /// let ip_serializer = IpAddrSerializer::new();
-    /// ip_serializer.serialize(&ip).unwrap();
+    /// let mut buffer = Vec::new();
+    /// ip_serializer.serialize(&ip, &mut buffer).unwrap();
     /// ```
-    fn serialize(&self, value: &IpAddr) -> Result<Vec<u8>, SerializeError> {
+    fn serialize(&self, value: &IpAddr, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         Ok(match value {
             IpAddr::V4(ip_v4) => {
-                let mut res = Vec::with_capacity(1 + 4);
-                res.push(4u8);
-                res.extend(&ip_v4.octets());
-                res
+                buffer.push(4u8);
+                buffer.extend(&ip_v4.octets());
             }
             IpAddr::V6(ip_v6) => {
-                let mut res = Vec::with_capacity(1 + 16);
-                res.push(6u8);
-                res.extend(&ip_v6.octets());
-                res
+                buffer.push(6u8);
+                buffer.extend(&ip_v6.octets());
             }
         })
     }
@@ -368,13 +365,13 @@ impl VecU8Serializer {
 }
 
 impl Serializer<Vec<u8>> for VecU8Serializer {
-    fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, SerializeError> {
+    fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let len: u64 = value.len().try_into().map_err(|err| {
             SerializeError::NumberTooBig(format!("too many entries data in VecU8: {}", err))
         })?;
-        let mut res = self.varint_u64_serializer.serialize(&len)?;
-        res.extend(value);
-        Ok(res)
+        self.varint_u64_serializer.serialize(&len, buffer)?;
+        buffer.extend(value);
+        Ok(())
     }
 }
 
@@ -416,7 +413,8 @@ mod tests {
         let vec: Vec<u8> = vec![9, 8, 7];
         let vec_u8_serializer = VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX));
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
-        let serialized = vec_u8_serializer.serialize(&vec).unwrap();
+        let mut serialized = Vec::new();
+        vec_u8_serializer.serialize(&vec, &mut serialized).unwrap();
         let (rest, new_vec) = vec_u8_deserializer
             .deserialize::<DeserializeError>(&serialized)
             .unwrap();
@@ -429,8 +427,9 @@ mod tests {
     fn vec_u8_big_length() {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 10;
-        let mut serialized = U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
-            .serialize(&len)
+        let mut serialized = Vec::new();
+        U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+            .serialize(&len, &mut serialized)
             .unwrap();
         serialized.extend(vec);
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
@@ -444,8 +443,9 @@ mod tests {
     fn vec_u8_min_length() {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 1;
-        let mut serialized = U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
-            .serialize(&len)
+        let mut serialized = Vec::new();
+        U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+            .serialize(&len, &mut serialized)
             .unwrap();
         serialized.extend(vec);
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));

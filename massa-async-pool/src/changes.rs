@@ -56,27 +56,31 @@ impl Default for AsyncPoolChangesSerializer {
 }
 
 impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
-    fn serialize(&self, value: &AsyncPoolChanges) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-        res.extend(self.u64_serializer.serialize(
+    fn serialize(
+        &self,
+        value: &AsyncPoolChanges,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        self.u64_serializer.serialize(
             &(value.0.len().try_into().map_err(|_| {
                 SerializeError::GeneralError("Fail to transform usize to u64".to_string())
             })?),
-        )?);
+            buffer,
+        )?;
         for change in &value.0 {
             match change {
                 Change::Add(id, message) => {
-                    res.push(0);
-                    res.extend(self.id_serializer.serialize(id)?);
-                    res.extend(self.message_serializer.serialize(message)?);
+                    buffer.push(0);
+                    self.id_serializer.serialize(id, buffer)?;
+                    self.message_serializer.serialize(message, buffer)?;
                 }
                 Change::Delete(id) => {
-                    res.push(1);
-                    res.extend(self.id_serializer.serialize(id)?);
+                    buffer.push(1);
+                    self.id_serializer.serialize(id, buffer)?;
                 }
             }
         }
-        Ok(res)
+        Ok(())
     }
 }
 

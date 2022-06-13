@@ -53,11 +53,16 @@ impl Serializer<MassaTime> for MassaTimeSerializer {
     /// use massa_time::{MassaTime, MassaTimeSerializer};
     ///
     /// let time: MassaTime = 30.into();
+    /// let mut serialized = Vec::new();
     /// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));
-    /// let serialized = serializer.serialize(&time).unwrap();
+    /// serializer.serialize(&time, &mut serialized).unwrap();
     /// ```
-    fn serialize(&self, value: &MassaTime) -> Result<Vec<u8>, massa_serialization::SerializeError> {
-        self.u64_serializer.serialize(&value.to_millis())
+    fn serialize(
+        &self,
+        value: &MassaTime,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
+        self.u64_serializer.serialize(&value.to_millis(), buffer)
     }
 }
 
@@ -88,9 +93,10 @@ impl Deserializer<MassaTime> for MassaTimeDeserializer {
     /// use massa_time::{MassaTime, MassaTimeSerializer, MassaTimeDeserializer};
     ///
     /// let time: MassaTime = 30.into();
+    /// let mut serialized = Vec::new();
     /// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));
     /// let deserializer = MassaTimeDeserializer::new((Included(0.into()), Included(u64::MAX.into())));
-    /// let serialized = serializer.serialize(&time).unwrap();
+    /// serializer.serialize(&time, &mut serialized).unwrap();
     /// let (rest, time_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(time, time_deser);

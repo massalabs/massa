@@ -56,15 +56,12 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     fn serialize(
         &self,
         value: &AsyncMessageId,
-    ) -> Result<Vec<u8>, massa_serialization::SerializeError> {
-        let amount = self.amount_serializer.serialize(&value.0 .0)?;
-        let slot = self.slot_serializer.serialize(&value.1)?;
-        let index = self.u64_serializer.serialize(&value.2)?;
-        let mut res = Vec::with_capacity(amount.len() + slot.len() + index.len());
-        res.extend(amount);
-        res.extend(slot);
-        res.extend(index);
-        Ok(res)
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
+        self.amount_serializer.serialize(&value.0 .0, buffer)?;
+        self.slot_serializer.serialize(&value.1, buffer)?;
+        self.u64_serializer.serialize(&value.2, buffer)?;
+        Ok(())
     }
 }
 
@@ -216,34 +213,38 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     ///     validity_end: Slot::new(3, 0),
     ///     data: vec![1, 2, 3, 4]
     /// };
+    /// let mut buffer = Vec::new();
     /// let message_serializer = AsyncMessageSerializer::new();
-    /// message_serializer.serialize(&message).unwrap();
+    /// message_serializer.serialize(&message, &mut buffer).unwrap();
     /// ```
     fn serialize(
         &self,
         value: &AsyncMessage,
-    ) -> Result<Vec<u8>, massa_serialization::SerializeError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        res.extend(self.slot_serializer.serialize(&value.emission_slot)?);
-        res.extend(self.u64_serializer.serialize(&value.emission_index)?);
-        res.extend(value.sender.to_bytes());
-        res.extend(value.destination.to_bytes());
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
+        self.slot_serializer
+            .serialize(&value.emission_slot, buffer)?;
+        self.u64_serializer
+            .serialize(&value.emission_index, buffer)?;
+        buffer.extend(value.sender.to_bytes());
+        buffer.extend(value.destination.to_bytes());
 
         let handler_bytes = value.handler.as_bytes();
         let handler_name_len: u8 = handler_bytes.len().try_into().map_err(|_| {
             SerializeError::GeneralError("could not convert handler name length to u8".into())
         })?;
-        res.extend(&[handler_name_len]);
-        res.extend(handler_bytes);
+        buffer.extend(&[handler_name_len]);
+        buffer.extend(handler_bytes);
 
-        res.extend(self.u64_serializer.serialize(&value.max_gas)?);
-        res.extend(self.amount_serializer.serialize(&value.gas_price)?);
-        res.extend(self.amount_serializer.serialize(&value.coins)?);
-        res.extend(self.slot_serializer.serialize(&value.validity_start)?);
-        res.extend(self.slot_serializer.serialize(&value.validity_end)?);
-        res.extend(self.vec_u8_serializer.serialize(&value.data)?);
-        Ok(res)
+        self.u64_serializer.serialize(&value.max_gas, buffer)?;
+        self.amount_serializer.serialize(&value.gas_price, buffer)?;
+        self.amount_serializer.serialize(&value.coins, buffer)?;
+        self.slot_serializer
+            .serialize(&value.validity_start, buffer)?;
+        self.slot_serializer
+            .serialize(&value.validity_end, buffer)?;
+        self.vec_u8_serializer.serialize(&value.data, buffer)?;
+        Ok(())
     }
 }
 
@@ -300,9 +301,11 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     ///     data: vec![1, 2, 3, 4]
     /// };
     /// let message_serializer = AsyncMessageSerializer::new();
-    /// let serialized = message_serializer.serialize(&message).unwrap();
+    /// let mut serialized = Vec::new();
+    /// message_serializer.serialize(&message, &mut serialized).unwrap();
     /// let message_deserializer = AsyncMessageDeserializer::new();
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
@@ -423,9 +426,11 @@ mod tests {
             data: vec![1, 2, 3, 4],
         };
         let message_serializer = AsyncMessageSerializer::new();
-        let mut serialized = message_serializer.serialize(&message).unwrap();
+        let mut serialized = Vec::new();
+        message_serializer
+            .serialize(&message, &mut serialized)
+            .unwrap();
         let message_deserializer = AsyncMessageDeserializer::new();
-        println!("{:#?}", serialized);
         serialized[1] = 50;
         message_deserializer
             .deserialize::<DeserializeError>(&serialized)

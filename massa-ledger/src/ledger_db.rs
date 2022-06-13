@@ -111,8 +111,13 @@ impl KeySerializer {
 }
 
 impl Serializer<Vec<u8>> for KeySerializer {
-    fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, massa_serialization::SerializeError> {
-        Ok(value.clone())
+    fn serialize(
+        &self,
+        value: &Vec<u8>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
+        buffer.extend(value);
+        Ok(())
     }
 }
 
@@ -473,8 +478,8 @@ impl LedgerDB {
         // Iterates over the whole database
         for (key, entry) in db_iterator {
             if part.len() < (LEDGER_PART_SIZE_MESSAGE_BYTES as usize) {
-                part.extend(key_serializer.serialize(&key.to_vec())?);
-                part.extend(ser.serialize(&entry.to_vec())?);
+                key_serializer.serialize(&key.to_vec(), &mut part)?;
+                ser.serialize(&entry.to_vec(), &mut part)?;
                 last_key = Some(key.to_vec());
             } else {
                 break;

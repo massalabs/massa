@@ -125,23 +125,25 @@ impl<
         SV: Serializer<V>,
     > Serializer<SetUpdateOrDelete<T, V>> for SetUpdateOrDeleteSerializer<T, V, ST, SV>
 {
-    fn serialize(&self, value: &SetUpdateOrDelete<T, V>) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-
+    fn serialize(
+        &self,
+        value: &SetUpdateOrDelete<T, V>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         match value {
             SetUpdateOrDelete::Set(value) => {
-                res.push(0);
-                res.extend(self.inner_serializer_set.serialize(value)?);
-                Ok(res)
+                buffer.push(0);
+                self.inner_serializer_set.serialize(value, buffer)?;
+                Ok(())
             }
             SetUpdateOrDelete::Update(value) => {
-                res.push(1);
-                res.extend(self.inner_serializer_update.serialize(value)?);
-                Ok(res)
+                buffer.push(1);
+                self.inner_serializer_update.serialize(value, buffer)?;
+                Ok(())
             }
             SetUpdateOrDelete::Delete => {
-                res.push(2);
-                Ok(res)
+                buffer.push(2);
+                Ok(())
             }
         }
     }
@@ -241,18 +243,20 @@ impl<T: Clone, ST: Serializer<T>> SetOrDeleteSerializer<T, ST> {
 }
 
 impl<T: Clone, ST: Serializer<T>> Serializer<SetOrDelete<T>> for SetOrDeleteSerializer<T, ST> {
-    fn serialize(&self, value: &SetOrDelete<T>) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-
+    fn serialize(
+        &self,
+        value: &SetOrDelete<T>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         match value {
             SetOrDelete::Set(value) => {
-                res.push(0);
-                res.extend(self.inner_serializer.serialize(value)?);
-                Ok(res)
+                buffer.push(0);
+                self.inner_serializer.serialize(value, buffer)?;
+                Ok(())
             }
             SetOrDelete::Delete => {
-                res.push(1);
-                Ok(res)
+                buffer.push(1);
+                Ok(())
             }
         }
     }
@@ -323,18 +327,16 @@ impl<T: Clone, ST: Serializer<T>> SetOrKeepSerializer<T, ST> {
 }
 
 impl<T: Clone, ST: Serializer<T>> Serializer<SetOrKeep<T>> for SetOrKeepSerializer<T, ST> {
-    fn serialize(&self, value: &SetOrKeep<T>) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-
+    fn serialize(&self, value: &SetOrKeep<T>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         match value {
             SetOrKeep::Set(value) => {
-                res.push(0);
-                res.extend(self.inner_serializer.serialize(value)?);
-                Ok(res)
+                buffer.push(0);
+                self.inner_serializer.serialize(value, buffer)?;
+                Ok(())
             }
             SetOrKeep::Keep => {
-                res.push(1);
-                Ok(res)
+                buffer.push(1);
+                Ok(())
             }
         }
     }

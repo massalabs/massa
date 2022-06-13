@@ -117,7 +117,7 @@ impl SerializeCompact for Message {
                 res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
                 res.extend(&public_key.to_bytes());
                 res.extend(random_bytes);
-                res.extend(version_serializer.serialize(version)?);
+                version_serializer.serialize(version, &mut res)?;
             }
             Message::HandshakeReply { signature } => {
                 res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
@@ -151,7 +151,7 @@ impl SerializeCompact for Message {
                 res.extend((ip_vec.len() as u64).to_varint_bytes());
                 let ip_serializer = IpAddrSerializer::new();
                 for ip in ip_vec {
-                    res.extend(ip_serializer.serialize(ip)?)
+                    ip_serializer.serialize(ip, &mut res)?
                 }
             }
             Message::BlockNotFound(hash) => {

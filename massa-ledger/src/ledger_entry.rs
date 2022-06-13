@@ -52,23 +52,23 @@ impl DatastoreSerializer {
 }
 
 impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
-    fn serialize(&self, value: &BTreeMap<Hash, Vec<u8>>) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-
+    fn serialize(
+        &self,
+        value: &BTreeMap<Hash, Vec<u8>>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         let entry_count: u64 = value.len().try_into().map_err(|err| {
             SerializeError::GeneralError(format!(
                 "too many entries in ConsensusLedgerSubset: {}",
                 err
             ))
         })?;
-
-        res.extend(self.u64_serializer.serialize(&entry_count)?);
-
+        self.u64_serializer.serialize(&entry_count, buffer)?;
         for (key, value) in value.iter() {
-            res.extend(key.to_bytes());
-            res.extend(self.value_serializer.serialize(value)?);
+            buffer.extend(key.to_bytes());
+            self.value_serializer.serialize(value, buffer)?;
         }
-        Ok(res)
+        Ok(())
     }
 }
 
@@ -127,12 +127,13 @@ impl LedgerEntrySerializer {
 }
 
 impl Serializer<LedgerEntry> for LedgerEntrySerializer {
-    fn serialize(&self, value: &LedgerEntry) -> Result<Vec<u8>, SerializeError> {
-        let mut res: Vec<u8> = Vec::new();
-        res.extend(self.amount_serializer.serialize(&value.parallel_balance)?);
-        res.extend(self.vec_u8_serializer.serialize(&value.bytecode)?);
-        res.extend(self.datastore_serializer.serialize(&value.datastore)?);
-        Ok(res)
+    fn serialize(&self, value: &LedgerEntry, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.amount_serializer
+            .serialize(&value.parallel_balance, buffer)?;
+        self.vec_u8_serializer.serialize(&value.bytecode, buffer)?;
+        self.datastore_serializer
+            .serialize(&value.datastore, buffer)?;
+        Ok(())
     }
 }
 
