@@ -9,6 +9,7 @@ use crate::NetworkError;
 use crate::NetworkEvent;
 use crate::NetworkSettings;
 
+use async_speed_limit::Limiter;
 use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::Signed;
@@ -82,6 +83,9 @@ pub async fn full_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
+    let limiter = <Limiter>::new(1024.0);
+    let mock_read_half = limiter.clone().limit(mock_read_half);
+    let mock_write_half = limiter.limit(mock_write_half);
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -140,6 +144,9 @@ pub async fn rejected_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
+    let limiter = <Limiter>::new(1024.0);
+    let mock_read_half = limiter.clone().limit(mock_read_half);
+    let mock_write_half = limiter.limit(mock_write_half);
 
     let result = HandshakeWorker::spawn(
         mock_read_half,
@@ -225,6 +232,10 @@ pub async fn full_connection_from_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
+    let limiter = <Limiter>::new(1024.0);
+    let mock_read_half = limiter.clone().limit(mock_read_half);
+    let mock_write_half = limiter.limit(mock_write_half);
+
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,

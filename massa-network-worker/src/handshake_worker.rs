@@ -6,6 +6,7 @@ use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
 };
+use async_speed_limit::{clock::StandardClock, Resource};
 use futures::future::try_join;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
@@ -58,8 +59,8 @@ impl HandshakeWorker {
     /// * `connection_id`: Node we are trying to connect for debugging
     /// * `version`: Node version used in handshake initialization (check peers compatibility)
     pub fn spawn(
-        socket_reader: ReadHalf,
-        socket_writer: WriteHalf,
+        socket_reader: Resource<ReadHalf, StandardClock>,
+        socket_writer: Resource<WriteHalf, StandardClock>,
         self_node_id: NodeId,
         private_key: PrivateKey,
         timeout_duration: MassaTime,

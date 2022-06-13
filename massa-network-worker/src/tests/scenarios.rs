@@ -11,6 +11,7 @@ use crate::{
     binders::{ReadBinder, WriteBinder},
     NetworkSettings,
 };
+use async_speed_limit::Limiter;
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
@@ -67,6 +68,9 @@ async fn test_node_worker_shutdown() {
     let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
+    let limiter = <Limiter>::new(1024.0);
+    let duplex_mock_read = limiter.clone().limit(duplex_mock_read);
+    let duplex_mock_write = limiter.limit(duplex_mock_write);
     let reader = ReadBinder::new(duplex_mock_read);
     let writer = WriteBinder::new(duplex_mock_write);
 

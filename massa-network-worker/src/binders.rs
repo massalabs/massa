@@ -4,6 +4,7 @@
 use super::messages::{
     deserialize_message_with_optional_serialized_object, Message, SerializedForm,
 };
+use async_speed_limit::{clock::StandardClock, Resource};
 use massa_models::{with_serialization_context, DeserializeMinBEInt, SerializeMinBEInt};
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use std::convert::TryInto;
@@ -11,7 +12,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// Used to serialize and send data.
 pub struct WriteBinder {
-    write_half: WriteHalf,
+    write_half: Resource<WriteHalf, StandardClock>,
     message_index: u64,
 }
 
@@ -20,7 +21,7 @@ impl WriteBinder {
     ///
     /// # Argument
     /// * `write_half`: writer half.
-    pub fn new(write_half: WriteHalf) -> Self {
+    pub fn new(write_half: Resource<WriteHalf, StandardClock>) -> Self {
         WriteBinder {
             write_half,
             message_index: 0,
@@ -40,12 +41,14 @@ impl WriteBinder {
 
         // send length
         let max_message_size = with_serialization_context(|context| context.max_message_size);
+
         self.write_half
+            .get_mut()
             .write_all(&msg_size.to_be_bytes_min(max_message_size)?[..])
             .await?;
 
         // send message
-        self.write_half.write_all(buf).await?;
+        self.write_half.get_mut().write_all(buf).await?;
 
         let res_index = self.message_index;
         self.message_index += 1;
@@ -56,7 +59,7 @@ impl WriteBinder {
 
 /// Used to receive and deserialize data.
 pub struct ReadBinder {
-    read_half: ReadHalf,
+    read_half: Resource<ReadHalf, StandardClock>,
     message_index: u64,
     buf: Vec<u8>,
     cursor: usize,
@@ -68,7 +71,7 @@ impl ReadBinder {
     ///
     /// # Argument
     /// * `read_half`: reader half.
-    pub fn new(read_half: ReadHalf) -> Self {
+    pub fn new(read_half: Resource<ReadHalf, StandardClock>) -> Self {
         ReadBinder {
             read_half,
             message_index: 0,
@@ -107,7 +110,12 @@ impl ReadBinder {
             // We need to keep all states (buffer and cursor) to ensure that if the function restarts at the read's await,
             // the state will remain consistent and resume the readout smoothly.
             while self.cursor < size_field_len {
-                match self.read_half.read(&mut self.buf[self.cursor..]).await {
+                match self
+                    .read_half
+                    .get_mut()
+                    .read(&mut self.buf[self.cursor..])
+                    .await
+                {
                     Ok(nr) => {
                         if nr == 0 {
                             return Ok(None);
@@ -139,7 +147,12 @@ impl ReadBinder {
         // read message in the same cancel-safe way as msg_size above
         while self.cursor < self.msg_size.unwrap() as usize {
             // does not panic
-            match self.read_half.read(&mut self.buf[self.cursor..]).await {
+            match self
+                .read_half
+                .get_mut()
+                .read(&mut self.buf[self.cursor..])
+                .await
+            {
                 Ok(nr) => {
                     if nr == 0 {
                         return Ok(None);

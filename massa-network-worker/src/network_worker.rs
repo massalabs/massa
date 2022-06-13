@@ -10,6 +10,7 @@ use crate::{
     messages::Message,
     network_event::EventSender,
 };
+use async_speed_limit::{clock::StandardClock, Limiter, Resource};
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, SerializeCompact, Version};
@@ -576,6 +577,9 @@ impl NetworkWorker {
                     .peer_info_db
                     .try_out_connection_attempt_success(&ip_addr)?
                 {
+                    let limiter = <Limiter>::new(1024.0);
+                    let reader = limiter.clone().limit(reader);
+                    let writer = limiter.limit(writer);
                     // outgoing connection established
                     let connection_id = *cur_connection_id;
                     debug!(
@@ -630,6 +634,9 @@ impl NetworkWorker {
     ) -> Result<(), NetworkError> {
         match res {
             Ok((reader, writer, remote_addr)) => {
+                let limiter = <Limiter>::new(1024.0);
+                let reader = limiter.clone().limit(reader);
+                let writer = limiter.limit(writer);
                 match self.peer_info_db.try_new_in_connection(&remote_addr.ip()) {
                     Ok(_) => {
                         let connection_id = *cur_connection_id;
@@ -691,8 +698,8 @@ impl NetworkWorker {
     /// main loop.
     fn try_send_peer_list_in_handshake(
         &self,
-        reader: ReadHalf,
-        writer: WriteHalf,
+        reader: Resource<ReadHalf, StandardClock>,
+        writer: Resource<WriteHalf, StandardClock>,
         remote_addr: SocketAddr,
     ) {
         massa_trace!(
@@ -736,8 +743,8 @@ impl NetworkWorker {
     fn manage_successful_connection(
         &mut self,
         connection_id: ConnectionId,
-        reader: ReadHalf,
-        writer: WriteHalf,
+        reader: Resource<ReadHalf, StandardClock>,
+        writer: Resource<WriteHalf, StandardClock>,
     ) -> Result<(), NetworkError> {
         if !self.running_handshakes.insert(connection_id) {
             return Err(NetworkError::HandshakeError(
