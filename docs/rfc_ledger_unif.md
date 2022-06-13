@@ -50,6 +50,8 @@ struct CycleInfo {
 
 /// NOTE: draws are done by the separate PoS module that is fed completed CycleInfos so that the draw algo is done in parallel, and shared so that all modules can efficiently read PoS draws
 
+/// NOTE: when slashing, try to slash deferred credits first, then rolls. Otherwise attackers can do a roll sale and just after do an attack and not lose anything
+
 struct ProductionStats {
   block_success_count: u64,
   block_failure_count: u64,
