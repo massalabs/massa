@@ -18,6 +18,7 @@ use massa_execution_exports::{ExecutionConfig, ExecutionManager};
 use massa_execution_worker::start_execution_worker;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_ledger_exports::LedgerConfig;
+use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
@@ -88,7 +89,7 @@ async fn launch() -> (
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count,
-        ledger_config,
+        ledger_config: ledger_config.clone(),
         async_pool_config,
     };
 
@@ -102,9 +103,12 @@ async fn launch() -> (
             .expect("disk ledger delete failed");
     }
 
+    // Create final ledger
+    let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
+
     // Create final state
     let final_state = Arc::new(RwLock::new(
-        FinalState::new(final_state_config).expect("could not init final state"),
+        FinalState::new(final_state_config, Box::new(ledger)).expect("could not init final state"),
     ));
 
     // interrupt signal listener

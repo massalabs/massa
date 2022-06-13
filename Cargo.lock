@@ -1478,6 +1478,7 @@ dependencies = [
  "massa_execution_worker",
  "massa_final_state",
  "massa_ledger_exports",
+ "massa_ledger_worker",
  "massa_logging",
  "massa_models",
  "massa_network_exports",
