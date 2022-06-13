@@ -62,14 +62,3 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: 'massa_*'
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: "recursive"
-    - run: |
-       apt install python3 poetry
-       cd massa-deploy/testnet
-       poetry install
-       python3 deploy.py

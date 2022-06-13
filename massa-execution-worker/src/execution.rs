@@ -16,7 +16,10 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
-use massa_ledger::{Applicable, LedgerEntry, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete};
+use massa_hash::Hash;
+use massa_ledger::{
+    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
+};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
@@ -287,6 +290,44 @@ impl ExecutionState {
                     })) => return HistorySearchResult::Found(*v),
                     Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
                     _ => (),
+                }
+            }
+        }
+        HistorySearchResult::NotFound
+    }
+
+    /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
+    /// Returns None if the datastore entry could not be determined from the active history.
+    pub fn fetch_active_history_data_entry(
+        &self,
+        slot: Slot,
+        addr: &Address,
+        key: &Hash,
+    ) -> HistorySearchResult<Vec<u8>> {
+        self.verify_active_slot(slot);
+
+        if let Some(n) = self.get_active_index(slot) {
+            let iter = self.active_history.iter().skip(n).rev();
+
+            for output in iter {
+                match output.state_changes.ledger_changes.0.get(addr) {
+                    Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
+                        match datastore.get(key) {
+                            Some(value) => return HistorySearchResult::Found(value.to_vec()),
+                            None => (),
+                        }
+                    }
+                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
+                        match datastore.get(key) {
+                            Some(SetOrDelete::Set(value)) => {
+                                return HistorySearchResult::Found(value.to_vec())
+                            }
+                            Some(SetOrDelete::Delete) => return HistorySearchResult::Deleted,
+                            None => (),
+                        }
+                    }
+                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                    None => (),
                 }
             }
         }
@@ -846,12 +887,35 @@ impl ExecutionState {
         )
     }
 
+    /// Gets a data entry both at the latest final and active executed slots
+    ///
+    /// NOTE: temporary, needs to be done in the speculative ledger
+    pub fn get_final_and_active_data_entry(
+        &self,
+        address: &Address,
+        key: &Hash,
+    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+        let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
+        let search_result = self.fetch_active_history_data_entry(next_slot, address, key);
+        (
+            final_entry.clone(),
+            match search_result {
+                HistorySearchResult::Found(active_entry) => Some(active_entry),
+                HistorySearchResult::NotFound => final_entry,
+                HistorySearchResult::Deleted => None,
+            },
+        )
+    }
+
     /// Gets a full ledger entry both at the latest final and active executed slots
     /// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`
     /// TODO: remove when API is updated
     ///
-    ///
-    /// # returns
+    /// # Returns
     /// `(final_entry, active_entry)`
     pub fn get_final_and_active_ledger_entry(
         &self,

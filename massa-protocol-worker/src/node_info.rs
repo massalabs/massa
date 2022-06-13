@@ -53,18 +53,18 @@ impl NodeInfo {
             asked_blocks: Default::default(),
             connection_instant: Instant::now(),
             known_operations: Set::<OperationId>::with_capacity_and_hasher(
-                pool_settings.max_known_ops_size.saturating_add(1),
+                pool_settings.max_node_known_ops_size.saturating_add(1),
                 BuildMap::default(),
             ),
             known_operations_queue: VecDeque::with_capacity(
-                pool_settings.max_known_ops_size.saturating_add(1),
+                pool_settings.max_node_known_ops_size.saturating_add(1),
             ),
             known_endorsements: Set::<EndorsementId>::with_capacity_and_hasher(
-                pool_settings.max_known_endorsements_size,
+                pool_settings.max_node_known_endorsements_size,
                 BuildMap::default(),
             ),
             known_endorsements_queue: VecDeque::with_capacity(
-                pool_settings.max_known_endorsements_size,
+                pool_settings.max_node_known_endorsements_size,
             ),
         }
     }
@@ -140,23 +140,6 @@ impl NodeInfo {
                     if let Some(op_id) = self.known_operations_queue.pop_front() {
                         self.known_operations.remove(&op_id);
                     }
-                }
-            }
-        }
-    }
-
-    /// Remove a list of operation IDs from the list of operation IDs known by a remote node
-    ///
-    /// Note: this is INEFFICIENT when an element is actually removed (linear traversal of the deque) and should be used sparingly
-    pub fn remove_known_ops(&mut self, ops: &Set<OperationId>) {
-        for op_id in ops.iter() {
-            if self.known_operations.remove(op_id) {
-                if let Some(pos) = self
-                    .known_operations_queue
-                    .iter()
-                    .position(|id| id == op_id)
-                {
-                    self.known_operations_queue.remove(pos);
                 }
             }
         }
