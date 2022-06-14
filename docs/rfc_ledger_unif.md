@@ -14,10 +14,10 @@ The goal here is to move the management of both ledgers into the execution modul
 
 ## Proof-of-Stake
 
-### Final PoS state in massa-state
+### Final PoS state in massa-final-state
 
 ```rust
-struct PoSFinalState {
+struct PoSState {
   /// contiguous cycle history. Front = newest.
   cycle_history: VecDeque<CycleInfo>,
 
@@ -44,7 +44,7 @@ struct CycleInfo {
   /// Per-address production statistics
   production_stats: Map<Address, ProductionStats>,
 
-  /// coins credited at the end of the cycle
+  /// coins to be credited at the end of the cycle
   deferred_credits: Map<Address, Amount>
 }
 
@@ -60,9 +60,9 @@ struct ProductionStats {
 }
 ```
 
-Add a final PoS state inside massa-state (with bootstrap) that contains:
-* a history of production statistics, roll distributions and RNG seeds at the end of the last 3 final cycles 
-* the production statistics, roll distributions and RNG seeds at the output of the latest final block of our cycle 
+The `cycle_history` contains consecutive cycle stats, keeping the oldest one still needed in the `back()`, and the highest one needed (typically future cycles for deferred credits) in the `front()`.
+
+`PoSFinalState` exposes a `settle_slot`
 
 ### Speculative roll registry
 
