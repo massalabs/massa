@@ -302,7 +302,8 @@ impl Deserializer<IpAddr> for IpAddrDeserializer {
     /// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
     /// let ip_serializer = IpAddrSerializer::new();
     /// let ip_deserializer = IpAddrDeserializer::new();
-    /// let serialized = ip_serializer.serialize(&ip).unwrap();
+    /// let mut serialized = Vec::new();
+    /// ip_serializer.serialize(&ip, &mut serialized).unwrap();
     /// let (rest, ip_deser) = ip_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(ip, ip_deser);

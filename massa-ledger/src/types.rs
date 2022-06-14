@@ -67,14 +67,6 @@ impl<
         DV: Deserializer<V>,
     > Deserializer<SetUpdateOrDelete<T, V>> for SetUpdateOrDeleteDeserializer<T, V, DT, DV>
 {
-    /// ```
-    /// use massa_serialization::{Deserializer, Serializer, SerializeError};
-    /// use massa_ledger::{SetUpdateOrDelete, SetUpdateOrDeleteDeserializer, SetUpdateOrDeleteSerializer};
-    ///
-    /// let mut serialized = Vec::new();
-    /// let serializer = SetUpdateOrDeleteSerializer::new();
-    /// let deserializer = SetUpdateOrDeleteDeserializer::new();
-    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
