@@ -429,6 +429,10 @@
 <span id="422">422</span>
 <span id="423">423</span>
 <span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -448,7 +452,8 @@
 <span class="kw">use</span> <span class="ident">massa_execution_exports</span>::{<span class="ident">ExecutionConfig</span>, <span class="ident">ExecutionManager</span>};
 <span class="kw">use</span> <span class="ident">massa_execution_worker::start_execution_worker</span>;
 <span class="kw">use</span> <span class="ident">massa_final_state</span>::{<span class="ident">FinalState</span>, <span class="ident">FinalStateConfig</span>};
-<span class="kw">use</span> <span class="ident">massa_ledger::LedgerConfig</span>;
+<span class="kw">use</span> <span class="ident">massa_ledger_exports::LedgerConfig</span>;
+<span class="kw">use</span> <span class="ident">massa_ledger_worker::FinalLedger</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants</span>::{
@@ -519,7 +524,7 @@
     <span class="kw">let</span> <span class="ident">final_state_config</span> <span class="op">=</span> <span class="ident">FinalStateConfig</span> {
         <span class="ident">final_history_length</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">final_history_length</span>,
         <span class="ident">thread_count</span>,
-        <span class="ident">ledger_config</span>,
+        <span class="ident">ledger_config</span>: <span class="ident">ledger_config</span>.<span class="ident">clone</span>(),
         <span class="ident">async_pool_config</span>,
     };
 
@@ -533,9 +538,12 @@
             .<span class="ident">expect</span>(<span class="string">&quot;disk ledger delete failed&quot;</span>);
     }
 
+    <span class="comment">// Create final ledger</span>
+    <span class="kw">let</span> <span class="ident">ledger</span> <span class="op">=</span> <span class="ident">FinalLedger::new</span>(<span class="ident">ledger_config</span>.<span class="ident">clone</span>()).<span class="ident">expect</span>(<span class="string">&quot;could not init final ledger&quot;</span>);
+
     <span class="comment">// Create final state</span>
     <span class="kw">let</span> <span class="ident">final_state</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(
-        <span class="ident">FinalState::new</span>(<span class="ident">final_state_config</span>).<span class="ident">expect</span>(<span class="string">&quot;could not init final state&quot;</span>),
+        <span class="ident">FinalState::new</span>(<span class="ident">final_state_config</span>, <span class="ident">Box::new</span>(<span class="ident">ledger</span>)).<span class="ident">expect</span>(<span class="string">&quot;could not init final state&quot;</span>),
     ));
 
     <span class="comment">// interrupt signal listener</span>
@@ -854,5 +862,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (546c826f0 2022-06-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
 </body></html>

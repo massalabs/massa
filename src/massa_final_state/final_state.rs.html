@@ -230,6 +230,10 @@
 <span id="223">223</span>
 <span id="224">224</span>
 <span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the final state of the node, which includes</span>
@@ -239,7 +243,7 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">config::FinalStateConfig</span>, <span class="ident">error::FinalStateError</span>, <span class="ident">state_changes::StateChanges</span>};
 <span class="kw">use</span> <span class="ident">massa_async_pool</span>::{<span class="ident">AsyncMessageId</span>, <span class="ident">AsyncPool</span>, <span class="ident">AsyncPoolChanges</span>, <span class="ident">Change</span>};
-<span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">FinalLedger</span>, <span class="ident">LedgerChanges</span>};
+<span class="kw">use</span> <span class="ident">massa_ledger_exports</span>::{<span class="ident">LedgerChanges</span>, <span class="ident">LedgerController</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::THREAD_COUNT</span>, <span class="ident">Address</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 
@@ -251,7 +255,7 @@
     <span class="doccomment">/// slot at the output of which the state is attached</span>
     <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
     <span class="doccomment">/// final ledger associating addresses to their balance, executable bytecode and data</span>
-    <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">FinalLedger</span>,
+    <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">LedgerController</span><span class="op">&gt;</span>,
     <span class="doccomment">/// asynchronous pool containing messages sorted by priority and their data</span>
     <span class="kw">pub</span> <span class="ident">async_pool</span>: <span class="ident">AsyncPool</span>,
     <span class="doccomment">/// history of recent final state changes, useful for streaming bootstrap</span>
@@ -264,14 +268,18 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * `config`: the configuration of the execution state</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">FinalStateConfig</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">FinalStateError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">config</span>: <span class="ident">FinalStateConfig</span>,
+        <span class="ident">ledger</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">LedgerController</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">FinalStateError</span><span class="op">&gt;</span> {
         <span class="comment">// attach at the output of the latest initial final slot, that is the last genesis slot</span>
         <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="ident">config</span>.<span class="ident">thread_count</span>.<span class="ident">saturating_sub</span>(<span class="number">1</span>));
 
+        <span class="comment">// NOTE: THIS SHOULD NOT BE DONE HERE</span>
         <span class="comment">// load the initial final ledger from file</span>
-        <span class="kw">let</span> <span class="ident">ledger</span> <span class="op">=</span> <span class="ident">FinalLedger::new</span>(<span class="ident">config</span>.<span class="ident">ledger_config</span>.<span class="ident">clone</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">FinalStateError::LedgerError</span>(<span class="macro">format!</span>(<span class="string">&quot;could not initialize ledger: {}&quot;</span>, <span class="ident">err</span>))
-        })<span class="question-mark">?</span>;
+        <span class="comment">// let ledger = FinalLedger::new(config.ledger_config.clone()).map_err(|err| {</span>
+        <span class="comment">//     FinalStateError::LedgerError(format!(&quot;could not initialize ledger: {}&quot;, err))</span>
+        <span class="comment">// })?;</span>
 
         <span class="comment">// create the async pool</span>
         <span class="kw">let</span> <span class="ident">async_pool</span> <span class="op">=</span> <span class="ident">AsyncPool::new</span>(<span class="ident">config</span>.<span class="ident">async_pool_config</span>.<span class="ident">clone</span>());
@@ -397,7 +405,7 @@
 
     <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">FinalState</span>, <span class="ident">StateChanges</span>};
     <span class="kw">use</span> <span class="ident">massa_async_pool::test_exports::get_random_message</span>;
-    <span class="kw">use</span> <span class="ident">massa_ledger::SetUpdateOrDelete</span>;
+    <span class="kw">use</span> <span class="ident">massa_ledger_exports::SetUpdateOrDelete</span>;
     <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Slot</span>};
     <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>};
 
@@ -456,5 +464,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (546c826f0 2022-06-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
 </body></html>
