@@ -478,9 +478,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             BootstrapClientMessage::AskFinalStatePart {
                                 last_key: Some(last_key),
                                 slot: Some(slot),
-                                last_async_message_id: Some(
-                                    last_async_message_id
-                                ),
+                                last_async_message_id: Some(last_async_message_id),
                             }
                         })
                         .parse(input)
