@@ -100,9 +100,9 @@ impl Serializer<Version> for VersionSerializer {
         value: &Version,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
+        buffer.extend(value.instance.iter().map(|&c| c as u8));
         self.u32_serializer.serialize(&value.major, buffer)?;
         self.u32_serializer.serialize(&value.minor, buffer)?;
-        buffer.extend(value.instance.iter().map(|&c| c as u8));
         Ok(())
     }
 }
@@ -135,7 +135,7 @@ impl Deserializer<Version> for VersionDeserializer {
     /// use massa_models::{Version, VersionSerializer, VersionDeserializer};
     ///
     /// let version: Version = Version::from_str("TEST.1.3").unwrap();
-    /// let serialized = Vec::new();
+    /// let mut serialized = Vec::new();
     /// let serializer = VersionSerializer::new();
     /// let deserializer = VersionDeserializer::new();
     /// serializer.serialize(&version, &mut serialized).unwrap();
