@@ -2,14 +2,13 @@
 
 //! Module to interact with the disk ledger
 
-use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
-use massa_models::address::AddressDeserializer;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_ledger_exports::*;
 use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
 use massa_models::{
     Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use nom::error::{ContextError, ParseError};
+use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
 use rocksdb::{
@@ -20,21 +19,17 @@ use std::ops::Bound;
 use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
 
-use crate::ledger_changes::LedgerEntryUpdate;
-use crate::{LedgerChanges, LedgerEntry, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
+#[cfg(feature = "testing")]
+use massa_models::{address::AddressDeserializer, Amount, DeserializeCompact};
 
 #[cfg(feature = "testing")]
-use massa_models::{Amount, DeserializeCompact};
+use massa_serialization::DeserializeError;
 
-// TODO: remove rocks_db dir when sled is cut out
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const CF_ERROR: &str = "critical: rocksdb column family operation failed";
-const BALANCE_IDENT: u8 = 0u8;
-const BYTECODE_IDENT: u8 = 1u8;
-const DATASTORE_IDENT: u8 = 2u8;
 const SLOT_KEY: &[u8; 1] = b"s";
 
 /// Ledger sub entry enum
@@ -52,112 +47,6 @@ pub enum LedgerSubEntry {
 /// Contains a RocksDB DB instance
 #[derive(Debug)]
 pub(crate) struct LedgerDB(DB);
-
-/// Balance key formatting macro
-macro_rules! balance_key {
-    ($addr:expr) => {
-        [&$addr.to_bytes()[..], &[BALANCE_IDENT]].concat()
-    };
-}
-
-/// Bytecode key formatting macro
-///
-/// NOTE: still handle separate bytecode for now to avoid too many refactoring at once
-macro_rules! bytecode_key {
-    ($addr:expr) => {
-        [&$addr.to_bytes()[..], &[BYTECODE_IDENT]].concat()
-    };
-}
-
-/// Datastore entry key formatting macro
-///
-/// TODO: add a separator identifier if the need comes to have multiple datastores
-macro_rules! data_key {
-    ($addr:expr, $key:expr) => {
-        [
-            &$addr.to_bytes()[..],
-            &[DATASTORE_IDENT],
-            &$key.to_bytes()[..],
-        ]
-        .concat()
-    };
-}
-
-/// Datastore entry prefix formatting macro
-macro_rules! data_prefix {
-    ($addr:expr) => {
-        &[&$addr.to_bytes()[..], &[DATASTORE_IDENT]].concat()
-    };
-}
-
-/// Extract an address from a key
-pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
-    let address_deserializer = AddressDeserializer::new();
-    address_deserializer
-        .deserialize::<DeserializeError>(key)
-        .map(|res| res.1)
-        .ok()
-}
-
-/// Basic key serializer
-#[derive(Default)]
-pub struct KeySerializer;
-
-impl KeySerializer {
-    /// Creates a new `KeySerializer`
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Serializer<Vec<u8>> for KeySerializer {
-    fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, massa_serialization::SerializeError> {
-        Ok(value.clone())
-    }
-}
-
-/// Basic key deserializer
-#[derive(Default)]
-pub struct KeyDeserializer {
-    address_deserializer: AddressDeserializer,
-    hash_deserializer: HashDeserializer,
-}
-
-impl KeyDeserializer {
-    /// Creates a new `KeyDeserializer`
-    pub fn new() -> Self {
-        Self {
-            address_deserializer: AddressDeserializer::new(),
-            hash_deserializer: HashDeserializer::new(),
-        }
-    }
-}
-
-// NOTE: deserialize keys into a specified structure
-impl Deserializer<Vec<u8>> for KeyDeserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> nom::IResult<&'a [u8], Vec<u8>, E> {
-        let (rest, address) = self.address_deserializer.deserialize(buffer)?;
-        let error = nom::Err::Error(ParseError::from_error_kind(
-            buffer,
-            nom::error::ErrorKind::Fail,
-        ));
-        match rest.first() {
-            Some(ident) => match *ident {
-                BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
-                BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
-                DATASTORE_IDENT => {
-                    let (rest, hash) = self.hash_deserializer.deserialize(&rest[1..])?;
-                    Ok((rest, data_key!(address, hash)))
-                }
-                _ => Err(error),
-            },
-            None => Err(error),
-        }
-    }
-}
 
 /// For a given start prefix (inclusive), returns the correct end prefix (non-inclusive).
 /// This assumes the key bytes are ordered in lexicographical order.
@@ -344,7 +233,7 @@ impl LedgerDB {
             let (rest, address) = address_deserializer
                 .deserialize::<DeserializeError>(&key[..])
                 .unwrap();
-            if rest.get(0) == Some(&BALANCE_IDENT) {
+            if rest.first() == Some(&BALANCE_IDENT) {
                 addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
             }
         }
@@ -528,19 +417,15 @@ impl LedgerDB {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
+    use super::LedgerDB;
+    use crate::ledger_db::LedgerSubEntry;
     use massa_hash::Hash;
+    use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{Address, Amount, DeserializeCompact};
     use massa_signature::{derive_public_key, generate_random_private_key};
     use rocksdb::WriteBatch;
+    use std::collections::BTreeMap;
     use tempfile::TempDir;
-
-    use crate::{
-        ledger_changes::LedgerEntryUpdate, ledger_db::LedgerSubEntry, LedgerEntry, SetOrKeep,
-    };
-
-    use super::LedgerDB;
 
     #[cfg(test)]
     fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Hash, Vec<u8>>) {

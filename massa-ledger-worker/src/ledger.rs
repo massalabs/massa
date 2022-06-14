@@ -2,11 +2,11 @@
 
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
-use crate::ledger_changes::LedgerChanges;
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use crate::ledger_entry::LedgerEntry;
-use crate::{LedgerConfig, LedgerError};
 use massa_hash::Hash;
+use massa_ledger_exports::{
+    LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
+};
 use massa_models::{Address, Amount, ModelsError};
 use massa_models::{DeserializeCompact, Slot};
 use nom::AsBytes;
@@ -72,9 +72,11 @@ impl FinalLedger {
             _config: config,
         })
     }
+}
 
+impl LedgerController for FinalLedger {
     /// Allows applying `LedgerChanges` to the final ledger
-    pub fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
+    fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot) {
         self.sorted_ledger.apply_changes(changes, slot);
     }
 
@@ -82,7 +84,7 @@ impl FinalLedger {
     ///
     /// # Returns
     /// The parallel balance, or None if the ledger entry was not found
-    pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
+    fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Balance)
             .map(|bytes| {
@@ -96,7 +98,7 @@ impl FinalLedger {
     ///
     /// # Returns
     /// A copy of the found bytecode, or None if the ledger entry was not found
-    pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
+    fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Bytecode)
     }
@@ -105,7 +107,7 @@ impl FinalLedger {
     ///
     /// # Returns
     /// true if it exists, false otherwise.
-    pub fn entry_exists(&self, addr: &Address) -> bool {
+    fn entry_exists(&self, addr: &Address) -> bool {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Balance)
             .is_some()
@@ -119,7 +121,7 @@ impl FinalLedger {
     ///
     /// # Returns
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
-    pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
+    fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Datastore(*key))
     }
@@ -132,7 +134,7 @@ impl FinalLedger {
     ///
     /// # Returns
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
-    pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
+    fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Datastore(*key))
             .is_some()
@@ -140,12 +142,12 @@ impl FinalLedger {
 
     /// # Returns
     /// A copy of the datastore sorted by key
-    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+    fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
         self.sorted_ledger.get_entire_datastore(addr)
     }
 
     /// TODO: remove when API is updated
-    pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
+    fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
         self.get_parallel_balance(addr)
             .map(|parallel_balance| LedgerEntry {
                 parallel_balance,
@@ -157,7 +159,7 @@ impl FinalLedger {
     /// Get a part of the ledger
     /// Used for bootstrap
     /// Return: Tuple with data and last key
-    pub fn get_ledger_part(
+    fn get_ledger_part(
         &self,
         last_key: &Option<Vec<u8>>,
     ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
@@ -167,7 +169,18 @@ impl FinalLedger {
     /// Set a part of the ledger
     /// Used for bootstrap
     /// Return: Last key inserted
-    pub fn set_ledger_part(&self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError> {
+    fn set_ledger_part(&self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError> {
         self.sorted_ledger.set_ledger_part(data.as_bytes())
+    }
+
+    /// Get every address and their corresponding balance.
+    ///
+    /// IMPORTANT: This should only be used for debug and test purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the address as key and the balance as value
+    #[cfg(feature = "testing")]
+    fn get_every_address(&self) -> BTreeMap<Address, Amount> {
+        self.sorted_ledger.get_every_address()
     }
 }

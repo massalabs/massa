@@ -17,7 +17,8 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
-use massa_ledger::{
+
+use massa_ledger_exports::{
     Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::api::EventFilter;

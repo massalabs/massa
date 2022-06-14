@@ -3,7 +3,7 @@
 use massa_async_pool::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_graph::BootstrapableGraph;
-use massa_ledger::{KeyDeserializer, KeySerializer};
+use massa_ledger_exports::{KeyDeserializer, KeySerializer};
 use massa_models::slot::SlotDeserializer;
 use massa_models::{
     constants::THREAD_COUNT, slot::SlotSerializer, DeserializeCompact, DeserializeVarInt,

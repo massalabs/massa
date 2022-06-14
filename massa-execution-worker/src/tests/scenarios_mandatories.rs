@@ -1,4 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use crate::start_execution_worker;
 use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::{
@@ -6,7 +7,8 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
-use massa_ledger::{LedgerConfig, LedgerError};
+use massa_ledger_exports::{LedgerConfig, LedgerError};
+use massa_ledger_worker::FinalLedger;
 use massa_models::{
     api::EventFilter,
     constants::{AMOUNT_DECIMAL_FACTOR, FINAL_HISTORY_LENGTH, THREAD_COUNT},
@@ -45,6 +47,7 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
     initial.insert(get_random_address(), Amount::from_str("129").unwrap());
     initial.insert(get_random_address(), Amount::from_str("878").unwrap());
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&initial);
+    let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
     let async_pool_config = AsyncPoolConfig { max_length: 100 };
     let cfg = FinalStateConfig {
         ledger_config,
@@ -53,7 +56,7 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
         thread_count: THREAD_COUNT,
     };
     Ok((
-        Arc::new(RwLock::new(FinalState::new(cfg).unwrap())),
+        Arc::new(RwLock::new(FinalState::new(cfg, Box::new(ledger)).unwrap())),
         tempfile,
         tempdir,
     ))

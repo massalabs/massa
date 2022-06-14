@@ -28,4 +28,10 @@ serial_test = "0.5"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-instrument = ["tokio/tracing", "massa_models/instrument", "massa_network_exports/instrument", "massa_protocol_exports/instrument", "massa_time/instrument"]
+instrument = [
+    "tokio/tracing",
+    "massa_models/instrument",
+    "massa_network_exports/instrument",
+    "massa_protocol_exports/instrument",
+    "massa_time/instrument",
+]
