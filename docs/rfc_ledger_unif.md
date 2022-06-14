@@ -64,38 +64,34 @@ Add a final PoS state inside massa-state (with bootstrap) that contains:
 * a history of production statistics, roll distributions and RNG seeds at the end of the last 3 final cycles 
 * the production statistics, roll distributions and RNG seeds at the output of the latest final block of our cycle 
 
-### Speculative roll registry
+### Speculative PoS changes
 
-Have a speculative roll registry with:
+In the speculative execution history, have:
 
+```rust
+struct PoSChanges {
+  /// extra block seed bits added
+  seed_bits: BitVec<Lsb0, u8>,
 
-* record production statistics (nb draws vs nb finalized blocks and endorsements) of all involved addresses for every cycle
+  /// new roll counts for addresses (can be 0 to remove the address from the registry)
+  roll_changes: Map<Address, u64>
 
-* have the proof of stake state be included into massa-state (with bootstrap)
+  /// updated production statistics
+  production_stats: ProductionStats
 
-* store the snapshots and seeds of the last 5 cycles
+  /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
+  deferred_credits: HashMap<Slot, Map<Address, Amount>>,
+}
 
+```
 
+Possible lazy speculative queries:
+* get roll count for a given address
+  * used to check roll counts when buying a roll
+  * used to set the absolute roll count in case of slashing (read the old state)
+* list of all deferred credits for a given address after a certain slot
+  * used to apply penalties by setting the new deferred credit (read the current incoming ones)
+* list of all deferred credits for a given slot
+  * used to apply the credits after the last slot of every cycle
+* get prod stats to decide on implicit roll sales immediately after the last slot of a cycle
 
-* when applying a roll buy:
-  * check for compensable roll sales in the cycle (full reimbursement) to substract from
-  * ensure that there are enough coins in the sequential balance to buy the remaining coins
-  * substract the coins from the seq balance from the address
-  * increment the number of bought rolls in the
-
-* for draws at cycle C:
-  * take the distrib from the snapshot of C-3
-  * take the RNG seed from the snapshot of C-2
-
-* after the last slot of cycle C finalizes:
-  * apply implicit roll sales according to cycle C production stats
-  * apply partial or full reimbursement of coins locked at cycle C-1
-  * save the snapshot of the distribution
-  * save the snapshot of the seed
-  * save cycle C production stats
-  * 
-   
-
-
-
-* 
