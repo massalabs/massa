@@ -16,6 +16,7 @@ tracing = "0.1"
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
+massa_storage = { path = "../massa-storage" }
 
 [dev-dependencies]
 serial_test = "0.5"

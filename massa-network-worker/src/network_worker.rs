@@ -783,8 +783,8 @@ impl NetworkWorker {
             NodeEvent(node, NodeEventType::BlockNotFound(block_id)) => {
                 event_impl::on_block_not_found(self, node, block_id).await
             }
-            NodeEvent(node, NodeEventType::ReceivedOperations(operations)) => {
-                event_impl::on_received_operations(self, node, operations).await
+            NodeEvent(node, NodeEventType::ReceivedOperations(operations, serialized)) => {
+                event_impl::on_received_operations(self, node, operations, serialized).await
             }
             NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) => {
                 event_impl::on_received_endorsements(self, node, endorsements).await

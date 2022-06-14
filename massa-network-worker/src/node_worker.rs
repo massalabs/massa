@@ -2,7 +2,7 @@
 
 use super::{
     binders::{ReadBinder, WriteBinder},
-    messages::{Message, MessageTypeId},
+    messages::{Message, MessageTypeId, SerializedForm},
 };
 use itertools::Itertools;
 use massa_logging::massa_trace;
@@ -11,7 +11,7 @@ use massa_models::{
     node::NodeId,
     signed::Signable,
 };
-use massa_models::{BlockId, SerializeCompact, SerializeVarInt};
+use massa_models::{BlockId, OperationId, SerializeCompact, SerializeVarInt};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
 };
@@ -45,12 +45,16 @@ pub struct NodeWorker {
     storage: Storage,
 }
 
-//TODO: Find a consensus on "do we need to resolve that".
+/// The message to send,
+/// or the id(s) of the objects required to construct such a message,
+/// so the actual object(s) can be retrieved from shared storage.
+/// TODO: decide whether to address the clippy warning.
 #[allow(clippy::large_enum_variant)]
 pub enum ToSend {
     Msg(Message),
     Block(BlockId),
     Header(BlockId),
+    Operations(Vec<OperationId>),
 }
 
 impl NodeWorker {
@@ -148,6 +152,8 @@ impl NodeWorker {
                         let bytes_vec: Vec<u8> = match to_send {
                             ToSend::Msg(msg) => msg.to_bytes_compact().unwrap(),
                             ToSend::Block(block_id) => {
+                                // Construct the message,
+                                // using the serialized block retrieved from shared storage.
                                 let mut res: Vec<u8> = Vec::new();
                                 res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
                                 let block = storage
@@ -158,6 +164,8 @@ impl NodeWorker {
                                 res
                             }
                             ToSend::Header(block_id) => {
+                                // Construct the message,
+                                // using the serialized header retrieved from shared storage.
                                 let mut res: Vec<u8> = Vec::new();
                                 res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
 
@@ -173,6 +181,31 @@ impl NodeWorker {
                                     res.extend(&serialized);
                                     stored_block.serialized_header = Some(serialized);
                                 }
+
+                                res
+                            }
+                            ToSend::Operations(operation_ids) => {
+                                // Construct the message,
+                                // using the serialized operations retrieved from shared storage.
+                                let mut res: Vec<u8> = Vec::new();
+                                res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
+                                let len = (operation_ids.len() as u32).to_varint_bytes();
+                                res.extend(len);
+
+                                storage.with_serialized_operations(
+                                    &operation_ids,
+                                    |operations| {
+                                        for operation in operations {
+                                            match operation {
+                                                Some(operation) => {
+                                                    res.extend(*operation);
+                                                }
+                                                None => return Err(NetworkError::MissingOperation),
+                                            }
+                                        }
+                                        Ok(())
+                                    },
+                                )?;
 
                                 res
                             }
@@ -264,7 +297,11 @@ impl NodeWorker {
                                     "node_worker.run_loop. receive Message::Block",
                                     {"block_id": block.header.content.compute_id()?, "block": block, "node": self.node_id}
                                 );
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block, serialized.expect("Block should come with its serialized form.")))).await;
+                                let serialized = match serialized {
+                                    Some(SerializedForm::Block(serialized)) => serialized,
+                                    _ => panic!("Blocks should come with their serialized form.")
+                                };
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block, serialized))).await;
                             },
                             Message::BlockHeader(header) => {
                                 massa_trace!(
@@ -294,7 +331,11 @@ impl NodeWorker {
                                     {"node": self.node_id, "operations": operations}
                                 );
                                 //massa_trace!("node_worker.run_loop. receive Message::Operations", {"node": self.node_id, "operations": operations});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
+                                let serialized = match serialized {
+                                    Some(SerializedForm::Operations(serialized)) => serialized,
+                                    _ => panic!("Operations should come with their serialized form.")
+                                };
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations, serialized))).await;
                             }
                             Message::AskForOperations(operation_ids) => {
                                 massa_trace!(
@@ -372,8 +413,9 @@ impl NodeWorker {
                         },
                         Some(NodeCommand::SendOperations(operations)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
-                            for chunk in operations.chunks(self.cfg.max_operations_per_message as usize) {
-                                if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::Operations(chunk.into()))).is_err() {
+                            let ops: Vec<OperationId> = operations.into_iter().collect();
+                            for chunk in ops.chunks(self.cfg.max_operations_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, ToSend::Operations(chunk.into())).is_err() {
                                     break 'select_loop;
                                 }
                             }
