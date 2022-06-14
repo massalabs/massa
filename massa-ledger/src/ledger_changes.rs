@@ -143,6 +143,12 @@ impl LedgerEntryUpdateSerializer {
     }
 }
 
+impl Default for LedgerEntryUpdateSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// ```
     /// use massa_serialization::Serializer;
@@ -201,6 +207,12 @@ impl LedgerEntryUpdateDeserializer {
             )),
             datastore_deserializer: DatastoreUpdateDeserializer::new(),
         }
+    }
+}
+
+impl Default for LedgerEntryUpdateDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

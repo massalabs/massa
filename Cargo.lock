@@ -1706,6 +1706,7 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_proof_of_stake_exports",
+ "massa_serialization",
  "massa_signature",
  "massa_storage",
  "massa_time",

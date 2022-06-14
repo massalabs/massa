@@ -194,7 +194,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
                 },
             ),
         )
-        .map(|changes| AsyncPoolChanges(changes))
+        .map(AsyncPoolChanges)
         .parse(buffer)
     }
 }

@@ -267,7 +267,7 @@ impl Serializer<IpAddr> for IpAddrSerializer {
     /// ip_serializer.serialize(&ip, &mut buffer).unwrap();
     /// ```
     fn serialize(&self, value: &IpAddr, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        Ok(match value {
+        match value {
             IpAddr::V4(ip_v4) => {
                 buffer.push(4u8);
                 buffer.extend(&ip_v4.octets());
@@ -276,7 +276,8 @@ impl Serializer<IpAddr> for IpAddrSerializer {
                 buffer.push(6u8);
                 buffer.extend(&ip_v6.octets());
             }
-        })
+        };
+        Ok(())
     }
 }
 

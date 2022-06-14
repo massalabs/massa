@@ -74,71 +74,6 @@ impl RollUpdate {
     }
 }
 
-/// maps addresses to roll updates
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct RollUpdates(pub Map<Address, RollUpdate>);
-
-impl RollUpdates {
-    /// the addresses impacted by the updates
-    pub fn get_involved_addresses(&self) -> Set<Address> {
-        self.0.keys().copied().collect()
-    }
-
-    /// chains with another `RollUpdates`, compensates and returns compensations
-    pub fn chain(&mut self, updates: &RollUpdates) -> Result<Map<Address, RollCompensation>> {
-        let mut res = Map::default();
-        for (addr, update) in updates.0.iter() {
-            res.insert(*addr, self.apply(addr, update)?);
-            // remove if nil
-            if let hash_map::Entry::Occupied(occ) = self.0.entry(*addr) {
-                if occ.get().is_nil() {
-                    occ.remove();
-                }
-            }
-        }
-        Ok(res)
-    }
-
-    /// applies a `RollUpdate`, compensates and returns compensation
-    pub fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<RollCompensation> {
-        if update.is_nil() {
-            return Ok(RollCompensation(0));
-        }
-        match self.0.entry(*addr) {
-            hash_map::Entry::Occupied(mut occ) => occ.get_mut().chain(update),
-            hash_map::Entry::Vacant(vac) => {
-                let mut compensated_update = update.clone();
-                let compensation = compensated_update.compensate();
-                vac.insert(compensated_update);
-                Ok(compensation)
-            }
-        }
-    }
-
-    /// get the roll update for a subset of addresses
-    #[must_use]
-    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
-        Self(
-            addrs
-                .iter()
-                .filter_map(|addr| self.0.get(addr).map(|v| (*addr, v.clone())))
-                .collect(),
-        )
-    }
-
-    /// merge another roll updates into self, overwriting existing data
-    /// addresses that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: RollUpdates) {
-        for addr in addrs.iter() {
-            if let Some(new_val) = other.0.remove(addr) {
-                self.0.insert(*addr, new_val);
-            } else {
-                self.0.remove(addr);
-            }
-        }
-    }
-}
-
 /// Serializer for `RollUpdate`
 pub struct RollUpdateSerializer {
     u64_serializer: U64VarIntSerializer,
@@ -209,6 +144,71 @@ impl Deserializer<RollUpdate> for RollUpdateDeserializer {
             roll_sales,
         })
         .parse(buffer)
+    }
+}
+
+/// maps addresses to roll updates
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct RollUpdates(pub Map<Address, RollUpdate>);
+
+impl RollUpdates {
+    /// the addresses impacted by the updates
+    pub fn get_involved_addresses(&self) -> Set<Address> {
+        self.0.keys().copied().collect()
+    }
+
+    /// chains with another `RollUpdates`, compensates and returns compensations
+    pub fn chain(&mut self, updates: &RollUpdates) -> Result<Map<Address, RollCompensation>> {
+        let mut res = Map::default();
+        for (addr, update) in updates.0.iter() {
+            res.insert(*addr, self.apply(addr, update)?);
+            // remove if nil
+            if let hash_map::Entry::Occupied(occ) = self.0.entry(*addr) {
+                if occ.get().is_nil() {
+                    occ.remove();
+                }
+            }
+        }
+        Ok(res)
+    }
+
+    /// applies a `RollUpdate`, compensates and returns compensation
+    pub fn apply(&mut self, addr: &Address, update: &RollUpdate) -> Result<RollCompensation> {
+        if update.is_nil() {
+            return Ok(RollCompensation(0));
+        }
+        match self.0.entry(*addr) {
+            hash_map::Entry::Occupied(mut occ) => occ.get_mut().chain(update),
+            hash_map::Entry::Vacant(vac) => {
+                let mut compensated_update = update.clone();
+                let compensation = compensated_update.compensate();
+                vac.insert(compensated_update);
+                Ok(compensation)
+            }
+        }
+    }
+
+    /// get the roll update for a subset of addresses
+    #[must_use]
+    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
+        Self(
+            addrs
+                .iter()
+                .filter_map(|addr| self.0.get(addr).map(|v| (*addr, v.clone())))
+                .collect(),
+        )
+    }
+
+    /// merge another roll updates into self, overwriting existing data
+    /// addresses that are in not other are removed from self
+    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: RollUpdates) {
+        for addr in addrs.iter() {
+            if let Some(new_val) = other.0.remove(addr) {
+                self.0.insert(*addr, new_val);
+            } else {
+                self.0.remove(addr);
+            }
+        }
     }
 }
 

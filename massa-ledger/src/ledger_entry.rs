@@ -132,6 +132,12 @@ impl LedgerEntrySerializer {
     }
 }
 
+impl Default for LedgerEntrySerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// ```
     /// use massa_serialization::Serializer;
@@ -180,6 +186,12 @@ impl LedgerEntryDeserializer {
             vec_u8_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
             datastore_deserializer: DatastoreDeserializer::new(),
         }
+    }
+}
+
+impl Default for LedgerEntryDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

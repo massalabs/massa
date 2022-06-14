@@ -134,7 +134,7 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
             |input| self.u32_deserializer.deserialize(input),
             |input| self.ip_addr_deserializer.deserialize(input),
         )
-        .map(|ips| BootstrapPeers(ips))
+        .map(BootstrapPeers)
         .parse(buffer)
     }
 }
