@@ -7,6 +7,7 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
+use crate::active_history::ActiveHistory;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
@@ -21,7 +22,7 @@ use massa_models::{
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
-use std::{collections::VecDeque, sync::Arc};
+use std::sync::Arc;
 use tracing::debug;
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
@@ -113,7 +114,7 @@ impl ExecutionContext {
     pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
         previous_changes: StateChanges,
-        active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
+        active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history),
@@ -182,7 +183,7 @@ impl ExecutionContext {
         call_stack: Vec<ExecutionStackElement>,
         previous_changes: StateChanges,
         final_state: Arc<RwLock<FinalState>>,
-        active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
+        active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -247,7 +248,7 @@ impl ExecutionContext {
         opt_block_id: Option<BlockId>,
         previous_changes: StateChanges,
         final_state: Arc<RwLock<FinalState>>,
-        active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
+        active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 

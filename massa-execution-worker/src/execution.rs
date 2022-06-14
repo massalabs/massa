@@ -8,6 +8,7 @@
 //! * the VM is called for execution within this context
 //! * the output of the execution is extracted from the context
 
+use crate::active_history::ActiveHistory;
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
 use massa_async_pool::AsyncMessage;
@@ -27,10 +28,7 @@ use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 use tracing::debug;
 
 /// Used to acquire a lock on the execution context
@@ -50,7 +48,7 @@ pub(crate) struct ExecutionState {
     // Whenever an executed active slot becomes final,
     // its output is popped from the front of active_history and applied to the final state.
     // It has atomic R/W access.
-    active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
+    active_history: Arc<RwLock<ActiveHistory>>,
     // a cursor pointing to the highest executed slot
     pub active_cursor: Slot,
     // a cursor pointing to the highest executed final slot
@@ -121,7 +119,7 @@ impl ExecutionState {
     /// # Returns
     /// The earliest `ExecutionOutput` from the execution history, or None if the history is empty
     pub fn pop_first_execution_result(&mut self) -> Option<ExecutionOutput> {
-        self.active_history.write().pop_front()
+        self.active_history.write().0.pop_front()
     }
 
     /// Applies the output of an execution to the final execution state.
@@ -169,14 +167,14 @@ impl ExecutionState {
         self.active_cursor = exec_out.slot;
 
         // add the execution output at the end of the output history
-        self.active_history.write().push_back(exec_out);
+        self.active_history.write().0.push_back(exec_out);
     }
 
     /// Clear the whole execution history,
     /// deleting caches on executed non-final slots.
     pub fn clear_history(&mut self) {
         // clear history
-        self.active_history.write().clear();
+        self.active_history.write().0.clear();
 
         // reset active cursor to point to the latest final slot
         self.active_cursor = self.final_cursor;
@@ -199,7 +197,7 @@ impl ExecutionState {
         // find mismatch point (included)
         let mut truncate_at = None;
         // iterate over the output history, in chronological order
-        for (hist_index, exec_output) in self.active_history.read().iter().enumerate() {
+        for (hist_index, exec_output) in self.active_history.read().0.iter().enumerate() {
             // try to find the corresponding slot in active_slots or ready_final_slots.
             let found_block_id = active_slots
                 .get(&exec_output.slot)
@@ -216,13 +214,14 @@ impl ExecutionState {
         // If a mismatch was found
         if let Some(truncate_at) = truncate_at {
             // Truncate the execution output history at the cutoff index (excluded)
-            self.active_history.write().truncate(truncate_at);
+            self.active_history.write().0.truncate(truncate_at);
             // Now that part of the speculative executions were cancelled,
             // update the active cursor to match the latest executed slot.
             // The cursor is set to the latest executed final slot if the history is empty.
             self.active_cursor = self
                 .active_history
                 .read()
+                .0
                 .back()
                 .map_or(self.final_cursor, |out| out.slot);
             // safety check to ensure that the active cursor cannot go too far back in time
@@ -255,7 +254,7 @@ impl ExecutionState {
     /// NOTE: DO NOT FORGET TO USE BEFORE SPEC LEDGER FUNCTIONS
     #[allow(dead_code)]
     fn get_active_index(&self, slot: Slot) -> Option<usize> {
-        if let Some(hist_front) = &self.active_history.read().front() {
+        if let Some(hist_front) = &self.active_history.read().0.front() {
             slot.slots_since(&hist_front.slot, self.config.thread_count)
                 .map(|v| v.try_into().ok())
                 .ok()
@@ -276,7 +275,7 @@ impl ExecutionState {
         self.verify_active_slot(slot);
         // gather the history of state changes in the relevant history range
         let mut accumulated_changes = StateChanges::default();
-        for previous_output in self.active_history.read().iter() {
+        for previous_output in self.active_history.read().0.iter() {
             if previous_output.slot >= slot {
                 break;
             }
@@ -868,6 +867,7 @@ impl ExecutionState {
         // Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one
         // in order to take all available active slots into account (and not forget the last one)
         // and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.
+        // NOTE: WHY WOULD YOU NEED THAT
         let next_slot = self
             .active_cursor
             .get_next_slot(self.config.thread_count)
@@ -909,6 +909,7 @@ impl ExecutionState {
             .chain(
                 self.active_history
                     .read()
+                    .0
                     .iter()
                     .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
             )

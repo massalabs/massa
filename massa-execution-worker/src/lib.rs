@@ -70,6 +70,7 @@
 #![warn(unused_crate_dependencies)]
 #![feature(is_sorted)]
 
+mod active_history;
 mod context;
 mod controller;
 mod execution;
