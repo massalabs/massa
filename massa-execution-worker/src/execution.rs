@@ -8,7 +8,7 @@
 //! * the VM is called for execution within this context
 //! * the output of the execution is extracted from the context
 
-use crate::active_history::ActiveHistory;
+use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
 use massa_async_pool::AsyncMessage;
@@ -230,37 +230,6 @@ impl ExecutionState {
                     "active_cursor moved before final_cursor after execution history truncation"
                 );
             }
-        }
-    }
-
-    /// Check that the slot is within the reach of history
-    ///
-    /// NOTE: DO NOT FORGET TO USE BEFORE SPEC LEDGER FUNCTIONS
-    fn verify_active_slot(&self, slot: Slot) {
-        if slot <= self.final_cursor {
-            panic!("cannot execute at a slot before finality");
-        }
-        let max_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        if slot > max_slot {
-            panic!("cannot execute at a slot beyond active cursor + 1");
-        }
-    }
-
-    /// Computes the index of a given slot in the active history
-    ///
-    /// NOTE: DO NOT FORGET TO USE BEFORE SPEC LEDGER FUNCTIONS
-    #[allow(dead_code)]
-    fn get_active_index(&self, slot: Slot) -> Option<usize> {
-        if let Some(hist_front) = &self.active_history.read().0.front() {
-            slot.slots_since(&hist_front.slot, self.config.thread_count)
-                .map(|v| v.try_into().ok())
-                .ok()
-                .flatten()
-        } else {
-            None
         }
     }
 
@@ -795,56 +764,84 @@ impl ExecutionState {
         Ok(context_guard!(self).settle_slot())
     }
 
+    /// Check that the slot is within the reach of history
+    fn verify_active_slot(&self, slot: Slot) {
+        if slot <= self.final_cursor {
+            panic!("cannot execute at a slot before finality");
+        }
+        let max_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
+        if slot > max_slot {
+            panic!("cannot execute at a slot beyond active cursor + 1");
+        }
+    }
+
+    /// Computes the index of a given slot in the active history
+    fn get_active_index(&self, slot: Slot) -> Option<usize> {
+        if let Some(hist_front) = &self.active_history.read().0.front() {
+            slot.slots_since(&hist_front.slot, self.config.thread_count)
+                .map(|v| v.try_into().ok())
+                .ok()
+                .flatten()
+        } else {
+            None
+        }
+    }
+
     /// Gets a parallel balance both at the latest final and active executed slots
-    ///
-    /// NOTE: temporary, needs to be done in the speculative ledger
-    /// NOTE: DON'T FORGET
     #[allow(dead_code)]
     pub fn get_final_and_active_parallel_balance(
         &self,
-        _address: &Address,
+        address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
-        // let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
-        // let next_slot = self
-        //     .active_cursor
-        //     .get_next_slot(self.config.thread_count)
-        //     .expect("slot overflow when getting speculative ledger");
-        // let search_result = self.fetch_active_history_balance(next_slot, address);
-        // (
-        //     final_balance,
-        //     match search_result {
-        //         HistorySearchResult::Found(active_balance) => Some(active_balance),
-        //         HistorySearchResult::NotFound => final_balance,
-        //         HistorySearchResult::Deleted => None,
-        //     },
-        // )
-        (None, None)
+        let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
+        self.verify_active_slot(next_slot);
+        let index = self.get_active_index(next_slot);
+        let search_result = self
+            .active_history
+            .read()
+            .fetch_active_history_balance(address, index);
+        (
+            final_balance,
+            match search_result {
+                HistorySearchResult::Found(active_balance) => Some(active_balance),
+                HistorySearchResult::NotFound => final_balance,
+                HistorySearchResult::Deleted => None,
+            },
+        )
     }
 
     /// Gets a data entry both at the latest final and active executed slots
-    ///
-    /// NOTE: temporary, needs to be done in the speculative ledger
-    /// NOTE: DON'T FORGET
     pub fn get_final_and_active_data_entry(
         &self,
-        _address: &Address,
-        _key: &Hash,
+        address: &Address,
+        key: &Hash,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        // let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
-        // let next_slot = self
-        //     .active_cursor
-        //     .get_next_slot(self.config.thread_count)
-        //     .expect("slot overflow when getting speculative ledger");
-        // let search_result = self.fetch_active_history_data_entry(next_slot, address, key);
-        // (
-        //     final_entry.clone(),
-        //     match search_result {
-        //         HistorySearchResult::Found(active_entry) => Some(active_entry),
-        //         HistorySearchResult::NotFound => final_entry,
-        //         HistorySearchResult::Deleted => None,
-        //     },
-        // )
-        (None, None)
+        let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
+        self.verify_active_slot(next_slot);
+        let index = self.get_active_index(next_slot);
+        let search_result = self
+            .active_history
+            .read()
+            .fetch_active_history_data_entry(address, key, index);
+        (
+            final_entry.clone(),
+            match search_result {
+                HistorySearchResult::Found(active_entry) => Some(active_entry),
+                HistorySearchResult::NotFound => final_entry,
+                HistorySearchResult::Deleted => None,
+            },
+        )
     }
 
     /// Gets a full ledger entry both at the latest final and active executed slots
@@ -867,7 +864,6 @@ impl ExecutionState {
         // Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one
         // in order to take all available active slots into account (and not forget the last one)
         // and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.
-        // NOTE: WHY WOULD YOU NEED THAT
         let next_slot = self
             .active_cursor
             .get_next_slot(self.config.thread_count)
