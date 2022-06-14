@@ -116,11 +116,7 @@ impl ExecutionContext {
         active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
     ) -> Self {
         ExecutionContext {
-            speculative_ledger: SpeculativeLedger::new(
-                final_state.clone(),
-                previous_changes.ledger_changes,
-                active_history,
-            ),
+            speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.read().async_pool.clone(),
                 previous_changes.async_pool_changes,

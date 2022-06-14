@@ -8,10 +8,19 @@
 use massa_execution_exports::{ExecutionError, ExecutionOutput};
 use massa_final_state::FinalState;
 use massa_hash::Hash;
-use massa_ledger_exports::{Applicable, LedgerChanges};
+use massa_ledger_exports::{
+    Applicable, LedgerChanges, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep,
+    SetUpdateOrDelete,
+};
 use massa_models::{Address, Amount};
 use parking_lot::RwLock;
 use std::{collections::VecDeque, sync::Arc};
+
+pub enum HistorySearchResult<T> {
+    Found(T),
+    NotFound,
+    Deleted,
+}
 
 /// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
@@ -23,20 +32,12 @@ pub struct SpeculativeLedger {
     /// Thread-safe shared access to the final state. For reading only.
     final_state: Arc<RwLock<FinalState>>,
 
-    /// Accumulation of changes that previously happened to the ledger since finality.
-    /// This value is not modified by changes applied to the `SpeculativeLedger`.
-    ///
-    /// TODO maybe have the history directly here,
-    /// so that we can avoid accumulating all the changes at every slot
-    /// but only lazily query addresses backwards in history (to avoid useless computations) with caching
-    previous_changes: LedgerChanges,
+    /// History of the outputs of recently executed slots.
+    /// Slots should be consecutive, newest at the back.
+    active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
 
     /// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
     added_changes: LedgerChanges,
-
-    /// History of the outputs of recently executed slots.
-    /// Slots should be consecutive, newest at the back.
-    _active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
 }
 
 impl SpeculativeLedger {
@@ -47,15 +48,92 @@ impl SpeculativeLedger {
     /// * `previous_changes`: accumulation of changes that previously happened to the ledger since finality
     pub fn new(
         final_state: Arc<RwLock<FinalState>>,
-        previous_changes: LedgerChanges,
         active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
     ) -> Self {
         SpeculativeLedger {
             final_state,
-            previous_changes,
             added_changes: Default::default(),
-            _active_history: active_history,
+            active_history,
         }
+    }
+
+    /// Lazily query (from end to beginning) the active balance of an address at a given slot.
+    ///
+    /// Returns None if the address balance could not be determined from the active history.
+    pub fn fetch_active_history_balance(&self, addr: &Address) -> HistorySearchResult<Amount> {
+        let hist = self.active_history.read();
+        let iter = hist.iter().rev();
+
+        for output in iter {
+            match output.state_changes.ledger_changes.0.get(addr) {
+                Some(SetUpdateOrDelete::Set(v)) => {
+                    return HistorySearchResult::Found(v.parallel_balance)
+                }
+                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    parallel_balance: SetOrKeep::Set(v),
+                    ..
+                })) => return HistorySearchResult::Found(*v),
+                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                _ => (),
+            }
+        }
+        HistorySearchResult::NotFound
+    }
+
+    /// Lazily query (from end to beginning) the active balance of an address at a given slot.
+    ///
+    /// Returns None if the address balance could not be determined from the active history.
+    pub fn fetch_active_history_bytecode(&self, addr: &Address) -> HistorySearchResult<Vec<u8>> {
+        let hist = self.active_history.read();
+        let iter = hist.iter().rev();
+
+        for output in iter {
+            match output.state_changes.ledger_changes.0.get(addr) {
+                Some(SetUpdateOrDelete::Set(v)) => return HistorySearchResult::Found(v.bytecode),
+                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    bytecode: SetOrKeep::Set(v),
+                    ..
+                })) => return HistorySearchResult::Found(*v),
+                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                _ => (),
+            }
+        }
+        HistorySearchResult::NotFound
+    }
+
+    /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
+    ///
+    /// Returns None if the datastore entry could not be determined from the active history.
+    pub fn fetch_active_history_data_entry(
+        &self,
+        addr: &Address,
+        key: &Hash,
+    ) -> HistorySearchResult<Vec<u8>> {
+        let hist = self.active_history.read();
+        let iter = hist.iter().rev();
+
+        for output in iter {
+            match output.state_changes.ledger_changes.0.get(addr) {
+                Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
+                    match datastore.get(key) {
+                        Some(value) => return HistorySearchResult::Found(value.to_vec()),
+                        None => (),
+                    }
+                }
+                Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
+                    match datastore.get(key) {
+                        Some(SetOrDelete::Set(value)) => {
+                            return HistorySearchResult::Found(value.to_vec())
+                        }
+                        Some(SetOrDelete::Delete) => return HistorySearchResult::Deleted,
+                        None => (),
+                    }
+                }
+                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                None => (),
+            }
+        }
+        HistorySearchResult::NotFound
     }
 
     /// Returns the changes caused to the `SpeculativeLedger` since its creation,
@@ -82,13 +160,16 @@ impl SpeculativeLedger {
     /// # Returns
     /// Some(Amount) if the address was found, otherwise None
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
-        // try to read from added_changes, then previous_changes, then final_state
-        self.added_changes.get_parallel_balance_or_else(addr, || {
-            self.previous_changes
-                .get_parallel_balance_or_else(addr, || {
-                    self.final_state.read().ledger.get_parallel_balance(addr)
-                })
-        })
+        // try to read from history, then final_state
+        let search_result = self.fetch_active_history_balance(addr);
+        match search_result {
+            HistorySearchResult::Found(active_balance) => Some(active_balance),
+            HistorySearchResult::NotFound => {
+                self.final_state.read().ledger.get_parallel_balance(addr)
+            }
+            // NOTE: not sure about the deleted behaviour
+            HistorySearchResult::Deleted => None,
+        }
     }
 
     /// Gets the effective bytecode of an address
@@ -99,11 +180,14 @@ impl SpeculativeLedger {
     /// # Returns
     /// `Some(Vec<u8>)` if the address was found, otherwise None
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
-        // try to read from added_changes, then previous_changes, then ledger in final_state
-        self.added_changes.get_bytecode_or_else(addr, || {
-            self.previous_changes
-                .get_bytecode_or_else(addr, || self.final_state.read().ledger.get_bytecode(addr))
-        })
+        // try to read from history, then final_state
+        let search_result = self.fetch_active_history_bytecode(addr);
+        match search_result {
+            HistorySearchResult::Found(bytecode) => Some(bytecode),
+            HistorySearchResult::NotFound => self.final_state.read().ledger.get_bytecode(addr),
+            // NOTE: not sure about the deleted behaviour
+            HistorySearchResult::Deleted => None,
+        }
     }
 
     /// Transfers parallel coins from one address to another.
@@ -218,12 +302,16 @@ impl SpeculativeLedger {
     /// # Returns
     /// `Some(Vec<u8>)` if the value was found, `None` if the address does not exist or if the key is not in its datastore.
     pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
-        // try to read from added_changes, then previous_changes, then ledger in final_state
-        self.added_changes.get_data_entry_or_else(addr, key, || {
-            self.previous_changes.get_data_entry_or_else(addr, key, || {
+        // try to read from history, then ledger in final_state
+        let search_result = self.fetch_active_history_data_entry(addr, key);
+        match search_result {
+            HistorySearchResult::Found(entry) => Some(entry),
+            HistorySearchResult::NotFound => {
                 self.final_state.read().ledger.get_data_entry(addr, key)
-            })
-        })
+            }
+            // NOTE: not sure about the deleted behaviour
+            HistorySearchResult::Deleted => None,
+        }
     }
 
     /// Checks if a data entry exists for a given address

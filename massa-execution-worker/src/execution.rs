@@ -18,9 +18,7 @@ use massa_execution_exports::{
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
 
-use massa_ledger_exports::{
-    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
-};
+use massa_ledger_exports::{Applicable, LedgerEntry, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
@@ -29,7 +27,6 @@ use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
-use std::usize;
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -68,12 +65,6 @@ pub(crate) struct ExecutionState {
     execution_interface: Box<dyn Interface>,
     /// Shared storage across all modules
     storage: Storage,
-}
-
-pub(crate) enum HistorySearchResult<T> {
-    Found(T),
-    NotFound,
-    Deleted,
 }
 
 impl ExecutionState {
@@ -244,6 +235,8 @@ impl ExecutionState {
     }
 
     /// Check that the slot is within the reach of history
+    ///
+    /// NOTE: DO NOT FORGET TO USE BEFORE SPEC LEDGER FUNCTIONS
     fn verify_active_slot(&self, slot: Slot) {
         if slot <= self.final_cursor {
             panic!("cannot execute at a slot before finality");
@@ -258,6 +251,8 @@ impl ExecutionState {
     }
 
     /// Computes the index of a given slot in the active history
+    ///
+    /// NOTE: DO NOT FORGET TO USE BEFORE SPEC LEDGER FUNCTIONS    
     fn get_active_index(&self, slot: Slot) -> Option<usize> {
         if let Some(hist_front) = &self.active_history.read().front() {
             slot.slots_since(&hist_front.slot, self.config.thread_count)
@@ -267,77 +262,6 @@ impl ExecutionState {
         } else {
             None
         }
-    }
-
-    /// Lazily query (from end to beginning) the active balance of an address at a given slot.
-    /// Returns None if the address balance could not be determined from the active history.
-    ///
-    /// NOTE: temporary, needs to be done in the speculative ledger
-    pub fn fetch_active_history_balance(
-        &self,
-        slot: Slot,
-        addr: &Address,
-    ) -> HistorySearchResult<Amount> {
-        self.verify_active_slot(slot);
-
-        if let Some(n) = self.get_active_index(slot) {
-            let hist = self.active_history.read();
-            let iter = hist.iter().skip(n).rev();
-
-            for output in iter {
-                match output.state_changes.ledger_changes.0.get(addr) {
-                    Some(SetUpdateOrDelete::Set(v)) => {
-                        return HistorySearchResult::Found(v.parallel_balance)
-                    }
-                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                        parallel_balance: SetOrKeep::Set(v),
-                        ..
-                    })) => return HistorySearchResult::Found(*v),
-                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
-                    _ => (),
-                }
-            }
-        }
-        HistorySearchResult::NotFound
-    }
-
-    /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
-    /// Returns None if the datastore entry could not be determined from the active history.
-    pub fn fetch_active_history_data_entry(
-        &self,
-        slot: Slot,
-        addr: &Address,
-        key: &Hash,
-    ) -> HistorySearchResult<Vec<u8>> {
-        self.verify_active_slot(slot);
-
-        if let Some(n) = self.get_active_index(slot) {
-            let hist = self.active_history.read();
-            let iter = hist.iter().skip(n).rev();
-
-            for output in iter {
-                match output.state_changes.ledger_changes.0.get(addr) {
-                    Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
-                        match datastore.get(key) {
-                            Some(value) => return HistorySearchResult::Found(value.to_vec()),
-                            None => (),
-                        }
-                    }
-                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
-                        match datastore.get(key) {
-                            Some(SetOrDelete::Set(value)) => {
-                                return HistorySearchResult::Found(value.to_vec())
-                            }
-                            Some(SetOrDelete::Delete) => return HistorySearchResult::Deleted,
-                            None => (),
-                        }
-                    }
-                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
-                    None => (),
-                }
-            }
-        }
-        HistorySearchResult::NotFound
     }
 
     /// Returns the state changes accumulated from the beginning of the output history,
@@ -874,49 +798,53 @@ impl ExecutionState {
     /// Gets a parallel balance both at the latest final and active executed slots
     ///
     /// NOTE: temporary, needs to be done in the speculative ledger
+    /// NOTE: DON'T FORGET
     #[allow(dead_code)]
     pub fn get_final_and_active_parallel_balance(
         &self,
-        address: &Address,
+        _address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
-        let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
-        let next_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        let search_result = self.fetch_active_history_balance(next_slot, address);
-        (
-            final_balance,
-            match search_result {
-                HistorySearchResult::Found(active_balance) => Some(active_balance),
-                HistorySearchResult::NotFound => final_balance,
-                HistorySearchResult::Deleted => None,
-            },
-        )
+        // let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
+        // let next_slot = self
+        //     .active_cursor
+        //     .get_next_slot(self.config.thread_count)
+        //     .expect("slot overflow when getting speculative ledger");
+        // let search_result = self.fetch_active_history_balance(next_slot, address);
+        // (
+        //     final_balance,
+        //     match search_result {
+        //         HistorySearchResult::Found(active_balance) => Some(active_balance),
+        //         HistorySearchResult::NotFound => final_balance,
+        //         HistorySearchResult::Deleted => None,
+        //     },
+        // )
+        (None, None)
     }
 
     /// Gets a data entry both at the latest final and active executed slots
     ///
     /// NOTE: temporary, needs to be done in the speculative ledger
+    /// NOTE: DON'T FORGET
     pub fn get_final_and_active_data_entry(
         &self,
-        address: &Address,
-        key: &Hash,
+        _address: &Address,
+        _key: &Hash,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
-        let next_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        let search_result = self.fetch_active_history_data_entry(next_slot, address, key);
-        (
-            final_entry.clone(),
-            match search_result {
-                HistorySearchResult::Found(active_entry) => Some(active_entry),
-                HistorySearchResult::NotFound => final_entry,
-                HistorySearchResult::Deleted => None,
-            },
-        )
+        // let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
+        // let next_slot = self
+        //     .active_cursor
+        //     .get_next_slot(self.config.thread_count)
+        //     .expect("slot overflow when getting speculative ledger");
+        // let search_result = self.fetch_active_history_data_entry(next_slot, address, key);
+        // (
+        //     final_entry.clone(),
+        //     match search_result {
+        //         HistorySearchResult::Found(active_entry) => Some(active_entry),
+        //         HistorySearchResult::NotFound => final_entry,
+        //         HistorySearchResult::Deleted => None,
+        //     },
+        // )
+        (None, None)
     }
 
     /// Gets a full ledger entry both at the latest final and active executed slots
