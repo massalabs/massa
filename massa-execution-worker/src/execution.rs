@@ -252,7 +252,8 @@ impl ExecutionState {
 
     /// Computes the index of a given slot in the active history
     ///
-    /// NOTE: DO NOT FORGET TO USE BEFORE SPEC LEDGER FUNCTIONS    
+    /// NOTE: DO NOT FORGET TO USE BEFORE SPEC LEDGER FUNCTIONS
+    #[allow(dead_code)]
     fn get_active_index(&self, slot: Slot) -> Option<usize> {
         if let Some(hist_front) = &self.active_history.read().front() {
             slot.slots_since(&hist_front.slot, self.config.thread_count)

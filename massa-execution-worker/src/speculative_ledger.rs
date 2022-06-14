@@ -89,11 +89,13 @@ impl SpeculativeLedger {
 
         for output in iter {
             match output.state_changes.ledger_changes.0.get(addr) {
-                Some(SetUpdateOrDelete::Set(v)) => return HistorySearchResult::Found(v.bytecode),
+                Some(SetUpdateOrDelete::Set(v)) => {
+                    return HistorySearchResult::Found(v.bytecode.to_vec())
+                }
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
                     bytecode: SetOrKeep::Set(v),
                     ..
-                })) => return HistorySearchResult::Found(*v),
+                })) => return HistorySearchResult::Found(v.to_vec()),
                 Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
                 _ => (),
             }
@@ -160,16 +162,17 @@ impl SpeculativeLedger {
     /// # Returns
     /// Some(Amount) if the address was found, otherwise None
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
-        // try to read from history, then final_state
-        let search_result = self.fetch_active_history_balance(addr);
-        match search_result {
-            HistorySearchResult::Found(active_balance) => Some(active_balance),
-            HistorySearchResult::NotFound => {
-                self.final_state.read().ledger.get_parallel_balance(addr)
+        // try to read from added changes > history > final_state
+        self.added_changes.get_parallel_balance_or_else(addr, || {
+            match self.fetch_active_history_balance(addr) {
+                HistorySearchResult::Found(active_balance) => Some(active_balance),
+                HistorySearchResult::NotFound => {
+                    self.final_state.read().ledger.get_parallel_balance(addr)
+                }
+                // NOTE: not sure about the deleted behaviour
+                HistorySearchResult::Deleted => None,
             }
-            // NOTE: not sure about the deleted behaviour
-            HistorySearchResult::Deleted => None,
-        }
+        })
     }
 
     /// Gets the effective bytecode of an address
@@ -180,14 +183,14 @@ impl SpeculativeLedger {
     /// # Returns
     /// `Some(Vec<u8>)` if the address was found, otherwise None
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
-        // try to read from history, then final_state
-        let search_result = self.fetch_active_history_bytecode(addr);
-        match search_result {
-            HistorySearchResult::Found(bytecode) => Some(bytecode),
-            HistorySearchResult::NotFound => self.final_state.read().ledger.get_bytecode(addr),
-            // NOTE: not sure about the deleted behaviour
-            HistorySearchResult::Deleted => None,
-        }
+        // try to read from added changes > history > final_state
+        self.added_changes.get_bytecode_or_else(addr, || {
+            match self.fetch_active_history_bytecode(addr) {
+                HistorySearchResult::Found(bytecode) => Some(bytecode),
+                HistorySearchResult::NotFound => self.final_state.read().ledger.get_bytecode(addr),
+                HistorySearchResult::Deleted => None,
+            }
+        })
     }
 
     /// Transfers parallel coins from one address to another.
@@ -246,10 +249,13 @@ impl SpeculativeLedger {
     /// # Returns
     /// true if the address was found, otherwise false
     pub fn entry_exists(&self, addr: &Address) -> bool {
-        // try to read from added_changes, then previous_changes, then ledger in final_state
+        // try to read from added changes > history > final_state
         self.added_changes.entry_exists_or_else(addr, || {
-            self.previous_changes
-                .entry_exists_or_else(addr, || self.final_state.read().ledger.entry_exists(addr))
+            match self.fetch_active_history_balance(addr) {
+                HistorySearchResult::Found(_balance) => true,
+                HistorySearchResult::NotFound => self.final_state.read().ledger.entry_exists(addr),
+                HistorySearchResult::Deleted => false,
+            }
         })
     }
 
@@ -302,16 +308,16 @@ impl SpeculativeLedger {
     /// # Returns
     /// `Some(Vec<u8>)` if the value was found, `None` if the address does not exist or if the key is not in its datastore.
     pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
-        // try to read from history, then ledger in final_state
-        let search_result = self.fetch_active_history_data_entry(addr, key);
-        match search_result {
-            HistorySearchResult::Found(entry) => Some(entry),
-            HistorySearchResult::NotFound => {
-                self.final_state.read().ledger.get_data_entry(addr, key)
+        // try to read from added changes > history > final_state
+        self.added_changes.get_data_entry_or_else(addr, key, || {
+            match self.fetch_active_history_data_entry(addr, key) {
+                HistorySearchResult::Found(entry) => Some(entry),
+                HistorySearchResult::NotFound => {
+                    self.final_state.read().ledger.get_data_entry(addr, key)
+                }
+                HistorySearchResult::Deleted => None,
             }
-            // NOTE: not sure about the deleted behaviour
-            HistorySearchResult::Deleted => None,
-        }
+        })
     }
 
     /// Checks if a data entry exists for a given address
@@ -323,11 +329,13 @@ impl SpeculativeLedger {
     /// # Returns
     /// true if the key exists in the address datastore, false otherwise
     pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
-        // try to read from added_changes, then previous_changes, then ledger in final_state
+        // try to read from added changes > history > final_state
         self.added_changes.has_data_entry_or_else(addr, key, || {
-            self.previous_changes.has_data_entry_or_else(addr, key, || {
-                self.final_state.read().ledger.has_data_entry(addr, key)
-            })
+            match self.fetch_active_history_data_entry(addr, key) {
+                HistorySearchResult::Found(_entry) => true,
+                HistorySearchResult::NotFound => self.final_state.read().ledger.has_data_entry(addr, key),
+                HistorySearchResult::Deleted => false,
+            }
         })
     }
 
