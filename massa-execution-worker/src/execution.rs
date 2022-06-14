@@ -52,7 +52,8 @@ pub(crate) struct ExecutionState {
     // Whenever an active slot is executed, it is appended at the back of active_history.
     // Whenever an executed active slot becomes final,
     // its output is popped from the front of active_history and applied to the final state.
-    active_history: VecDeque<ExecutionOutput>,
+    // It has atomic R/W access.
+    active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
     // a cursor pointing to the highest executed slot
     pub active_cursor: Slot,
     // a cursor pointing to the highest executed final slot
@@ -98,6 +99,7 @@ impl ExecutionState {
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             final_state.clone(),
             Default::default(),
+            Default::default(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -128,7 +130,7 @@ impl ExecutionState {
     /// # Returns
     /// The earliest `ExecutionOutput` from the execution history, or None if the history is empty
     pub fn pop_first_execution_result(&mut self) -> Option<ExecutionOutput> {
-        self.active_history.pop_front()
+        self.active_history.write().pop_front()
     }
 
     /// Applies the output of an execution to the final execution state.
@@ -176,14 +178,14 @@ impl ExecutionState {
         self.active_cursor = exec_out.slot;
 
         // add the execution output at the end of the output history
-        self.active_history.push_back(exec_out);
+        self.active_history.write().push_back(exec_out);
     }
 
     /// Clear the whole execution history,
     /// deleting caches on executed non-final slots.
     pub fn clear_history(&mut self) {
         // clear history
-        self.active_history.clear();
+        self.active_history.write().clear();
 
         // reset active cursor to point to the latest final slot
         self.active_cursor = self.final_cursor;
@@ -206,7 +208,7 @@ impl ExecutionState {
         // find mismatch point (included)
         let mut truncate_at = None;
         // iterate over the output history, in chronological order
-        for (hist_index, exec_output) in self.active_history.iter().enumerate() {
+        for (hist_index, exec_output) in self.active_history.read().iter().enumerate() {
             // try to find the corresponding slot in active_slots or ready_final_slots.
             let found_block_id = active_slots
                 .get(&exec_output.slot)
@@ -223,12 +225,13 @@ impl ExecutionState {
         // If a mismatch was found
         if let Some(truncate_at) = truncate_at {
             // Truncate the execution output history at the cutoff index (excluded)
-            self.active_history.truncate(truncate_at);
+            self.active_history.write().truncate(truncate_at);
             // Now that part of the speculative executions were cancelled,
             // update the active cursor to match the latest executed slot.
             // The cursor is set to the latest executed final slot if the history is empty.
             self.active_cursor = self
                 .active_history
+                .read()
                 .back()
                 .map_or(self.final_cursor, |out| out.slot);
             // safety check to ensure that the active cursor cannot go too far back in time
@@ -256,7 +259,7 @@ impl ExecutionState {
 
     /// Computes the index of a given slot in the active history
     fn get_active_index(&self, slot: Slot) -> Option<usize> {
-        if let Some(hist_front) = &self.active_history.front() {
+        if let Some(hist_front) = &self.active_history.read().front() {
             slot.slots_since(&hist_front.slot, self.config.thread_count)
                 .map(|v| v.try_into().ok())
                 .ok()
@@ -278,7 +281,8 @@ impl ExecutionState {
         self.verify_active_slot(slot);
 
         if let Some(n) = self.get_active_index(slot) {
-            let iter = self.active_history.iter().skip(n).rev();
+            let hist = self.active_history.read();
+            let iter = hist.iter().skip(n).rev();
 
             for output in iter {
                 match output.state_changes.ledger_changes.0.get(addr) {
@@ -308,7 +312,8 @@ impl ExecutionState {
         self.verify_active_slot(slot);
 
         if let Some(n) = self.get_active_index(slot) {
-            let iter = self.active_history.iter().skip(n).rev();
+            let hist = self.active_history.read();
+            let iter = hist.iter().skip(n).rev();
 
             for output in iter {
                 match output.state_changes.ledger_changes.0.get(addr) {
@@ -346,7 +351,7 @@ impl ExecutionState {
         self.verify_active_slot(slot);
         // gather the history of state changes in the relevant history range
         let mut accumulated_changes = StateChanges::default();
-        for previous_output in &self.active_history {
+        for previous_output in self.active_history.read().iter() {
             if previous_output.slot >= slot {
                 break;
             }
@@ -748,6 +753,7 @@ impl ExecutionState {
             opt_block_id,
             previous_changes,
             self.final_state.clone(),
+            self.active_history.clone(),
         );
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
@@ -823,6 +829,7 @@ impl ExecutionState {
             req.call_stack,
             previous_changes,
             self.final_state.clone(),
+            self.active_history.clone(),
         );
 
         // run the intepreter according to the target type
@@ -972,6 +979,7 @@ impl ExecutionState {
             .into_iter()
             .chain(
                 self.active_history
+                    .read()
                     .iter()
                     .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
             )

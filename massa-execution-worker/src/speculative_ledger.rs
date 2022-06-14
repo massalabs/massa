@@ -5,13 +5,13 @@
 //! It never actually writes to the consensus state
 //! but keeps track of the changes that were applied to it since its creation.
 
-use massa_execution_exports::ExecutionError;
+use massa_execution_exports::{ExecutionError, ExecutionOutput};
 use massa_final_state::FinalState;
 use massa_hash::Hash;
 use massa_ledger_exports::{Applicable, LedgerChanges};
 use massa_models::{Address, Amount};
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
 /// The `SpeculativeLedger` contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
@@ -33,6 +33,10 @@ pub struct SpeculativeLedger {
 
     /// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
     added_changes: LedgerChanges,
+
+    /// History of the outputs of recently executed slots.
+    /// Slots should be consecutive, newest at the back.
+    _active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
 }
 
 impl SpeculativeLedger {
@@ -41,11 +45,16 @@ impl SpeculativeLedger {
     /// # Arguments
     /// * `final_state`: thread-safe shared access to the final state (for reading only)
     /// * `previous_changes`: accumulation of changes that previously happened to the ledger since finality
-    pub fn new(final_state: Arc<RwLock<FinalState>>, previous_changes: LedgerChanges) -> Self {
+    pub fn new(
+        final_state: Arc<RwLock<FinalState>>,
+        previous_changes: LedgerChanges,
+        active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
+    ) -> Self {
         SpeculativeLedger {
             final_state,
             previous_changes,
             added_changes: Default::default(),
+            _active_history: active_history,
         }
     }
 

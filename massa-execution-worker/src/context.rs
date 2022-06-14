@@ -21,7 +21,7 @@ use massa_models::{
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 use tracing::debug;
 
 /// A snapshot taken from an `ExecutionContext` and that represents its current state.
@@ -113,11 +113,13 @@ impl ExecutionContext {
     pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
         previous_changes: StateChanges,
+        active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
                 final_state.clone(),
                 previous_changes.ledger_changes,
+                active_history,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.read().async_pool.clone(),
@@ -184,6 +186,7 @@ impl ExecutionContext {
         call_stack: Vec<ExecutionStackElement>,
         previous_changes: StateChanges,
         final_state: Arc<RwLock<FinalState>>,
+        active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -208,7 +211,7 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, previous_changes)
+            ..ExecutionContext::new(final_state, previous_changes, active_history)
         }
     }
 
@@ -248,6 +251,7 @@ impl ExecutionContext {
         opt_block_id: Option<BlockId>,
         previous_changes: StateChanges,
         final_state: Arc<RwLock<FinalState>>,
+        active_history: Arc<RwLock<VecDeque<ExecutionOutput>>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -269,7 +273,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, previous_changes)
+            ..ExecutionContext::new(final_state, previous_changes, active_history)
         }
     }
 
