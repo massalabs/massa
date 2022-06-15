@@ -613,7 +613,7 @@ impl Operation {
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view
-    pub fn get_ledger_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
+    pub fn get_ledger_involved_addresses(&self) -> Set<Address> {
         let mut res = Set::<Address>::default();
         let emitter_address = Address::from_public_key(&self.sender_public_key);
         res.insert(emitter_address);
@@ -630,7 +630,7 @@ impl Operation {
                 res.insert(*target_addr);
             }
         }
-        Ok(res)
+        res
     }
 
     /// get the addresses that are involved in this operation from a rolls point of view

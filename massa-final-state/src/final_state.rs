@@ -7,7 +7,7 @@
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
-use massa_ledger::{FinalLedger, LedgerChanges};
+use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{constants::THREAD_COUNT, Address, Slot};
 use std::collections::VecDeque;
 
@@ -19,7 +19,7 @@ pub struct FinalState {
     /// slot at the output of which the state is attached
     pub slot: Slot,
     /// final ledger associating addresses to their balance, executable bytecode and data
-    pub ledger: FinalLedger,
+    pub ledger: Box<dyn LedgerController>,
     /// asynchronous pool containing messages sorted by priority and their data
     pub async_pool: AsyncPool,
     /// history of recent final state changes, useful for streaming bootstrap
@@ -32,14 +32,18 @@ impl FinalState {
     ///
     /// # Arguments
     /// * `config`: the configuration of the execution state
-    pub fn new(config: FinalStateConfig) -> Result<Self, FinalStateError> {
+    pub fn new(
+        config: FinalStateConfig,
+        ledger: Box<dyn LedgerController>,
+    ) -> Result<Self, FinalStateError> {
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
+        // NOTE: THIS SHOULD NOT BE DONE HERE
         // load the initial final ledger from file
-        let ledger = FinalLedger::new(config.ledger_config.clone()).map_err(|err| {
-            FinalStateError::LedgerError(format!("could not initialize ledger: {}", err))
-        })?;
+        // let ledger = FinalLedger::new(config.ledger_config.clone()).map_err(|err| {
+        //     FinalStateError::LedgerError(format!("could not initialize ledger: {}", err))
+        // })?;
 
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
@@ -165,7 +169,7 @@ mod tests {
 
     use crate::{FinalState, StateChanges};
     use massa_async_pool::test_exports::get_random_message;
-    use massa_ledger::SetUpdateOrDelete;
+    use massa_ledger_exports::SetUpdateOrDelete;
     use massa_models::{Address, Slot};
     use massa_signature::{derive_public_key, generate_random_private_key};
 

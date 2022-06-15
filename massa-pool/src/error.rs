@@ -19,6 +19,8 @@ pub enum PoolError {
     JoinError(#[from] tokio::task::JoinError),
     /// models error: {0}
     ModelsError(#[from] ModelsError),
+    /// missing operation error: {0}
+    MissingOperation(String),
 }
 
 impl From<ProtocolError> for PoolError {

@@ -10,7 +10,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_hash::Hash;
-use massa_ledger::LedgerEntry;
+use massa_ledger_exports::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;

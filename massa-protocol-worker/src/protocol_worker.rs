@@ -4,6 +4,7 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::SerializeCompact;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
@@ -1007,7 +1008,7 @@ impl ProtocolWorker {
         // Perform general checks on the operations, note them into caches and send them to pool
         // but do not propagate as they are already propagating within a block
         let (seen_ops, received_operations_ids, has_duplicate_operations, total_gas) = self
-            .note_operations_from_node(operations.clone(), source_node_id, false)
+            .note_operations_from_node(operations.clone(), source_node_id, false, None)
             .await?;
         if total_gas > self.max_block_gas {
             // Gas usage over limit => block invalid
@@ -1085,6 +1086,7 @@ impl ProtocolWorker {
         operations: Operations,
         source_node_id: &NodeId,
         propagate: bool,
+        serialized: Option<Vec<Vec<u8>>>,
     ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, bool, u64), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let mut total_gas = 0u64;
@@ -1114,7 +1116,14 @@ impl ProtocolWorker {
             if self.checked_operations.insert(operation_id) {
                 // check signature
                 operation.verify_signature(&operation.content.sender_public_key)?;
-                new_operations.insert(operation_id, operation);
+
+                let serialized = if let Some(serialized_ops) = serialized.as_ref() {
+                    // TODO: remove clone #2669.
+                    serialized_ops[idx].clone()
+                } else {
+                    operation.to_bytes_compact()?
+                };
+                new_operations.insert(operation_id, (operation, serialized));
             };
         }
 
@@ -1316,9 +1325,14 @@ impl ProtocolWorker {
                 }
                 self.update_ask_block(block_ask_timer).await?;
             }
-            NetworkEvent::ReceivedOperations { node, operations } => {
+            NetworkEvent::ReceivedOperations {
+                node,
+                operations,
+                serialized,
+            } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
-                self.on_operations_received(node, operations).await;
+                self.on_operations_received(node, operations, serialized)
+                    .await;
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});

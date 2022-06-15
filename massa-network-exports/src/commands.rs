@@ -96,7 +96,7 @@ pub enum NodeCommand {
     /// Block not found
     BlockNotFound(BlockId),
     /// Send full Operations (send to a node that previously asked for)
-    SendOperations(Operations),
+    SendOperations(OperationIds),
     /// Send a batch of operation ids
     SendOperationAnnouncements(OperationIds),
     /// Ask for a set of operations
@@ -122,8 +122,8 @@ pub enum NodeEventType {
     ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,
     BlockNotFound(BlockId),
-    /// Received full operation
-    ReceivedOperations(Operations),
+    /// Received full operations.
+    ReceivedOperations(Operations, Vec<Vec<u8>>),
     /// Received an operation id batch announcing new operations
     ReceivedOperationAnnouncements(OperationIds),
     /// Receive a list of wanted operations
@@ -203,7 +203,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// operations
-        operations: Operations,
+        operations: OperationIds,
     },
     /// Send operation ids batch to a node
     SendOperationAnnouncements {
@@ -268,6 +268,8 @@ pub enum NetworkEvent {
         node: NodeId,
         /// operations
         operations: Operations,
+        /// serialized operations.
+        serialized: Vec<Vec<u8>>,
     },
     /// Receive a list of `OperationId`
     ReceivedOperationAnnouncements {

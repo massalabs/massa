@@ -3,7 +3,7 @@
 //! This file defines a configuration structure containing all settings for final state management
 
 use massa_async_pool::AsyncPoolConfig;
-use massa_ledger::LedgerConfig;
+use massa_ledger_exports::LedgerConfig;
 
 /// Ledger configuration
 #[derive(Debug, Clone)]

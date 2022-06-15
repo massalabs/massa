@@ -5,7 +5,7 @@
 use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
-use massa_ledger::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{
     error::{context, ContextError, ParseError},
@@ -50,7 +50,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// use massa_models::{Address, prehash::Map, Amount, Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer};
     /// use std::str::FromStr;
-    /// use massa_ledger::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
+    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
@@ -123,7 +123,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// use massa_models::{Address, prehash::Map, Amount, Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
     /// use std::str::FromStr;
-    /// use massa_ledger::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
+    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
@@ -188,7 +188,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
 impl StateChanges {
     /// extends the current `StateChanges` with another one
     pub fn apply(&mut self, changes: StateChanges) {
-        use massa_ledger::Applicable;
+        use massa_ledger_exports::Applicable;
         self.ledger_changes.apply(changes.ledger_changes);
         self.async_pool_changes.extend(changes.async_pool_changes);
     }

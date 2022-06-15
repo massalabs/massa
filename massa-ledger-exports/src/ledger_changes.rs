@@ -154,7 +154,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// use massa_serialization::Serializer;
     /// use massa_models::{prehash::Map, Address, Amount};
     /// use std::str::FromStr;
-    /// use massa_ledger::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
+    /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
     /// use massa_hash::Hash;
     ///
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
@@ -221,7 +221,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_models::{prehash::Map, Address, Amount};
     /// use std::str::FromStr;
-    /// use massa_ledger::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
+    /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
     /// use massa_hash::Hash;
     ///
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
@@ -317,7 +317,7 @@ impl Default for LedgerChangesSerializer {
 impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// ```
     /// use massa_serialization::Serializer;
-    /// use massa_ledger::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer};
+    /// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_models::{Amount, Address};
@@ -389,7 +389,7 @@ impl Default for LedgerChangesDeserializer {
 impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// ```
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
-    /// use massa_ledger::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer, LedgerChangesDeserializer};
+    /// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer, LedgerChangesDeserializer};
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_models::{Amount, Address};

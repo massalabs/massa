@@ -144,7 +144,7 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
     /// use massa_models::Amount;
-    /// use massa_ledger::{LedgerEntry, LedgerEntrySerializer};
+    /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
     /// use massa_hash::Hash;
     ///
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
@@ -201,7 +201,7 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// use std::collections::BTreeMap;
     /// use std::str::FromStr;
     /// use massa_models::Amount;
-    /// use massa_ledger::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
+    /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
     /// use massa_hash::Hash;
     ///
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
