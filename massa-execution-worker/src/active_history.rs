@@ -9,6 +9,7 @@ use std::collections::VecDeque;
 #[derive(Default)]
 pub(crate) struct ActiveHistory(pub VecDeque<ExecutionOutput>);
 
+/// Result of a lazy, active history search
 pub enum HistorySearchResult<T> {
     Found(T),
     NotFound,
@@ -18,7 +19,7 @@ pub enum HistorySearchResult<T> {
 impl ActiveHistory {
     /// Lazily query (from end to beginning) the active balance of an address after a given index.
     ///
-    /// Returns None if the address balance could not be determined from the active history.
+    /// Returns a `HistorySearchResult`.
     pub fn fetch_active_history_balance(
         &self,
         addr: &Address,
@@ -44,7 +45,7 @@ impl ActiveHistory {
 
     /// Lazily query (from end to beginning) the active bytecode of an address after a given index.
     ///
-    /// Returns None if the address bytecode could not be determined from the active history.
+    /// Returns a `HistorySearchResult`.
     pub fn fetch_active_history_bytecode(
         &self,
         addr: &Address,
@@ -70,7 +71,7 @@ impl ActiveHistory {
 
     /// Lazily query (from end to beginning) the active datastore entry of an address after a given index.
     ///
-    /// Returns None if the datastore entry could not be determined from the active history.
+    /// Returns a `HistorySearchResult`.
     pub fn fetch_active_history_data_entry(
         &self,
         addr: &Address,
