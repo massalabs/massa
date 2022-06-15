@@ -239,7 +239,7 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
                     Ok((&rest[bits_u8_len..], rng_seed))
                 }),
                 context(
-                    "Failed production_states deserialization",
+                    "Failed production_stats deserialization",
                     length_count(
                         |input| self.u32_deserializer.deserialize(input),
                         tuple((
