@@ -9,6 +9,7 @@ use massa_models::{
     SignedEndorsement, SignedOperation, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use massa_storage::Storage;
 use std::str::FromStr;
 
 pub async fn pool_test<F, V>(cfg: &'static PoolConfig, test: F)
@@ -16,14 +17,16 @@ where
     F: FnOnce(MockProtocolController, PoolCommandSender, PoolManager) -> V,
     V: Future<Output = (MockProtocolController, PoolCommandSender, PoolManager)>,
 {
+    let storage: Storage = Default::default();
+
     let (protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
         MockProtocolController::new();
-    ();
 
     let (pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
         cfg,
         protocol_command_sender,
         protocol_pool_event_receiver,
+        storage,
     )
     .await
     .unwrap();
