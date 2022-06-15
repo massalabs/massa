@@ -1,5 +1,6 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
+use async_speed_limit::Limiter;
 use massa_final_state::FinalState;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
@@ -329,7 +330,8 @@ async fn connect_to_server(
     let mut connector = establisher
         .get_connector(bootstrap_settings.connect_timeout)
         .await?; // cancellable
-    let socket = connector.connect(*addr).await?; // cancellable
+    let socket = <Limiter>::new(bootstrap_settings.max_bit_read_write.into())
+        .limit(connector.connect(*addr).await?); // cancellable
     Ok(BootstrapClientBinder::new(socket, *pub_key))
 }
 

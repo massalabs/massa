@@ -577,9 +577,8 @@ impl NetworkWorker {
                     .peer_info_db
                     .try_out_connection_attempt_success(&ip_addr)?
                 {
-                    let limiter = <Limiter>::new(1024.0);
-                    let reader = limiter.clone().limit(reader);
-                    let writer = limiter.limit(writer);
+                    let reader = <Limiter>::new(self.cfg.max_bit_read.into()).limit(reader);
+                    let writer = <Limiter>::new(self.cfg.max_bit_write.into()).limit(writer);
                     // outgoing connection established
                     let connection_id = *cur_connection_id;
                     debug!(
@@ -634,9 +633,8 @@ impl NetworkWorker {
     ) -> Result<(), NetworkError> {
         match res {
             Ok((reader, writer, remote_addr)) => {
-                let limiter = <Limiter>::new(1024.0);
-                let reader = limiter.clone().limit(reader);
-                let writer = limiter.limit(writer);
+                let reader = <Limiter>::new(self.cfg.max_bit_read.into()).limit(reader);
+                let writer = <Limiter>::new(self.cfg.max_bit_write.into()).limit(writer);
                 match self.peer_info_db.try_new_in_connection(&remote_addr.ip()) {
                     Ok(_) => {
                         let connection_id = *cur_connection_id;

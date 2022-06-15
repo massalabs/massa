@@ -43,12 +43,11 @@ impl WriteBinder {
         let max_message_size = with_serialization_context(|context| context.max_message_size);
 
         self.write_half
-            .get_mut()
             .write_all(&msg_size.to_be_bytes_min(max_message_size)?[..])
             .await?;
 
         // send message
-        self.write_half.get_mut().write_all(buf).await?;
+        self.write_half.write_all(buf).await?;
 
         let res_index = self.message_index;
         self.message_index += 1;
@@ -110,12 +109,7 @@ impl ReadBinder {
             // We need to keep all states (buffer and cursor) to ensure that if the function restarts at the read's await,
             // the state will remain consistent and resume the readout smoothly.
             while self.cursor < size_field_len {
-                match self
-                    .read_half
-                    .get_mut()
-                    .read(&mut self.buf[self.cursor..])
-                    .await
-                {
+                match self.read_half.read(&mut self.buf[self.cursor..]).await {
                     Ok(nr) => {
                         if nr == 0 {
                             return Ok(None);
@@ -147,12 +141,7 @@ impl ReadBinder {
         // read message in the same cancel-safe way as msg_size above
         while self.cursor < self.msg_size.unwrap() as usize {
             // does not panic
-            match self
-                .read_half
-                .get_mut()
-                .read(&mut self.buf[self.cursor..])
-                .await
-            {
+            match self.read_half.read(&mut self.buf[self.cursor..]).await {
                 Ok(nr) => {
                     if nr == 0 {
                         return Ok(None);
