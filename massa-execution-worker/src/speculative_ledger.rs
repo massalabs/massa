@@ -85,7 +85,7 @@ impl SpeculativeLedger {
                 HistorySearchResult::NotFound => {
                     self.final_state.read().ledger.get_parallel_balance(addr)
                 }
-                // NOTE: I'm not sure about the deleted behaviour.
+                // NOTE FOR REVIEW: I'm not sure about the deleted behaviour.
                 // This goes for the following occurences as well.
                 HistorySearchResult::Deleted => None,
             }

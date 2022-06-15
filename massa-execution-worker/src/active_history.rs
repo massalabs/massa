@@ -42,9 +42,9 @@ impl ActiveHistory {
         HistorySearchResult::NotFound
     }
 
-    /// Lazily query (from end to beginning) the active balance of an address at a given slot.
+    /// Lazily query (from end to beginning) the active bytecode of an address at a given slot.
     ///
-    /// Returns None if the address balance could not be determined from the active history.
+    /// Returns None if the address bytecode could not be determined from the active history.
     pub fn fetch_active_history_bytecode(
         &self,
         addr: &Address,
