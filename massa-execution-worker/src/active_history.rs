@@ -16,7 +16,7 @@ pub enum HistorySearchResult<T> {
 }
 
 impl ActiveHistory {
-    /// Lazily query (from end to beginning) the active balance of an address at a given slot.
+    /// Lazily query (from end to beginning) the active balance of an address after a given index.
     ///
     /// Returns None if the address balance could not be determined from the active history.
     pub fn fetch_active_history_balance(
@@ -42,7 +42,7 @@ impl ActiveHistory {
         HistorySearchResult::NotFound
     }
 
-    /// Lazily query (from end to beginning) the active bytecode of an address at a given slot.
+    /// Lazily query (from end to beginning) the active bytecode of an address after a given index.
     ///
     /// Returns None if the address bytecode could not be determined from the active history.
     pub fn fetch_active_history_bytecode(
@@ -68,7 +68,7 @@ impl ActiveHistory {
         HistorySearchResult::NotFound
     }
 
-    /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
+    /// Lazily query (from end to beginning) the active datastore entry of an address after a given index.
     ///
     /// Returns None if the datastore entry could not be determined from the active history.
     pub fn fetch_active_history_data_entry(
