@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_models::SerializeCompact;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
@@ -96,7 +97,10 @@ impl MockNetworkController {
     /// send operations
     /// todo inconsistency with names
     pub async fn send_operations(&mut self, source_node_id: NodeId, operations: Operations) {
-        let serialized = operations.iter().map(|_| Default::default()).collect();
+        let serialized = operations
+            .iter()
+            .map(|op| op.to_bytes_compact().unwrap())
+            .collect();
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
                 node: source_node_id,
