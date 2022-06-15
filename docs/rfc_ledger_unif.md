@@ -87,7 +87,18 @@ struct PoSChanges {
     * remove entries for which Amount = 0
 * if slot S was the last of cycle C:
   * set complete=true for cycle C in the history
-  * compute the seed hash and send a message to the multithreaded draw computer and cache for cycle C+3
+  * compute the seed hash and notifies the `PoSDrawer` for cycle C+3
+
+### PoSDrawer
+
+The `PoSDrawer` system is shared through an RwLock to many modules.
+
+It efficiently draws PoS selections in separate threads to not block the execution thread that feeds it with seed hashes and roll distributions.
+
+It stores the draws once they are available.
+If a module asks PosDrawer for a draw that was discarded (too old) or not computed yet, it returns the corresponding error.
+
+This module computes draws in a multithreaded way using Xoshiro256++ jumps https://docs.rs/rand_xoshiro/latest/rand_xoshiro/struct.Xoshiro256PlusPlus.html#method.jump
 
 ### Speculative PoS changes
 
