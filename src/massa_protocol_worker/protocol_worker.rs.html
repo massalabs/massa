@@ -1523,12 +1523,27 @@
 <span id="1516">1516</span>
 <span id="1517">1517</span>
 <span id="1518">1518</span>
+<span id="1519">1519</span>
+<span id="1520">1520</span>
+<span id="1521">1521</span>
+<span id="1522">1522</span>
+<span id="1523">1523</span>
+<span id="1524">1524</span>
+<span id="1525">1525</span>
+<span id="1526">1526</span>
+<span id="1527">1527</span>
+<span id="1528">1528</span>
+<span id="1529">1529</span>
+<span id="1530">1530</span>
+<span id="1531">1531</span>
+<span id="1532">1532</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node_info::NodeInfo</span>, <span class="ident">worker_operations_impl::OperationBatchBuffer</span>};
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
+<span class="kw">use</span> <span class="ident">massa_models::SerializeCompact</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants::CHANNEL_SIZE</span>,
     <span class="ident">node::NodeId</span>,
@@ -2532,7 +2547,7 @@
         <span class="comment">// Perform general checks on the operations, note them into caches and send them to pool</span>
         <span class="comment">// but do not propagate as they are already propagating within a block</span>
         <span class="kw">let</span> (<span class="ident">seen_ops</span>, <span class="ident">received_operations_ids</span>, <span class="ident">has_duplicate_operations</span>, <span class="ident">total_gas</span>) <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">note_operations_from_node</span>(<span class="ident">operations</span>.<span class="ident">clone</span>(), <span class="ident">source_node_id</span>, <span class="bool-val">false</span>)
+            .<span class="ident">note_operations_from_node</span>(<span class="ident">operations</span>.<span class="ident">clone</span>(), <span class="ident">source_node_id</span>, <span class="bool-val">false</span>, <span class="prelude-val">None</span>)
             .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="ident">total_gas</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">max_block_gas</span> {
             <span class="comment">// Gas usage over limit =&gt; block invalid</span>
@@ -2610,6 +2625,7 @@
         <span class="ident">operations</span>: <span class="ident">Operations</span>,
         <span class="ident">source_node_id</span>: <span class="kw-2">&amp;</span><span class="ident">NodeId</span>,
         <span class="ident">propagate</span>: <span class="ident">bool</span>,
+        <span class="ident">serialized</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">bool</span>, <span class="ident">u64</span>), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_operations_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">source_node_id</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span> });
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_gas</span> <span class="op">=</span> <span class="number">0u64</span>;
@@ -2639,7 +2655,14 @@
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_operations</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>) {
                 <span class="comment">// check signature</span>
                 <span class="ident">operation</span>.<span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">sender_public_key</span>)<span class="question-mark">?</span>;
-                <span class="ident">new_operations</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>, <span class="ident">operation</span>);
+
+                <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">serialized_ops</span>) <span class="op">=</span> <span class="ident">serialized</span>.<span class="ident">as_ref</span>() {
+                    <span class="comment">// TODO: remove clone #2669.</span>
+                    <span class="ident">serialized_ops</span>[<span class="ident">idx</span>].<span class="ident">clone</span>()
+                } <span class="kw">else</span> {
+                    <span class="ident">operation</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>
+                };
+                <span class="ident">new_operations</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>, (<span class="ident">operation</span>, <span class="ident">serialized</span>));
             };
         }
 
@@ -2841,9 +2864,14 @@
                 }
                 <span class="self">self</span>.<span class="ident">update_ask_block</span>(<span class="ident">block_ask_timer</span>).<span class="kw">await</span><span class="question-mark">?</span>;
             }
-            <span class="ident">NetworkEvent::ReceivedOperations</span> { <span class="ident">node</span>, <span class="ident">operations</span> } =&gt; {
+            <span class="ident">NetworkEvent::ReceivedOperations</span> {
+                <span class="ident">node</span>,
+                <span class="ident">operations</span>,
+                <span class="ident">serialized</span>,
+            } =&gt; {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.received_operations&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span>});
-                <span class="self">self</span>.<span class="ident">on_operations_received</span>(<span class="ident">node</span>, <span class="ident">operations</span>).<span class="kw">await</span>;
+                <span class="self">self</span>.<span class="ident">on_operations_received</span>(<span class="ident">node</span>, <span class="ident">operations</span>, <span class="ident">serialized</span>)
+                    .<span class="kw">await</span>;
             }
             <span class="ident">NetworkEvent::ReceivedEndorsements</span> { <span class="ident">node</span>, <span class="ident">endorsements</span> } =&gt; {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.received_endorsements&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>, <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>});

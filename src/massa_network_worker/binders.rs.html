@@ -174,10 +174,16 @@
 <span id="167">167</span>
 <span id="168">168</span>
 <span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! `Flexbuffer` layer between raw data and our objects.</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::messages</span>::{<span class="ident">deserialize_message_with_optional_serialized_object</span>, <span class="ident">Message</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::messages</span>::{
+    <span class="ident">deserialize_message_with_optional_serialized_object</span>, <span class="ident">Message</span>, <span class="ident">SerializedForm</span>,
+};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">with_serialization_context</span>, <span class="ident">DeserializeMinBEInt</span>, <span class="ident">SerializeMinBEInt</span>};
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">NetworkError</span>, <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
@@ -263,7 +269,9 @@
     <span class="doccomment">/// or = 0 if there is no more data.</span>
     <span class="doccomment">/// We can&#39;t use `read_exact` and similar because they are not cancel-safe:</span>
     <span class="doccomment">/// `https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2`</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">Message</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">next</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">Message</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SerializedForm</span><span class="op">&gt;</span>)<span class="op">&gt;</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">max_message_size</span> <span class="op">=</span> <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_message_size</span>);
 
         <span class="comment">// check if we are in the process of reading the message length</span>

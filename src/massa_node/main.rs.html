@@ -433,6 +433,7 @@
 <span id="426">426</span>
 <span id="427">427</span>
 <span id="428">428</span>
+<span id="429">429</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -603,6 +604,7 @@
         <span class="kw-2">&amp;</span><span class="ident">POOL_CONFIG</span>,
         <span class="ident">protocol_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">protocol_pool_event_receiver</span>,
+        <span class="ident">shared_storage</span>.<span class="ident">clone</span>(),
     )
     .<span class="kw">await</span>
     .<span class="ident">expect</span>(<span class="string">&quot;could not start pool controller&quot;</span>);
