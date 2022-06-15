@@ -11,7 +11,7 @@ use crate::{
     Address, Amount, ModelsError,
 };
 use massa_hash::Hash;
-use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
+use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -122,6 +122,10 @@ enum OperationTypeId {
 pub struct Operation {
     /// the operation creator public key
     pub sender_public_key: PublicKey,
+    /// the address of the operation creator
+    pub sender_addr: Address,
+    /// Thread
+    pub thread: u8,
     /// the fee they have decided for this operation
     pub fee: Amount,
     /// after `expire_period` slot the operation won't be included in a block
