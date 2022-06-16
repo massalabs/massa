@@ -122,8 +122,8 @@ pub mod tests {
                 max_in_connection_overflow: 2,
                 peer_types_config,
                 max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
-                max_bit_read: std::u32::MAX,
-                max_bit_write: std::u32::MAX,
+                max_bit_read: std::u64::MAX,
+                max_bit_write: std::u64::MAX,
             }
         }
     }
@@ -181,8 +181,8 @@ pub mod tests {
                 max_in_connection_overflow: 10,
                 peer_types_config,
                 max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
-                max_bit_read: std::u32::MAX,
-                max_bit_write: std::u32::MAX,
+                max_bit_read: std::u64::MAX,
+                max_bit_write: std::u64::MAX,
             }
         }
     }
