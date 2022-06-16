@@ -55,11 +55,13 @@ instrument = [
     "massa_network_worker/instrument",
 ]
 sandbox = [
+    "massa_async_pool/sandbox",
     "massa_bootstrap/sandbox",
     "massa_consensus_exports/sandbox",
     "massa_consensus_worker/sandbox",
+    "massa_execution_worker/sandbox",
+    "massa_final_state/sandbox",
     "massa_models/sandbox",
-    "massa_async_pool/sandbox",
 ]
 
 [build]
