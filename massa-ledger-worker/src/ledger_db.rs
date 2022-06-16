@@ -361,7 +361,7 @@ impl LedgerDB {
 
         // Iterates over the whole database
         for (key, entry) in db_iterator {
-            if part.len() as u64 < (LEDGER_PART_SIZE_MESSAGE_BYTES) {
+            if (part.len() as u64) < (LEDGER_PART_SIZE_MESSAGE_BYTES) {
                 key_serializer.serialize(&key.to_vec(), &mut part)?;
                 ser.serialize(&entry.to_vec(), &mut part)?;
                 last_key = Some(key.to_vec());
