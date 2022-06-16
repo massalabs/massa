@@ -2,7 +2,7 @@
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use crate::prehash::{Map, PreHashed, Set};
-use crate::signed::{Id, Signable, Signed};
+use crate::signed::{Id, Signed};
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
     DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementId, ModelsError, Operation,
@@ -219,16 +219,16 @@ pub struct BlockHeader {
     pub endorsements: Vec<SignedEndorsement>,
 }
 
-impl Signable<BlockId> for BlockHeader {
-    fn get_signature_message(&self) -> Result<Hash, ModelsError> {
-        let hash = self.compute_hash()?;
-        let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];
-        res[..SLOT_KEY_SIZE].copy_from_slice(&self.slot.to_bytes_key());
-        res[SLOT_KEY_SIZE..].copy_from_slice(hash.to_bytes());
-        // rehash for safety
-        Ok(Hash::compute_from(&res))
-    }
-}
+// impl Signable<BlockId> for BlockHeader {
+//     fn get_signature_message(&self) -> Result<Hash, ModelsError> {
+//         let hash = self.compute_hash()?;
+//         let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];
+//         res[..SLOT_KEY_SIZE].copy_from_slice(&self.slot.to_bytes_key());
+//         res[SLOT_KEY_SIZE..].copy_from_slice(hash.to_bytes());
+//         // rehash for safety
+//         Ok(Hash::compute_from(&res))
+//     }
+// }
 
 /// signed header
 pub type SignedHeader = Signed<BlockHeader, BlockId>;

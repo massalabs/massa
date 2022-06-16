@@ -2,6 +2,11 @@
 
 use crate::error::MassaSignatureError;
 use massa_hash::Hash;
+use massa_serialization::Deserializer;
+use nom::{
+    error::{ContextError, ParseError},
+    IResult,
+};
 use secp256k1::{schnorr, Message, SECP256K1};
 use std::{convert::TryInto, str::FromStr};
 
@@ -391,6 +396,39 @@ impl PublicKey {
     }
 }
 
+/// Serializer for `Signature`
+#[derive(Default)]
+pub struct PublicKeyDeserializer;
+
+impl PublicKeyDeserializer {
+    /// Creates a `SignatureDeserializer`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Deserializer<PublicKey> for PublicKeyDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], PublicKey, E> {
+        let key = PublicKey::from_bytes(buffer.try_into().map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::LengthValue,
+            ))
+        })?)
+        .map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Fail,
+            ))
+        })?;
+        // Safe because the signature deserialization success
+        Ok((&buffer[PUBLIC_KEY_SIZE_BYTES..], key))
+    }
+}
+
 impl ::serde::Serialize for PublicKey {
     /// `::serde::Serialize` trait for `PublicKey`
     /// if the serializer is human readable,
@@ -735,6 +773,39 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
 
             d.deserialize_bytes(BytesVisitor)
         }
+    }
+}
+
+/// Serializer for `Signature`
+#[derive(Default)]
+pub struct SignatureDeserializer;
+
+impl SignatureDeserializer {
+    /// Creates a `SignatureDeserializer`
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Deserializer<Signature> for SignatureDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Signature, E> {
+        let signature = Signature::from_bytes(buffer.try_into().map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::LengthValue,
+            ))
+        })?)
+        .map_err(|_| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Fail,
+            ))
+        })?;
+        // Safe because the signature deserialization success
+        Ok((&buffer[SIGNATURE_SIZE_BYTES..], signature))
     }
 }
 

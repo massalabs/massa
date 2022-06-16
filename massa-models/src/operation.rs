@@ -2,7 +2,7 @@
 
 use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::prehash::{BuildMap, PreHashed, Set};
-use crate::signed::{Id, Signable, Signed};
+use crate::signed::{Id, Signed};
 use crate::with_serialization_context;
 use crate::{
     serialization::{
@@ -11,7 +11,7 @@ use crate::{
     Address, Amount, ModelsError,
 };
 use massa_hash::Hash;
-use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES};
+use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -143,8 +143,6 @@ impl std::fmt::Display for Operation {
         Ok(())
     }
 }
-
-impl Signable<OperationId> for Operation {}
 
 /// signed operation
 pub type SignedOperation = Signed<Operation, OperationId>;
