@@ -425,6 +425,85 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
     }
 }
 
+/// Serializer for `String` with generic serializer for the size of the string
+pub struct StringSerializer<SL, L>
+where
+    SL: Serializer<L>,
+{
+    length_serializer: SL,
+    marker_l: std::marker::PhantomData<L>,
+}
+
+impl<SL, L> StringSerializer<SL, L>
+where
+    SL: Serializer<L>,
+{
+    /// Creates a `StringSerializer`.
+    ///
+    /// # Arguments:
+    /// - `length_serializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
+    pub fn new(length_serializer: SL) -> Self {
+        Self {
+            length_serializer,
+            marker_l: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<SL, L> Serializer<String> for StringSerializer<SL, L>
+where
+    SL: Serializer<L>,
+{
+    fn serialize(&self, value: &String, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.length_serializer.serialize(
+            &value.len().try_into().map_err(|_| {
+                SerializeError::StringTooBig("The string is too big to be serialized".to_string())
+            })?,
+            buffer,
+        );
+        buffer.extend(value.as_bytes());
+        Ok(())
+    }
+}
+
+/// Deserializer for `String` with generic deserializer for the size of the string
+pub struct StringDeserializer<DL, L>
+where
+    DL: Deserializer<L>,
+{
+    length_deserializer: DL,
+    marker_l: std::marker::PhantomData<L>,
+}
+
+impl<DL, L> StringDeserializer<DL, L>
+where
+    DL: Deserializer<L>,
+{
+    /// Creates a `StringDeserializer`.
+    ///
+    /// # Arguments:
+    /// - `length_deserializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
+    pub fn new(length_deserializer: DL) -> Self {
+        Self {
+            length_deserializer,
+            marker_l: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<DL, L> Deserializer<String> for StringDeserializer<DL, L>
+where
+    DL: Deserializer<L>,
+{
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], String, E> {
+        length_data(|input| self.length_deserializer.deserialize(input))
+            .map(|data| String::from_utf8(data))(buffer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

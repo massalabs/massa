@@ -17,6 +17,8 @@ pub enum SerializeError {
     NumberTooBig(String),
     /// General error {0}
     GeneralError(String),
+    /// String too big {0},
+    StringTooBig(String),
 }
 
 #[derive(Clone, Error)]
