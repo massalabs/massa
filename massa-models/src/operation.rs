@@ -1,6 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
+use crate::error::ModelsResult;
+use crate::node_configuration::OPERATION_ID_PREFIX_SIZE_BYTES;
 use crate::prehash::{BuildMap, PreHashed, Set};
 use crate::signed::{Id, Signable, Signed};
 use crate::with_serialization_context;
@@ -16,6 +18,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
+use std::mem::transmute_copy;
 use std::{ops::RangeInclusive, str::FromStr};
 
 const OPERATION_ID_STRING_PREFIX: &str = "OPE";
@@ -23,6 +26,14 @@ const OPERATION_ID_STRING_PREFIX: &str = "OPE";
 /// operation id
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
+
+/// left part of the operation id hash stored in a vector of size [OPERATION_ID_PREFIX_SIZE_BYTES]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct OperationPrefixId(Vec<u8>);
+
+/// Right part of the operation id hash, contains the remains of `OperationId - OperationPrefixId`
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct OperationSuffixId(Vec<u8>);
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -76,10 +87,46 @@ impl FromStr for OperationId {
     }
 }
 
+// note: would be probably unused after the merge of
+//       prefix & suffix
 impl PreHashed for OperationId {}
 impl Id for OperationId {
     fn new(hash: Hash) -> Self {
         OperationId(hash)
+    }
+}
+
+impl PreHashed for OperationPrefixId {}
+impl Id for OperationPrefixId {
+    fn new(hash: Hash) -> Self {
+        OperationPrefixId(hash.to_bytes().to_vec())
+    }
+}
+
+impl PreHashed for OperationSuffixId {}
+impl Id for OperationSuffixId {
+    fn new(hash: Hash) -> Self {
+        OperationSuffixId(hash.to_bytes().to_vec())
+    }
+}
+
+impl From<&[u8; OPERATION_ID_PREFIX_SIZE_BYTES]> for OperationPrefixId {
+    /// get prefix of the operation id of size [OPERATION_ID_PREFIX_SIZE_BIT]
+    fn from(bytes: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]) -> Self {
+        Self(bytes.to_vec())
+    }
+}
+
+impl From<&OperationPrefixId> for Vec<u8> {
+    fn from(prefix: &OperationPrefixId) -> Self {
+        prefix.0.clone()
+    }
+}
+
+impl From<OperationId> for OperationPrefixId {
+    /// get prefix of the operation id of size [OPERATION_ID_PREFIX_SIZE_BIT]
+    fn from(operation_id: OperationId) -> Self {
+        Self(operation_id.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES].to_vec())
     }
 }
 
@@ -104,6 +151,40 @@ impl OperationId {
         Ok(OperationId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
         ))
+    }
+
+    /// split into a tuple of [OperationPrefixId] and [OperationSuffixId]
+    ///
+    /// ```
+    /// let op = OperationId::from_bytes(&[0; OPERATION_ID_SIZE_BYTES]);
+    /// let (prefix, suffix) = op.split();
+    /// ```
+    pub fn split(&self) -> (OperationPrefixId, OperationSuffixId) {
+        (
+            OperationPrefixId(self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES].to_vec()),
+            OperationSuffixId(self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES].to_vec()),
+        )
+    }
+
+    /// split into a tuple of [OperationPrefixId] and [OperationSuffixId]
+    pub fn into_split(self) -> (OperationPrefixId, OperationSuffixId) {
+        self.split()
+    }
+}
+
+impl OperationPrefixId {
+    /// Retreive an [OperationId] joining the prefix object to his
+    /// corresponding suffix.
+    pub fn join(&self, suffix: &OperationSuffixId) -> ModelsResult<OperationId> {
+        if self.0.len() + suffix.0.len() != OPERATION_ID_SIZE_BYTES {
+            return Err(ModelsError::OperationPrefixJoinError);
+        }
+        let mut id = self.0.clone();
+        id.extend(&suffix.0);
+        // the following code is safe until we correctly check the size in the if
+        // guard and return early an error if the transmutation would fail.
+        let data: &[u8; OPERATION_ID_SIZE_BYTES] = unsafe { transmute_copy(&id) };
+        Ok(OperationId::from_bytes(data))
     }
 }
 
@@ -653,6 +734,8 @@ impl Operation {
 
 /// Set of operation ids
 pub type OperationIds = Set<OperationId>;
+/// Set of operation id's prefix
+pub type OperationPrefixIds = Set<OperationPrefixId>;
 
 impl SerializeCompact for OperationIds {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
@@ -668,13 +751,27 @@ impl SerializeCompact for OperationIds {
     }
 }
 
+impl SerializeCompact for OperationPrefixIds {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let list_len: u32 = self.len().try_into().map_err(|_| {
+            ModelsError::SerializeError("could not encode AskForBlocks list length as u32".into())
+        })?;
+        let mut res = Vec::new();
+        res.extend(list_len.to_varint_bytes());
+        for hash in self {
+            res.extend(Vec::<u8>::from(hash));
+        }
+        Ok(res)
+    }
+}
+
 /// Deserialize from the given `buffer`.
 ///
 /// You know that the maximum number of ids is `max_operations_per_message` taken
 /// from the node configuration.
 ///
 /// # Return
-/// A result that return the deserialized `Vec<OperationId>`
+/// A result that return the deserialized [OperationIds]
 impl DeserializeCompact for OperationIds {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let max_operations_per_message =
@@ -688,6 +785,33 @@ impl DeserializeCompact for OperationIds {
             Set::with_capacity_and_hasher(length as usize, BuildMap::default());
         for _ in 0..length {
             let b_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?);
+            cursor += OPERATION_ID_SIZE_BYTES;
+            list.insert(b_id);
+        }
+        Ok((list, cursor))
+    }
+}
+
+/// Deserialize from the given `buffer`.
+///
+/// You know that the maximum number of ids is `max_operations_per_message` taken
+/// from the node configuration.
+///
+/// # Return
+/// A result that return the deserialized `Vec<OperationPrefixId>`
+impl DeserializeCompact for OperationPrefixIds {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let max_operations_per_message =
+            with_serialization_context(|context| context.max_operations_per_message);
+        let mut cursor = 0usize;
+        let (length, delta) =
+            u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
+        cursor += delta;
+        // hash list
+        let mut list: OperationPrefixIds =
+            Set::with_capacity_and_hasher(length as usize, BuildMap::default());
+        for _ in 0..length {
+            let b_id = OperationPrefixId::from(&array_from_slice(&buffer[cursor..])?);
             cursor += OPERATION_ID_SIZE_BYTES;
             list.insert(b_id);
         }
@@ -850,7 +974,8 @@ mod tests {
         let op = Signed::new_signed(content, &sender_priv).unwrap().1;
 
         let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        let (res_op, _) =
+            Signed::<Operation, OperationPrefixId>::from_bytes_compact(&ser_op).unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.content.get_validity_range(10), 40..=50);
