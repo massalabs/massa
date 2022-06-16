@@ -131,11 +131,14 @@ impl Wallet {
         &self,
         content: Operation,
         address: Address,
+        password: &str,
     ) -> Result<SignedOperation, WalletError> {
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;
-        Ok(Signed::new_signed(content, sender_priv).unwrap().1)
+        Ok(Signed::new_signed(content, sender_priv, password)
+            .unwrap()
+            .1)
     }
 }
 
