@@ -48,6 +48,8 @@ pub enum ModelsError {
     AmountOverflowError,
     /// Wrong prefix for hash: expected {0}, got {1}
     WrongPrefix(String, String),
+    /// Wrong operation id size deduced on join
+    OperationPrefixJoinError,
 }
 
 impl From<nom::Err<nom::error::Error<&[u8]>>> for ModelsError {
