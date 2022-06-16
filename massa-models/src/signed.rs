@@ -63,27 +63,7 @@ where
     U: Id,
 {
     /// generate new signed structure and id
-    pub fn new_signed(
-        content: T,
-        private_key: &PrivateKey,
-        _password: &str,
-    ) -> Result<(U, Self), ModelsError> {
-        // NOTE: HERE
-        Ok((
-            content.compute_id()?,
-            Self {
-                signature: sign(&content.get_signature_message()?, private_key)?,
-                content,
-                phantom: PhantomData,
-            },
-        ))
-    }
-
-    /// unchecked version
-    pub fn new_signed_unchecked(
-        content: T,
-        private_key: &PrivateKey,
-    ) -> Result<(U, Self), ModelsError> {
+    pub fn new_signed(content: T, private_key: &PrivateKey) -> Result<(U, Self), ModelsError> {
         Ok((
             content.compute_id()?,
             Self {

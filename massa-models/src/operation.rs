@@ -768,9 +768,7 @@ mod tests {
         let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
 
-        let op = Signed::new_signed_unchecked(content, &sender_priv)
-            .unwrap()
-            .1;
+        let op = Signed::new_signed(content, &sender_priv).unwrap().1;
 
         let ser_op = op.to_bytes_compact().unwrap();
         let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
@@ -806,9 +804,7 @@ mod tests {
         let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
 
-        let op = Signed::new_signed_unchecked(content, &sender_priv)
-            .unwrap()
-            .1;
+        let op = Signed::new_signed(content, &sender_priv).unwrap().1;
 
         let ser_op = op.to_bytes_compact().unwrap();
         let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
@@ -851,9 +847,7 @@ mod tests {
         let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
 
-        let op = Signed::new_signed_unchecked(content, &sender_priv)
-            .unwrap()
-            .1;
+        let op = Signed::new_signed(content, &sender_priv).unwrap().1;
 
         let ser_op = op.to_bytes_compact().unwrap();
         let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();

@@ -55,7 +55,7 @@ pub async fn create_and_connect_nodes(
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
 pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
-    let (_, header) = Signed::new_signed_unchecked(
+    let (_, header) = Signed::new_signed(
         BlockHeader {
             creator: *public_key,
             slot: Slot::new(1, 0),
@@ -93,7 +93,7 @@ pub fn create_block_with_operations(
             [acc, v.content.compute_id().unwrap().to_bytes().to_vec()].concat()
         })[..],
     );
-    let (_, header) = Signed::new_signed_unchecked(
+    let (_, header) = Signed::new_signed(
         BlockHeader {
             creator: *public_key,
             slot,
@@ -123,7 +123,7 @@ pub fn create_block_with_endorsements(
     slot: Slot,
     endorsements: Vec<SignedEndorsement>,
 ) -> Block {
-    let (_, header) = Signed::new_signed_unchecked(
+    let (_, header) = Signed::new_signed(
         BlockHeader {
             creator: *public_key,
             slot,
@@ -190,9 +190,7 @@ pub fn create_endorsement() -> SignedEndorsement {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Signed::new_signed_unchecked(content, &sender_priv)
-        .unwrap()
-        .1
+    Signed::new_signed(content, &sender_priv).unwrap().1
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
@@ -215,9 +213,7 @@ pub fn create_operation_with_expire_period(
         sender_public_key: sender_pub,
         expire_period,
     };
-    Signed::new_signed_unchecked(content, sender_priv)
-        .unwrap()
-        .1
+    Signed::new_signed(content, sender_priv).unwrap().1
 }
 
 lazy_static::lazy_static! {

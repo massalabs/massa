@@ -1028,7 +1028,6 @@ impl Command {
 async fn send_operation(
     client: &Client,
     wallet: &Wallet,
-    password: &str,
     op: OperationType,
     fee: Amount,
     addr: Address,
@@ -1059,7 +1058,6 @@ async fn send_operation(
             op,
         },
         addr,
-        password,
     )?;
 
     match client.public.send_operations(vec![op]).await {
