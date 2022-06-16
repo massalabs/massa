@@ -155,14 +155,10 @@ impl OperationId {
 
     /// split into a tuple of [OperationPrefixId] and [OperationSuffixId]
     ///
-    /// ```
-    /// let op = OperationId::from_bytes(&[0; OPERATION_ID_SIZE_BYTES]);
-    /// let (prefix, suffix) = op.split();
-    /// ```
     pub fn split(&self) -> (OperationPrefixId, OperationSuffixId) {
         (
             OperationPrefixId(self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES].to_vec()),
-            OperationSuffixId(self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES].to_vec()),
+            OperationSuffixId(self.0.to_bytes()[OPERATION_ID_PREFIX_SIZE_BYTES..].to_vec()),
         )
     }
 
@@ -177,6 +173,11 @@ impl OperationPrefixId {
     /// corresponding suffix.
     pub fn join(&self, suffix: &OperationSuffixId) -> ModelsResult<OperationId> {
         if self.0.len() + suffix.0.len() != OPERATION_ID_SIZE_BYTES {
+            println!(
+                "{}:{}",
+                self.0.len() + suffix.0.len(),
+                OPERATION_ID_SIZE_BYTES
+            );
             return Err(ModelsError::OperationPrefixJoinError);
         }
         let mut id = self.0.clone();
@@ -974,10 +975,44 @@ mod tests {
         let op = Signed::new_signed(content, &sender_priv).unwrap().1;
 
         let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) =
-            Signed::<Operation, OperationPrefixId>::from_bytes_compact(&ser_op).unwrap();
+        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.content.get_validity_range(10), 40..=50);
+    }
+
+    #[test]
+    #[serial]
+    fn test_prefix_join() {
+        let sender_priv = generate_random_private_key();
+        let sender_pub = derive_public_key(&sender_priv);
+
+        let recv_priv = generate_random_private_key();
+        let recv_pub = derive_public_key(&recv_priv);
+
+        let op = OperationType::Transaction {
+            recipient_address: Address::from_public_key(&recv_pub),
+            amount: Amount::default(),
+        };
+        let ser_type = op.to_bytes_compact().unwrap();
+        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
+        assert_eq!(format!("{}", res_type), format!("{}", op));
+
+        let content = Operation {
+            fee: Amount::from_str("20").unwrap(),
+            sender_public_key: sender_pub,
+            op,
+            expire_period: 50,
+        };
+
+        let ser_content = content.to_bytes_compact().unwrap();
+        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
+        assert_eq!(format!("{}", res_content), format!("{}", content));
+
+        let id = Signed::new_signed(content, &sender_priv).unwrap().0;
+        let (prefix, suffix) = id.split();
+        let joined = prefix.join(&suffix).expect("error on join operation id");
+
+        assert_eq!(id.0, joined.0);
     }
 }
