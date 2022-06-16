@@ -4,10 +4,11 @@ use massa_models::{
     constants::*,
     ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
-    rolls::{RollUpdate, RollUpdates},
+    rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
     signed::Signable,
     *,
 };
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +36,7 @@ pub struct ExportActiveBlock {
     /// list of `(period, address, did_create)` for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
 }
+
 impl TryFrom<ExportActiveBlock> for ActiveBlock {
     fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
         let operation_set = a_block
@@ -183,9 +185,11 @@ impl SerializeCompact for ExportActiveBlock {
             ModelsError::SerializeError(format!("too many roll updates in ActiveBlock: {}", err))
         })?;
         res.extend(roll_updates_count.to_varint_bytes());
+        // TODO: Temp before serialization is everywhere
+        let roll_updates_serializer = RollUpdateSerializer::new();
         for (addr, roll_update) in self.roll_updates.0.iter() {
             res.extend(addr.to_bytes());
-            res.extend(roll_update.to_bytes_compact()?);
+            roll_updates_serializer.serialize(roll_update, &mut res)?;
         }
 
         // creation events
@@ -331,11 +335,19 @@ impl DeserializeCompact for ExportActiveBlock {
             roll_updates_count as usize,
             BuildMap::default(),
         ));
+        // TODO: Temp before serialization is everywhere
+        let roll_update_deserializer = RollUpdateDeserializer::new();
         for _ in 0..roll_updates_count {
             let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
-            let (roll_update, delta) = RollUpdate::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
+            let (rest, roll_update) = roll_update_deserializer
+                .deserialize::<DeserializeError>(&buffer[cursor..])
+                .map_err(|_| {
+                    ModelsError::DeserializeError(
+                        "Error while deserializing roll_update".to_string(),
+                    )
+                })?;
+            cursor += buffer[cursor..].len() - rest.len();
             roll_updates.0.insert(address, roll_update);
         }
 
