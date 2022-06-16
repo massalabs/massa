@@ -3,11 +3,13 @@
 #![warn(missing_docs)]
 
 use massa_logging::massa_trace;
+use massa_models::operation::{OperationIds, OperationPrefixId, OperationSuffixId};
 use massa_models::prehash::Map;
 use massa_models::{Block, BlockId, OperationId, SignedOperation};
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
+use tracing::warn;
 
 /// Stored block: block + serialized block + (serialized header)
 #[derive(Debug)]
@@ -34,7 +36,7 @@ pub struct StoredOperation {
 #[derive(Clone, Default)]
 pub struct Storage {
     blocks: Arc<RwLock<Map<BlockId, Arc<RwLock<StoredBlock>>>>>,
-    operations: Arc<RwLock<Map<OperationId, StoredOperation>>>,
+    operations: Arc<RwLock<Map<OperationPrefixId, Map<OperationSuffixId, StoredOperation>>>>,
 }
 
 impl Storage {
@@ -83,14 +85,22 @@ impl Storage {
             "operation_id": operation_id
         });
         let mut operations = self.operations.write();
-        match operations.entry(operation_id) {
-            Entry::Occupied(_) => {}
+        let (prefix, suffix) = operation_id.into_split();
+        let stored_operation = StoredOperation {
+            operation,
+            serialized,
+        };
+        match operations.entry(prefix) {
+            Entry::Occupied(mut entry) => match entry.get_mut().entry(suffix) {
+                Entry::Occupied(_) => {}
+                Entry::Vacant(entry) => {
+                    entry.insert(stored_operation);
+                }
+            },
             Entry::Vacant(entry) => {
-                let stored_operation = StoredOperation {
-                    operation,
-                    serialized,
-                };
-                entry.insert(stored_operation);
+                let mut m = Map::default();
+                m.insert(suffix, stored_operation);
+                entry.insert(m);
             }
         }
     }
@@ -101,7 +111,36 @@ impl Storage {
             "operation_id": operation_id
         });
         let operations = self.operations.read();
-        operations.get(operation_id).cloned()
+        let (prefix, suffix) = operation_id.split();
+        match operations.get(&prefix) {
+            Some(m) => m.get(&suffix).cloned(),
+            _ => None,
+        }
+    }
+
+    /// Get a list of operation ids prefixed with `prefix` argument.
+    pub fn retrieve_operations_prefixed(&self, prefix: &OperationPrefixId) -> Option<OperationIds> {
+        massa_trace!("storage.storage.retrieve_operations_prefixed", {
+            "prefix": prefix
+        });
+        let operations = self.operations.read();
+        match operations.get(prefix) {
+            Some(m) => {
+                let mut ret = OperationIds::default();
+                for (suffix, _) in m.iter() {
+                    match prefix.join(suffix) {
+                        Ok(id) => ret.insert(id),
+                        Err(e) => {
+                            // ignore the failure and print a warning
+                            warn!("problem occurs on try retreive an operation id {}", e);
+                            continue;
+                        }
+                    };
+                }
+                Some(ret)
+            }
+            _ => None,
+        }
     }
 
     /// Run a closure over a reference to a potentially stored operation.
@@ -113,7 +152,11 @@ impl Storage {
             "operation_id": operation_id
         });
         let operations = self.operations.read();
-        f(&operations.get(operation_id))
+        let (prefix, suffix) = operation_id.split();
+        f(&match operations.get(&prefix) {
+            Some(m) => m.get(&suffix),
+            _ => None,
+        })
     }
 
     /// Run a closure over a list of references to potentially stored serialized operations.
@@ -127,7 +170,14 @@ impl Storage {
         let operations = self.operations.read();
         let results: Vec<Option<&Vec<u8>>> = operation_ids
             .iter()
-            .map(|id| operations.get(id).map(|stored| &stored.serialized))
+            .map(|id| {
+                let (prefix, suffix) = id.split();
+                match operations.get(&prefix) {
+                    Some(m) => m.get(&suffix),
+                    _ => None,
+                }
+                .map(|stored| &stored.serialized)
+            })
             .collect();
         f(&results)
     }
@@ -139,7 +189,17 @@ impl Storage {
         });
         let mut operations = self.operations.write();
         for id in operation_ids {
-            operations.remove(id);
+            let (prefix, suffix) = id.split();
+            let len = match operations.get_mut(&prefix) {
+                Some(m) => {
+                    m.remove(&suffix);
+                    m.len()
+                }
+                _ => return,
+            };
+            if len == 0 {
+                operations.remove(&prefix);
+            }
         }
     }
 }
