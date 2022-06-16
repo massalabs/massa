@@ -380,15 +380,112 @@
 <span id="373">373</span>
 <span id="374">374</span>
 <span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Unsigned time management</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">bound_map</span>)]</span>
 
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::TimeError</span>;
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>};
+<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
+<span class="kw">use</span> <span class="ident">nom::IResult</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
+<span class="kw">use</span> <span class="ident">std::ops::Bound</span>;
 <span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">SystemTime</span>, <span class="ident">UNIX_EPOCH</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>},
@@ -402,6 +499,93 @@
 <span class="doccomment">/// milliseconds since 01/01/1970.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MassaTime</span>(<span class="ident">u64</span>);
+
+<span class="doccomment">/// Serializer for `MassaTime`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MassaTimeSerializer</span> {
+    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">MassaTimeSerializer</span> {
+    <span class="doccomment">/// Creates a `MassaTimeSerializer`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Arguments:</span>
+    <span class="doccomment">/// * range: minimum value for the time to serialize</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">range</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>)) -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(
+                <span class="ident">range</span>.<span class="number">0</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">time</span><span class="op">|</span> <span class="ident">time</span>.<span class="ident">to_millis</span>()),
+                <span class="ident">range</span>.<span class="number">1</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">time</span><span class="op">|</span> <span class="ident">time</span>.<span class="ident">to_millis</span>()),
+            ),
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MassaTimeSerializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use std::ops::Bound::Included;</span>
+    <span class="doccomment">/// use massa_serialization::Serializer;</span>
+    <span class="doccomment">/// use massa_time::{MassaTime, MassaTimeSerializer};</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let time: MassaTime = 30.into();</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));</span>
+    <span class="doccomment">/// serializer.serialize(&amp;time, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">serialize</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">MassaTime</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">massa_serialization::SerializeError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">to_millis</span>(), <span class="ident">buffer</span>)
+    }
+}
+
+<span class="doccomment">/// Deserializer for `MassaTime`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MassaTimeDeserializer</span> {
+    <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">MassaTimeDeserializer</span> {
+    <span class="doccomment">/// Creates a `MassaTimeDeserializer`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Arguments:</span>
+    <span class="doccomment">/// * range: minimum value for the time to deserialize</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">range</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>)) -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(
+                <span class="ident">range</span>.<span class="number">0</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">time</span><span class="op">|</span> <span class="ident">time</span>.<span class="ident">to_millis</span>()),
+                <span class="ident">range</span>.<span class="number">1</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">time</span><span class="op">|</span> <span class="ident">time</span>.<span class="ident">to_millis</span>()),
+            ),
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MassaTimeDeserializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use std::ops::Bound::Included;</span>
+    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
+    <span class="doccomment">/// use massa_time::{MassaTime, MassaTimeSerializer, MassaTimeDeserializer};</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let time: MassaTime = 30.into();</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));</span>
+    <span class="doccomment">/// let deserializer = MassaTimeDeserializer::new((Included(0.into()), Included(u64::MAX.into())));</span>
+    <span class="doccomment">/// serializer.serialize(&amp;time, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// let (rest, time_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
+    <span class="doccomment">/// assert!(rest.is_empty());</span>
+    <span class="doccomment">/// assert_eq!(time, time_deser);</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">MassaTime</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+        <span class="ident">context</span>(<span class="string">&quot;Failed MassaTime deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+            <span class="self">self</span>.<span class="ident">u64_deserializer</span>
+                .<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, <span class="ident">res</span>)<span class="op">|</span> (<span class="ident">rest</span>, <span class="ident">res</span>.<span class="ident">into</span>()))
+        })(<span class="ident">buffer</span>)
+    }
+}
 
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
@@ -756,5 +940,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_time" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_time" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b31f9cc22 2022-06-15)" ></div>
 </body></html>

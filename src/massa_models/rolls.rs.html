@@ -262,14 +262,67 @@
 <span id="255">255</span>
 <span id="256">256</span>
 <span id="257">257</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::collections::hash_map</span>;
-
-<span class="kw">use</span> <span class="kw">crate</span>::{
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">error::ModelsResult</span> <span class="kw">as</span> <span class="prelude-ty">Result</span>,
     <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
-    <span class="ident">Address</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
+    <span class="ident">Address</span>, <span class="ident">ModelsError</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
+    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+};
+<span class="kw">use</span> <span class="ident">nom</span>::{
+    <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
+    <span class="ident">sequence::tuple</span>,
+    <span class="ident">IResult</span>, <span class="ident">Parser</span>,
+};
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std::collections::hash_map</span>;
+<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
 
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">btree_map</span>, <span class="ident">BTreeMap</span>};
 
@@ -327,6 +380,79 @@
     <span class="doccomment">/// true if the update has no effect</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_nil</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">roll_purchases</span> <span class="op">==</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">roll_sales</span> <span class="op">==</span> <span class="number">0</span>
+    }
+}
+
+<span class="doccomment">/// Serializer for `RollUpdate`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollUpdateSerializer</span> {
+    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">RollUpdateSerializer</span> {
+    <span class="doccomment">/// Creates a new `RollUpdateSerializer`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident">RollUpdateSerializer</span> {
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">RollUpdateSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">RollUpdate</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RollUpdateSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">RollUpdate</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">u64_serializer</span>
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">roll_purchases</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">roll_sales</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// Deserializer for `RollUpdate`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollUpdateDeserializer</span> {
+    <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">RollUpdateDeserializer</span> {
+    <span class="doccomment">/// Creates a new `RollUpdateDeserializer`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident">RollUpdateDeserializer</span> {
+            <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">RollUpdateDeserializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">RollUpdate</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RollUpdateDeserializer</span> {
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">RollUpdate</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+        <span class="ident">context</span>(
+            <span class="string">&quot;Failed RollUpdate deserialization&quot;</span>,
+            <span class="ident">tuple</span>((
+                <span class="ident">context</span>(<span class="string">&quot;Failed roll_purchases deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+                <span class="ident">context</span>(<span class="string">&quot;Failed roll_sales deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+            )),
+        )
+        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">roll_purchases</span>, <span class="ident">roll_sales</span>)<span class="op">|</span> <span class="ident">RollUpdate</span> {
+            <span class="ident">roll_purchases</span>,
+            <span class="ident">roll_sales</span>,
+        })
+        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
     }
 }
 
@@ -392,42 +518,6 @@
                 <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>);
             }
         }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">RollUpdate</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-
-        <span class="comment">// roll purchases</span>
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">roll_purchases</span>.<span class="ident">to_varint_bytes</span>());
-
-        <span class="comment">// roll sales</span>
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">roll_sales</span>.<span class="ident">to_varint_bytes</span>());
-
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">RollUpdate</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
-
-        <span class="comment">// roll purchases</span>
-        <span class="kw">let</span> (<span class="ident">roll_purchases</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-
-        <span class="comment">// roll sales</span>
-        <span class="kw">let</span> (<span class="ident">roll_sales</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-
-        <span class="prelude-val">Ok</span>((
-            <span class="ident">RollUpdate</span> {
-                <span class="ident">roll_purchases</span>,
-                <span class="ident">roll_sales</span>,
-            },
-            <span class="ident">cursor</span>,
-        ))
     }
 }
 
@@ -520,5 +610,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b31f9cc22 2022-06-15)" ></div>
 </body></html>

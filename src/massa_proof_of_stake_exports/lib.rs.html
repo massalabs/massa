@@ -66,6 +66,8 @@
 <span id="59">59</span>
 <span id="60">60</span>
 <span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! proof of stake exports</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">int_roundings</span>)]</span>
@@ -86,7 +88,9 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">proof_of_stake</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">error::ProofOfStakeError</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">export_pos::ExportProofOfStake</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">export_pos</span>::{
+    <span class="ident">ExportProofOfStake</span>, <span class="ident">ExportProofOfStakeDeserializer</span>, <span class="ident">ExportProofOfStakeSerializer</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::ProofOfStakeConfig</span>;
 
 <span class="kw">mod</span> <span class="ident">thread_cycle_state</span>;
@@ -128,5 +132,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b31f9cc22 2022-06-15)" ></div>
 </body></html>

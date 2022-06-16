@@ -272,12 +272,38 @@
 <span id="265">265</span>
 <span id="266">266</span>
 <span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::AMOUNT_DECIMAL_FACTOR</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::serialization</span>::{<span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ModelsError</span>;
 <span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>};
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>};
 <span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
 <span class="kw">use</span> <span class="ident">nom::IResult</span>;
 <span class="kw">use</span> <span class="ident">rust_decimal::prelude</span>::<span class="kw-2">*</span>;
@@ -471,8 +497,19 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AmountSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Amount</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="number">0</span>)
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_models::{Amount, AmountSerializer};</span>
+    <span class="doccomment">/// use massa_serialization::Serializer;</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::ops::Bound::Included;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();</span>
+    <span class="doccomment">/// let serializer = AmountSerializer::new(Included(0), Included(u64::MAX));</span>
+    <span class="doccomment">/// let mut serialized = vec![];</span>
+    <span class="doccomment">/// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Amount</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="number">0</span>, <span class="ident">buffer</span>)
     }
 }
 
@@ -491,6 +528,21 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AmountDeserializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_models::{Amount, AmountSerializer, AmountDeserializer};</span>
+    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::ops::Bound::Included;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();</span>
+    <span class="doccomment">/// let serializer = AmountSerializer::new(Included(0), Included(u64::MAX));</span>
+    <span class="doccomment">/// let deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));</span>
+    <span class="doccomment">/// let mut serialized = vec![];</span>
+    <span class="doccomment">/// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// let (rest, amount_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
+    <span class="doccomment">/// assert!(rest.is_empty());</span>
+    <span class="doccomment">/// assert_eq!(amount_deser, amount);</span>
+    <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
@@ -540,5 +592,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b31f9cc22 2022-06-15)" ></div>
 </body></html>

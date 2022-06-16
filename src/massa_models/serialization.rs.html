@@ -559,15 +559,20 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ModelsError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::Amount</span>;
 <span class="kw">use</span> <span class="ident">integer_encoding::VarInt</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
+    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+};
+<span class="kw">use</span> <span class="ident">nom::bytes::complete::take</span>;
 <span class="kw">use</span> <span class="ident">nom::multi::length_data</span>;
+<span class="kw">use</span> <span class="ident">nom::sequence::preceded</span>;
+<span class="kw">use</span> <span class="ident">nom::Parser</span>;
 <span class="kw">use</span> <span class="ident">nom</span>::{
     <span class="ident">error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
     <span class="ident">IResult</span>,
 };
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
-<span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
+<span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">Ipv4Addr</span>, <span class="ident">Ipv6Addr</span>};
+<span class="kw">use</span> <span class="ident">std::ops::Bound</span>;
 
 <span class="doccomment">/// varint serialization</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SerializeVarInt</span> {
@@ -579,80 +584,6 @@
     <span class="kw">fn</span> <span class="ident">to_varint_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">encode_var_vec</span>()
     }
-}
-
-<span class="macro">macro_rules!</span> <span class="ident">gen_varint</span> {
-        ($(<span class="macro-nonterminal">$</span><span class="kw">type</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">bs</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ds</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>:<span class="ident">expr</span>);<span class="kw-2">*</span>) =&gt; {
-            <span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Bound</span>, <span class="ident">RangeBounds</span>};
-            <span class="kw">use</span> <span class="ident">unsigned_varint::nom</span> <span class="kw">as</span> <span class="ident">unsigned_nom</span>;
-            $(
-                <span class="kw">use</span> <span class="ident">unsigned_varint::encode</span>::{<span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">bs</span>};
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; Serializer for &quot;</span>]</span>
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>]</span>
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; in a varint form.&quot;</span>]</span>
-                <span class="kw">pub</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span> {
-                    <span class="ident">range</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>, <span class="macro-nonterminal">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>),
-                }
-
-                <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span> {
-                    <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot;Create a basic serializer for &quot;</span>]</span>
-                    <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>]</span>
-                    <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; in a varint form.&quot;</span>]</span>
-                    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-                    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">min</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>, <span class="macro-nonterminal">max</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>) -&gt; <span class="macro-nonterminal">Self</span> {
-                        <span class="self">Self</span> {
-                            <span class="ident">range</span>: (<span class="ident">min</span>, <span class="ident">max</span>)
-                        }
-                    }
-                }
-
-                <span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">s</span> {
-                    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$</span><span class="kw">type</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="macro-nonterminal">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-                        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">range</span>.<span class="ident">contains</span>(<span class="ident">value</span>) {
-                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(<span class="string">&quot;Value {:#?} is not in range {:#?}&quot;</span>, <span class="ident">value</span>, <span class="self">self</span>.<span class="ident">range</span>)));
-                        }
-                        <span class="prelude-val">Ok</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>(<span class="kw-2">*</span><span class="macro-nonterminal">value</span>, <span class="kw-2">&amp;mut</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">bs</span>()).<span class="ident">to_vec</span>())
-                    }
-                }
-
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; Deserializer for &quot;</span>]</span>
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>]</span>
-                <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; in a varint form.&quot;</span>]</span>
-                <span class="kw">pub</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ds</span> {
-                    <span class="ident">range</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>, <span class="macro-nonterminal">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>)
-                }
-
-                <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ds</span> {
-                    <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot;Create a basic deserializer for &quot;</span>]</span>
-                    <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">d</span>]</span>
-                    <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="string">&quot; in a varint form.&quot;</span>]</span>
-                    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-                    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">min</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>, <span class="macro-nonterminal">max</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span>) -&gt; <span class="macro-nonterminal">Self</span> {
-                        <span class="self">Self</span> {
-                            <span class="ident">range</span>: (<span class="ident">min</span>, <span class="ident">max</span>)
-                        }
-                    }
-                }
-
-                <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">type</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ds</span> {
-                    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">E</span><span class="op">&gt;</span> {
-                        <span class="ident">context</span>(<span class="macro">concat!</span>(<span class="string">&quot;Failed &quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">&quot; deserialization&quot;</span>), <span class="op">|</span><span class="macro-nonterminal">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
-                            <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">value</span>) <span class="op">=</span> <span class="ident">unsigned_nom</span>::<span class="macro-nonterminal">$</span><span class="kw">type</span>(<span class="macro-nonterminal">input</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(<span class="ident">input</span>, <span class="ident">nom::error::ErrorKind::Fail</span>)))<span class="question-mark">?</span>;
-                            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">range</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>) {
-                                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(<span class="ident">input</span>, <span class="ident">nom::error::ErrorKind::Fail</span>)));
-                            }
-                            <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">value</span>))
-                        })(<span class="ident">buffer</span>)
-                    }
-                }
-            )<span class="op">*</span>
-        };
-}
-
-<span class="macro">gen_varint!</span> {
-    <span class="ident">u16</span>, <span class="ident">U16VarIntSerializer</span>, <span class="ident">u16_buffer</span>, <span class="ident">U16VarIntDeserializer</span>, <span class="string">&quot;`u16`&quot;</span>;
-    <span class="ident">u32</span>, <span class="ident">U32VarIntSerializer</span>, <span class="ident">u32_buffer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="string">&quot;`u32`&quot;</span>;
-    <span class="ident">u64</span>, <span class="ident">U64VarIntSerializer</span>, <span class="ident">u64_buffer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="string">&quot;`u64`&quot;</span>
 }
 
 <span class="kw">impl</span> <span class="ident">SerializeVarInt</span> <span class="kw">for</span> <span class="ident">u32</span> {
@@ -868,53 +799,94 @@
     <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span>;
 }
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Buffer contains a valid `u8`(implicit check).</span>
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">IpAddr</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="self">self</span> {
+<span class="doccomment">/// Serializer for `IpAddr`</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IpAddrSerializer</span>;
+
+<span class="kw">impl</span> <span class="ident">IpAddrSerializer</span> {
+    <span class="doccomment">/// Creates a `IpAddrSerializer`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span>
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">IpAddrSerializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_models::{Address, Amount, Slot, IpAddrSerializer};</span>
+    <span class="doccomment">/// use massa_serialization::Serializer;</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::net::{IpAddr, Ipv4Addr};</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));</span>
+    <span class="doccomment">/// let ip_serializer = IpAddrSerializer::new();</span>
+    <span class="doccomment">/// let mut buffer = Vec::new();</span>
+    <span class="doccomment">/// ip_serializer.serialize(&amp;ip, &amp;mut buffer).unwrap();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="ident">value</span> {
             <span class="ident">IpAddr::V4</span>(<span class="ident">ip_v4</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">1</span> <span class="op">+</span> <span class="number">4</span>);
-                <span class="ident">res</span>.<span class="ident">push</span>(<span class="number">4u8</span>);
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">ip_v4</span>.<span class="ident">octets</span>());
-                <span class="ident">res</span>
+                <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="number">4u8</span>);
+                <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">ip_v4</span>.<span class="ident">octets</span>());
             }
             <span class="ident">IpAddr::V6</span>(<span class="ident">ip_v6</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">1</span> <span class="op">+</span> <span class="number">16</span>);
-                <span class="ident">res</span>.<span class="ident">push</span>(<span class="number">6u8</span>);
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">ip_v6</span>.<span class="ident">octets</span>());
-                <span class="ident">res</span>
+                <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="number">6u8</span>);
+                <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">ip_v6</span>.<span class="ident">octets</span>());
             }
-        })
+        };
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Buffer contains a valid `u8`.</span>
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">IpAddr</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">u8_from_slice</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span> {
-            <span class="number">4u8</span> =&gt; <span class="prelude-val">Ok</span>((<span class="ident">IpAddr::V4</span>(<span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="number">1</span>..])<span class="question-mark">?</span>.<span class="ident">into</span>()), <span class="number">1</span> <span class="op">+</span> <span class="number">4</span>)),
-            <span class="number">6u8</span> =&gt; <span class="prelude-val">Ok</span>((<span class="ident">IpAddr::V6</span>(<span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="number">1</span>..])<span class="question-mark">?</span>.<span class="ident">into</span>()), <span class="number">1</span> <span class="op">+</span> <span class="number">16</span>)),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(
-                <span class="string">&quot;unsupported IpAddr variant&quot;</span>.<span class="ident">into</span>(),
-            )),
-        }
+<span class="doccomment">/// Deserializer for `IpAddr`</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IpAddrDeserializer</span>;
+
+<span class="kw">impl</span> <span class="ident">IpAddrDeserializer</span> {
+    <span class="doccomment">/// Creates a `IpAddrDeserializer`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span>
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">to_millis</span>().<span class="ident">to_varint_bytes</span>())
-    }
-}
-
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Buffer contains a valid `u64`.</span>
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">res_u64</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">res_u64</span>.<span class="ident">into</span>(), <span class="ident">delta</span>))
+<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">IpAddrDeserializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_models::{Address, Amount, Slot, IpAddrSerializer, IpAddrDeserializer};</span>
+    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::net::{IpAddr, Ipv4Addr};</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));</span>
+    <span class="doccomment">/// let ip_serializer = IpAddrSerializer::new();</span>
+    <span class="doccomment">/// let ip_deserializer = IpAddrDeserializer::new();</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// ip_serializer.serialize(&amp;ip, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// let (rest, ip_deser) = ip_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
+    <span class="doccomment">/// assert!(rest.is_empty());</span>
+    <span class="doccomment">/// assert_eq!(ip, ip_deser);</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">IpAddr</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+        <span class="ident">nom::branch::alt</span>((
+            <span class="ident">preceded</span>(
+                <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">nom::bytes::complete::tag</span>([<span class="number">4u8</span>])(<span class="ident">input</span>),
+                <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
+                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">addr</span>) <span class="op">=</span> <span class="ident">take</span>(<span class="number">4usize</span>)(<span class="ident">input</span>)<span class="question-mark">?</span>;
+                    <span class="kw">let</span> <span class="ident">addr</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> <span class="ident">addr</span>.<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
+                    <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::from</span>(<span class="ident">addr</span>))))
+                },
+            ),
+            <span class="ident">preceded</span>(
+                <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">nom::bytes::complete::tag</span>([<span class="number">6u8</span>])(<span class="ident">input</span>),
+                <span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">|</span> {
+                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">addr</span>) <span class="op">=</span> <span class="ident">take</span>(<span class="number">16usize</span>)(<span class="ident">input</span>)<span class="question-mark">?</span>;
+                    <span class="comment">// Safe because take would fail just above if less then 16</span>
+                    <span class="kw">let</span> <span class="ident">addr</span>: [<span class="ident">u8</span>; <span class="number">16</span>] <span class="op">=</span> <span class="ident">addr</span>.<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
+                    <span class="prelude-val">Ok</span>((<span class="ident">rest</span>, <span class="ident">IpAddr::V6</span>(<span class="ident">Ipv6Addr::from</span>(<span class="ident">addr</span>))))
+                },
+            ),
+        ))(<span class="ident">buffer</span>)
     }
 }
 
@@ -935,26 +907,36 @@
 
 <span class="doccomment">/// Basic `Vec&lt;u8&gt;` serializer</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VecU8Serializer</span> {
-    <span class="ident">varint_u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
+    <span class="ident">len_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">VecU8Serializer</span> {
     <span class="doccomment">/// Creates a new `VecU8Serializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">min_length</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">max_length</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">varint_u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">min_length</span>, <span class="ident">max_length</span>),
+            <span class="ident">len_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">min_length</span>, <span class="ident">max_length</span>),
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">VecU8Serializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">SerializeError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use std::ops::Bound::Included;</span>
+    <span class="doccomment">/// use massa_serialization::Serializer;</span>
+    <span class="doccomment">/// use massa_models::VecU8Serializer;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let vec = vec![1, 2, 3];</span>
+    <span class="doccomment">/// let mut buffer = Vec::new();</span>
+    <span class="doccomment">/// let serializer = VecU8Serializer::new(Included(0), Included(1000000));</span>
+    <span class="doccomment">/// serializer.serialize(&amp;vec, &amp;mut buffer).unwrap();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">len</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
             <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(<span class="string">&quot;too many entries data in VecU8: {}&quot;</span>, <span class="ident">err</span>))
         })<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">varint_u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>)<span class="question-mark">?</span>;
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">value</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="self">self</span>.<span class="ident">len_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">value</span>);
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
@@ -973,14 +955,29 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">VecU8Deserializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use std::ops::Bound::Included;</span>
+    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
+    <span class="doccomment">/// use massa_models::{VecU8Serializer, VecU8Deserializer};</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let vec = vec![1, 2, 3];</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// let serializer = VecU8Serializer::new(Included(0), Included(1000000));</span>
+    <span class="doccomment">/// let deserializer = VecU8Deserializer::new(Included(0), Included(1000000));</span>
+    <span class="doccomment">/// serializer.serialize(&amp;vec, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// let (rest, vec_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
+    <span class="doccomment">/// assert!(rest.is_empty());</span>
+    <span class="doccomment">/// assert_eq!(vec, vec_deser);</span>
+    <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
     ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span> {
         <span class="ident">context</span>(<span class="string">&quot;Failed Vec&lt;u8&gt; deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
             <span class="ident">length_data</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">varint_u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>))(<span class="ident">input</span>)
-        })(<span class="ident">buffer</span>)
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, <span class="ident">res</span>)<span class="op">|</span> (<span class="ident">rest</span>, <span class="ident">res</span>.<span class="ident">to_vec</span>()))
+        })
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> <span class="ident">res</span>.<span class="ident">to_vec</span>())
+        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
     }
 }
 
@@ -996,7 +993,8 @@
         <span class="kw">let</span> <span class="ident">vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">9</span>, <span class="number">8</span>, <span class="number">7</span>];
         <span class="kw">let</span> <span class="ident">vec_u8_serializer</span> <span class="op">=</span> <span class="ident">VecU8Serializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>));
         <span class="kw">let</span> <span class="ident">vec_u8_deserializer</span> <span class="op">=</span> <span class="ident">VecU8Deserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>));
-        <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">vec_u8_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">vec</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="ident">vec_u8_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">vec</span>, <span class="kw-2">&amp;mut</span> <span class="ident">serialized</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">new_vec</span>) <span class="op">=</span> <span class="ident">vec_u8_deserializer</span>
             .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">serialized</span>)
             .<span class="ident">unwrap</span>();
@@ -1009,8 +1007,9 @@
     <span class="kw">fn</span> <span class="ident">vec_u8_big_length</span>() {
         <span class="kw">let</span> <span class="ident">vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">9</span>, <span class="number">8</span>, <span class="number">7</span>];
         <span class="kw">let</span> <span class="ident">len</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>))
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>)
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>))
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>, <span class="kw-2">&amp;mut</span> <span class="ident">serialized</span>)
             .<span class="ident">unwrap</span>();
         <span class="ident">serialized</span>.<span class="ident">extend</span>(<span class="ident">vec</span>);
         <span class="kw">let</span> <span class="ident">vec_u8_deserializer</span> <span class="op">=</span> <span class="ident">VecU8Deserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>));
@@ -1024,8 +1023,9 @@
     <span class="kw">fn</span> <span class="ident">vec_u8_min_length</span>() {
         <span class="kw">let</span> <span class="ident">vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">9</span>, <span class="number">8</span>, <span class="number">7</span>];
         <span class="kw">let</span> <span class="ident">len</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>))
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>)
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>))
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">len</span>, <span class="kw-2">&amp;mut</span> <span class="ident">serialized</span>)
             .<span class="ident">unwrap</span>();
         <span class="ident">serialized</span>.<span class="ident">extend</span>(<span class="ident">vec</span>);
         <span class="kw">let</span> <span class="ident">vec_u8_deserializer</span> <span class="op">=</span> <span class="ident">VecU8Deserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>));
@@ -1104,5 +1104,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b31f9cc22 2022-06-15)" ></div>
 </body></html>

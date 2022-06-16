@@ -35,6 +35,9 @@
 <span id="28">28</span>
 <span id="29">29</span>
 <span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Manages a connection with a node</span>
 
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
@@ -49,7 +52,10 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher</span>::{<span class="ident">Establisher</span>, <span class="ident">Listener</span>, <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">network_controller</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkEventReceiver</span>, <span class="ident">NetworkManager</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">peers</span>::{<span class="ident">BootstrapPeers</span>, <span class="ident">ConnectionCount</span>, <span class="ident">Peer</span>, <span class="ident">PeerInfo</span>, <span class="ident">PeerType</span>, <span class="ident">Peers</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">peers</span>::{
+    <span class="ident">BootstrapPeers</span>, <span class="ident">BootstrapPeersDeserializer</span>, <span class="ident">BootstrapPeersSerializer</span>, <span class="ident">ConnectionCount</span>, <span class="ident">Peer</span>,
+    <span class="ident">PeerInfo</span>, <span class="ident">PeerType</span>, <span class="ident">Peers</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::NetworkSettings</span>;
 
 <span class="kw">mod</span> <span class="ident">commands</span>;
@@ -66,5 +72,5 @@
 <span class="doccomment">/// test exports</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b31f9cc22 2022-06-15)" ></div>
 </body></html>

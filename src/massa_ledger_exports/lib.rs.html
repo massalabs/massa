@@ -32,6 +32,7 @@
 <span id="25">25</span>
 <span id="26">26</span>
 <span id="27">27</span>
+<span id="28">28</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # General description</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! TODO</span>
@@ -53,12 +54,13 @@
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_changes</span>::{
     <span class="ident">LedgerChanges</span>, <span class="ident">LedgerChangesDeserializer</span>, <span class="ident">LedgerChangesSerializer</span>, <span class="ident">LedgerEntryUpdate</span>,
+    <span class="ident">LedgerEntryUpdateDeserializer</span>, <span class="ident">LedgerEntryUpdateSerializer</span>,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_entry::LedgerEntry</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger_entry</span>::{<span class="ident">LedgerEntry</span>, <span class="ident">LedgerEntryDeserializer</span>, <span class="ident">LedgerEntrySerializer</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">types</span>::{<span class="ident">Applicable</span>, <span class="ident">SetOrDelete</span>, <span class="ident">SetOrKeep</span>, <span class="ident">SetUpdateOrDelete</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b31f9cc22 2022-06-15)" ></div>
 </body></html>

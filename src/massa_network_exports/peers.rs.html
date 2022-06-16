@@ -236,17 +236,78 @@
 <span id="229">229</span>
 <span id="230">230</span>
 <span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::PeerTypeConnectionConfig</span>;
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
 <span class="kw">use</span> <span class="ident">enum_map::Enum</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">node::NodeId</span>, <span class="ident">with_serialization_context</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>,
-    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
+<span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">IpAddrDeserializer</span>, <span class="ident">IpAddrSerializer</span>};
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
+    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="ident">U32VarIntSerializer</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
+<span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
+<span class="kw">use</span> <span class="ident">nom::multi::length_count</span>;
+<span class="kw">use</span> <span class="ident">nom</span>::{<span class="ident">IResult</span>, <span class="ident">Parser</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">net::IpAddr</span>};
-
 <span class="doccomment">/// Associate a peer info with nodes</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Peer</span> {
@@ -266,57 +327,110 @@
 }
 
 <span class="doccomment">/// Peers that are transmitted during bootstrap</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapPeers</span>(<span class="kw">pub</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>);
 
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">BootstrapPeers</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+<span class="doccomment">/// Serializer for `BootstrapPeers`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapPeersSerializer</span> {
+    <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer</span>,
+    <span class="ident">ip_addr_serializer</span>: <span class="ident">IpAddrSerializer</span>,
+}
 
-        <span class="comment">// peers</span>
-        <span class="kw">let</span> <span class="ident">peers_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(<span class="string">&quot;too many peers blocks in BootstrapPeers: {}&quot;</span>, <span class="ident">err</span>))
-        })<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">max_peer_list_length</span> <span class="op">=</span>
-            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_advertise_length</span>);
-        <span class="kw">if</span> <span class="ident">peers_count</span> <span class="op">&gt;</span> <span class="ident">max_peer_list_length</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::SerializeError</span>(<span class="macro">format!</span>(
-                <span class="string">&quot;too many peers for serialization context in BootstrapPeers: {}&quot;</span>,
-                <span class="ident">peers_count</span>
-            )));
+<span class="kw">impl</span> <span class="ident">BootstrapPeersSerializer</span> {
+    <span class="doccomment">/// Creates a new `BootstrapPeersSerializer`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Arguments:</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// * max_peers: maximum peers that can be serialized</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">max_peers</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">max_peers</span>)),
+            <span class="ident">ip_addr_serializer</span>: <span class="ident">IpAddrSerializer::new</span>(),
         }
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">peers_count</span>.<span class="ident">to_varint_bytes</span>());
-        <span class="kw">for</span> <span class="ident">peer</span> <span class="kw">in</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">peer</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
-        }
-
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">BootstrapPeers</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
-
-        <span class="comment">// peers</span>
-        <span class="kw">let</span> (<span class="ident">peers_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">max_peer_list_length</span> <span class="op">=</span>
-            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_advertise_length</span>);
-        <span class="kw">if</span> <span class="ident">peers_count</span> <span class="op">&gt;</span> <span class="ident">max_peer_list_length</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(<span class="macro">format!</span>(
-                <span class="string">&quot;too many peers for deserialization context in BootstrapPeers: {}&quot;</span>,
-                <span class="ident">peers_count</span>
-            )));
+<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BootstrapPeersSerializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_network_exports::{BootstrapPeers, BootstrapPeersSerializer};</span>
+    <span class="doccomment">/// use massa_serialization::Serializer;</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));</span>
+    <span class="doccomment">/// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);</span>
+    <span class="doccomment">/// let peers_serializer = BootstrapPeersSerializer::new(1000);</span>
+    <span class="doccomment">/// peers_serializer.serialize(&amp;peers, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">serialize</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">BootstrapPeers</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">massa_serialization::SerializeError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">peers_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">value</span>.<span class="number">0</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
+            <span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(
+                <span class="string">&quot;too many peers blocks in BootstrapPeers: {}&quot;</span>,
+                <span class="ident">err</span>
+            ))
+        })<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">peers_count</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="kw">for</span> <span class="ident">peer</span> <span class="kw">in</span> <span class="ident">value</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
+            <span class="self">self</span>.<span class="ident">ip_addr_serializer</span>.<span class="ident">serialize</span>(<span class="ident">peer</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
         }
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">peers_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">peers_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-            <span class="kw">let</span> (<span class="ident">ip</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">IpAddr::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-            <span class="ident">peers</span>.<span class="ident">push</span>(<span class="ident">ip</span>);
-        }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
 
-        <span class="prelude-val">Ok</span>((<span class="ident">BootstrapPeers</span>(<span class="ident">peers</span>), <span class="ident">cursor</span>))
+<span class="doccomment">/// Deserializer for `BootstrapPeers`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapPeersDeserializer</span> {
+    <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer</span>,
+    <span class="ident">ip_addr_deserializer</span>: <span class="ident">IpAddrDeserializer</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">BootstrapPeersDeserializer</span> {
+    <span class="doccomment">/// Creates a new `BootstrapPeersDeserializer`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Arguments:</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// * max_peers: maximum peers that can be serialized</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">max_peers</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">max_peers</span>)),
+            <span class="ident">ip_addr_deserializer</span>: <span class="ident">IpAddrDeserializer::new</span>(),
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BootstrapPeersDeserializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_network_exports::{BootstrapPeers, BootstrapPeersSerializer, BootstrapPeersDeserializer};</span>
+    <span class="doccomment">/// use massa_serialization::{Serializer, Deserializer, DeserializeError};</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));</span>
+    <span class="doccomment">/// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);</span>
+    <span class="doccomment">/// let peers_serializer = BootstrapPeersSerializer::new(1000);</span>
+    <span class="doccomment">/// let peers_deserializer = BootstrapPeersDeserializer::new(1000);</span>
+    <span class="doccomment">/// peers_serializer.serialize(&amp;peers, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// let (rest, peers_deser) = peers_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
+    <span class="doccomment">/// assert!(rest.is_empty());</span>
+    <span class="doccomment">/// assert_eq!(peers, peers_deser);</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">BootstrapPeers</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+        <span class="ident">length_count</span>(
+            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+            <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">ip_addr_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+        )
+        .<span class="ident">map</span>(<span class="ident">BootstrapPeers</span>)
+        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
     }
 }
 
@@ -468,5 +582,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b31f9cc22 2022-06-15)" ></div>
 </body></html>

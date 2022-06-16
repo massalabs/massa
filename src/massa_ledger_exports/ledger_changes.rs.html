@@ -768,6 +768,133 @@
 <span id="761">761</span>
 <span id="762">762</span>
 <span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file provides structures representing changes to ledger entries</span>
@@ -782,17 +909,19 @@
 <span class="kw">use</span> <span class="ident">massa_models::address::AddressDeserializer</span>;
 <span class="kw">use</span> <span class="ident">massa_models::amount</span>::{<span class="ident">AmountDeserializer</span>, <span class="ident">AmountSerializer</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">prehash::Map</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">SerializeVarInt</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">VecU8Deserializer</span>, <span class="ident">VecU8Serializer</span>};
-<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">VecU8Deserializer</span>, <span class="ident">VecU8Serializer</span>};
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
+    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+};
 <span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
 <span class="kw">use</span> <span class="ident">nom::multi::length_count</span>;
 <span class="kw">use</span> <span class="ident">nom::sequence::tuple</span>;
-<span class="kw">use</span> <span class="ident">nom::IResult</span>;
+<span class="kw">use</span> <span class="ident">nom</span>::{<span class="ident">IResult</span>, <span class="ident">Parser</span>};
 <span class="kw">use</span> <span class="ident">std::collections::hash_map</span>;
 <span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
 
 <span class="doccomment">/// represents an update to one or more fields of a `LedgerEntry`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerEntryUpdate</span> {
     <span class="doccomment">/// change the parallel balance</span>
     <span class="kw">pub</span> <span class="ident">parallel_balance</span>: <span class="ident">SetOrKeep</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>,
@@ -802,13 +931,17 @@
     <span class="kw">pub</span> <span class="ident">datastore</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">struct</span> <span class="ident">DatastoreSerializer</span> {
+<span class="doccomment">/// Serializer for `datastore` field of `LedgerEntryUpdate`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DatastoreUpdateSerializer</span> {
+    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
     <span class="ident">value_serializer</span>: <span class="ident">SetOrDeleteSerializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">VecU8Serializer</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">DatastoreSerializer</span> {
+<span class="kw">impl</span> <span class="ident">DatastoreUpdateSerializer</span> {
+    <span class="doccomment">/// Creates a new `DatastoreUpdateSerializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
             <span class="ident">value_serializer</span>: <span class="ident">SetOrDeleteSerializer::new</span>(<span class="ident">VecU8Serializer::new</span>(
                 <span class="ident">Included</span>(<span class="ident">u64::MIN</span>),
                 <span class="ident">Included</span>(<span class="ident">u64::MAX</span>),
@@ -817,37 +950,36 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DatastoreSerializer</span> {
+<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DatastoreUpdateSerializer</span> {
     <span class="kw">fn</span> <span class="ident">serialize</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">entry_count</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
             <span class="ident">SerializeError::GeneralError</span>(<span class="macro">format!</span>(
                 <span class="string">&quot;too many entries in ConsensusLedgerSubset: {}&quot;</span>,
                 <span class="ident">err</span>
             ))
         })<span class="question-mark">?</span>;
-
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">entry_count</span>.<span class="ident">to_varint_bytes</span>());
-
+        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">entry_count</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="kw">for</span> (<span class="ident">key</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="ident">value</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">key</span>.<span class="ident">to_bytes</span>());
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">value_serializer</span>.<span class="ident">serialize</span>(<span class="ident">value</span>)<span class="question-mark">?</span>);
+            <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">key</span>.<span class="ident">to_bytes</span>());
+            <span class="self">self</span>.<span class="ident">value_serializer</span>.<span class="ident">serialize</span>(<span class="ident">value</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">struct</span> <span class="ident">DatastoreDeserializer</span> {
+<span class="doccomment">/// Serializer for `datastore` field of `LedgerEntryUpdate`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DatastoreUpdateDeserializer</span> {
     <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer</span>,
     <span class="ident">hash_deserializer</span>: <span class="ident">HashDeserializer</span>,
     <span class="ident">value_deserializer</span>: <span class="ident">SetOrDeleteDeserializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">VecU8Deserializer</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">DatastoreDeserializer</span> {
+<span class="kw">impl</span> <span class="ident">DatastoreUpdateDeserializer</span> {
+    <span class="doccomment">/// Creates a new `DatastoreUpdateDeserializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
@@ -860,12 +992,13 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DatastoreDeserializer</span> {
+<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DatastoreUpdateDeserializer</span> {
     <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
     ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(<span class="string">&quot;Failed Datastore deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+        <span class="ident">context</span>(
+            <span class="string">&quot;Failed Datastore deserialization&quot;</span>,
             <span class="ident">length_count</span>(
                 <span class="ident">context</span>(<span class="string">&quot;Failed length deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
                     <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
@@ -876,19 +1009,22 @@
                         <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">value_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
                     ))(<span class="ident">input</span>)
                 },
-            )(<span class="ident">input</span>)
-        })(<span class="ident">buffer</span>)
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, <span class="ident">elems</span>)<span class="op">|</span> (<span class="ident">rest</span>, <span class="ident">elems</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>()))
+            ),
+        )
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">elems</span><span class="op">|</span> <span class="ident">elems</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>())
+        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
     }
 }
 
-<span class="kw">struct</span> <span class="ident">LedgerEntryUpdateSerializer</span> {
+<span class="doccomment">/// Serializer for `LedgerEntryUpdate`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerEntryUpdateSerializer</span> {
     <span class="ident">parallel_balance_serializer</span>: <span class="ident">SetOrKeepSerializer</span><span class="op">&lt;</span><span class="ident">Amount</span>, <span class="ident">AmountSerializer</span><span class="op">&gt;</span>,
     <span class="ident">bytecode_serializer</span>: <span class="ident">SetOrKeepSerializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">VecU8Serializer</span><span class="op">&gt;</span>,
-    <span class="ident">datastore_serializer</span>: <span class="ident">DatastoreSerializer</span>,
+    <span class="ident">datastore_serializer</span>: <span class="ident">DatastoreUpdateSerializer</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">LedgerEntryUpdateSerializer</span> {
+    <span class="doccomment">/// Creates a new `LedgerEntryUpdateSerializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">parallel_balance_serializer</span>: <span class="ident">SetOrKeepSerializer::new</span>(<span class="ident">AmountSerializer::new</span>(
@@ -899,31 +1035,63 @@
                 <span class="ident">Included</span>(<span class="ident">u64::MIN</span>),
                 <span class="ident">Included</span>(<span class="ident">u64::MAX</span>),
             )),
-            <span class="ident">datastore_serializer</span>: <span class="ident">DatastoreSerializer::new</span>(),
+            <span class="ident">datastore_serializer</span>: <span class="ident">DatastoreUpdateSerializer::new</span>(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">LedgerEntryUpdate</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerEntryUpdateSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerEntryUpdate</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">res</span>.<span class="ident">extend</span>(
-            <span class="self">self</span>.<span class="ident">parallel_balance_serializer</span>
-                .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">parallel_balance</span>)<span class="question-mark">?</span>,
-        );
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">bytecode_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">bytecode</span>)<span class="question-mark">?</span>);
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">datastore_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">datastore</span>)<span class="question-mark">?</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">LedgerEntryUpdateSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
     }
 }
 
-<span class="kw">struct</span> <span class="ident">LedgerEntryUpdateDeserializer</span> {
+<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">LedgerEntryUpdate</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerEntryUpdateSerializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_serialization::Serializer;</span>
+    <span class="doccomment">/// use massa_models::{prehash::Map, Address, Amount};</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};</span>
+    <span class="doccomment">/// use massa_hash::Hash;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());</span>
+    <span class="doccomment">/// let mut store = Map::default();</span>
+    <span class="doccomment">/// store.insert(hash, SetOrDelete::Set(vec![1, 2, 3]));</span>
+    <span class="doccomment">/// let amount = Amount::from_str(&quot;1&quot;).unwrap();</span>
+    <span class="doccomment">/// let bytecode = vec![1, 2, 3];</span>
+    <span class="doccomment">/// let ledger_entry = LedgerEntryUpdate {</span>
+    <span class="doccomment">///    parallel_balance: SetOrKeep::Keep,</span>
+    <span class="doccomment">///    bytecode: SetOrKeep::Set(bytecode.clone()),</span>
+    <span class="doccomment">///    datastore: store,</span>
+    <span class="doccomment">/// };</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// let serializer = LedgerEntryUpdateSerializer::new();</span>
+    <span class="doccomment">/// serializer.serialize(&amp;ledger_entry, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">serialize</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerEntryUpdate</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">parallel_balance_serializer</span>
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">parallel_balance</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">bytecode_serializer</span>
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">bytecode</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">datastore_serializer</span>
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">datastore</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="doccomment">/// Deserializer for `LedgerEntryUpdate`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerEntryUpdateDeserializer</span> {
     <span class="ident">parallel_balance_deserializer</span>: <span class="ident">SetOrKeepDeserializer</span><span class="op">&lt;</span><span class="ident">Amount</span>, <span class="ident">AmountDeserializer</span><span class="op">&gt;</span>,
     <span class="ident">bytecode_deserializer</span>: <span class="ident">SetOrKeepDeserializer</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">VecU8Deserializer</span><span class="op">&gt;</span>,
-    <span class="ident">datastore_deserializer</span>: <span class="ident">DatastoreDeserializer</span>,
+    <span class="ident">datastore_deserializer</span>: <span class="ident">DatastoreUpdateDeserializer</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">LedgerEntryUpdateDeserializer</span> {
+    <span class="doccomment">/// Creates a new `LedgerEntryUpdateDeserializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">parallel_balance_deserializer</span>: <span class="ident">SetOrKeepDeserializer::new</span>(<span class="ident">AmountDeserializer::new</span>(
@@ -934,17 +1102,49 @@
                 <span class="ident">Included</span>(<span class="ident">u64::MIN</span>),
                 <span class="ident">Included</span>(<span class="ident">u64::MAX</span>),
             )),
-            <span class="ident">datastore_deserializer</span>: <span class="ident">DatastoreDeserializer::new</span>(),
+            <span class="ident">datastore_deserializer</span>: <span class="ident">DatastoreUpdateDeserializer::new</span>(),
         }
     }
 }
 
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">LedgerEntryUpdateDeserializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
+    }
+}
+
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">LedgerEntryUpdate</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerEntryUpdateDeserializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_serialization::{Deserializer, Serializer, DeserializeError};</span>
+    <span class="doccomment">/// use massa_models::{prehash::Map, Address, Amount};</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};</span>
+    <span class="doccomment">/// use massa_hash::Hash;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());</span>
+    <span class="doccomment">/// let mut store = Map::default();</span>
+    <span class="doccomment">/// store.insert(hash, SetOrDelete::Set(vec![1, 2, 3]));</span>
+    <span class="doccomment">/// let amount = Amount::from_str(&quot;1&quot;).unwrap();</span>
+    <span class="doccomment">/// let bytecode = vec![1, 2, 3];</span>
+    <span class="doccomment">/// let ledger_entry = LedgerEntryUpdate {</span>
+    <span class="doccomment">///    parallel_balance: SetOrKeep::Keep,</span>
+    <span class="doccomment">///    bytecode: SetOrKeep::Set(bytecode.clone()),</span>
+    <span class="doccomment">///    datastore: store,</span>
+    <span class="doccomment">/// };</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// let serializer = LedgerEntryUpdateSerializer::new();</span>
+    <span class="doccomment">/// let deserializer = LedgerEntryUpdateDeserializer::new();</span>
+    <span class="doccomment">/// serializer.serialize(&amp;ledger_entry, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// let (rest, ledger_entry_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
+    <span class="doccomment">/// assert!(rest.is_empty());</span>
+    <span class="doccomment">/// assert_eq!(ledger_entry, ledger_entry_deser);</span>
+    <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
     ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">LedgerEntryUpdate</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(<span class="string">&quot;Failed LedgerEntryUpdate deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+        <span class="ident">context</span>(
+            <span class="string">&quot;Failed LedgerEntryUpdate deserialization&quot;</span>,
             <span class="ident">tuple</span>((
                 <span class="ident">context</span>(<span class="string">&quot;Failed parallel_balance deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
                     <span class="self">self</span>.<span class="ident">parallel_balance_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
@@ -955,18 +1155,16 @@
                 <span class="ident">context</span>(<span class="string">&quot;Failed datastore deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
                     <span class="self">self</span>.<span class="ident">datastore_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
                 }),
-            ))(<span class="ident">input</span>)
-        })(<span class="ident">buffer</span>)
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, (<span class="ident">parallel_balance</span>, <span class="ident">bytecode</span>, <span class="ident">datastore</span>))<span class="op">|</span> {
-            (
-                <span class="ident">rest</span>,
-                <span class="ident">LedgerEntryUpdate</span> {
-                    <span class="ident">parallel_balance</span>,
-                    <span class="ident">bytecode</span>,
-                    <span class="ident">datastore</span>,
-                },
-            )
-        })
+            )),
+        )
+        .<span class="ident">map</span>(
+            <span class="op">|</span>(<span class="ident">parallel_balance</span>, <span class="ident">bytecode</span>, <span class="ident">datastore</span>)<span class="op">|</span> <span class="ident">LedgerEntryUpdate</span> {
+                <span class="ident">parallel_balance</span>,
+                <span class="ident">bytecode</span>,
+                <span class="ident">datastore</span>,
+            },
+        )
+        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
     }
 }
 
@@ -980,11 +1178,12 @@
 }
 
 <span class="doccomment">/// represents a list of changes to multiple ledger entries</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerChanges</span>(<span class="kw">pub</span> <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">SetUpdateOrDelete</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span>, <span class="ident">LedgerEntryUpdate</span><span class="op">&gt;</span><span class="op">&gt;</span>);
 
 <span class="doccomment">/// `LedgerChanges` serializer</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerChangesSerializer</span> {
+    <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
     <span class="ident">entry_serializer</span>: <span class="ident">SetUpdateOrDeleteSerializer</span><span class="op">&lt;</span>
         <span class="ident">LedgerEntry</span>,
         <span class="ident">LedgerEntryUpdate</span>,
@@ -997,6 +1196,7 @@
     <span class="doccomment">/// Creates a new `LedgerChangesSerializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="number">1000000</span>)),
             <span class="ident">entry_serializer</span>: <span class="ident">SetUpdateOrDeleteSerializer::new</span>(
                 <span class="ident">LedgerEntrySerializer::new</span>(),
                 <span class="ident">LedgerEntryUpdateSerializer::new</span>(),
@@ -1012,17 +1212,42 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">LedgerChanges</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerChangesSerializer</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChanges</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_serialization::Serializer;</span>
+    <span class="doccomment">/// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer};</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::collections::BTreeMap;</span>
+    <span class="doccomment">/// use massa_models::{Amount, Address};</span>
+    <span class="doccomment">/// use massa_hash::Hash;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());</span>
+    <span class="doccomment">/// let mut store = BTreeMap::new();</span>
+    <span class="doccomment">/// store.insert(hash, vec![1, 2, 3]);</span>
+    <span class="doccomment">/// let amount = Amount::from_str(&quot;1&quot;).unwrap();</span>
+    <span class="doccomment">/// let bytecode = vec![1, 2, 3];</span>
+    <span class="doccomment">/// let ledger_entry = LedgerEntry {</span>
+    <span class="doccomment">///    parallel_balance: amount,</span>
+    <span class="doccomment">///    bytecode,</span>
+    <span class="doccomment">///    datastore: store,</span>
+    <span class="doccomment">/// };</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// let mut changes = LedgerChanges::default();</span>
+    <span class="doccomment">/// changes.0.insert(</span>
+    <span class="doccomment">///    Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),</span>
+    <span class="doccomment">///    SetUpdateOrDelete::Set(ledger_entry),</span>
+    <span class="doccomment">/// );</span>
+    <span class="doccomment">/// LedgerChangesSerializer::new().serialize(&amp;changes, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChanges</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">entry_count</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">value</span>.<span class="number">0</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
             <span class="ident">SerializeError::GeneralError</span>(<span class="macro">format!</span>(<span class="string">&quot;too many entries in LedgerChanges: {}&quot;</span>, <span class="ident">err</span>))
         })<span class="question-mark">?</span>;
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">entry_count</span>.<span class="ident">to_varint_bytes</span>());
+        <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">entry_count</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">data</span>) <span class="kw">in</span> <span class="ident">value</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">address</span>.<span class="ident">to_bytes</span>());
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">entry_serializer</span>.<span class="ident">serialize</span>(<span class="ident">data</span>)<span class="question-mark">?</span>);
+            <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">address</span>.<span class="ident">to_bytes</span>());
+            <span class="self">self</span>.<span class="ident">entry_serializer</span>.<span class="ident">serialize</span>(<span class="ident">data</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
@@ -1059,24 +1284,53 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">LedgerChanges</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerChangesDeserializer</span> {
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use massa_serialization::{Deserializer, Serializer, DeserializeError};</span>
+    <span class="doccomment">/// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer, LedgerChangesDeserializer};</span>
+    <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::collections::BTreeMap;</span>
+    <span class="doccomment">/// use massa_models::{Amount, Address};</span>
+    <span class="doccomment">/// use massa_hash::Hash;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());</span>
+    <span class="doccomment">/// let mut store = BTreeMap::new();</span>
+    <span class="doccomment">/// store.insert(hash, vec![1, 2, 3]);</span>
+    <span class="doccomment">/// let amount = Amount::from_str(&quot;1&quot;).unwrap();</span>
+    <span class="doccomment">/// let bytecode = vec![1, 2, 3];</span>
+    <span class="doccomment">/// let ledger_entry = LedgerEntry {</span>
+    <span class="doccomment">///    parallel_balance: amount,</span>
+    <span class="doccomment">///    bytecode,</span>
+    <span class="doccomment">///    datastore: store,</span>
+    <span class="doccomment">/// };</span>
+    <span class="doccomment">/// let mut serialized = Vec::new();</span>
+    <span class="doccomment">/// let mut changes = LedgerChanges::default();</span>
+    <span class="doccomment">/// changes.0.insert(</span>
+    <span class="doccomment">///    Address::from_str(&quot;A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),</span>
+    <span class="doccomment">///    SetUpdateOrDelete::Set(ledger_entry),</span>
+    <span class="doccomment">/// );</span>
+    <span class="doccomment">/// LedgerChangesSerializer::new().serialize(&amp;changes, &amp;mut serialized).unwrap();</span>
+    <span class="doccomment">/// let (rest, changes_deser) = LedgerChangesDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
+    <span class="doccomment">/// assert!(rest.is_empty());</span>
+    <span class="doccomment">/// assert_eq!(changes, changes_deser);</span>
+    <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
     ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">LedgerChanges</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-        <span class="ident">context</span>(<span class="string">&quot;Failed LedgerChanges deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+        <span class="ident">context</span>(
+            <span class="string">&quot;Failed LedgerChanges deserialization&quot;</span>,
             <span class="ident">length_count</span>(
                 <span class="ident">context</span>(<span class="string">&quot;Failed length deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
                     <span class="self">self</span>.<span class="ident">u64_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
                 }),
-                <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="ident">tuple</span>((
-                        <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">address_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                        <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">entry_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
-                    ))(<span class="ident">input</span>)
-                },
-            )(<span class="ident">input</span>)
-        })(<span class="ident">buffer</span>)
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">rest</span>, <span class="ident">res</span>)<span class="op">|</span> (<span class="ident">rest</span>, <span class="ident">LedgerChanges</span>(<span class="ident">res</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>())))
+                <span class="ident">tuple</span>((
+                    <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">address_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                    <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">entry_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>),
+                )),
+            ),
+        )
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> <span class="ident">LedgerChanges</span>(<span class="ident">res</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>()))
+        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
     }
 }
 
@@ -1532,5 +1786,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ca122c7eb 2022-06-13)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b31f9cc22 2022-06-15)" ></div>
 </body></html>
