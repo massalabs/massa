@@ -5,6 +5,9 @@
 #![warn(unused_crate_dependencies)]
 
 pub use error::WalletError;
+
+use aes_gcm_siv::aead::{Aead, NewAead};
+use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
@@ -17,19 +20,23 @@ use std::path::PathBuf;
 
 mod error;
 
+// NOTE: change this
+const NONCE_SLICE: &[u8] = b"unique nonce";
+
 /// Contains the private keys created in the wallet.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Wallet {
     /// Private keys and derived public keys and addresses
     pub keys: Map<Address, (PublicKey, PrivateKey)>,
+    /// Private keys and derived public keys and addresses
+    pub ciphered_keys: Map<Address, Vec<u8>>,
     /// Path to the file containing the private keys (not encrypted)
     pub wallet_path: PathBuf,
 }
 
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
-    pub fn new(path: PathBuf, _password: &str) -> Result<Wallet, WalletError> {
-        // NOTE: HERE
+    pub fn new(path: PathBuf) -> Result<Wallet, WalletError> {
         let keys = if path.is_file() {
             serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(&path)?)?
         } else {
@@ -44,6 +51,7 @@ impl Wallet {
             .collect::<Result<Map<Address, _>, WalletError>>()?;
         Ok(Wallet {
             keys,
+            ciphered_keys: Default::default(),
             wallet_path: path,
         })
     }
@@ -68,13 +76,19 @@ impl Wallet {
 
     /// Adds a new private key to wallet, if it was missing
     /// returns corresponding address
-    pub fn add_private_key(&mut self, key: PrivateKey) -> Result<Address, WalletError> {
+    pub fn add_private_key(&mut self, key: PrivateKey, pwd: &str) -> Result<Address, WalletError> {
+        let cipher = Aes256GcmSiv::new(Key::from_slice(pwd.as_bytes()));
+        let nonce = Nonce::from_slice(NONCE_SLICE);
+        let ciphered_key = cipher
+            .encrypt(nonce, &key.to_bytes()[..])
+            .expect("encryption failed");
         if !self.keys.iter().any(|(_, (_, file_key))| file_key == &key) {
             let pub_key = derive_public_key(&key);
-            let ad = Address::from_public_key(&pub_key);
-            self.keys.insert(ad, (pub_key, key));
+            let addr = Address::from_public_key(&pub_key);
+            // IMPORTANT NOTE: only ciphered are added but not dumped
+            self.ciphered_keys.insert(addr, ciphered_key);
             self.save()?;
-            Ok(ad)
+            Ok(addr)
         } else {
             // key already in wallet
             Ok(*self
@@ -83,6 +97,26 @@ impl Wallet {
                 .find(|(_, (_, file_key))| file_key == &key)
                 .unwrap()
                 .0)
+        }
+    }
+
+    /// Given the address, unlock a private key
+    pub fn unlock_key(&mut self, addr: Address, pwd: String) -> bool {
+        if let Some((_, key)) = self.ciphered_keys.get_key_value(&addr) {
+            let cipher = Aes256GcmSiv::new(Key::from_slice(pwd.as_bytes()));
+            let nonce = Nonce::from_slice(NONCE_SLICE);
+            let deciphered_key = cipher
+                .decrypt(nonce, key.as_ref())
+                .expect("decryption failed");
+            let priv_key =
+                PrivateKey::from_bytes(&deciphered_key[..].try_into().expect("error n1"))
+                    .expect("error n2");
+
+            let pub_key = derive_public_key(&priv_key);
+            self.keys.insert(addr, (pub_key, priv_key));
+            true
+        } else {
+            false
         }
     }
 
