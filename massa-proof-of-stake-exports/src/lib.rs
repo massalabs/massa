@@ -18,7 +18,9 @@ mod proof_of_stake;
 pub use proof_of_stake::*;
 
 use error::ProofOfStakeError;
-pub use export_pos::ExportProofOfStake;
+pub use export_pos::{
+    ExportProofOfStake, ExportProofOfStakeDeserializer, ExportProofOfStakeSerializer,
+};
 pub use settings::ProofOfStakeConfig;
 
 mod thread_cycle_state;

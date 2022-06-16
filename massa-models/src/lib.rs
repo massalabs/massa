@@ -5,8 +5,8 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub use address::Address;
-pub use amount::Amount;
+pub use address::{Address, AddressDeserializer};
+pub use amount::{Amount, AmountDeserializer, AmountSerializer};
 pub use block::{Block, BlockHeader, BlockId, SignedHeader};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
@@ -17,16 +17,15 @@ pub use error::ModelsError;
 pub use operation::{Operation, OperationId, OperationType, SignedOperation};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
-    SerializeCompact, SerializeMinBEInt, SerializeVarInt, U16VarIntDeserializer,
-    U16VarIntSerializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
-    U64VarIntSerializer, VecU8Deserializer, VecU8Serializer,
+    IpAddrDeserializer, IpAddrSerializer, SerializeCompact, SerializeMinBEInt, SerializeVarInt,
+    VecU8Deserializer, VecU8Serializer,
 };
 pub use serialization_context::{
     get_serialization_context, init_serialization_context, with_serialization_context,
     SerializationContext,
 };
-pub use slot::Slot;
-pub use version::Version;
+pub use slot::{Slot, SlotDeserializer, SlotSerializer};
+pub use version::{Version, VersionDeserializer, VersionSerializer};
 /// active blocks related structures
 pub mod active_block;
 /// address related structures

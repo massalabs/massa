@@ -6,9 +6,11 @@ use massa_models::{
     operation::{OperationIds, Operations},
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, ModelsError, SerializeCompact, SerializeVarInt, SignedEndorsement,
-    SignedHeader, SignedOperation, Version,
+    Endorsement, EndorsementId, IpAddrDeserializer, IpAddrSerializer, ModelsError,
+    SerializeCompact, SerializeVarInt, SignedEndorsement, SignedHeader, SignedOperation, Version,
+    VersionDeserializer, VersionSerializer,
 };
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -145,10 +147,11 @@ impl SerializeCompact for Message {
                 random_bytes,
                 version,
             } => {
+                let version_serializer = VersionSerializer::new();
                 res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
                 res.extend(&public_key.to_bytes());
                 res.extend(random_bytes);
-                res.extend(version.to_bytes_compact()?);
+                version_serializer.serialize(version, &mut res)?;
             }
             Message::HandshakeReply { signature } => {
                 res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
@@ -180,8 +183,9 @@ impl SerializeCompact for Message {
             Message::PeerList(ip_vec) => {
                 res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
                 res.extend((ip_vec.len() as u64).to_varint_bytes());
+                let ip_serializer = IpAddrSerializer::new();
                 for ip in ip_vec {
-                    res.extend(ip.to_bytes_compact()?)
+                    ip_serializer.serialize(ip, &mut res)?
                 }
             }
             Message::BlockNotFound(hash) => {
@@ -236,6 +240,7 @@ impl DeserializeCompact for Message {
 
         let res = match type_id {
             MessageTypeId::HandshakeInitiation => {
+                let version_deserializer = VersionDeserializer::new();
                 // public key
                 let public_key = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += PUBLIC_KEY_SIZE_BYTES;
@@ -245,8 +250,8 @@ impl DeserializeCompact for Message {
                 cursor += HANDSHAKE_RANDOMNESS_SIZE_BYTES;
 
                 // version
-                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
+                let (rest, version) = version_deserializer.deserialize(&buffer[cursor..])?;
+                cursor += buffer[cursor..].len() - rest.len();
 
                 // return message
                 Message::HandshakeInitiation {
@@ -292,9 +297,16 @@ impl DeserializeCompact for Message {
                 cursor += delta;
                 // peer list
                 let mut peers: Vec<IpAddr> = Vec::with_capacity(length as usize);
+                let ip_deserializer = IpAddrDeserializer::new();
                 for _ in 0..length {
-                    let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
-                    cursor += delta;
+                    let (rest, ip) = ip_deserializer
+                        .deserialize::<DeserializeError>(&buffer[cursor..])
+                        .map_err(|_| {
+                            ModelsError::DeserializeError(
+                                "Failed to deserialize IpAddr".to_string(),
+                            )
+                        })?;
+                    cursor += buffer[cursor..].len() - rest.len();
                     peers.push(ip);
                 }
                 Message::PeerList(peers)

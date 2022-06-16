@@ -17,9 +17,6 @@ directories = "4.0"
 config = "0.11"
 bs58 = { version = "0.4", features = ["check"] }
 nom = "7.1"
-unsigned-varint = { version = "0.7.1", features = [
-    "nom",
-], git = "https://github.com/cyphar/unsigned-varint.git", branch = "nom6-errors" }
 
 # custom modules
 massa_hash = { path = "../massa-hash" }

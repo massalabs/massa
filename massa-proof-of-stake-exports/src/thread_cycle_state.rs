@@ -1,13 +1,22 @@
 use bitvec::{order::Lsb0, prelude::BitVec};
 use massa_models::{
-    array_from_slice,
-    constants::ADDRESS_SIZE_BYTES,
-    prehash::{BuildMap, Map},
-    rolls::{RollCounts, RollUpdate, RollUpdates},
-    with_serialization_context, Address, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt, Slot,
+    constants::{MAX_BOOTSTRAP_POS_ENTRIES, THREAD_COUNT},
+    prehash::Map,
+    rolls::{RollCounts, RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
+    Address, AddressDeserializer, Slot, SlotDeserializer, SlotSerializer,
+};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::{
+    error::{context, ContextError, ErrorKind, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
+use std::ops::Bound::Included;
 
 /// Rolls state for a cycle in a thread
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -33,177 +42,234 @@ impl ThreadCycleState {
     }
 }
 
-impl SerializeCompact for ThreadCycleState {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
+/// Serializer for `ThreadCycleState`
+pub struct ThreadCycleStateSerializer {
+    u32_serializer: U32VarIntSerializer,
+    u64_serializer: U64VarIntSerializer,
+    slot_serializer: SlotSerializer,
+    roll_update_serializer: RollUpdateSerializer,
+}
 
+impl ThreadCycleStateSerializer {
+    /// Creates a new `ThreadCycleStateSerializer`
+    pub fn new() -> Self {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        ThreadCycleStateSerializer {
+            u32_serializer: U32VarIntSerializer::new(
+                Included(0),
+                Included(MAX_BOOTSTRAP_POS_ENTRIES),
+            ),
+            u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
+            slot_serializer: SlotSerializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Included(thread_count)),
+            ),
+            roll_update_serializer: RollUpdateSerializer::new(),
+        }
+    }
+}
+
+impl Default for ThreadCycleStateSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<ThreadCycleState> for ThreadCycleStateSerializer {
+    fn serialize(
+        &self,
+        value: &ThreadCycleState,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         // cycle
-        res.extend(self.cycle.to_varint_bytes());
-
+        self.u64_serializer.serialize(&value.cycle, buffer)?;
         // last final slot
-        res.extend(self.last_final_slot.to_bytes_compact()?);
-
+        self.slot_serializer
+            .serialize(&value.last_final_slot, buffer)?;
         // roll count
-        let n_entries: u32 = self.roll_count.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
+        let n_entries: u32 = value.roll_count.0.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(format!(
                 "too many entries when serializing ExportThreadCycleState roll_count: {}",
                 err
             ))
         })?;
-        res.extend(n_entries.to_varint_bytes());
-        for (addr, n_rolls) in self.roll_count.0.iter() {
-            res.extend(addr.to_bytes());
-            res.extend(n_rolls.to_varint_bytes());
+        self.u32_serializer.serialize(&n_entries, buffer)?;
+        for (address, count) in value.roll_count.0.iter() {
+            buffer.extend(address.to_bytes());
+            self.u64_serializer.serialize(count, buffer)?;
         }
 
         // cycle updates
-        let n_entries: u32 = self.cycle_updates.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
+        let n_entries: u32 = value.cycle_updates.0.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(format!(
                 "too many entries when serializing ExportThreadCycleState cycle_updates: {}",
                 err
             ))
         })?;
-        res.extend(n_entries.to_varint_bytes());
-        for (addr, updates) in self.cycle_updates.0.iter() {
-            res.extend(addr.to_bytes());
-            res.extend(updates.to_bytes_compact()?);
+        self.u32_serializer.serialize(&n_entries, buffer)?;
+        for (address, update) in value.cycle_updates.0.iter() {
+            buffer.extend(address.to_bytes());
+            self.roll_update_serializer.serialize(update, buffer)?;
         }
 
         // rng seed
-        let n_entries: u32 = self.rng_seed.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
+        let n_entries: u32 = value.rng_seed.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(format!(
                 "too many entries when serializing ExportThreadCycleState rng_seed: {}",
                 err
             ))
         })?;
-        res.extend(n_entries.to_varint_bytes());
-        res.extend(self.rng_seed.clone().into_vec());
+        self.u32_serializer.serialize(&n_entries, buffer)?;
+        buffer.extend(value.rng_seed.clone().into_vec());
 
         // production stats
-        let n_entries: u32 = self.production_stats.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
+        let n_entries: u32 = value.production_stats.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(format!(
                 "too many entries when serializing ExportThreadCycleState production_stats: {}",
                 err
             ))
         })?;
-        res.extend(n_entries.to_varint_bytes());
-        for (addr, (ok_count, nok_count)) in self.production_stats.iter() {
-            res.extend(addr.to_bytes());
-            res.extend(ok_count.to_varint_bytes());
-            res.extend(nok_count.to_varint_bytes());
+        self.u32_serializer.serialize(&n_entries, buffer)?;
+        for (address, (ok_count, nok_count)) in value.production_stats.iter() {
+            buffer.extend(address.to_bytes());
+            self.u64_serializer.serialize(ok_count, buffer)?;
+            self.u64_serializer.serialize(nok_count, buffer)?;
         }
-
-        Ok(res)
+        Ok(())
     }
 }
 
-impl DeserializeCompact for ThreadCycleState {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let max_entries = with_serialization_context(|context| (context.max_bootstrap_pos_entries));
-        let mut cursor = 0usize;
+/// Deserializer for `ThreadCycleState`
+pub struct ThreadCycleStateDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+    slot_deserializer: SlotDeserializer,
+    roll_update_deserializer: RollUpdateDeserializer,
+    address_deserializer: AddressDeserializer,
+}
 
-        // cycle
-        let (cycle, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
+impl ThreadCycleStateDeserializer {
+    /// Creates a new `ThreadCycleStateDeserializer`
+    pub fn new() -> Self {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        ThreadCycleStateDeserializer {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(MAX_BOOTSTRAP_POS_ENTRIES),
+            ),
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Included(thread_count)),
+            ),
+            roll_update_deserializer: RollUpdateDeserializer::new(),
+            address_deserializer: AddressDeserializer::new(),
+        }
+    }
+}
 
-        // last final slot
-        let (last_final_slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
+impl Default for ThreadCycleStateDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-        // roll count
-        let (n_entries, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-        if n_entries > max_entries {
-            return Err(ModelsError::SerializeError(
-                "invalid number entries when deserializing ExportThreadCycleStat roll_count".into(),
-            ));
-        }
-        let mut roll_count = RollCounts::default();
-        for _ in 0..n_entries {
-            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += ADDRESS_SIZE_BYTES;
-            let (rolls, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-            cursor += delta;
-            roll_count.0.insert(addr, rolls);
-        }
-
-        // cycle updates
-        let (n_entries, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-        if n_entries > max_entries {
-            return Err(ModelsError::SerializeError(
-                "invalid number entries when deserializing ExportThreadCycleStat cycle_updates"
-                    .into(),
-            ));
-        }
-        let mut cycle_updates = RollUpdates(Map::with_capacity_and_hasher(
-            n_entries as usize,
-            BuildMap::default(),
-        ));
-        for _ in 0..n_entries {
-            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += ADDRESS_SIZE_BYTES;
-            let (update, delta) = RollUpdate::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            cycle_updates.0.insert(addr, update);
-        }
-
-        // rng seed
-        let (n_entries, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-        if n_entries > max_entries {
-            return Err(ModelsError::SerializeError(
-                "invalid number entries when deserializing ExportThreadCycleStat rng_seed".into(),
-            ));
-        }
-        let bits_u8_len = n_entries.div_ceil(u8::BITS) as usize;
-        if buffer[cursor..].len() < bits_u8_len {
-            return Err(ModelsError::SerializeError(
-                "too few remaining bytes when deserializing ExportThreadCycleStat rng_seed".into(),
-            ));
-        }
-        let mut rng_seed: BitVec<Lsb0, u8> = BitVec::try_from_vec(buffer[cursor..(cursor+bits_u8_len)].to_vec())
-            .map_err(|_| ModelsError::SerializeError("error in bitvec conversion during deserialization of ExportThreadCycleStat rng_seed".into()))?;
-        rng_seed.truncate(n_entries as usize);
-        if rng_seed.len() != n_entries as usize {
-            return Err(ModelsError::SerializeError(
-                "incorrect resulting size when deserializing ExportThreadCycleStat rng_seed".into(),
-            ));
-        }
-        cursor += rng_seed.elements();
-
-        // production stats
-        let (n_entries, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-        if n_entries > max_entries {
-            return Err(ModelsError::SerializeError(
-                "invalid number entries when deserializing ExportThreadCycleStat production_stats"
-                    .into(),
-            ));
-        }
-        let mut production_stats =
-            Map::with_capacity_and_hasher(n_entries as usize, BuildMap::default());
-        for _ in 0..n_entries {
-            let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += ADDRESS_SIZE_BYTES;
-            let (ok_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-            cursor += delta;
-            let (nok_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-            cursor += delta;
-            production_stats.insert(addr, (ok_count, nok_count));
-        }
-
-        // return struct
-        Ok((
-            ThreadCycleState {
-                cycle,
-                last_final_slot,
-                roll_count,
-                cycle_updates,
-                rng_seed,
-                production_stats,
+impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], ThreadCycleState, E> {
+        context(
+            "Failed ThreadCycleState deserialization",
+            tuple((
+                context("Failed cycle deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed last_final_slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed roll_count deserialization",
+                    length_count(
+                        |input| self.u32_deserializer.deserialize(input),
+                        tuple((
+                            |input| self.address_deserializer.deserialize(input),
+                            |input| self.u64_deserializer.deserialize(input),
+                        )),
+                    )
+                    .map(|res| RollCounts(res.into_iter().collect())),
+                ),
+                context(
+                    "Failed cycle_updates deserialization",
+                    length_count(
+                        |input| self.u32_deserializer.deserialize(input),
+                        tuple((
+                            |input| self.address_deserializer.deserialize(input),
+                            |input| self.roll_update_deserializer.deserialize(input),
+                        )),
+                    )
+                    .map(|res| RollUpdates(res.into_iter().collect())),
+                ),
+                context("Failed rng_seed deserialization", |input| {
+                    let (rest, n_entries) = self.u32_deserializer.deserialize(input)?;
+                    let bits_u8_len = n_entries.div_ceil(u8::BITS) as usize;
+                    if rest.len() < bits_u8_len {
+                        return Err(nom::Err::Error(ParseError::from_error_kind(
+                            input,
+                            ErrorKind::Eof,
+                        )));
+                    }
+                    let mut rng_seed: BitVec<Lsb0, u8> =
+                        BitVec::try_from_vec(rest[..bits_u8_len].to_vec()).map_err(|_| {
+                            nom::Err::Error(ParseError::from_error_kind(input, ErrorKind::Eof))
+                        })?;
+                    rng_seed.truncate(n_entries as usize);
+                    if rng_seed.len() != n_entries as usize {
+                        return Err(nom::Err::Error(ParseError::from_error_kind(
+                            input,
+                            ErrorKind::Eof,
+                        )));
+                    }
+                    Ok((&rest[bits_u8_len..], rng_seed))
+                }),
+                context(
+                    "Failed production_stats deserialization",
+                    length_count(
+                        |input| self.u32_deserializer.deserialize(input),
+                        tuple((
+                            |input| self.address_deserializer.deserialize(input),
+                            |input| self.u64_deserializer.deserialize(input),
+                            |input| self.u64_deserializer.deserialize(input),
+                        )),
+                    )
+                    .map(|res| {
+                        let mut production_stats = Map::default();
+                        production_stats.extend(res.into_iter().map(
+                            |(address, ok_count, nok_count)| (address, (ok_count, nok_count)),
+                        ));
+                        production_stats
+                    }),
+                ),
+            )),
+        )
+        .map(
+            |(cycle, last_final_slot, roll_count, cycle_updates, rng_seed, production_stats)| {
+                ThreadCycleState {
+                    cycle,
+                    last_final_slot,
+                    roll_count,
+                    cycle_updates,
+                    rng_seed,
+                    production_stats,
+                }
             },
-            cursor,
-        ))
+        )
+        .parse(buffer)
     }
 }

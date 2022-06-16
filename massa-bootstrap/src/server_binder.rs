@@ -2,15 +2,20 @@
 
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
-use crate::messages::BootstrapClientMessage;
-use crate::messages::BootstrapServerMessage;
+use crate::messages::{
+    BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
+    BootstrapServerMessageSerializer,
+};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::Version;
+use massa_models::VersionDeserializer;
+use massa_models::VersionSerializer;
 use massa_models::{
-    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
-    DeserializeMinBEInt, SerializeCompact, SerializeMinBEInt,
+    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeMinBEInt,
+    SerializeMinBEInt,
 };
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{sign, PrivateKey};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -22,6 +27,8 @@ pub struct BootstrapServerBinder {
     local_privkey: PrivateKey,
     duplex: Duplex,
     prev_message: Option<Hash>,
+    version_serializer: VersionSerializer,
+    version_deserializer: VersionDeserializer,
 }
 
 impl BootstrapServerBinder {
@@ -39,6 +46,8 @@ impl BootstrapServerBinder {
             local_privkey,
             duplex,
             prev_message: None,
+            version_serializer: VersionSerializer::new(),
+            version_deserializer: VersionDeserializer::new(),
         }
     }
 }
@@ -50,12 +59,17 @@ impl BootstrapServerBinder {
     pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // read version and random bytes, send signature
         let msg_hash = {
-            let version_bytes = version.to_bytes_compact()?;
+            let mut version_bytes = Vec::new();
+            self.version_serializer
+                .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
             self.duplex.read_exact(&mut msg_bytes).await?;
-            let received_version = Version::from_bytes_compact(&msg_bytes[..version_bytes.len()])?;
-            if !received_version.0.is_compatible(&version) {
-                return Err(BootstrapError::IncompatibleVersionError(format!("Received a bad incompatible version in handshake. (excepted: {}, received: {})", version, received_version.0)));
+            let (_, received_version) = self
+                .version_deserializer
+                .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
+                .map_err(|err| BootstrapError::GeneralError(format!("{}", &err)))?;
+            if !received_version.is_compatible(&version) {
+                return Err(BootstrapError::IncompatibleVersionError(format!("Received a bad incompatible version in handshake. (excepted: {}, received: {})", version, received_version)));
             }
             Hash::compute_from(&msg_bytes)
         };
@@ -69,7 +83,8 @@ impl BootstrapServerBinder {
     /// Writes the next message. NOT cancel-safe
     pub async fn send(&mut self, msg: BootstrapServerMessage) -> Result<(), BootstrapError> {
         // serialize message
-        let msg_bytes = msg.to_bytes_compact()?;
+        let mut msg_bytes = Vec::new();
+        BootstrapServerMessageSerializer::new().serialize(&msg, &mut msg_bytes)?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
@@ -153,7 +168,9 @@ impl BootstrapServerBinder {
         }
 
         // deserialize message
-        let (msg, _len) = BootstrapClientMessage::from_bytes_compact(&msg_bytes)?;
+        let (_, msg) = BootstrapClientMessageDeserializer::new()
+            .deserialize::<DeserializeError>(&msg_bytes)
+            .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)
     }

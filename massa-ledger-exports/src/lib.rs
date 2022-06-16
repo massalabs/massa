@@ -19,8 +19,9 @@ pub use key::{
 };
 pub use ledger_changes::{
     LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, LedgerEntryUpdate,
+    LedgerEntryUpdateDeserializer, LedgerEntryUpdateSerializer,
 };
-pub use ledger_entry::LedgerEntry;
+pub use ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 
 #[cfg(feature = "testing")]

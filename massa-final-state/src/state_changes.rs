@@ -10,11 +10,11 @@ use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{
     error::{context, ContextError, ParseError},
     sequence::tuple,
-    IResult,
+    IResult, Parser,
 };
 
 /// represents changes that can be applied to the execution state
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct StateChanges {
     /// ledger changes
     pub ledger_changes: LedgerChanges,
@@ -45,17 +45,53 @@ impl Default for StateChangesSerializer {
 }
 
 impl Serializer<StateChanges> for StateChangesSerializer {
-    fn serialize(&self, value: &StateChanges) -> Result<Vec<u8>, SerializeError> {
-        let ledger_changes = self
-            .ledger_changes_serializer
-            .serialize(&value.ledger_changes)?;
-        let async_pool_changes = self
-            .async_pool_changes_serializer
-            .serialize(&value.async_pool_changes)?;
-        let mut res = Vec::with_capacity(ledger_changes.len() + async_pool_changes.len());
-        res.extend(ledger_changes);
-        res.extend(async_pool_changes);
-        Ok(res)
+    /// ```
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{Address, prehash::Map, Amount, Slot};
+    /// use massa_final_state::{StateChanges, StateChangesSerializer};
+    /// use std::str::FromStr;
+    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
+    ///
+    /// let mut state_changes = StateChanges::default();
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// state_changes.async_pool_changes = async_pool_changes;
+    ///
+    /// let amount = Amount::from_str("1").unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntryUpdate {
+    ///    parallel_balance: SetOrKeep::Set(amount),
+    ///    bytecode: SetOrKeep::Set(bytecode),
+    ///    datastore: Map::default(),
+    /// };
+    /// let mut ledger_changes = LedgerChanges::default();
+    /// ledger_changes.0.insert(
+    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    SetUpdateOrDelete::Update(ledger_entry),
+    /// );
+    /// state_changes.ledger_changes = ledger_changes;
+    /// let mut serialized = Vec::new();
+    /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
+    /// ```
+    fn serialize(&self, value: &StateChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.ledger_changes_serializer
+            .serialize(&value.ledger_changes, buffer)?;
+        self.async_pool_changes_serializer
+            .serialize(&value.async_pool_changes, buffer)?;
+        Ok(())
     }
 }
 
@@ -82,11 +118,56 @@ impl Default for StateChangesDeserializer {
 }
 
 impl Deserializer<StateChanges> for StateChangesDeserializer {
+    /// ```
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{Address, prehash::Map, Amount, Slot};
+    /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
+    /// use std::str::FromStr;
+    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
+    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
+    ///
+    /// let mut state_changes = StateChanges::default();
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// state_changes.async_pool_changes = async_pool_changes;
+    ///
+    /// let amount = Amount::from_str("1").unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntryUpdate {
+    ///    parallel_balance: SetOrKeep::Set(amount),
+    ///    bytecode: SetOrKeep::Set(bytecode),
+    ///    datastore: Map::default(),
+    /// };
+    /// let mut ledger_changes = LedgerChanges::default();
+    /// ledger_changes.0.insert(
+    ///    Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///    SetUpdateOrDelete::Update(ledger_entry),
+    /// );
+    /// state_changes.ledger_changes = ledger_changes;
+    /// let mut serialized = Vec::new();
+    /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(state_changes_deser, state_changes);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], StateChanges, E> {
-        context("Failed StateChanges deserialization", |input| {
+        context(
+            "Failed StateChanges deserialization",
             tuple((
                 context("Failed ledger_changes deserialization", |input| {
                     self.ledger_changes_deserializer.deserialize(input)
@@ -94,17 +175,13 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 context("Failed async_pool_changes deserialization", |input| {
                     self.async_pool_changes_deserializer.deserialize(input)
                 }),
-            ))(input)
-        })(buffer)
-        .map(|(rest, (ledger_changes, async_pool_changes))| {
-            (
-                rest,
-                StateChanges {
-                    ledger_changes,
-                    async_pool_changes,
-                },
-            )
+            )),
+        )
+        .map(|(ledger_changes, async_pool_changes)| StateChanges {
+            ledger_changes,
+            async_pool_changes,
         })
+        .parse(buffer)
     }
 }
 

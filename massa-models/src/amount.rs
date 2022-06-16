@@ -1,9 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
-use crate::serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use crate::ModelsError;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};
 use nom::IResult;
 use rust_decimal::prelude::*;
@@ -197,8 +197,19 @@ impl AmountSerializer {
 }
 
 impl Serializer<Amount> for AmountSerializer {
-    fn serialize(&self, value: &Amount) -> Result<Vec<u8>, SerializeError> {
-        self.u64_serializer.serialize(&value.0)
+    /// ```
+    /// use massa_models::{Amount, AmountSerializer};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    /// use std::ops::Bound::Included;
+    ///
+    /// let amount = Amount::from_str("11.111").unwrap();
+    /// let serializer = AmountSerializer::new(Included(0), Included(u64::MAX));
+    /// let mut serialized = vec![];
+    /// serializer.serialize(&amount, &mut serialized).unwrap();
+    /// ```
+    fn serialize(&self, value: &Amount, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.u64_serializer.serialize(&value.0, buffer)
     }
 }
 
@@ -217,6 +228,21 @@ impl AmountDeserializer {
 }
 
 impl Deserializer<Amount> for AmountDeserializer {
+    /// ```
+    /// use massa_models::{Amount, AmountSerializer, AmountDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    /// use std::ops::Bound::Included;
+    ///
+    /// let amount = Amount::from_str("11.111").unwrap();
+    /// let serializer = AmountSerializer::new(Included(0), Included(u64::MAX));
+    /// let deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));
+    /// let mut serialized = vec![];
+    /// serializer.serialize(&amount, &mut serialized).unwrap();
+    /// let (rest, amount_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(amount_deser, amount);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

@@ -1710,6 +1710,7 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_proof_of_stake_exports",
+ "massa_serialization",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -1800,7 +1801,6 @@ dependencies = [
  "serde 1.0.136",
  "serial_test",
  "thiserror",
- "unsigned-varint",
 ]
 
 [[package]]
@@ -1811,8 +1811,10 @@ dependencies = [
  "enum-map",
  "massa_hash",
  "massa_models",
+ "massa_serialization",
  "massa_signature",
  "massa_time",
+ "nom 7.1.1",
  "serde 1.0.136",
  "serde_json",
  "tempfile",
@@ -1831,6 +1833,7 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_network_exports",
+ "massa_serialization",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -1875,7 +1878,9 @@ dependencies = [
  "displaydoc",
  "massa_hash",
  "massa_models",
+ "massa_serialization",
  "massa_signature",
+ "nom 7.1.1",
  "num",
  "rand 0.8.5",
  "rand_xoshiro",
@@ -1978,6 +1983,8 @@ name = "massa_time"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
+ "massa_serialization",
+ "nom 7.1.1",
  "serde 1.0.136",
  "thiserror",
  "time",

@@ -4,18 +4,29 @@ use massa_async_pool::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageI
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 use massa_graph::BootstrapableGraph;
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+use massa_models::constants::MAX_ADVERTISE_LENGTH;
 use massa_models::slot::SlotDeserializer;
 use massa_models::{
-    constants::THREAD_COUNT, slot::SlotSerializer, DeserializeCompact, DeserializeVarInt,
-    ModelsError, SerializeCompact, SerializeVarInt, Slot, Version,
+    constants::THREAD_COUNT, slot::SlotSerializer, DeserializeCompact, SerializeCompact, Slot,
+    Version,
 };
-use massa_models::{VecU8Deserializer, VecU8Serializer};
-use massa_network_exports::BootstrapPeers;
-use massa_proof_of_stake_exports::ExportProofOfStake;
-use massa_serialization::{Deserializer, Serializer};
-use massa_time::MassaTime;
+use massa_models::{VecU8Deserializer, VecU8Serializer, VersionDeserializer, VersionSerializer};
+use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
+use massa_proof_of_stake_exports::{
+    ExportProofOfStake, ExportProofOfStakeDeserializer, ExportProofOfStakeSerializer,
+};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+};
+use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
+use nom::multi::length_data;
 use nom::sequence::tuple;
+use nom::Parser;
+use nom::{
+    error::{ContextError, ParseError},
+    IResult,
+};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
 use std::ops::Bound::Included;
@@ -72,26 +83,72 @@ enum MessageServerTypeId {
     BootstrapError = 6u32,
 }
 
-impl SerializeCompact for BootstrapServerMessage {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-        match self {
+/// Serializer for `BootstrapServerMessage`
+pub struct BootstrapServerMessageSerializer {
+    u32_serializer: U32VarIntSerializer,
+    time_serializer: MassaTimeSerializer,
+    version_serializer: VersionSerializer,
+    peers_serializer: BootstrapPeersSerializer,
+    pos_serializer: ExportProofOfStakeSerializer,
+    state_changes_serializer: StateChangesSerializer,
+    vec_u8_serializer: VecU8Serializer,
+    slot_serializer: SlotSerializer,
+}
+
+impl BootstrapServerMessageSerializer {
+    /// Creates a new `BootstrapServerMessageSerializer`
+    pub fn new() -> Self {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        Self {
+            u32_serializer: U32VarIntSerializer::new(Included(0), Included(100)),
+            time_serializer: MassaTimeSerializer::new((
+                Included(MassaTime::from(0)),
+                Included(MassaTime::from(u64::MAX)),
+            )),
+            version_serializer: VersionSerializer::new(),
+            peers_serializer: BootstrapPeersSerializer::new(MAX_ADVERTISE_LENGTH),
+            pos_serializer: ExportProofOfStakeSerializer::new(),
+            state_changes_serializer: StateChangesSerializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(Included(0), Included(u64::MAX)),
+            slot_serializer: SlotSerializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Included(thread_count)),
+            ),
+        }
+    }
+}
+
+impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
+    fn serialize(
+        &self,
+        value: &BootstrapServerMessage,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        match value {
             BootstrapServerMessage::BootstrapTime {
                 server_time,
                 version,
             } => {
-                res.extend(u32::from(MessageServerTypeId::BootstrapTime).to_varint_bytes());
-                res.extend(server_time.to_bytes_compact()?);
-                res.extend(&version.to_bytes_compact()?)
+                self.u32_serializer
+                    .serialize(&u32::from(MessageServerTypeId::BootstrapTime), buffer)?;
+                self.time_serializer.serialize(server_time, buffer)?;
+                self.version_serializer.serialize(version, buffer)?;
             }
             BootstrapServerMessage::BootstrapPeers { peers } => {
-                res.extend(u32::from(MessageServerTypeId::Peers).to_varint_bytes());
-                res.extend(&peers.to_bytes_compact()?);
+                self.u32_serializer
+                    .serialize(&u32::from(MessageServerTypeId::Peers), buffer)?;
+                self.peers_serializer.serialize(peers, buffer)?;
             }
             BootstrapServerMessage::ConsensusState { pos, graph } => {
-                res.extend(u32::from(MessageServerTypeId::ConsensusState).to_varint_bytes());
-                res.extend(&pos.to_bytes_compact()?);
-                res.extend(&graph.to_bytes_compact()?);
+                self.u32_serializer
+                    .serialize(&u32::from(MessageServerTypeId::ConsensusState), buffer)?;
+                self.pos_serializer.serialize(pos, buffer)?;
+                buffer.extend(graph.to_bytes_compact().map_err(|_| {
+                    SerializeError::GeneralError("Fail consensus serialization".to_string())
+                })?);
             }
             BootstrapServerMessage::FinalStatePart {
                 ledger_data,
@@ -99,130 +156,151 @@ impl SerializeCompact for BootstrapServerMessage {
                 slot,
                 final_state_changes,
             } => {
-                #[cfg(feature = "sandbox")]
-                let thread_count = *THREAD_COUNT;
-                #[cfg(not(feature = "sandbox"))]
-                let thread_count = THREAD_COUNT;
-                let slot_serializer = SlotSerializer::new(
-                    (Included(0), Included(u64::MAX)),
-                    (Included(0), Included(thread_count)),
-                );
-                let final_state_changes_serializer = StateChangesSerializer::new();
-                let vec_u8_serializer =
-                    VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX));
-                res.extend(u32::from(MessageServerTypeId::FinalStatePart).to_varint_bytes());
-                res.extend(vec_u8_serializer.serialize(ledger_data)?);
-                res.extend(vec_u8_serializer.serialize(async_pool_part)?);
-                res.extend(slot_serializer.serialize(slot)?);
-                res.extend(final_state_changes_serializer.serialize(final_state_changes)?);
+                self.u32_serializer
+                    .serialize(&u32::from(MessageServerTypeId::FinalStatePart), buffer)?;
+                self.vec_u8_serializer.serialize(ledger_data, buffer)?;
+                self.vec_u8_serializer.serialize(async_pool_part, buffer)?;
+                self.slot_serializer.serialize(slot, buffer)?;
+                self.state_changes_serializer
+                    .serialize(final_state_changes, buffer)?;
             }
             BootstrapServerMessage::FinalStateFinished => {
-                res.extend(u32::from(MessageServerTypeId::FinalStateFinished).to_varint_bytes());
+                self.u32_serializer
+                    .serialize(&u32::from(MessageServerTypeId::FinalStateFinished), buffer)?;
             }
             BootstrapServerMessage::SlotTooOld => {
-                res.extend(u32::from(MessageServerTypeId::SlotTooOld).to_varint_bytes());
+                self.u32_serializer
+                    .serialize(&u32::from(MessageServerTypeId::SlotTooOld), buffer)?;
             }
             BootstrapServerMessage::BootstrapError { error } => {
-                res.extend(u32::from(MessageServerTypeId::BootstrapError).to_varint_bytes());
-                res.extend(u32::to_varint_bytes(error.len().try_into().map_err(
-                    |_| ModelsError::SerializeError("Fail to convert usize to u32".to_string()),
-                )?));
-                res.extend(error.as_bytes())
+                self.u32_serializer
+                    .serialize(&u32::from(MessageServerTypeId::BootstrapError), buffer)?;
+                self.u32_serializer.serialize(
+                    &error.len().try_into().map_err(|_| {
+                        SerializeError::GeneralError("Fail to convert usize to u32".to_string())
+                    })?,
+                    buffer,
+                )?;
+                buffer.extend(error.as_bytes())
             }
         }
-        Ok(res)
+        Ok(())
     }
 }
 
-impl DeserializeCompact for BootstrapServerMessage {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0usize;
+/// Deserializer for `BootstrapServerMessage`
+pub struct BootstrapServerMessageDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    time_deserializer: MassaTimeDeserializer,
+    version_deserializer: VersionDeserializer,
+    peers_deserializer: BootstrapPeersDeserializer,
+    pos_deserializer: ExportProofOfStakeDeserializer,
+    state_changes_deserializer: StateChangesDeserializer,
+    vec_u8_deserializer: VecU8Deserializer,
+    slot_deserializer: SlotDeserializer,
+}
 
-        let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
+impl BootstrapServerMessageDeserializer {
+    /// Creates a new `BootstrapServerMessageDeserializer`
+    pub fn new() -> Self {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        Self {
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(100)),
+            time_deserializer: MassaTimeDeserializer::new((
+                Included(MassaTime::from(0)),
+                Included(MassaTime::from(u64::MAX)),
+            )),
+            version_deserializer: VersionDeserializer::new(),
+            peers_deserializer: BootstrapPeersDeserializer::new(MAX_ADVERTISE_LENGTH),
+            pos_deserializer: ExportProofOfStakeDeserializer::new(),
+            state_changes_deserializer: StateChangesDeserializer::new(),
+            vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Included(thread_count)),
+            ),
+        }
+    }
+}
 
-        let type_id: MessageServerTypeId = type_id_raw
-            .try_into()
-            .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
-
-        let res = match type_id {
-            MessageServerTypeId::BootstrapTime => {
-                let (server_time, delta) = MassaTime::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-                BootstrapServerMessage::BootstrapTime {
-                    server_time,
-                    version,
+impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer {
+    fn deserialize<'a, E: nom::error::ParseError<&'a [u8]> + nom::error::ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BootstrapServerMessage, E> {
+        context("Failed BootstrapServerMessage deserialization", |buffer| {
+            let (input, id) = self.u32_deserializer.deserialize(buffer)?;
+            let id = MessageServerTypeId::try_from(id).map_err(|_| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    buffer,
+                    nom::error::ErrorKind::Eof,
+                ))
+            })?;
+            match id {
+                MessageServerTypeId::BootstrapTime => tuple((
+                    |input| self.time_deserializer.deserialize(input),
+                    |input| self.version_deserializer.deserialize(input),
+                ))
+                .map(
+                    |(server_time, version)| BootstrapServerMessage::BootstrapTime {
+                        server_time,
+                        version,
+                    },
+                )
+                .parse(input),
+                MessageServerTypeId::Peers => self
+                    .peers_deserializer
+                    .deserialize(input)
+                    .map(|(rest, peers)| (rest, BootstrapServerMessage::BootstrapPeers { peers })),
+                MessageServerTypeId::ConsensusState => tuple((
+                    |input| self.pos_deserializer.deserialize(input),
+                    |input| {
+                        let (graph, delta) = BootstrapableGraph::from_bytes_compact(input)
+                            .map_err(|_| {
+                                nom::Err::Error(ParseError::from_error_kind(
+                                    input,
+                                    nom::error::ErrorKind::Eof,
+                                ))
+                            })?;
+                        Ok((&input[delta..], graph))
+                    },
+                ))
+                .map(|(pos, graph)| BootstrapServerMessage::ConsensusState { pos, graph })
+                .parse(input),
+                MessageServerTypeId::FinalStatePart => tuple((
+                    |input| self.vec_u8_deserializer.deserialize(input),
+                    |input| self.vec_u8_deserializer.deserialize(input),
+                    |input| self.slot_deserializer.deserialize(input),
+                    |input| self.state_changes_deserializer.deserialize(input),
+                ))
+                .map(
+                    |(ledger_data, async_pool_part, slot, final_state_changes)| {
+                        BootstrapServerMessage::FinalStatePart {
+                            ledger_data,
+                            async_pool_part,
+                            slot,
+                            final_state_changes,
+                        }
+                    },
+                )
+                .parse(input),
+                MessageServerTypeId::FinalStateFinished => {
+                    Ok((input, BootstrapServerMessage::FinalStateFinished))
+                }
+                MessageServerTypeId::SlotTooOld => Ok((input, BootstrapServerMessage::SlotTooOld)),
+                MessageServerTypeId::BootstrapError => {
+                    length_data(|input| self.u32_deserializer.deserialize(input))
+                        .map(|error| BootstrapServerMessage::BootstrapError {
+                            error: String::from_utf8_lossy(error).into_owned(),
+                        })
+                        .parse(input)
                 }
             }
-            MessageServerTypeId::Peers => {
-                let (peers, delta) = BootstrapPeers::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                BootstrapServerMessage::BootstrapPeers { peers }
-            }
-            MessageServerTypeId::ConsensusState => {
-                let (pos, delta) = ExportProofOfStake::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-                let (graph, delta) = BootstrapableGraph::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                BootstrapServerMessage::ConsensusState { pos, graph }
-            }
-            MessageServerTypeId::FinalStatePart => {
-                #[cfg(feature = "sandbox")]
-                let thread_count = *THREAD_COUNT;
-                #[cfg(not(feature = "sandbox"))]
-                let thread_count = THREAD_COUNT;
-                let slot_deserializer = SlotDeserializer::new(
-                    (Included(0), Included(u64::MAX)),
-                    (Included(0), Included(thread_count)),
-                );
-                let final_state_changes_deserializer = StateChangesDeserializer::new();
-                let vec_u8_deserializer =
-                    VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
-                let (rest, (ledger_data, async_pool_part, slot, final_state_changes)) =
-                    tuple((
-                        context("ledger data in final state part", |input| {
-                            vec_u8_deserializer.deserialize(input)
-                        }),
-                        context("async pool in final state part", |input| {
-                            vec_u8_deserializer.deserialize(input)
-                        }),
-                        context("slot in final state part", |input| {
-                            slot_deserializer.deserialize(input)
-                        }),
-                        context("changes in final state part", |input| {
-                            final_state_changes_deserializer.deserialize(input)
-                        }),
-                    ))(&buffer[cursor..])?;
-                // Temp while serialize compact exists
-                let delta = buffer[cursor..].len() - rest.len();
-                cursor += delta;
-                BootstrapServerMessage::FinalStatePart {
-                    ledger_data,
-                    async_pool_part,
-                    slot,
-                    final_state_changes,
-                }
-            }
-            MessageServerTypeId::FinalStateFinished => BootstrapServerMessage::FinalStateFinished,
-            MessageServerTypeId::SlotTooOld => BootstrapServerMessage::SlotTooOld,
-            MessageServerTypeId::BootstrapError => {
-                let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-                cursor += delta;
-
-                let error = String::from_utf8_lossy(&buffer[cursor..cursor + error_len as usize]);
-                cursor += error_len as usize;
-
-                BootstrapServerMessage::BootstrapError {
-                    error: error.into_owned(),
-                }
-            }
-        };
-        Ok((res, cursor))
+        })
+        .parse(buffer)
     }
 }
 
@@ -255,116 +333,166 @@ enum MessageClientTypeId {
     BootstrapError = 3u32,
 }
 
-impl SerializeCompact for BootstrapClientMessage {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-        match self {
+/// Serializer for `BootstrapClientMessage`
+pub struct BootstrapClientMessageSerializer {
+    u32_serializer: U32VarIntSerializer,
+    slot_serializer: SlotSerializer,
+    async_message_id_serializer: AsyncMessageIdSerializer,
+    key_serializer: KeySerializer,
+}
+
+impl BootstrapClientMessageSerializer {
+    /// Creates a new `BootstrapClientMessageSerializer`
+    pub fn new() -> Self {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        Self {
+            u32_serializer: U32VarIntSerializer::new(Included(0), Included(1000)),
+            slot_serializer: SlotSerializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Included(thread_count)),
+            ),
+            async_message_id_serializer: AsyncMessageIdSerializer::new(),
+            key_serializer: KeySerializer::new(),
+        }
+    }
+}
+
+impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
+    fn serialize(
+        &self,
+        value: &BootstrapClientMessage,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        match value {
             BootstrapClientMessage::AskBootstrapPeers => {
-                res.extend(u32::from(MessageClientTypeId::AskBootstrapPeers).to_varint_bytes());
+                self.u32_serializer
+                    .serialize(&u32::from(MessageClientTypeId::AskBootstrapPeers), buffer)?;
             }
             BootstrapClientMessage::AskConsensusState => {
-                res.extend(u32::from(MessageClientTypeId::AskConsensusState).to_varint_bytes());
+                self.u32_serializer
+                    .serialize(&u32::from(MessageClientTypeId::AskConsensusState), buffer)?;
             }
             BootstrapClientMessage::AskFinalStatePart {
                 last_key,
                 slot,
                 last_async_message_id,
             } => {
-                res.extend(u32::from(MessageClientTypeId::AskFinalStatePart).to_varint_bytes());
+                self.u32_serializer
+                    .serialize(&u32::from(MessageClientTypeId::AskFinalStatePart), buffer)?;
                 // If we have a cursor we must have also a slot
                 if let Some(key) = last_key && let Some(slot) = slot && let Some(last_async_message_id) = last_async_message_id  {
-                    let async_message_id_serializer = AsyncMessageIdSerializer::new();
-                    let key_serializer = KeySerializer::new();
-                    res.extend(key_serializer.serialize(key)?);
-                    res.extend(slot.to_bytes_compact()?);
-                    res.extend(async_message_id_serializer.serialize(last_async_message_id)?);
+                    self.key_serializer.serialize(key, buffer)?;
+                    self.slot_serializer.serialize(slot, buffer)?;
+                    self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
-                res.extend(u32::from(MessageClientTypeId::BootstrapError).to_varint_bytes());
-                res.extend(u32::to_varint_bytes(error.len() as u32));
-                res.extend(error.as_bytes())
+                self.u32_serializer
+                    .serialize(&u32::from(MessageClientTypeId::BootstrapError), buffer)?;
+                self.u32_serializer.serialize(
+                    &error.len().try_into().map_err(|_| {
+                        SerializeError::GeneralError("Fail to convert usize to u32".to_string())
+                    })?,
+                    buffer,
+                )?;
+                buffer.extend(error.as_bytes())
             }
         }
-        Ok(res)
+        Ok(())
     }
 }
 
-impl DeserializeCompact for BootstrapClientMessage {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0usize;
+/// Deserializer for `BootstrapClientMessage`
+pub struct BootstrapClientMessageDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    slot_deserializer: SlotDeserializer,
+    async_message_id_deserializer: AsyncMessageIdDeserializer,
+    key_deserializer: KeyDeserializer,
+}
 
-        let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
+impl BootstrapClientMessageDeserializer {
+    /// Creates a new `BootstrapClientMessageDeserializer`
+    pub fn new() -> Self {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        Self {
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(1000)),
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Included(thread_count)),
+            ),
+            async_message_id_deserializer: AsyncMessageIdDeserializer::new(),
+            key_deserializer: KeyDeserializer::new(),
+        }
+    }
+}
 
-        let type_id: MessageClientTypeId = type_id_raw
-            .try_into()
-            .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
-
-        let res = match type_id {
-            MessageClientTypeId::AskBootstrapPeers => BootstrapClientMessage::AskBootstrapPeers,
-            MessageClientTypeId::AskConsensusState => BootstrapClientMessage::AskConsensusState,
-            MessageClientTypeId::AskFinalStatePart => {
-                if buffer.len() == cursor {
-                    BootstrapClientMessage::AskFinalStatePart {
-                        last_key: None,
-                        slot: None,
-                        last_async_message_id: None,
-                    }
-                } else {
-                    let key_deserializer = KeyDeserializer::new();
-                    #[cfg(feature = "sandbox")]
-                    let thread_count = *THREAD_COUNT;
-                    #[cfg(not(feature = "sandbox"))]
-                    let thread_count = THREAD_COUNT;
-                    let slot_deserializer = SlotDeserializer::new(
-                        (Included(0), Included(u64::MAX)),
-                        (Included(0), Included(thread_count)),
-                    );
-                    let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
-                    let (rest, (last_key, slot, last_async_message_id)) =
+impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BootstrapClientMessage, E> {
+        context("Failed BootstrapClientMessage deserialization", |buffer| {
+            let (input, id) = self.u32_deserializer.deserialize(buffer)?;
+            let id = MessageClientTypeId::try_from(id).map_err(|_| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    buffer,
+                    nom::error::ErrorKind::Eof,
+                ))
+            })?;
+            match id {
+                MessageClientTypeId::AskBootstrapPeers => {
+                    Ok((input, BootstrapClientMessage::AskBootstrapPeers))
+                }
+                MessageClientTypeId::AskConsensusState => {
+                    Ok((input, BootstrapClientMessage::AskConsensusState))
+                }
+                MessageClientTypeId::AskFinalStatePart => {
+                    if input.is_empty() {
+                        Ok((
+                            input,
+                            BootstrapClientMessage::AskFinalStatePart {
+                                last_key: None,
+                                slot: None,
+                                last_async_message_id: None,
+                            },
+                        ))
+                    } else {
                         tuple((
-                            context("last_key in ask final state part", |input| {
-                                key_deserializer.deserialize(input)
+                            context("Faild key deserialization", |input| {
+                                self.key_deserializer.deserialize(input)
                             }),
-                            context("slot in ask final state part", |input| {
-                                slot_deserializer.deserialize(input)
+                            context("Failed slot deserialization", |input| {
+                                self.slot_deserializer.deserialize(input)
                             }),
-                            context("async message id in final state part", |input| {
-                                async_message_id_deserializer.deserialize(input)
+                            context("Failed async_message_id deserialization", |input| {
+                                self.async_message_id_deserializer.deserialize(input)
                             }),
-                        ))(&buffer[cursor..])?;
-                    // Temp while serializecompact exists
-                    let delta = buffer[cursor..].len() - rest.len();
-                    cursor += delta;
-
-                    BootstrapClientMessage::AskFinalStatePart {
-                        last_key: Some(last_key),
-                        slot: Some(slot),
-                        last_async_message_id: Some(last_async_message_id),
+                        ))
+                        .map(|(last_key, slot, last_async_message_id)| {
+                            BootstrapClientMessage::AskFinalStatePart {
+                                last_key: Some(last_key),
+                                slot: Some(slot),
+                                last_async_message_id: Some(last_async_message_id),
+                            }
+                        })
+                        .parse(input)
                     }
                 }
-            }
-            MessageClientTypeId::BootstrapError => {
-                let (error_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-                cursor += delta;
-
-                let error = String::from_utf8_lossy(
-                    buffer
-                        .get(cursor..cursor + error_len as usize)
-                        .ok_or_else(|| {
-                            ModelsError::DeserializeError(
-                                "Error message content too short.".to_string(),
-                            )
-                        })?,
-                );
-                cursor += error_len as usize;
-
-                BootstrapClientMessage::BootstrapError {
-                    error: error.into_owned(),
+                MessageClientTypeId::BootstrapError => {
+                    length_data(|input| self.u32_deserializer.deserialize(input))
+                        .map(|error| BootstrapClientMessage::BootstrapError {
+                            error: String::from_utf8_lossy(error).into_owned(),
+                        })
+                        .parse(input)
                 }
             }
-        };
-        Ok((res, cursor))
+        })
+        .parse(buffer)
     }
 }

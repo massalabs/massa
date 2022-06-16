@@ -8,15 +8,17 @@ use massa_hash::HASH_SIZE_BYTES;
 use massa_hash::{Hash, HashDeserializer};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::{
-    array_from_slice, Amount, DeserializeVarInt, ModelsError, SerializeVarInt,
-    U64VarIntDeserializer, VecU8Deserializer, VecU8Serializer,
+    array_from_slice, Amount, DeserializeVarInt, ModelsError, SerializeVarInt, VecU8Deserializer,
+    VecU8Serializer,
 };
 use massa_models::{DeserializeCompact, SerializeCompact};
-use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
-use nom::IResult;
+use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ops::Bound::Included;
@@ -35,46 +37,52 @@ pub struct LedgerEntry {
     pub datastore: BTreeMap<Hash, Vec<u8>>,
 }
 
-struct DatastoreSerializer {
+/// Serializer for `Datastore` field in `LedgerEntry`
+pub struct DatastoreSerializer {
+    u64_serializer: U64VarIntSerializer,
     value_serializer: VecU8Serializer,
 }
 
 impl DatastoreSerializer {
+    /// Creates a new `DatastoreSerializer`
     pub fn new() -> Self {
         Self {
+            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             value_serializer: VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
 }
 
 impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
-    fn serialize(&self, value: &BTreeMap<Hash, Vec<u8>>) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-
+    fn serialize(
+        &self,
+        value: &BTreeMap<Hash, Vec<u8>>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         let entry_count: u64 = value.len().try_into().map_err(|err| {
             SerializeError::GeneralError(format!(
                 "too many entries in ConsensusLedgerSubset: {}",
                 err
             ))
         })?;
-
-        res.extend(entry_count.to_varint_bytes());
-
+        self.u64_serializer.serialize(&entry_count, buffer)?;
         for (key, value) in value.iter() {
-            res.extend(key.to_bytes());
-            res.extend(self.value_serializer.serialize(value)?);
+            buffer.extend(key.to_bytes());
+            self.value_serializer.serialize(value, buffer)?;
         }
-        Ok(res)
+        Ok(())
     }
 }
 
-struct DatastoreDeserializer {
+/// Deserializer for `Datastore` field in `LedgerEntry`
+pub struct DatastoreDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     hash_deserializer: HashDeserializer,
     value_deserializer: VecU8Deserializer,
 }
 
 impl DatastoreDeserializer {
+    /// Creates a new `DatastoreDeserializer`
     pub fn new() -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
@@ -89,23 +97,24 @@ impl Deserializer<BTreeMap<Hash, Vec<u8>>> for DatastoreDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BTreeMap<Hash, Vec<u8>>, E> {
-        context("Failed Datastore deserialization", |input| {
+        context(
+            "Failed Datastore deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
                 }),
-                |input| {
-                    tuple((
-                        |input| self.hash_deserializer.deserialize(input),
-                        |input| self.value_deserializer.deserialize(input),
-                    ))(input)
-                },
-            )(input)
-        })(buffer)
-        .map(|(rest, elems)| (rest, elems.into_iter().collect()))
+                tuple((
+                    |input| self.hash_deserializer.deserialize(input),
+                    |input| self.value_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
     }
 }
 
+/// Serializer for `LedgerEntry`
 pub struct LedgerEntrySerializer {
     amount_serializer: AmountSerializer,
     vec_u8_serializer: VecU8Serializer,
@@ -113,6 +122,7 @@ pub struct LedgerEntrySerializer {
 }
 
 impl LedgerEntrySerializer {
+    /// Creates a new `LedgerEntrySerializer`
     pub fn new() -> Self {
         Self {
             vec_u8_serializer: VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX)),
@@ -122,16 +132,46 @@ impl LedgerEntrySerializer {
     }
 }
 
-impl Serializer<LedgerEntry> for LedgerEntrySerializer {
-    fn serialize(&self, value: &LedgerEntry) -> Result<Vec<u8>, SerializeError> {
-        let mut res: Vec<u8> = Vec::new();
-        res.extend(self.amount_serializer.serialize(&value.parallel_balance)?);
-        res.extend(self.vec_u8_serializer.serialize(&value.bytecode)?);
-        res.extend(self.datastore_serializer.serialize(&value.datastore)?);
-        Ok(res)
+impl Default for LedgerEntrySerializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
+impl Serializer<LedgerEntry> for LedgerEntrySerializer {
+    /// ```
+    /// use massa_serialization::Serializer;
+    /// use std::collections::BTreeMap;
+    /// use std::str::FromStr;
+    /// use massa_models::Amount;
+    /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
+    /// use massa_hash::Hash;
+    ///
+    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let mut store = BTreeMap::new();
+    /// store.insert(hash, vec![1, 2, 3]);
+    /// let amount = Amount::from_str("1").unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntry {
+    ///    parallel_balance: amount,
+    ///    bytecode,
+    ///    datastore: store,
+    /// };
+    /// let mut serialized = Vec::new();
+    /// let serializer = LedgerEntrySerializer::new();
+    /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
+    /// ```
+    fn serialize(&self, value: &LedgerEntry, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.amount_serializer
+            .serialize(&value.parallel_balance, buffer)?;
+        self.vec_u8_serializer.serialize(&value.bytecode, buffer)?;
+        self.datastore_serializer
+            .serialize(&value.datastore, buffer)?;
+        Ok(())
+    }
+}
+
+/// Deserializer for `LedgerEntry`
 pub struct LedgerEntryDeserializer {
     amount_deserializer: AmountDeserializer,
     vec_u8_deserializer: VecU8Deserializer,
@@ -139,6 +179,7 @@ pub struct LedgerEntryDeserializer {
 }
 
 impl LedgerEntryDeserializer {
+    /// Creates a new `LedgerEntryDeserializer`
     pub fn new() -> Self {
         Self {
             amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
@@ -148,12 +189,45 @@ impl LedgerEntryDeserializer {
     }
 }
 
+impl Default for LedgerEntryDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
+    /// ```
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use std::collections::BTreeMap;
+    /// use std::str::FromStr;
+    /// use massa_models::Amount;
+    /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
+    /// use massa_hash::Hash;
+    ///
+    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let mut store = BTreeMap::new();
+    /// store.insert(hash, vec![1, 2, 3]);
+    /// let amount = Amount::from_str("1").unwrap();
+    /// let bytecode = vec![1, 2, 3];
+    /// let ledger_entry = LedgerEntry {
+    ///    parallel_balance: amount,
+    ///    bytecode,
+    ///    datastore: store,
+    /// };
+    /// let mut serialized = Vec::new();
+    /// let serializer = LedgerEntrySerializer::new();
+    /// let deserializer = LedgerEntryDeserializer::new();
+    /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
+    /// let (rest, ledger_entry_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(ledger_entry, ledger_entry_deser);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], LedgerEntry, E> {
-        context("Failed LedgerEntry deserialization", |input| {
+        context(
+            "Failed LedgerEntry deserialization",
             tuple((
                 context("Failed parallel_balance deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
@@ -164,18 +238,14 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
                 context("Failed datastore deserialization", |input| {
                     self.datastore_deserializer.deserialize(input)
                 }),
-            ))(input)
-        })(buffer)
-        .map(|(rest, (parallel_balance, bytecode, datastore))| {
-            (
-                rest,
-                LedgerEntry {
-                    parallel_balance,
-                    bytecode,
-                    datastore,
-                },
-            )
+            )),
+        )
+        .map(|(parallel_balance, bytecode, datastore)| LedgerEntry {
+            parallel_balance,
+            bytecode,
+            datastore,
         })
+        .parse(buffer)
     }
 }
 

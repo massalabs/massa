@@ -17,13 +17,17 @@ use massa_models::signed::Signable;
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
-    rolls::{RollCounts, RollUpdate, RollUpdates},
+    rolls::{RollCounts, RollUpdate, RollUpdateSerializer, RollUpdates},
     signed::Signed,
     Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement, Operation,
     SerializeCompact, Slot,
 };
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
-use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
+use massa_proof_of_stake_exports::{
+    ExportProofOfStake, ExportProofOfStakeDeserializer, ExportProofOfStakeSerializer,
+    ThreadCycleState,
+};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
 };
@@ -232,13 +236,21 @@ pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOf
                 itm2.cycle_updates.0.len(),
                 "ThreadCycleState.cycle_updates.len() mismatch between sent and received pos"
             );
+            let roll_update_serializer = RollUpdateSerializer::new();
             for (a1, itm1) in itm1.cycle_updates.0.iter() {
                 let itm2 = itm2.cycle_updates.0.get(a1).expect(
                     "ThreadCycleState.cycle_updates element miss between sent and received pos",
                 );
+                let mut itm1_bytes = Vec::new();
+                roll_update_serializer
+                    .serialize(itm1, &mut itm1_bytes)
+                    .unwrap();
+                let mut itm2_bytes = Vec::new();
+                roll_update_serializer
+                    .serialize(itm2, &mut itm2_bytes)
+                    .unwrap();
                 assert_eq!(
-                    itm1.to_bytes_compact().unwrap(),
-                    itm2.to_bytes_compact().unwrap(),
+                    itm1_bytes, itm2_bytes,
                     "ThreadCycleState.cycle_updates item mismatch between sent and received pos"
                 );
             }
@@ -551,13 +563,19 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
+    let export_pos_deserializer = ExportProofOfStakeDeserializer::new();
+    let export_pos_serializer = ExportProofOfStakeSerializer::new();
+    let mut export_pos_bytes = Vec::new();
+
+    export_pos_serializer
+        .serialize(&boot_pos, &mut export_pos_bytes)
+        .unwrap();
+    let (_, pos_deser) = export_pos_deserializer
+        .deserialize::<DeserializeError>(&export_pos_bytes)
+        .unwrap();
+
     // check re-serialization
-    assert_eq_thread_cycle_states(
-        &ExportProofOfStake::from_bytes_compact(&boot_pos.to_bytes_compact().unwrap())
-            .unwrap()
-            .0,
-        &boot_pos,
-    );
+    assert_eq_thread_cycle_states(&pos_deser, &boot_pos);
 
     let boot_graph = BootstrapableGraph {
         active_blocks: vec![(get_dummy_block_id("block1"), block1)]

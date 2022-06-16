@@ -69,8 +69,29 @@ impl KeySerializer {
 }
 
 impl Serializer<Vec<u8>> for KeySerializer {
-    fn serialize(&self, value: &Vec<u8>) -> Result<Vec<u8>, massa_serialization::SerializeError> {
-        Ok(value.clone())
+    /// ```
+    /// use massa_models::address::Address;
+    /// use massa_ledger_exports::KeySerializer;
+    /// use massa_serialization::Serializer;
+    /// use massa_hash::Hash;
+    /// use std::str::FromStr;
+    ///
+    /// let mut serialized = Vec::new();
+    /// let address = Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    /// let store_key = Hash::compute_from(b"test");
+    /// let mut key = Vec::new();
+    /// key.extend(address.to_bytes());
+    /// key.push(2u8);
+    /// key.extend(store_key.to_bytes());
+    /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
+    /// ```
+    fn serialize(
+        &self,
+        value: &Vec<u8>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
+        buffer.extend(value);
+        Ok(())
     }
 }
 
@@ -93,6 +114,25 @@ impl KeyDeserializer {
 
 // TODO: deserialize keys into a rust type
 impl Deserializer<Vec<u8>> for KeyDeserializer {
+    /// ```
+    /// use massa_models::address::Address;
+    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use massa_hash::Hash;
+    /// use std::str::FromStr;
+    ///
+    /// let mut serialized = Vec::new();
+    /// let address = Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
+    /// let store_key = Hash::compute_from(b"test");
+    /// let mut key = Vec::new();
+    /// key.extend(address.to_bytes());
+    /// key.push(2u8);
+    /// key.extend(store_key.to_bytes());
+    /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(key_deser, key);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

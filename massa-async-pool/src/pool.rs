@@ -150,8 +150,8 @@ impl AsyncPool {
         let async_message_serializer = AsyncMessageSerializer::new();
         for (id, message) in self.messages.range((last_id, Unbounded)) {
             if part.len() < ASYNC_POOL_PART_SIZE_MESSAGE_BYTES as usize {
-                part.extend(id_async_message_serializer.serialize(id)?);
-                part.extend(async_message_serializer.serialize(message)?);
+                id_async_message_serializer.serialize(id, &mut part)?;
+                async_message_serializer.serialize(message, &mut part)?;
                 next_last_id = Some(*id);
             }
         }
