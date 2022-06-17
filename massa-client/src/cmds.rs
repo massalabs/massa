@@ -3,7 +3,6 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use dialoguer::Password;
 use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::node::NodeId;
@@ -168,13 +167,6 @@ pub enum Command {
         message = "add a list of private keys to the wallet"
     )]
     wallet_add_private_keys,
-
-    #[strum(
-        ascii_case_insensitive,
-        props(args = "Address1 Address2 ..."),
-        message = "given the addresses, unlock a list private keys"
-    )]
-    wallet_unlock_keys,
 
     #[strum(
         ascii_case_insensitive,
@@ -604,13 +596,8 @@ impl Command {
             }
 
             Command::wallet_generate_private_key => {
-                // HERE 1
-                let password = Password::new()
-                    .with_prompt("Enter new Password")
-                    .with_confirmation("Confirm password", "Passwords mismatching")
-                    .interact()?;
                 let key = generate_random_private_key();
-                let ad = wallet.add_private_key(key, &password)?;
+                let ad = wallet.add_private_key(key)?;
                 if json {
                     Ok(Box::new(ad.to_string()))
                 } else {
@@ -621,15 +608,10 @@ impl Command {
             }
 
             Command::wallet_add_private_keys => {
-                // HERE 2
-                let mut addresses = HashMap::new();
-                for key in parse_vec::<PrivateKey>(parameters)? {
-                    let password = Password::new()
-                        .with_prompt(format!("Enter new Password for private key {}", key))
-                        .with_confirmation("Confirm password", "Passwords mismatching")
-                        .interact()?;
-                    addresses.insert(wallet.add_private_key(key, &password)?, key);
-                }
+                let addresses = parse_vec::<PrivateKey>(parameters)?
+                    .into_iter()
+                    .map(|key| Ok((wallet.add_private_key(key)?, key)))
+                    .collect::<Result<HashMap<Address, PrivateKey>>>()?;
                 if json {
                     return Ok(Box::new(addresses.into_keys().collect::<Vec<Address>>()));
                 } else {
@@ -637,17 +619,6 @@ impl Command {
                         println!("Derived and added address {} to the wallet.", address);
                         println!("Type `node_add_staking_private_keys {}` to start staking with this private_key.\n", key);
                     }
-                }
-                Ok(Box::new(()))
-            }
-
-            Command::wallet_unlock_keys => {
-                // HERE 3
-                for addr in parse_vec::<Address>(parameters)?.into_iter() {
-                    let password = Password::new()
-                        .with_prompt(format!("Enter new Password for address {}", addr))
-                        .interact()?;
-                    wallet.unlock_key(addr, password);
                 }
                 Ok(Box::new(()))
             }
@@ -955,7 +926,6 @@ impl Command {
                 .await
             }
             Command::wallet_sign => {
-                // HERE 4
                 if parameters.len() != 2 {
                     bail!("wrong number of parameters");
                 }

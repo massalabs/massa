@@ -76,7 +76,7 @@ async fn main(args: Args) -> Result<()> {
         None => settings.default_node.private_port,
     };
     // ...
-    let mut wallet = Wallet::new(args.wallet)?;
+    let mut wallet = Wallet::new(args.wallet, "PASSWORD".to_string())?;
     let client = Client::new(address, public_port, private_port).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
