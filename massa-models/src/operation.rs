@@ -27,7 +27,7 @@ const OPERATION_ID_STRING_PREFIX: &str = "OPE";
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
 
-/// left part of the operation id hash stored in a vector of size [OPERATION_ID_PREFIX_SIZE_BYTES]
+/// Left part of the operation id hash stored in a vector of size [OPERATION_ID_PREFIX_SIZE_BYTES]
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationPrefixId(Vec<u8>);
 
@@ -153,8 +153,7 @@ impl OperationId {
         ))
     }
 
-    /// split into a tuple of [OperationPrefixId] and [OperationSuffixId]
-    ///
+    /// Split into a tuple of [OperationPrefixId] and [OperationSuffixId]
     pub fn split(&self) -> (OperationPrefixId, OperationSuffixId) {
         (
             OperationPrefixId(self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES].to_vec()),
@@ -162,7 +161,7 @@ impl OperationId {
         )
     }
 
-    /// split into a tuple of [OperationPrefixId] and [OperationSuffixId]
+    /// Split into a tuple of [OperationPrefixId] and [OperationSuffixId]
     pub fn into_split(self) -> (OperationPrefixId, OperationSuffixId) {
         self.split()
     }
@@ -182,7 +181,7 @@ impl OperationPrefixId {
         }
         let mut id = self.0.clone();
         id.extend(&suffix.0);
-        // the following code is safe until we correctly check the size in the if
+        // the following code is safe because we correctly check the size in the if
         // guard and return early an error if the transmutation would fail.
         let data: &[u8; OPERATION_ID_SIZE_BYTES] = unsafe { transmute_copy(&id) };
         Ok(OperationId::from_bytes(data))

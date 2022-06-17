@@ -112,10 +112,10 @@ impl Storage {
         });
         let operations = self.operations.read();
         let (prefix, suffix) = operation_id.split();
-        match operations.get(&prefix) {
-            Some(m) => m.get(&suffix).cloned(),
-            _ => None,
-        }
+        operations
+            .get(&prefix)
+            .and_then(|ops| ops.get(&suffix))
+            .cloned()
     }
 
     /// Get a list of operation ids prefixed with `prefix` argument.
@@ -153,10 +153,7 @@ impl Storage {
         });
         let operations = self.operations.read();
         let (prefix, suffix) = operation_id.split();
-        f(&match operations.get(&prefix) {
-            Some(m) => m.get(&suffix),
-            _ => None,
-        })
+        f(&operations.get(&prefix).and_then(|ops| ops.get(&suffix)))
     }
 
     /// Run a closure over a list of references to potentially stored serialized operations.
@@ -172,11 +169,10 @@ impl Storage {
             .iter()
             .map(|id| {
                 let (prefix, suffix) = id.split();
-                match operations.get(&prefix) {
-                    Some(m) => m.get(&suffix),
-                    _ => None,
-                }
-                .map(|stored| &stored.serialized)
+                operations
+                    .get(&prefix)
+                    .and_then(|ops| ops.get(&suffix))
+                    .map(|stored| &stored.serialized)
             })
             .collect();
         f(&results)
@@ -190,16 +186,16 @@ impl Storage {
         let mut operations = self.operations.write();
         for id in operation_ids {
             let (prefix, suffix) = id.split();
-            let len = match operations.get_mut(&prefix) {
-                Some(m) => {
+            match operations.entry(prefix) {
+                Entry::Occupied(mut entry) => {
+                    let m = entry.get_mut();
                     m.remove(&suffix);
-                    m.len()
+                    if m.is_empty() {
+                        entry.remove();
+                    }
                 }
-                _ => return,
+                _ => continue,
             };
-            if len == 0 {
-                operations.remove(&prefix);
-            }
         }
     }
 }
