@@ -17,6 +17,7 @@ massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_network_exports = { path = "../massa-network-exports" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
+massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time" }
 
 [dev-dependencies]

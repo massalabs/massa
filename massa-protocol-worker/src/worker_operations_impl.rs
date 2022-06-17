@@ -17,8 +17,7 @@ use massa_models::{
     operation::{OperationIds, Operations},
     prehash::BuildMap,
 };
-use massa_network_exports::NetworkError;
-use massa_protocol_exports::{ProtocolError, ProtocolPoolEvent};
+use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use tokio::time::{sleep_until, Instant, Sleep};
 use tracing::warn;
@@ -208,20 +207,12 @@ impl ProtocolWorker {
                 operation_ids.insert(*op_id);
             }
         }
-        self.send_protocol_pool_event(ProtocolPoolEvent::GetOperations((node_id, operation_ids)))
-            .await;
+        let found = self.storage.find_operations(operation_ids);
+        if !found.is_empty() {
+            self.network_command_sender
+                .send_operations(node_id, found)
+                .await?;
+        }
         Ok(())
-    }
-
-    /// Pool send us the operations we previously asked for
-    /// Function called on
-    pub(crate) async fn on_operation_results_from_pool(
-        &mut self,
-        node_id: NodeId,
-        operations: OperationIds,
-    ) -> Result<(), NetworkError> {
-        self.network_command_sender
-            .send_operations(node_id, operations)
-            .await
     }
 }
