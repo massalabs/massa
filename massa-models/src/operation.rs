@@ -900,8 +900,13 @@ mod tests {
             gas_price: Amount::from_str("772.122").unwrap(),
             data: vec![23u8, 123u8, 44u8],
         };
-        let ser_type = op.to_bytes_compact().unwrap();
-        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
+        let mut ser_type = Vec::new();
+        OperationTypeSerializer::new()
+            .serialize(&op, &mut ser_type)
+            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new()
+            .deserialize(&ser_type)
+            .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -910,17 +915,25 @@ mod tests {
             expire_period: 50,
         };
 
-        let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
+        let mut ser_content = Vec::new();
+        OperationSerializer::new()
+            .serialize(&content, &mut ser_content)
+            .unwrap();
+        let (_, res_content) = OperationDeserializer::new()
+            .deserialize(&ser_content)
+            .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv)
-            .unwrap()
-            .1;
+        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv).unwrap();
 
-        let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Wrapped::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        let mut ser_op = Vec::new();
+        WrappedOperationSerializer::new()
+            .serialize(&op, &mut ser_op)
+            .unwrap();
+        let (_, res_op) = WrappedOperationDeserializer::new(OperationDeserializer::new())
+            .deserialize(&ser_op)
+            .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.content.get_validity_range(10), 40..=50);
@@ -945,8 +958,13 @@ mod tests {
             target_func: "target function".to_string(),
             param: "parameter".to_string(),
         };
-        let ser_type = op.to_bytes_compact().unwrap();
-        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
+        let mut ser_type = Vec::new();
+        OperationTypeSerializer::new()
+            .serialize(&op, &mut ser_type)
+            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new()
+            .deserialize(&ser_type)
+            .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -955,17 +973,25 @@ mod tests {
             expire_period: 50,
         };
 
-        let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
+        let mut ser_content = Vec::new();
+        OperationSerializer::new()
+            .serialize(&content, &mut ser_content)
+            .unwrap();
+        let (_, res_content) = OperationDeserializer::new()
+            .deserialize(&ser_content)
+            .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
-
         let op_serializer = OperationSerializer::new();
-        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv)
-            .unwrap()
-            .1;
 
-        let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Wrapped::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv).unwrap();
+
+        let mut ser_op = Vec::new();
+        WrappedOperationSerializer::new()
+            .serialize(&op, &mut ser_op)
+            .unwrap();
+        let (_, res_op) = WrappedOperationDeserializer::new(OperationDeserializer::new())
+            .deserialize(&ser_op)
+            .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.content.get_validity_range(10), 40..=50);
