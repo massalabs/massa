@@ -3,7 +3,7 @@
 use massa_models::prehash::Map;
 use massa_models::SerializeCompact;
 use massa_models::{constants::CHANNEL_SIZE, EndorsementId, OperationId};
-use massa_models::{SignedEndorsement, SignedOperation};
+use massa_models::{WrappedEndorsement, WrappedOperation};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
@@ -47,7 +47,7 @@ impl MockProtocolController {
         }
     }
 
-    pub async fn received_operations(&mut self, operations: Map<OperationId, SignedOperation>) {
+    pub async fn received_operations(&mut self, operations: Map<OperationId, WrappedOperation>) {
         let operations = operations
             .into_iter()
             .filter_map(|(id, op)| {
@@ -68,7 +68,7 @@ impl MockProtocolController {
 
     pub async fn received_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, SignedEndorsement>,
+        endorsements: Map<EndorsementId, WrappedEndorsement>,
     ) {
         self.pool_event_tx
             .send(ProtocolPoolEvent::ReceivedEndorsements {

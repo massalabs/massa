@@ -11,7 +11,7 @@ use massa_models::{
     operation::{OperationIds, Operations},
     prehash::{BuildMap, Map, Set},
     signed::Signable,
-    Address, Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader,
+    Address, Block, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -536,7 +536,7 @@ impl ProtocolWorker {
                     { "endorsements": endorsements }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: Map<EndorsementId, SignedEndorsement> = endorsements
+                    let new_endorsements: Map<EndorsementId, WrappedEndorsement> = endorsements
                         .iter()
                         .filter(|(id, _)| !node_info.knows_endorsement(*id))
                         .map(|(k, v)| (*k, v.clone()))
@@ -795,7 +795,7 @@ impl ProtocolWorker {
     /// - Block matches that of the block.
     async fn note_header_from_node(
         &mut self,
-        header: &SignedHeader,
+        header: &WrappedHeader,
         source_node_id: &NodeId,
     ) -> Result<Option<(BlockId, Map<EndorsementId, u32>, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
@@ -1161,7 +1161,7 @@ impl ProtocolWorker {
     /// - Valid signature.
     async fn note_endorsements_from_node(
         &mut self,
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(Map<EndorsementId, u32>, bool), ProtocolError> {

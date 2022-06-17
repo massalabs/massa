@@ -75,7 +75,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
     stats::NetworkStats,
-    Block, BlockId, SignedEndorsement, SignedHeader,
+    Block, BlockId, WrappedEndorsement, WrappedHeader,
 };
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
@@ -102,7 +102,7 @@ pub enum NodeCommand {
     /// Ask for a set of operations
     AskForOperations(OperationIds),
     /// Endorsements
-    SendEndorsements(Vec<SignedEndorsement>),
+    SendEndorsements(Vec<WrappedEndorsement>),
 }
 
 /// Event types that node worker can emit
@@ -117,7 +117,7 @@ pub enum NodeEventType {
     /// Node we are connected to sent block
     ReceivedBlock(Block, Vec<u8>),
     /// Node we are connected to sent block header
-    ReceivedBlockHeader(SignedHeader),
+    ReceivedBlockHeader(WrappedHeader),
     /// Node we are connected to asks for a block.
     ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,
@@ -129,7 +129,7 @@ pub enum NodeEventType {
     /// Receive a list of wanted operations
     ReceivedAskForOperations(OperationIds),
     /// Receive a set of endorsement
-    ReceivedEndorsements(Vec<SignedEndorsement>),
+    ReceivedEndorsements(Vec<WrappedEndorsement>),
 }
 
 /// Events node worker can emit.
@@ -183,7 +183,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// endorsements
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     },
     /// sign message with our node private key (associated to node id)
     /// != staking key
@@ -246,7 +246,7 @@ pub enum NetworkEvent {
         /// from node id
         source_node_id: NodeId,
         /// header
-        header: SignedHeader,
+        header: WrappedHeader,
     },
     /// Someone ask for block with given header hash.
     AskedForBlocks {
@@ -290,7 +290,7 @@ pub enum NetworkEvent {
         /// node id
         node: NodeId,
         /// Endorsements
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     },
 }
 

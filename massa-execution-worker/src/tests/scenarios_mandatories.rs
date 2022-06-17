@@ -12,8 +12,8 @@ use massa_ledger_worker::FinalLedger;
 use massa_models::{
     api::EventFilter,
     constants::{AMOUNT_DECIMAL_FACTOR, FINAL_HISTORY_LENGTH, THREAD_COUNT},
-    Block, BlockHeader, BlockId, Operation, OperationType, SerializeCompact, SignedHeader,
-    SignedOperation,
+    Block, BlockHeader, BlockId, Operation, OperationType, SerializeCompact, WrappedHeader,
+    WrappedOperation,
 };
 use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
@@ -305,14 +305,14 @@ fn create_execute_sc_operation(
     sender_private_key: PrivateKey,
     sender_public_key: PublicKey,
     data: &[u8],
-) -> Result<SignedOperation, ExecutionError> {
+) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: u64::MAX,
         coins: Amount::from_raw(u64::MAX),
         gas_price: Amount::from_raw(AMOUNT_DECIMAL_FACTOR),
     };
-    let (_, op) = SignedOperation::new_signed(
+    let (_, op) = WrappedOperation::new_wrapped(
         Operation {
             sender_public_key,
             fee: Amount::zero(),
@@ -334,7 +334,7 @@ fn create_call_sc_operation(
     target_addr: Address,
     target_func: String,
     param: String,
-) -> Result<SignedOperation, ExecutionError> {
+) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::CallSC {
         max_gas,
         target_addr,
@@ -344,7 +344,7 @@ fn create_call_sc_operation(
         target_func,
         param,
     };
-    let (_, op) = SignedOperation::new_signed(
+    let (_, op) = WrappedOperation::new_wrapped(
         Operation {
             sender_public_key,
             fee: Amount::zero(),
@@ -361,7 +361,7 @@ fn create_call_sc_operation(
 ///
 /// Return a result that should be unwrapped in the root `#[test]` routine.
 fn create_block(
-    operations: Vec<SignedOperation>,
+    operations: Vec<WrappedOperation>,
     slot: Slot,
 ) -> Result<(BlockId, Block), ExecutionError> {
     let creator = generate_random_private_key();
@@ -373,7 +373,7 @@ fn create_block(
         })[..],
     );
 
-    let (id, header) = SignedHeader::new_signed(
+    let (id, header) = WrappedHeader::new_wrapped(
         BlockHeader {
             creator: public_key,
             slot,

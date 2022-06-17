@@ -5,7 +5,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
 };
-use massa_models::{Block, BlockId, SignedEndorsement, SignedHeader};
+use massa_models::{Block, BlockId, WrappedEndorsement, WrappedHeader};
 use massa_network_exports::{
     NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
@@ -70,7 +70,7 @@ impl MockNetworkController {
 
     /// send header
     /// todo inconsistency with names
-    pub async fn send_header(&mut self, source_node_id: NodeId, header: SignedHeader) {
+    pub async fn send_header(&mut self, source_node_id: NodeId, header: WrappedHeader) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlockHeader {
                 source_node_id,
@@ -144,7 +144,7 @@ impl MockNetworkController {
     pub async fn send_endorsements(
         &mut self,
         source_node_id: NodeId,
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedEndorsements {

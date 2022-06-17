@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 use massa_models::ledger_models::LedgerData;
-use massa_models::signed::Signed;
+use massa_models::signed::Wrapped;
 use massa_models::{Address, Amount, BlockId, Endorsement, Slot};
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -136,7 +136,7 @@ async fn test_reward_split() {
                 index,
                 endorsed_block: b1_id,
             };
-            let ed_1 = Signed::new_signed(content.clone(), &slot_two_priv_key)
+            let ed_1 = Wrapped::new_wrapped(content.clone(), &slot_two_priv_key)
                 .unwrap()
                 .1;
 
@@ -151,7 +151,7 @@ async fn test_reward_split() {
                 index,
                 endorsed_block: b1_id,
             };
-            let ed_2 = Signed::new_signed(content.clone(), &slot_one_priv_key)
+            let ed_2 = Wrapped::new_wrapped(content.clone(), &slot_one_priv_key)
                 .unwrap()
                 .1;
 
@@ -166,7 +166,7 @@ async fn test_reward_split() {
                 index,
                 endorsed_block: b1_id,
             };
-            let ed_3 = Signed::new_signed(content.clone(), &slot_two_priv_key)
+            let ed_3 = Wrapped::new_wrapped(content.clone(), &slot_two_priv_key)
                 .unwrap()
                 .1;
 

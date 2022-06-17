@@ -4,7 +4,7 @@ use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Statu
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
-    Address, BlockId, OperationSearchResult, SignedEndorsement, Slot, StakersCycleProductionStats,
+    Address, BlockId, OperationSearchResult, WrappedEndorsement, Slot, StakersCycleProductionStats,
 };
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolEventReceiver;
@@ -419,7 +419,7 @@ impl ConsensusCommandSender {
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, SignedEndorsement>, ConsensusError> {
+    ) -> Result<Map<EndorsementId, WrappedEndorsement>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!(
             "consensus.consensus_controller.get_endorsements_by_address",

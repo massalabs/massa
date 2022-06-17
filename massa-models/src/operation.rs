@@ -4,7 +4,7 @@ use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::node_configuration::MAX_OPERATIONS_PER_MESSAGE;
 use crate::prehash::{BuildMap, PreHashed, Set};
 use crate::serialization::StringDeserializer;
-use crate::signed::{Id, Signed, SignedDeserializer, SignedSerializer};
+use crate::signed::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -159,10 +159,10 @@ impl std::fmt::Display for Operation {
 }
 
 /// signed operation
-pub type SignedOperation = Signed<Operation, OperationId>;
-pub type SignedOperationSerializer = SignedSerializer<Operation, OperationId>;
-pub type SignedOperationDeserializer =
-    SignedDeserializer<Operation, OperationId, OperationDeserializer>;
+pub type WrappedOperation = Wrapped<Operation, OperationId>;
+pub type WrappedOperationSerializer = WrappedSerializer<Operation, OperationId>;
+pub type WrappedOperationDeserializer =
+    WrappedDeserializer<Operation, OperationId, OperationDeserializer>;
 
 pub struct OperationSerializer {
     u64_serializer: U64VarIntSerializer,
@@ -584,24 +584,27 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     }
 }
 
-impl SignedOperation {
+impl WrappedOperation {
     /// Verifies the signature and integrity of the operation and computes operation ID
     pub fn verify_integrity(&self) -> Result<OperationId, ModelsError> {
-        self.verify_signature(&self.content.sender_public_key)?;
-        self.content.compute_id()
+        self.verify_signature(&self.creator_public_key)?;
+        Ok(self.id)
     }
 }
 
-impl Operation {
+impl WrappedOperation {
     /// get the range of periods during which an operation is valid
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
-        let start = self.expire_period.saturating_sub(operation_validity_period);
-        start..=self.expire_period
+        let start = self
+            .content
+            .expire_period
+            .saturating_sub(operation_validity_period);
+        start..=self.content.expire_period
     }
 
     /// Get the amount of gas used by the operation
     pub fn get_gas_usage(&self) -> u64 {
-        match &self.op {
+        match &self.content.op {
             OperationType::ExecuteSC { max_gas, .. } => *max_gas,
             OperationType::CallSC { max_gas, .. } => *max_gas,
             OperationType::RollBuy { .. } => 0,
@@ -612,7 +615,7 @@ impl Operation {
 
     /// Get the amount of coins used by the operation to pay for gas
     pub fn get_gas_coins(&self) -> Amount {
-        match &self.op {
+        match &self.content.op {
             OperationType::ExecuteSC {
                 max_gas, gas_price, ..
             } => gas_price.saturating_mul_u64(*max_gas),
@@ -628,9 +631,9 @@ impl Operation {
     /// get the addresses that are involved in this operation from a ledger point of view
     pub fn get_ledger_involved_addresses(&self) -> Set<Address> {
         let mut res = Set::<Address>::default();
-        let emitter_address = Address::from_public_key(&self.sender_public_key);
+        let emitter_address = Address::from_public_key(&self.creator_public_key);
         res.insert(emitter_address);
-        match &self.op {
+        match &self.content.op {
             OperationType::Transaction {
                 recipient_address, ..
             } => {
@@ -649,13 +652,13 @@ impl Operation {
     /// get the addresses that are involved in this operation from a rolls point of view
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();
-        match self.op {
+        match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {
-                res.insert(Address::from_public_key(&self.sender_public_key));
+                res.insert(Address::from_public_key(&self.creator_public_key));
             }
             OperationType::RollSell { .. } => {
-                res.insert(Address::from_public_key(&self.sender_public_key));
+                res.insert(Address::from_public_key(&self.creator_public_key));
             }
             OperationType::ExecuteSC { .. } => {}
             OperationType::CallSC { .. } => {}
@@ -746,11 +749,11 @@ impl Deserializer<OperationIds> for OperationIdsDeserializer {
 }
 
 /// Set of self containing signed operations.
-pub type Operations = Vec<SignedOperation>;
+pub type Operations = Vec<WrappedOperation>;
 
 pub struct OperationsSerializer {
     u32_serializer: U32VarIntSerializer,
-    signed_op_serializer: SignedOperationSerializer,
+    signed_op_serializer: WrappedOperationSerializer,
 }
 
 impl OperationsSerializer {
@@ -760,7 +763,7 @@ impl OperationsSerializer {
                 Included(0),
                 Included(MAX_OPERATIONS_PER_MESSAGE),
             ),
-            signed_op_serializer: SignedOperationSerializer::new(),
+            signed_op_serializer: WrappedOperationSerializer::new(),
         }
     }
 }
@@ -786,7 +789,7 @@ impl Serializer<Operations> for OperationsSerializer {
 
 pub struct OperationsDeserializer {
     u32_deserializer: U32VarIntDeserializer,
-    signed_op_deserializer: SignedOperationDeserializer,
+    signed_op_deserializer: WrappedOperationDeserializer,
 }
 
 impl OperationsDeserializer {
@@ -796,7 +799,7 @@ impl OperationsDeserializer {
                 Included(0),
                 Included(MAX_OPERATIONS_PER_MESSAGE),
             ),
-            signed_op_deserializer: SignedOperationDeserializer::new(OperationDeserializer::new()),
+            signed_op_deserializer: WrappedOperationDeserializer::new(OperationDeserializer::new()),
         }
     }
 }
@@ -846,8 +849,13 @@ mod tests {
             recipient_address: Address::from_public_key(&recv_pub),
             amount: Amount::default(),
         };
-        let ser_type = op.to_bytes_compact().unwrap();
-        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
+        let mut ser_type = Vec::new();
+        OperationTypeSerializer::new()
+            .serialize(&op, &mut ser_type)
+            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new()
+            .deserialize(&ser_type)
+            .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -856,20 +864,28 @@ mod tests {
             expire_period: 50,
         };
 
-        let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
+        let mut ser_content = Vec::new();
+        OperationSerializer::new()
+            .serialize(&content, &mut ser_content)
+            .unwrap();
+        let (_, res_content) = OperationDeserializer::new()
+            .deserialize(&ser_content)
+            .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Signed::new_signed(content, op_serializer, &sender_priv)
-            .unwrap()
-            .1;
+        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv).unwrap();
 
-        let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        let mut ser_op = Vec::new();
+        WrappedOperationSerializer::new()
+            .serialize(&op, &mut ser_op)
+            .unwrap();
+        let (_, res_op) = WrappedOperationDeserializer::new(OperationDeserializer::new())
+            .deserialize(&ser_op)
+            .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
-        assert_eq!(op.content.get_validity_range(10), 40..=50);
+        assert_eq!(op.get_validity_range(10), 40..=50);
     }
 
     #[test]
@@ -899,12 +915,12 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Signed::new_signed(content, op_serializer, &sender_priv)
+        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv)
             .unwrap()
             .1;
 
         let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        let (res_op, _) = Wrapped::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.content.get_validity_range(10), 40..=50);
@@ -944,12 +960,12 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
 
         let op_serializer = OperationSerializer::new();
-        let op = Signed::new_signed(content, op_serializer, &sender_priv)
+        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv)
             .unwrap()
             .1;
 
         let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        let (res_op, _) = Wrapped::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.content.get_validity_range(10), 40..=50);

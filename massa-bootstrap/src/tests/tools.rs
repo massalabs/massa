@@ -18,7 +18,7 @@ use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     rolls::{RollCounts, RollUpdate, RollUpdateSerializer, RollUpdates},
-    signed::Signed,
+    signed::Wrapped,
     Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement, Operation,
     SerializeCompact, Slot,
 };
@@ -404,14 +404,14 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     };
 
     let block = Block {
-        header: Signed::new_signed(
+        header: Wrapped::new_wrapped(
             BlockHeader {
                 creator: get_random_public_key(),
                 slot: Slot::new(1, 1),
                 parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
                 operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                 endorsements: vec![
-                    Signed::new_signed(
+                    Wrapped::new_wrapped(
                         Endorsement {
                             sender_public_key: get_random_public_key(),
                             slot: Slot::new(1, 0),
@@ -422,7 +422,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                     )
                     .unwrap()
                     .1,
-                    Signed::new_signed(
+                    Wrapped::new_wrapped(
                         Endorsement {
                             sender_public_key: get_random_public_key(),
                             slot: Slot::new(4, 1),
@@ -440,7 +440,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         .unwrap()
         .1,
         operations: vec![
-            Signed::new_signed(
+            Wrapped::new_wrapped(
                 Operation {
                     sender_public_key: get_random_public_key(),
                     fee: Amount::from_str("1524878").unwrap(),
@@ -454,7 +454,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             )
             .unwrap()
             .1,
-            Signed::new_signed(
+            Wrapped::new_wrapped(
                 Operation {
                     sender_public_key: get_random_public_key(),
                     fee: Amount::from_str("878763222").unwrap(),
@@ -465,7 +465,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             )
             .unwrap()
             .1,
-            Signed::new_signed(
+            Wrapped::new_wrapped(
                 Operation {
                     sender_public_key: get_random_public_key(),
                     fee: Amount::from_str("4545").unwrap(),

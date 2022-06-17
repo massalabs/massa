@@ -24,7 +24,7 @@ use massa_ledger_exports::{
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
-use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
+use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
@@ -364,7 +364,7 @@ impl ExecutionState {
     /// * `block_creator_addr`: address of the block creator
     pub fn execute_operation(
         &self,
-        operation: &SignedOperation,
+        operation: &WrappedOperation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
         // prefilter only SC operations
@@ -408,7 +408,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `SignedOperation` to process, must be an `ExecuteSC`
+    /// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`
     /// * `block_creator_addr`: address of the block creator
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
@@ -503,7 +503,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `SignedOperation` to process, must be an `CallSC`
+    /// * `operation`: the `WrappedOperation` to process, must be an `CallSC`
     /// * `block_creator_addr`: address of the block creator
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender

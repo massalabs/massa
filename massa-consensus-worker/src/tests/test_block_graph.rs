@@ -12,7 +12,7 @@ use massa_models::{
     init_serialization_context,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     prehash::{Map, Set},
-    signed::Signed,
+    signed::Wrapped,
     Address, Block, BlockHeader, BlockId, DeserializeCompact, SerializeCompact, Slot,
 };
 use massa_models::{Amount, Endorsement};
@@ -28,7 +28,7 @@ use tracing::warn;
 fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
     let pk = generate_random_private_key();
     let block = Block {
-        header: Signed::new_signed(
+        header: Wrapped::new_wrapped(
             BlockHeader {
                 creator: PublicKey::from_bs58_check(
                     "2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA",
@@ -38,7 +38,7 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
                 parents: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
                 slot: Slot::new(1, 0),
                 endorsements: vec![
-                    Signed::new_signed(
+                    Wrapped::new_wrapped(
                         Endorsement {
                             sender_public_key: PublicKey::from_bs58_check(
                                 "2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA",

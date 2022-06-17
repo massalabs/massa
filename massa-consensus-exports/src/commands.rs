@@ -6,7 +6,7 @@ use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Statu
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
-    Address, BlockId, OperationSearchResult, SignedEndorsement, Slot, StakersCycleProductionStats,
+    Address, BlockId, OperationSearchResult, WrappedEndorsement, Slot, StakersCycleProductionStats,
 };
 
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -106,7 +106,7 @@ pub enum ConsensusCommand {
         /// wanted address
         address: Address,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, WrappedEndorsement>>,
     },
     /// get endorsements by id
     GetEndorsementsById {

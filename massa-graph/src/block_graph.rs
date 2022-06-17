@@ -13,12 +13,12 @@ use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
-use massa_models::signed::{Signable, Signed};
+use massa_models::signed::{Signable, Wrapped};
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
-    SignedEndorsement, SignedHeader, SignedOperation,
+    WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use massa_models::{clique::Clique, SerializeCompact};
 use massa_models::{
@@ -41,7 +41,7 @@ use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
-    Header(SignedHeader),
+    Header(WrappedHeader),
     Block(
         BlockId,
         Slot,
@@ -119,7 +119,7 @@ enum BlockStatus {
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
         /// Just the header of that block
-        header: SignedHeader,
+        header: WrappedHeader,
         /// why it was discarded
         reason: DiscardReason,
         /// Used to limit and sort the number of blocks/headers waiting for dependencies
@@ -149,7 +149,7 @@ pub enum ExportBlockStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
     /// Header of the corresponding block.
-    pub header: SignedHeader,
+    pub header: WrappedHeader,
     /// For (i, set) in children,
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,
@@ -253,7 +253,7 @@ pub struct BlockGraphExport {
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: Map<BlockId, ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: Map<BlockId, (DiscardReason, SignedHeader)>,
+    pub discarded_blocks: Map<BlockId, (DiscardReason, WrappedHeader)>,
     /// Best parents hashes in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
@@ -406,7 +406,7 @@ enum BlockOperationsCheckOutcome {
 pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {
     let private_key = cfg.genesis_key;
     let public_key = derive_public_key(&private_key);
-    let (header_hash, header) = Signed::new_signed(
+    let (header_hash, header) = Wrapped::new_wrapped(
         BlockHeader {
             creator: public_key,
             slot: Slot::new(0, thread_number),
@@ -657,8 +657,8 @@ impl BlockGraph {
     pub fn block_state_try_apply_op(
         &self,
         state_accu: &mut BlockStateAccumulator,
-        header: &SignedHeader,
-        operation: &SignedOperation,
+        header: &WrappedHeader,
+        operation: &WrappedOperation,
         pos: &mut ProofOfStake,
     ) -> Result<()> {
         let block_creator_address = Address::from_public_key(&header.content.creator);
@@ -695,7 +695,7 @@ impl BlockGraph {
     pub fn block_state_sync_rolls(
         &self,
         accu: &mut BlockStateAccumulator,
-        header: &SignedHeader,
+        header: &WrappedHeader,
         pos: &ProofOfStake,
         involved_addrs: &Set<Address>,
     ) -> Result<()> {
@@ -725,7 +725,7 @@ impl BlockGraph {
     pub fn block_state_try_apply(
         &self,
         accu: &mut BlockStateAccumulator,
-        header: &SignedHeader,
+        header: &WrappedHeader,
         mut opt_ledger_changes: Option<LedgerChanges>,
         opt_roll_updates: Option<RollUpdates>,
         pos: &mut ProofOfStake,
@@ -907,7 +907,7 @@ impl BlockGraph {
     /// initializes a block state accumulator from a block header
     pub fn block_state_accumulator_init(
         &self,
-        header: &SignedHeader,
+        header: &WrappedHeader,
         pos: &mut ProofOfStake,
     ) -> Result<BlockStateAccumulator> {
         let block_thread = header.content.slot.thread;
@@ -1365,7 +1365,7 @@ impl BlockGraph {
     pub fn incoming_header(
         &mut self,
         block_id: BlockId,
-        header: SignedHeader,
+        header: WrappedHeader,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<()> {
@@ -1966,7 +1966,7 @@ impl BlockGraph {
     fn check_header(
         &self,
         block_id: &BlockId,
-        header: &SignedHeader,
+        header: &WrappedHeader,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<HeaderCheckOutcome> {
@@ -2301,7 +2301,7 @@ impl BlockGraph {
     /// * endorsed slot is `parent_in_own_thread` slot
     fn check_endorsements(
         &self,
-        header: &SignedHeader,
+        header: &WrappedHeader,
         pos: &mut ProofOfStake,
         parent_in_own_thread: &ActiveBlock,
     ) -> Result<EndorsementsCheckOutcome> {
@@ -3795,8 +3795,8 @@ impl BlockGraph {
     pub fn get_endorsement_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, SignedEndorsement>> {
-        let mut res: Map<EndorsementId, SignedEndorsement> = Default::default();
+    ) -> Result<Map<EndorsementId, WrappedEndorsement>> {
+        let mut res: Map<EndorsementId, WrappedEndorsement> = Default::default();
         for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(b_id) {
                 if let Some(eds) = ab.addresses_to_endorsements.get(&address) {

@@ -15,7 +15,7 @@ use massa_models::api::{
     SCELedgerInfo,
 };
 use massa_models::execution::ReadOnlyResult;
-use massa_models::SignedOperation;
+use massa_models::WrappedOperation;
 
 use massa_models::{
     api::{
@@ -717,7 +717,7 @@ impl Endpoints for API<Public> {
 
     fn send_operations(
         &self,
-        ops: Vec<SignedOperation>,
+        ops: Vec<WrappedOperation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let api_cfg = self.0.api_settings;

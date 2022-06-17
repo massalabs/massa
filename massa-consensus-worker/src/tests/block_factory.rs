@@ -10,8 +10,8 @@ use super::{
 };
 use massa_hash::Hash;
 use massa_models::{
-    signed::{Signable, Signed},
-    Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
+    signed::{Signable, Wrapped},
+    Block, BlockHeader, BlockId, WrappedEndorsement, WrappedOperation, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 
@@ -19,8 +19,8 @@ pub struct BlockFactory {
     pub best_parents: Vec<BlockId>,
     pub creator_priv_key: PrivateKey,
     pub slot: Slot,
-    pub endorsements: Vec<SignedEndorsement>,
-    pub operations: Vec<SignedOperation>,
+    pub endorsements: Vec<WrappedEndorsement>,
+    pub operations: Vec<WrappedOperation>,
     pub protocol_controller: MockProtocolController,
 }
 
@@ -41,7 +41,7 @@ impl BlockFactory {
 
     pub async fn create_and_receive_block(&mut self, valid: bool) -> (BlockId, Block) {
         let public_key = derive_public_key(&self.creator_priv_key);
-        let (hash, header) = Signed::new_signed(
+        let (hash, header) = Wrapped::new_wrapped(
             BlockHeader {
                 creator: public_key,
                 slot: self.slot,
@@ -77,7 +77,7 @@ impl BlockFactory {
 
     pub fn sign_header(&self, header: BlockHeader) -> Block {
         let _public_key = derive_public_key(&self.creator_priv_key);
-        let (_hash, header) = Signed::new_signed(header, &self.creator_priv_key).unwrap();
+        let (_hash, header) = Wrapped::new_wrapped(header, &self.creator_priv_key).unwrap();
 
         Block {
             header,

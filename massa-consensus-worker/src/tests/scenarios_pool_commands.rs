@@ -7,7 +7,7 @@ use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
 use massa_models::clique::Clique;
 use massa_models::ledger_models::LedgerData;
 use massa_models::signed::Signable;
-use massa_models::{Amount, BlockId, SignedOperation, Slot};
+use massa_models::{Amount, BlockId, WrappedOperation, Slot};
 use massa_pool::PoolCommand;
 use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
@@ -423,7 +423,7 @@ async fn test_max_batch_size_get_operations() {
 
 fn get_bootgraph(
     creator: PublicKey,
-    operation: SignedOperation,
+    operation: WrappedOperation,
     ledger: ConsensusLedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0_id, genesis_0) =

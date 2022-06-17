@@ -10,7 +10,7 @@ use massa_models::{
     Slot,
 };
 use massa_models::{
-    Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
+    Block, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;
@@ -41,7 +41,7 @@ pub enum ProtocolEvent {
         /// its id
         block_id: BlockId,
         /// The header
-        header: SignedHeader,
+        header: WrappedHeader,
     },
     /// Ask for a list of blocks from consensus.
     GetBlocks(Vec<BlockId>),
@@ -52,14 +52,14 @@ pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
         /// the operations
-        operations: Map<OperationId, (SignedOperation, Vec<u8>)>,
+        operations: Map<OperationId, (WrappedOperation, Vec<u8>)>,
         /// whether or not to propagate operations
         propagate: bool,
     },
     /// Endorsements were received
     ReceivedEndorsements {
         /// the endorsements
-        endorsements: Map<EndorsementId, SignedEndorsement>,
+        endorsements: Map<EndorsementId, WrappedEndorsement>,
         /// whether or not to propagate endorsements
         propagate: bool,
     },
@@ -105,7 +105,7 @@ pub enum ProtocolCommand {
     /// Propagate operations ids (send batches)
     PropagateOperations(OperationIds),
     /// Propagate endorsements
-    PropagateEndorsements(Map<EndorsementId, SignedEndorsement>),
+    PropagateEndorsements(Map<EndorsementId, WrappedEndorsement>),
 }
 
 /// protocol management commands
@@ -220,7 +220,7 @@ impl ProtocolCommandSender {
     /// propagate endorsements to connected node
     pub async fn propagate_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, SignedEndorsement>,
+        endorsements: Map<EndorsementId, WrappedEndorsement>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
             "endorsements": endorsements

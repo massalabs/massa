@@ -7,7 +7,7 @@ use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signable;
 use massa_models::OperationId;
 use massa_models::{Address, SerializeCompact};
-use massa_models::{SignedOperation, Slot};
+use massa_models::{WrappedOperation, Slot};
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use serial_test::serial;
@@ -673,7 +673,7 @@ async fn test_new_final_ops() {
                 _ => None,
             };
 
-            let mut ops: Vec<(OperationId, SignedOperation)> = Vec::new();
+            let mut ops: Vec<(OperationId, WrappedOperation)> = Vec::new();
             for i in 0..10 {
                 let (op, _) = get_transaction_with_addresses(8, i, pubkey_a, priv_a, pubkey_b);
                 ops.push((op.content.compute_id().unwrap(), op));

@@ -15,9 +15,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
 
-/// Signed structure T where U is the associated id
+/// Wrapped structure T where U is the associated id
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Signed<T, U>
+pub struct Wrapped<T, U>
 where
     T: Display,
     U: Id,
@@ -46,7 +46,7 @@ pub trait Id {
     fn hash(&self) -> Hash;
 }
 
-impl<T, U> Display for Signed<T, U>
+impl<T, U> Display for Wrapped<T, U>
 where
     T: Display,
     U: Id,
@@ -58,13 +58,13 @@ where
     }
 }
 
-impl<T, U> Signed<T, U>
+impl<T, U> Wrapped<T, U>
 where
     T: Display,
     U: Id,
 {
     /// generate new signed structure and id
-    pub fn new_signed<ST: Serializer<T>>(
+    pub fn new_wrapped<ST: Serializer<T>>(
         content: T,
         content_serializer: ST,
         private_key: &PrivateKey,
@@ -101,7 +101,7 @@ where
 }
 
 // NOTE FOR EXPLICATION: No content serializer because serialized data is already here.
-pub struct SignedSerializer<T, U>
+pub struct WrappedSerializer<T, U>
 where
     T: Display,
     U: Id,
@@ -110,7 +110,7 @@ where
     marker_u: std::marker::PhantomData<U>,
 }
 
-impl<T, U> SignedSerializer<T, U>
+impl<T, U> WrappedSerializer<T, U>
 where
     T: Display,
     U: Id,
@@ -123,19 +123,19 @@ where
     }
 }
 
-impl<T, U> Serializer<Signed<T, U>> for SignedSerializer<T, U>
+impl<T, U> Serializer<Wrapped<T, U>> for WrappedSerializer<T, U>
 where
     T: Display,
     U: Id,
 {
-    fn serialize(&self, value: &Signed<T, U>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+    fn serialize(&self, value: &Wrapped<T, U>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         buffer.extend(value.signature.into_bytes());
         buffer.extend(value.serialized_data);
         Ok(())
     }
 }
 
-pub struct SignedDeserializer<T, U, DT>
+pub struct WrappedDeserializer<T, U, DT>
 where
     T: Display,
     U: Id,
@@ -148,7 +148,7 @@ where
     marker_u: std::marker::PhantomData<U>,
 }
 
-impl<T, U, DT> SignedDeserializer<T, U, DT>
+impl<T, U, DT> WrappedDeserializer<T, U, DT>
 where
     T: Display,
     U: Id,
@@ -165,7 +165,7 @@ where
     }
 }
 
-impl<T, U, DT> Deserializer<Signed<T, U>> for SignedDeserializer<T, U, DT>
+impl<T, U, DT> Deserializer<Wrapped<T, U>> for WrappedDeserializer<T, U, DT>
 where
     T: Display,
     U: Id,
@@ -174,7 +174,7 @@ where
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Signed<T, U>, E> {
+    ) -> IResult<&'a [u8], Wrapped<T, U>, E> {
         let (serialized_data, (signature, creator_public_key)) = tuple((
             |input| self.signature_deserializer.deserialize(input),
             |input| self.public_key_deserializer.deserialize(input),
@@ -189,7 +189,7 @@ where
         let creator_address = Address::from_public_key(&creator_public_key);
         Ok((
             rest,
-            Signed {
+            Wrapped {
                 content,
                 signature,
                 creator_public_key,

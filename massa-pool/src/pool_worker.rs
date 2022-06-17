@@ -7,8 +7,8 @@ use massa_models::prehash::{Map, Set};
 use massa_models::stats::PoolStats;
 use massa_models::SerializeCompact;
 use massa_models::{
-    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, SignedEndorsement,
-    SignedOperation, Slot,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, WrappedEndorsement,
+    WrappedOperation, Slot,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use massa_storage::Storage;
@@ -19,7 +19,7 @@ use tracing::warn;
 #[derive(Debug)]
 pub enum PoolCommand {
     /// Add operations to the pool
-    AddOperations(Map<OperationId, SignedOperation>),
+    AddOperations(Map<OperationId, WrappedOperation>),
     /// current slot update
     UpdateCurrentSlot(Slot),
     /// Latest final periods update
@@ -35,14 +35,14 @@ pub enum PoolCommand {
         /// max size of an operation in bytes
         max_size: u64,
         /// response channel
-        response_tx: oneshot::Sender<Vec<(OperationId, SignedOperation, u64)>>,
+        response_tx: oneshot::Sender<Vec<(OperationId, WrappedOperation, u64)>>,
     },
     /// get operations by id
     GetOperations {
         /// ids
         operation_ids: Set<OperationId>,
         /// response channel
-        response_tx: oneshot::Sender<Map<OperationId, SignedOperation>>,
+        response_tx: oneshot::Sender<Map<OperationId, WrappedOperation>>,
     },
     /// Get operations by involved address
     GetRecentOperations {
@@ -63,10 +63,10 @@ pub enum PoolCommand {
         /// expected creators
         creators: Vec<Address>,
         /// response channel
-        response_tx: oneshot::Sender<Vec<(EndorsementId, SignedEndorsement)>>,
+        response_tx: oneshot::Sender<Vec<(EndorsementId, WrappedEndorsement)>>,
     },
     /// add endorsements to pool
-    AddEndorsements(Map<EndorsementId, SignedEndorsement>),
+    AddEndorsements(Map<EndorsementId, WrappedEndorsement>),
     /// get pool stats
     GetStats(oneshot::Sender<PoolStats>),
     /// get endorsements by address
@@ -74,14 +74,14 @@ pub enum PoolCommand {
         /// address
         address: Address,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, WrappedEndorsement>>,
     },
     /// get endorsements by id
     GetEndorsementsById {
         /// ids
         endorsements: Set<EndorsementId>,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, WrappedEndorsement>>,
     },
 }
 

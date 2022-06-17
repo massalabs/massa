@@ -6,10 +6,10 @@ use massa_consensus_exports::{tools::*, ConsensusConfig};
 use massa_graph::ledger::ConsensusLedgerSubset;
 use massa_hash::Hash;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
-use massa_models::signed::{Signable, Signed};
+use massa_models::signed::{Signable, Wrapped};
 use massa_models::SerializeCompact;
 use massa_models::{ledger_models::LedgerData, EndorsementId, OperationType};
-use massa_models::{Address, Amount, Block, BlockHeader, SignedEndorsement, Slot};
+use massa_models::{Address, Amount, Block, BlockHeader, WrappedEndorsement, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{generate_random_private_key, PrivateKey};
@@ -736,7 +736,7 @@ async fn test_block_filling() {
                     } => {
                         assert_eq!(Slot::new(1, 0), target_slot);
                         assert_eq!(parent, prev_blocks[0]);
-                        let mut eds: Vec<(EndorsementId, SignedEndorsement)> = Vec::new();
+                        let mut eds: Vec<(EndorsementId, WrappedEndorsement)> = Vec::new();
                         for (index, creator) in creators.iter().enumerate() {
                             let ed = if *creator == address_a {
                                 create_endorsement(priv_a, target_slot, parent, index as u32)
@@ -827,7 +827,7 @@ async fn test_block_filling() {
             }
 
             // create empty block
-            let (_block_id, header) = Signed::new_signed(
+            let (_block_id, header) = Wrapped::new_wrapped(
                 BlockHeader {
                     creator: block.header.content.creator,
                     slot: block.header.content.slot,

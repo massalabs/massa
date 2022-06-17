@@ -11,12 +11,12 @@ use massa_hash::Hash;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
-use massa_models::{address::AddressState, signed::Signed};
+use massa_models::{address::AddressState, signed::Wrapped};
 use massa_models::{
     api::{LedgerInfo, RollsInfo},
-    SignedEndorsement,
+    WrappedEndorsement,
 };
-use massa_models::{ledger_models::LedgerData, SignedOperation};
+use massa_models::{ledger_models::LedgerData, WrappedOperation};
 use massa_models::{
     Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, SerializeCompact, Slot,
 };
@@ -460,7 +460,7 @@ impl ConsensusWorker {
         });
 
         // create empty block
-        let (_block_id, header) = Signed::new_signed(
+        let (_block_id, header) = Wrapped::new_wrapped(
             BlockHeader {
                 creator: *creator_public_key,
                 slot: cur_slot,
@@ -522,7 +522,7 @@ impl ConsensusWorker {
 
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
-        let mut operations: Vec<SignedOperation> = Vec::new();
+        let mut operations: Vec<WrappedOperation> = Vec::new();
         let mut operation_set: Map<OperationId, (usize, u64)> = Map::default(); // (index, validity end period)
         let mut finished = remaining_block_space == 0
             || remaining_operation_count == 0
@@ -592,7 +592,7 @@ impl ConsensusWorker {
         }
 
         // compile resulting block
-        let (block_id, header) = Signed::new_signed(
+        let (block_id, header) = Wrapped::new_wrapped(
             BlockHeader {
                 creator: *creator_public_key,
                 slot: cur_slot,
@@ -1420,13 +1420,13 @@ pub fn create_endorsement(
     private_key: &PrivateKey,
     index: u32,
     endorsed_block: BlockId,
-) -> Result<(EndorsementId, SignedEndorsement)> {
+) -> Result<(EndorsementId, WrappedEndorsement)> {
     let content = Endorsement {
         sender_public_key,
         slot,
         index,
         endorsed_block,
     };
-    let (e_id, endorsement) = Signed::new_signed(content, private_key)?;
+    let (e_id, endorsement) = Wrapped::new_wrapped(content, private_key)?;
     Ok((e_id, endorsement))
 }

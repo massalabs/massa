@@ -11,9 +11,9 @@ use crate::NetworkSettings;
 
 use massa_hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::signed::Signed;
+use massa_models::signed::Wrapped;
 use massa_models::{
-    Address, Amount, BlockId, Operation, OperationType, SerializeCompact, SignedOperation, Version,
+    Address, Amount, BlockId, Operation, OperationType, SerializeCompact, WrappedOperation, Version,
 };
 use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
 use massa_network_exports::{
@@ -323,7 +323,7 @@ pub async fn incoming_message_drain_stop(
     join_handle.await.expect("could not join message drain")
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
+pub fn get_transaction(expire_period: u64, fee: u64) -> (WrappedOperation, u8) {
     let sender_priv = generate_random_private_key();
     let sender_pub = derive_public_key(&sender_priv);
 
@@ -342,7 +342,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
     };
 
     (
-        Signed::new_signed(content, &sender_priv).unwrap().1,
+        Wrapped::new_wrapped(content, &sender_priv).unwrap().1,
         Address::from_public_key(&sender_pub).get_thread(2),
     )
 }

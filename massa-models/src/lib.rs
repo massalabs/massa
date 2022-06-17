@@ -7,14 +7,14 @@ extern crate lazy_static;
 
 pub use address::{Address, AddressDeserializer};
 pub use amount::{Amount, AmountDeserializer, AmountSerializer};
-pub use block::{Block, BlockHeader, BlockId, SignedHeader};
+pub use block::{Block, BlockHeader, BlockId, WrappedHeader};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
 };
-pub use endorsement::{Endorsement, EndorsementId, SignedEndorsement};
+pub use endorsement::{Endorsement, EndorsementId, WrappedEndorsement};
 pub use error::ModelsError;
-pub use operation::{Operation, OperationId, OperationType, SignedOperation};
+pub use operation::{Operation, OperationId, OperationType, WrappedOperation};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
     IpAddrDeserializer, IpAddrSerializer, SerializeCompact, SerializeMinBEInt, SerializeVarInt,

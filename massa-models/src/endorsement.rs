@@ -2,7 +2,7 @@
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::prehash::PreHashed;
-use crate::signed::{Id, Signed};
+use crate::signed::{Id, Wrapped};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -25,6 +25,10 @@ impl PreHashed for EndorsementId {}
 impl Id for EndorsementId {
     fn new(hash: Hash) -> Self {
         EndorsementId(hash)
+    }
+
+    fn hash(&self) -> Hash {
+        self.0
     }
 }
 
@@ -119,8 +123,8 @@ pub struct Endorsement {
     pub endorsed_block: BlockId,
 }
 
-/// Signed endorsement
-pub type SignedEndorsement = Signed<Endorsement, EndorsementId>;
+/// Wrapped endorsement
+pub type WrappedEndorsement = Wrapped<Endorsement, EndorsementId>;
 
 /// Checks performed:
 /// - Validity of the slot.
@@ -193,7 +197,7 @@ impl DeserializeCompact for Endorsement {
 
 #[cfg(test)]
 mod tests {
-    use crate::signed::Signed;
+    use crate::signed::Wrapped;
 
     use super::*;
     use massa_signature::{derive_public_key, generate_random_private_key};
@@ -231,14 +235,16 @@ mod tests {
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
+        let endorsement = Wrapped::new_wrapped(content.clone(), &sender_priv)
+            .unwrap()
+            .1;
 
         let ser_content = content.to_bytes_compact().unwrap();
         let (res_content, _) = Endorsement::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{:?}", res_content), format!("{:?}", content));
         let ser_endorsement = endorsement.to_bytes_compact().unwrap();
         let (res_endorsement, _) =
-            Signed::<Endorsement, EndorsementId>::from_bytes_compact(&ser_endorsement).unwrap();
+            Wrapped::<Endorsement, EndorsementId>::from_bytes_compact(&ser_endorsement).unwrap();
         assert_eq!(
             format!("{:?}", res_endorsement),
             format!("{:?}", endorsement)

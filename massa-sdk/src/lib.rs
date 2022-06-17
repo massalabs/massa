@@ -16,7 +16,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
-use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
+use massa_models::{Address, BlockId, EndorsementId, OperationId, WrappedOperation};
 use massa_signature::PrivateKey;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -237,7 +237,7 @@ impl RpcClient {
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
     pub async fn send_operations(
         &self,
-        operations: Vec<SignedOperation>,
+        operations: Vec<WrappedOperation>,
     ) -> RpcResult<Vec<OperationId>> {
         self.call_method("send_operations", "Vec<OperationId>", vec![operations])
             .await

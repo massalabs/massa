@@ -9,11 +9,11 @@ use massa_serialization::{
 use nom::bytes::complete::take;
 use nom::multi::length_data;
 use nom::sequence::preceded;
-use nom::Parser;
 use nom::{
     error::{context, ContextError, ParseError},
     IResult,
 };
+use nom::{Parser, ToUsize};
 use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
@@ -429,6 +429,7 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
 pub struct StringSerializer<SL, L>
 where
     SL: Serializer<L>,
+    L: TryFrom<usize>,
 {
     length_serializer: SL,
     marker_l: std::marker::PhantomData<L>,
@@ -437,6 +438,7 @@ where
 impl<SL, L> StringSerializer<SL, L>
 where
     SL: Serializer<L>,
+    L: TryFrom<usize>,
 {
     /// Creates a `StringSerializer`.
     ///
@@ -453,6 +455,7 @@ where
 impl<SL, L> Serializer<String> for StringSerializer<SL, L>
 where
     SL: Serializer<L>,
+    L: TryFrom<usize>,
 {
     fn serialize(&self, value: &String, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.length_serializer.serialize(
@@ -470,6 +473,7 @@ where
 pub struct StringDeserializer<DL, L>
 where
     DL: Deserializer<L>,
+    L: TryFrom<usize> + ToUsize,
 {
     length_deserializer: DL,
     marker_l: std::marker::PhantomData<L>,
@@ -478,6 +482,7 @@ where
 impl<DL, L> StringDeserializer<DL, L>
 where
     DL: Deserializer<L>,
+    L: TryFrom<usize> + ToUsize,
 {
     /// Creates a `StringDeserializer`.
     ///
@@ -494,13 +499,23 @@ where
 impl<DL, L> Deserializer<String> for StringDeserializer<DL, L>
 where
     DL: Deserializer<L>,
+    L: TryFrom<usize> + ToUsize,
 {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], String, E> {
-        length_data(|input| self.length_deserializer.deserialize(input))
-            .map(|data| String::from_utf8(data))(buffer)
+        let (rest, res) = length_data(|input| self.length_deserializer.deserialize(input))
+            .map(|data| {
+                String::from_utf8(data.to_vec()).map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        data,
+                        nom::error::ErrorKind::Verify,
+                    ))
+                })
+            })
+            .parse(buffer)?;
+        Ok((rest, res?))
     }
 }
 

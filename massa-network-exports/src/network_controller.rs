@@ -6,7 +6,7 @@ use crate::{
 };
 use massa_models::{
     composite::PubkeySig, node::NodeId, operation::OperationIds, stats::NetworkStats, BlockId,
-    SignedEndorsement,
+    WrappedEndorsement,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -237,7 +237,7 @@ impl NetworkCommandSender {
     pub async fn send_endorsements(
         &self,
         node: NodeId,
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendEndorsements { node, endorsements })

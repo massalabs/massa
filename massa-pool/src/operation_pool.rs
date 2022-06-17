@@ -3,7 +3,7 @@
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
 use massa_models::{
-    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, SignedOperation, Slot,
+    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, WrappedOperation, Slot,
 };
 use massa_storage::Storage;
 use num::rational::Ratio;
@@ -53,7 +53,7 @@ struct OperationMetadata {
 
 impl OperationMetadata {
     fn new(
-        operation: &SignedOperation,
+        operation: &WrappedOperation,
         byte_count: u64,
         thread_count: u8,
         operation_validity_periods: u64,
@@ -120,7 +120,7 @@ impl OperationPool {
     /// Returns newly added.
     pub fn process_operations(
         &mut self,
-        mut operations: Map<OperationId, (SignedOperation, Vec<u8>)>,
+        mut operations: Map<OperationId, (WrappedOperation, Vec<u8>)>,
     ) -> Result<Set<OperationId>, PoolError> {
         let mut removed = Set::<OperationId>::default();
         for (op_id, (op, serialized)) in operations.iter() {
@@ -321,7 +321,7 @@ impl OperationPool {
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-    ) -> Result<Vec<(OperationId, SignedOperation, u64)>, PoolError> {
+    ) -> Result<Vec<(OperationId, WrappedOperation, u64)>, PoolError> {
         self.ops_by_thread_and_interest[block_slot.thread as usize]
             .iter()
             .filter_map(|(_rentability, id)| {
@@ -357,7 +357,7 @@ impl OperationPool {
     pub fn get_operations(
         &self,
         operation_ids: &Set<OperationId>,
-    ) -> Map<OperationId, SignedOperation> {
+    ) -> Map<OperationId, WrappedOperation> {
         operation_ids
             .iter()
             .filter_map(|op_id| {

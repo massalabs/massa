@@ -4,10 +4,10 @@ use massa_models::{
     array_from_slice,
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
     operation::{OperationIds, Operations},
-    signed::Signed,
+    signed::Wrapped,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
     Endorsement, EndorsementId, IpAddrDeserializer, IpAddrSerializer, ModelsError,
-    SerializeCompact, SerializeVarInt, SignedEndorsement, SignedHeader, SignedOperation, Version,
+    SerializeCompact, SerializeVarInt, WrappedEndorsement, WrappedHeader, WrappedOperation, Version,
     VersionDeserializer, VersionSerializer,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -37,7 +37,7 @@ pub enum Message {
     /// Whole block structure.
     Block(Block),
     /// Block header
-    BlockHeader(SignedHeader),
+    BlockHeader(WrappedHeader),
     /// Message asking the peer for a block.
     AskForBlocks(Vec<BlockId>),
     /// Message asking the peer for its advertisable peers list.
@@ -56,7 +56,7 @@ pub enum Message {
     /// A list of operations
     Operations(Operations),
     /// Endorsements
-    Endorsements(Vec<SignedEndorsement>),
+    Endorsements(Vec<WrappedEndorsement>),
 }
 
 /// The serialized form of an object, as received from the network.
@@ -104,7 +104,7 @@ pub fn deserialize_message_with_optional_serialized_object(
             let mut serialized = Vec::with_capacity(length as usize);
             for _ in 0..length {
                 let mut serialized_op = Vec::new();
-                let (operation, delta) = SignedOperation::from_bytes_compact(&buffer[cursor..])?;
+                let (operation, delta) = WrappedOperation::from_bytes_compact(&buffer[cursor..])?;
                 serialized_op.extend_from_slice(&buffer[cursor..delta + cursor]);
                 cursor += delta;
                 ops.push(operation);
@@ -272,7 +272,7 @@ impl DeserializeCompact for Message {
             }
             MessageTypeId::BlockHeader => {
                 let (header, delta) =
-                    Signed::<BlockHeader, BlockId>::from_bytes_compact(&buffer[cursor..])?;
+                    Wrapped::<BlockHeader, BlockId>::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
                 Message::BlockHeader(header)
             }
@@ -342,7 +342,7 @@ impl DeserializeCompact for Message {
                 let mut endorsements = Vec::with_capacity(length as usize);
                 for _ in 0..length {
                     let (endorsement, delta) =
-                        Signed::<Endorsement, EndorsementId>::from_bytes_compact(
+                        Wrapped::<Endorsement, EndorsementId>::from_bytes_compact(
                             &buffer[cursor..],
                         )?;
                     cursor += delta;

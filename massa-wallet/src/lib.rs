@@ -9,8 +9,8 @@ use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signed;
-use massa_models::{Operation, SignedOperation};
+use massa_models::signed::Wrapped;
+use massa_models::{Operation, WrappedOperation};
 use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -131,11 +131,11 @@ impl Wallet {
         &self,
         content: Operation,
         address: Address,
-    ) -> Result<SignedOperation, WalletError> {
+    ) -> Result<WrappedOperation, WalletError> {
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;
-        Ok(Signed::new_signed(content, sender_priv).unwrap().1)
+        Ok(Wrapped::new_wrapped(content, sender_priv).unwrap().1)
     }
 }
 

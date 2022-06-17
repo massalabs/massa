@@ -4,7 +4,7 @@
 
 use massa_logging::massa_trace;
 use massa_models::prehash::Map;
-use massa_models::{Block, BlockId, OperationId, SignedOperation};
+use massa_models::{Block, BlockId, OperationId, WrappedOperation};
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
@@ -25,7 +25,7 @@ pub struct StoredBlock {
 #[derive(Clone, Debug)]
 pub struct StoredOperation {
     /// The operation.
-    pub operation: SignedOperation,
+    pub operation: WrappedOperation,
     /// The serialized representation of the operation.
     pub serialized: Vec<u8>,
 }
@@ -76,7 +76,7 @@ impl Storage {
     pub fn store_operation(
         &self,
         operation_id: OperationId,
-        operation: SignedOperation,
+        operation: WrappedOperation,
         serialized: Vec<u8>,
     ) {
         massa_trace!("storage.storage.store_operation", {

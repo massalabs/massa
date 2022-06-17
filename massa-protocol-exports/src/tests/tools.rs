@@ -7,10 +7,10 @@ use crate::{
 };
 use massa_hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::signed::{Signable, Signed};
+use massa_models::signed::{Signable, Wrapped};
 use massa_models::SerializeCompact;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, WrappedEndorsement, WrappedOperation, Slot,
 };
 use massa_models::{Endorsement, Operation, OperationType};
 use massa_network_exports::NetworkCommand;
@@ -55,7 +55,7 @@ pub async fn create_and_connect_nodes(
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
 pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
-    let (_, header) = Signed::new_signed(
+    let (_, header) = Wrapped::new_wrapped(
         BlockHeader {
             creator: *public_key,
             slot: Slot::new(1, 0),
@@ -86,14 +86,14 @@ pub fn create_block_with_operations(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    operations: Vec<SignedOperation>,
+    operations: Vec<WrappedOperation>,
 ) -> Block {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.content.compute_id().unwrap().to_bytes().to_vec()].concat()
         })[..],
     );
-    let (_, header) = Signed::new_signed(
+    let (_, header) = Wrapped::new_wrapped(
         BlockHeader {
             creator: *public_key,
             slot,
@@ -121,9 +121,9 @@ pub fn create_block_with_endorsements(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    endorsements: Vec<SignedEndorsement>,
+    endorsements: Vec<WrappedEndorsement>,
 ) -> Block {
-    let (_, header) = Signed::new_signed(
+    let (_, header) = Wrapped::new_wrapped(
         BlockHeader {
             creator: *public_key,
             slot,
@@ -180,7 +180,7 @@ pub async fn send_and_propagate_block(
 
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
-pub fn create_endorsement() -> SignedEndorsement {
+pub fn create_endorsement() -> WrappedEndorsement {
     let sender_priv = generate_random_private_key();
     let sender_public_key = derive_public_key(&sender_priv);
 
@@ -190,14 +190,14 @@ pub fn create_endorsement() -> SignedEndorsement {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Signed::new_signed(content, &sender_priv).unwrap().1
+    Wrapped::new_wrapped(content, &sender_priv).unwrap().1
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
 pub fn create_operation_with_expire_period(
     sender_priv: &PrivateKey,
     expire_period: u64,
-) -> SignedOperation {
+) -> WrappedOperation {
     let sender_pub = derive_public_key(sender_priv);
 
     let recv_priv = generate_random_private_key();
@@ -213,7 +213,7 @@ pub fn create_operation_with_expire_period(
         sender_public_key: sender_pub,
         expire_period,
     };
-    Signed::new_signed(content, sender_priv).unwrap().1
+    Wrapped::new_wrapped(content, sender_priv).unwrap().1
 }
 
 lazy_static::lazy_static! {

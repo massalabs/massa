@@ -18,9 +18,9 @@ use massa_models::DeserializeCompact;
 use massa_models::SerializeCompact;
 use massa_models::{
     node::NodeId,
-    signed::{Signable, Signed},
+    signed::{Signable, Wrapped},
 };
-use massa_models::{BlockId, Endorsement, SignedOperation, Slot};
+use massa_models::{BlockId, Endorsement, WrappedOperation, Slot};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
@@ -1092,7 +1092,7 @@ async fn test_operation_messages() {
                 assert_eq!(operations[0].verify_integrity().unwrap(), ref_id);
 
                 // Check the serialized form.
-                let (serialized, _) = SignedOperation::from_bytes_compact(&(serialized[0])[0..])
+                let (serialized, _) = WrappedOperation::from_bytes_compact(&(serialized[0])[0..])
                     .expect("Failed to deserialize operation.");
                 assert!(serialized.verify_integrity().is_ok());
                 assert_eq!(serialized.verify_integrity().unwrap(), ref_id);
@@ -1214,7 +1214,7 @@ async fn test_endorsements_messages() {
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
+            let endorsement = Wrapped::new_wrapped(content.clone(), &sender_priv).unwrap().1;
             let ref_id = endorsement.content.compute_id().unwrap();
             conn1_w
                 .send(
@@ -1253,7 +1253,7 @@ async fn test_endorsements_messages() {
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
+            let endorsement = Wrapped::new_wrapped(content.clone(), &sender_priv).unwrap().1;
             let ref_id = endorsement.content.compute_id().unwrap();
 
             // reply with another endorsement

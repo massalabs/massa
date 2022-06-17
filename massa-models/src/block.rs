@@ -2,12 +2,12 @@
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use crate::prehash::{Map, PreHashed, Set};
-use crate::signed::{Id, Signed};
+use crate::signed::{Id, Wrapped};
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
     DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementId, ModelsError, Operation,
-    OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, SignedEndorsement,
-    SignedOperation, Slot,
+    OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot, WrappedEndorsement,
+    WrappedOperation,
 };
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
@@ -28,6 +28,10 @@ impl PreHashed for BlockId {}
 impl Id for BlockId {
     fn new(hash: Hash) -> Self {
         BlockId(hash)
+    }
+
+    fn hash(&self) -> Hash {
+        self.0
     }
 }
 
@@ -106,22 +110,17 @@ impl BlockId {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     /// signed header
-    pub header: SignedHeader,
+    pub header: WrappedHeader,
     /// operations
-    pub operations: Vec<SignedOperation>,
+    pub operations: Vec<WrappedOperation>,
 }
 
 impl Block {
     /// true if given operation is included in the block
     /// may fail if computing an id of an operation in the block
-    pub fn contains_operation(&self, op: SignedOperation) -> Result<bool, ModelsError> {
-        let op_id = op.content.compute_id()?;
-        Ok(self.operations.iter().any(|o| {
-            o.content
-                .compute_id()
-                .map(|id| id == op_id)
-                .unwrap_or(false)
-        }))
+    pub fn contains_operation(&self, op: WrappedOperation) -> Result<bool, ModelsError> {
+        let op_id = op.id;
+        Ok(self.operations.iter().any(|o| op_id == o.id))
     }
 
     /// size in bytes of the whole block
@@ -133,7 +132,7 @@ impl Block {
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut roll_involved_addrs = Set::<Address>::default();
         for op in self.operations.iter() {
-            roll_involved_addrs.extend(op.content.get_roll_involved_addresses()?);
+            roll_involved_addrs.extend(op.get_roll_involved_addresses()?);
         }
         Ok(roll_involved_addrs)
     }
@@ -149,7 +148,7 @@ impl Block {
             .iter()
             .try_for_each::<_, Result<(), ModelsError>>(|(op_id, (op_idx, _op_expiry))| {
                 let op = &self.operations[*op_idx];
-                let addrs = op.content.get_ledger_involved_addresses();
+                let addrs = op.get_ledger_involved_addresses();
                 for ad in addrs.into_iter() {
                     if let Some(entry) = addresses_to_operations.get_mut(&ad) {
                         entry.insert(*op_id);
@@ -174,12 +173,12 @@ impl Block {
             .endorsements
             .iter()
             .try_for_each::<_, Result<(), ModelsError>>(|e| {
-                let address = Address::from_public_key(&e.content.sender_public_key);
+                let address = Address::from_public_key(&e.creator_public_key);
                 if let Some(old) = res.get_mut(&address) {
-                    old.insert(e.content.compute_id()?);
+                    old.insert(e.id);
                 } else {
                     let mut set = Set::<EndorsementId>::default();
-                    set.insert(e.content.compute_id()?);
+                    set.insert(e.id);
                     res.insert(address, set);
                 }
                 Ok(())
@@ -216,7 +215,7 @@ pub struct BlockHeader {
     /// all operations hash
     pub operation_merkle_root: Hash,
     /// endorsements
-    pub endorsements: Vec<SignedEndorsement>,
+    pub endorsements: Vec<WrappedEndorsement>,
 }
 
 // impl Signable<BlockId> for BlockHeader {
@@ -231,7 +230,7 @@ pub struct BlockHeader {
 // }
 
 /// signed header
-pub type SignedHeader = Signed<BlockHeader, BlockId>;
+pub type WrappedHeader = Wrapped<BlockHeader, BlockId>;
 
 impl std::fmt::Display for BlockHeader {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -254,11 +253,7 @@ impl std::fmt::Display for BlockHeader {
         writeln!(f, "\tEndorsements:")?;
         for ed in self.endorsements.iter() {
             writeln!(f, "\t\t-----")?;
-            writeln!(
-                f,
-                "\t\tId: {}",
-                ed.content.compute_id().map_err(|_| std::fmt::Error)?
-            )?;
+            writeln!(f, "\t\tId: {}", ed.id)?;
             writeln!(f, "\t\tIndex: {}", ed.content.index)?;
             writeln!(f, "\t\tEndorsed slot: {}", ed.content.slot)?;
             writeln!(
@@ -319,7 +314,7 @@ impl DeserializeCompact for Block {
 
         // header
         let (header, delta) =
-            Signed::<BlockHeader, BlockId>::from_bytes_compact(&buffer[cursor..])?;
+            Wrapped::<BlockHeader, BlockId>::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
         if cursor > (max_block_size as usize) {
             return Err(ModelsError::DeserializeError("block is too large".into()));
@@ -332,10 +327,10 @@ impl DeserializeCompact for Block {
         if cursor > (max_block_size as usize) {
             return Err(ModelsError::DeserializeError("block is too large".into()));
         }
-        let mut operations: Vec<SignedOperation> = Vec::with_capacity(operation_count as usize);
+        let mut operations: Vec<WrappedOperation> = Vec::with_capacity(operation_count as usize);
         for _ in 0..(operation_count as usize) {
             let (operation, delta) =
-                Signed::<Operation, OperationId>::from_bytes_compact(&buffer[cursor..])?;
+                Wrapped::<Operation, OperationId>::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
             if cursor > (max_block_size as usize) {
                 return Err(ModelsError::DeserializeError("block is too large".into()));
@@ -446,7 +441,7 @@ impl DeserializeCompact for BlockHeader {
         let mut endorsements = Vec::with_capacity(endorsement_count as usize);
         for _ in 0..endorsement_count {
             let (endorsement, delta) =
-                Signed::<Endorsement, EndorsementId>::from_bytes_compact(&buffer[cursor..])?;
+                Wrapped::<Endorsement, EndorsementId>::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
             endorsements.push(endorsement);
         }
@@ -497,7 +492,7 @@ mod test {
         let public_key = derive_public_key(&private_key);
 
         // create block header
-        let (orig_id, orig_header) = Signed::new_signed(
+        let (orig_id, orig_header) = Wrapped::new_wrapped(
             BlockHeader {
                 creator: public_key,
                 slot: Slot::new(1, 2),
@@ -508,7 +503,7 @@ mod test {
                 ],
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![
-                    Signed::new_signed(
+                    Wrapped::new_wrapped(
                         Endorsement {
                             sender_public_key: public_key,
                             slot: Slot::new(1, 1),
@@ -519,7 +514,7 @@ mod test {
                     )
                     .unwrap()
                     .1,
-                    Signed::new_signed(
+                    Wrapped::new_wrapped(
                         Endorsement {
                             sender_public_key: public_key,
                             slot: Slot::new(4, 0),

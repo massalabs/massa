@@ -83,7 +83,7 @@ pub mod event_impl {
     use massa_models::{
         node::NodeId,
         operation::{OperationIds, Operations},
-        Block, BlockId, SignedEndorsement, SignedHeader,
+        Block, BlockId, WrappedEndorsement, WrappedHeader,
     };
     use massa_network_exports::NodeCommand;
     use massa_network_exports::{NetworkError, NetworkEvent};
@@ -151,7 +151,7 @@ pub mod event_impl {
     pub async fn on_received_block_header(
         worker: &mut NetworkWorker,
         from: NodeId,
-        header: SignedHeader,
+        header: WrappedHeader,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
@@ -289,7 +289,7 @@ pub mod event_impl {
     pub async fn on_received_endorsements(
         worker: &mut NetworkWorker,
         from: NodeId,
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedEndorsements",

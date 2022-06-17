@@ -2,7 +2,7 @@
 
 use super::tools::protocol_test;
 use massa_hash::Hash;
-use massa_models::signed::Signed;
+use massa_models::signed::Wrapped;
 use massa_models::{get_serialization_context, Address, Amount, Block, BlockHeader, Slot};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{
@@ -119,7 +119,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
-                    let (_, header) = Signed::new_signed(
+                    let (_, header) = Wrapped::new_wrapped(
                         BlockHeader {
                             creator: derive_public_key(&creator_node.private_key),
                             slot: slot_a,
