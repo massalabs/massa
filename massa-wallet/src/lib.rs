@@ -20,7 +20,9 @@ use std::path::PathBuf;
 
 mod error;
 
-const NONCE_SLICE: &[u8] = b"unique nonce";
+/// Nonce slice used for cypher
+/// TODO: change this? not sure if we must
+pub const NONCE_SLICE: &[u8] = b"unique nonce";
 
 /// Contains the private keys created in the wallet.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -36,12 +38,18 @@ pub struct Wallet {
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
-        let keys = if path.is_file() {
-            serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(&path)?)?
+        let encrypted_keys = std::fs::read(&path)?;
+        let priv_keys = if !encrypted_keys.is_empty() {
+            let cipher = Aes256GcmSiv::new(Key::from_slice(b"an example very very secret key."));
+            let nonce = Nonce::from_slice(NONCE_SLICE);
+            let text = cipher
+                .decrypt(nonce, encrypted_keys.as_ref())
+                .map_err(|e| WalletError::DecryptionError(e.to_string()))?;
+            serde_json::from_slice::<Vec<PrivateKey>>(&text[..])?
         } else {
             Vec::new()
         };
-        let keys = keys
+        let keys = priv_keys
             .iter()
             .map(|key| {
                 let pub_key = derive_public_key(key);
@@ -120,13 +128,13 @@ impl Wallet {
     /// Save the wallet in json format in a file
     /// Only the private keys are dumped
     fn save(&self) -> Result<(), WalletError> {
-        let cipher = Aes256GcmSiv::new(Key::from_slice(self.password.as_bytes()));
+        let cipher = Aes256GcmSiv::new(Key::from_slice(b"an example very very secret key."));
         let nonce = Nonce::from_slice(NONCE_SLICE);
         let keys =
             serde_json::to_string(&self.keys.iter().map(|(_, (_, pk))| *pk).collect::<Vec<_>>())?;
         let text = cipher
             .encrypt(nonce, keys.as_ref())
-            .map_err(|_| WalletError::EncryptionError)?;
+            .map_err(|e| WalletError::EncryptionError(e.to_string()))?;
         std::fs::write(&self.wallet_path, text)?;
         Ok(())
     }

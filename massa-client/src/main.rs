@@ -8,6 +8,7 @@ use anyhow::Result;
 use atty::Stream;
 use cmds::Command;
 use console::style;
+use dialoguer::Password;
 use massa_sdk::Client;
 use massa_wallet::Wallet;
 use serde::Serialize;
@@ -58,6 +59,23 @@ struct JsonError {
     error: String,
 }
 
+fn handle_password(wallet: PathBuf) -> String {
+    if wallet.is_file() {
+        Password::new()
+            .with_prompt("Enter wallet password")
+            .interact()
+            .expect("Input error")
+    } else {
+        let pwd = Password::new()
+            .with_prompt("Enter new password for wallet")
+            .with_confirmation("Confirm password", "Passwords mismatching")
+            .interact()
+            .expect("Input error");
+        let _file = std::fs::File::create(wallet).expect("Could not create file");
+        pwd
+    }
+}
+
 #[paw::main]
 #[tokio::main]
 async fn main(args: Args) -> Result<()> {
@@ -76,7 +94,7 @@ async fn main(args: Args) -> Result<()> {
         None => settings.default_node.private_port,
     };
     // ...
-    let mut wallet = Wallet::new(args.wallet, "PASSWORD".to_string())?;
+    let mut wallet = Wallet::new(args.wallet.clone(), handle_password(args.wallet))?;
     let client = Client::new(address, public_port, private_port).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
