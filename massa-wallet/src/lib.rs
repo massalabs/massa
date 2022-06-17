@@ -14,7 +14,9 @@ use massa_models::composite::PubkeySig;
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signed;
 use massa_models::{Operation, SignedOperation};
-use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
+use massa_signature::{
+    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
+};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -38,16 +40,20 @@ pub struct Wallet {
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
-        let encrypted_keys = std::fs::read(&path)?;
-        let priv_keys = if !encrypted_keys.is_empty() {
-            let cipher = Aes256GcmSiv::new(Key::from_slice(b"an example very very secret key."));
+        let content = std::fs::read(&path)?;
+        let priv_keys = if !content.is_empty() {
+            // If wallet contains data decipher it
+            let cipher = Aes256GcmSiv::new(Key::from_slice(
+                Hash::compute_from(password.as_bytes()).to_bytes(),
+            ));
             let nonce = Nonce::from_slice(NONCE_SLICE);
             let text = cipher
-                .decrypt(nonce, encrypted_keys.as_ref())
-                .map_err(|e| WalletError::DecryptionError(e.to_string()))?;
+                .decrypt(nonce, content.as_ref())
+                .map_err(|_| WalletError::DecryptionError("Wrong password".to_string()))?;
             serde_json::from_slice::<Vec<PrivateKey>>(&text[..])?
         } else {
-            Vec::new()
+            // If wallet is empty add a new private key
+            vec![generate_random_private_key()]
         };
         let keys = priv_keys
             .iter()
@@ -56,11 +62,16 @@ impl Wallet {
                 Ok((Address::from_public_key(&pub_key), (pub_key, *key)))
             })
             .collect::<Result<Map<Address, _>, WalletError>>()?;
-        Ok(Wallet {
+        let wallet = Wallet {
             keys,
             wallet_path: path,
             password,
-        })
+        };
+        if content.is_empty() {
+            // If wallet is empty cipher and save the new private key
+            wallet.save()?;
+        }
+        Ok(wallet)
     }
 
     /// Sign arbitrary message with the associated private key
@@ -128,7 +139,9 @@ impl Wallet {
     /// Save the wallet in json format in a file
     /// Only the private keys are dumped
     fn save(&self) -> Result<(), WalletError> {
-        let cipher = Aes256GcmSiv::new(Key::from_slice(b"an example very very secret key."));
+        let cipher = Aes256GcmSiv::new(Key::from_slice(
+            Hash::compute_from(self.password.as_bytes()).to_bytes(),
+        ));
         let nonce = Nonce::from_slice(NONCE_SLICE);
         let keys =
             serde_json::to_string(&self.keys.iter().map(|(_, (_, pk))| *pk).collect::<Vec<_>>())?;

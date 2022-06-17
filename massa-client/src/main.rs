@@ -59,8 +59,8 @@ struct JsonError {
     error: String,
 }
 
-fn handle_password(wallet: PathBuf) -> String {
-    if wallet.is_file() {
+fn create_wallet(wallet_path: &PathBuf) -> Result<Wallet> {
+    let pwd = if wallet_path.is_file() {
         Password::new()
             .with_prompt("Enter wallet password")
             .interact()
@@ -71,9 +71,11 @@ fn handle_password(wallet: PathBuf) -> String {
             .with_confirmation("Confirm password", "Passwords mismatching")
             .interact()
             .expect("Input error");
-        let _file = std::fs::File::create(wallet).expect("Could not create file");
+        let _file = std::fs::File::create(wallet_path).expect("Could not create wallet");
         pwd
-    }
+    };
+    let wallet = Wallet::new(wallet_path.to_path_buf(), pwd)?;
+    Ok(wallet)
 }
 
 #[paw::main]
@@ -94,7 +96,7 @@ async fn main(args: Args) -> Result<()> {
         None => settings.default_node.private_port,
     };
     // ...
-    let mut wallet = Wallet::new(args.wallet.clone(), handle_password(args.wallet))?;
+    let mut wallet = create_wallet(&args.wallet)?;
     let client = Client::new(address, public_port, private_port).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
