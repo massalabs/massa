@@ -13,7 +13,9 @@ use massa_graph::{
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
+use massa_models::operation::OperationSerializer;
 use massa_models::wrapped::Signable;
+use massa_models::EndorsementSerializer;
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
@@ -406,43 +408,39 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let block = Block {
         header: Wrapped::new_wrapped(
             BlockHeader {
-                creator: get_random_public_key(),
                 slot: Slot::new(1, 1),
                 parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
                 operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                 endorsements: vec![
                     Wrapped::new_wrapped(
                         Endorsement {
-                            sender_public_key: get_random_public_key(),
                             slot: Slot::new(1, 0),
                             index: 1,
                             endorsed_block: get_dummy_block_id("p1"),
                         },
+                        EndorsementSerializer::new(),
                         &generate_random_private_key(),
                     )
-                    .unwrap()
-                    .1,
+                    .unwrap(),
                     Wrapped::new_wrapped(
                         Endorsement {
-                            sender_public_key: get_random_public_key(),
                             slot: Slot::new(4, 1),
                             index: 3,
                             endorsed_block: get_dummy_block_id("p1"),
                         },
+                        EndorsementSerializer::new(),
                         &generate_random_private_key(),
                     )
-                    .unwrap()
-                    .1,
+                    .unwrap(),
                 ],
             },
+            BlockHeaderSerializer::new(),
             &generate_random_private_key(),
         )
-        .unwrap()
-        .1,
+        .unwrap(),
         operations: vec![
             Wrapped::new_wrapped(
                 Operation {
-                    sender_public_key: get_random_public_key(),
                     fee: Amount::from_str("1524878").unwrap(),
                     expire_period: 5787899,
                     op: massa_models::OperationType::Transaction {
@@ -450,34 +448,34 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                         amount: Amount::from_str("1259787").unwrap(),
                     },
                 },
+                OperationSerializer::new(),
                 &generate_random_private_key(),
             )
             .unwrap()
             .1,
             Wrapped::new_wrapped(
                 Operation {
-                    sender_public_key: get_random_public_key(),
                     fee: Amount::from_str("878763222").unwrap(),
                     expire_period: 4557887,
                     op: massa_models::OperationType::RollBuy { roll_count: 45544 },
                 },
+                OperationSerializer::new(),
                 &generate_random_private_key(),
             )
             .unwrap()
             .1,
             Wrapped::new_wrapped(
                 Operation {
-                    sender_public_key: get_random_public_key(),
                     fee: Amount::from_str("4545").unwrap(),
                     expire_period: 452524,
                     op: massa_models::OperationType::RollSell {
                         roll_count: 4888787,
                     },
                 },
+                OperationSerializer::new(),
                 &generate_random_private_key(),
             )
-            .unwrap()
-            .1,
+            .unwrap(),
         ],
     };
 

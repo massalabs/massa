@@ -2,8 +2,8 @@
 
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Wrapped;
-use massa_models::{Address, BlockId, Endorsement, EndorsementId, WrappedEndorsement, Slot};
+use massa_models::wrapped::Wrapped;
+use massa_models::{Address, BlockId, Endorsement, EndorsementId, Slot, WrappedEndorsement};
 
 pub struct EndorsementPool {
     endorsements: Map<EndorsementId, WrappedEndorsement>,

@@ -1,4 +1,5 @@
 use massa_models::node::NodeId;
+use massa_models::wrapped::Id;
 use massa_network_exports::{ConnectionId, NetworkError, NetworkEvent, NodeCommand, NodeEvent};
 use std::time::Duration;
 use tokio::sync::mpsc::{self, error::SendTimeoutError};
@@ -79,7 +80,6 @@ impl EventSender {
 pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
-    use massa_models::wrapped::Signable;
     use massa_models::{
         node::NodeId,
         operation::{OperationIds, Operations},
