@@ -1,26 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
+use crate::constants::OPERATION_ID_SIZE_BYTES;
 use crate::node_configuration::MAX_OPERATIONS_PER_MESSAGE;
-use crate::prehash::{BuildMap, PreHashed, Set};
+use crate::prehash::{PreHashed, Set};
 use crate::serialization::StringDeserializer;
 use crate::wrapped::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
+use crate::{Address, Amount, ModelsError};
 use crate::{
-    serialization::{
-        array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
-    },
-    Address, Amount, ModelsError,
-};
-use crate::{
-    with_serialization_context, AddressDeserializer, AmountDeserializer, AmountSerializer,
-    StringSerializer, VecU8Deserializer, VecU8Serializer,
+    AddressDeserializer, AmountDeserializer, AmountSerializer, StringSerializer, VecU8Deserializer,
+    VecU8Serializer,
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
     U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use nom::error::context;
 use nom::multi::length_count;
 use nom::sequence::tuple;
@@ -160,10 +154,13 @@ impl std::fmt::Display for Operation {
 
 /// signed operation
 pub type WrappedOperation = Wrapped<Operation, OperationId>;
+/// Serializer for `WrappedOperation`
 pub type WrappedOperationSerializer = WrappedSerializer<Operation, OperationId>;
+/// Deserializer for `WrappedOperation`
 pub type WrappedOperationDeserializer =
     WrappedDeserializer<Operation, OperationId, OperationDeserializer>;
 
+/// Serializer for `Operation`
 pub struct OperationSerializer {
     u64_serializer: U64VarIntSerializer,
     amount_serializer: AmountSerializer,
@@ -171,6 +168,7 @@ pub struct OperationSerializer {
 }
 
 impl OperationSerializer {
+    /// Creates a new `OperationSerializer`
     pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
@@ -189,12 +187,14 @@ impl Default for OperationSerializer {
 impl Serializer<Operation> for OperationSerializer {
     fn serialize(&self, value: &Operation, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.amount_serializer.serialize(&value.fee, buffer)?;
-        self.u64_serializer.serialize(&value.expire_period, buffer);
+        self.u64_serializer
+            .serialize(&value.expire_period, buffer)?;
         self.op_type_serializer.serialize(&value.op, buffer)?;
         Ok(())
     }
 }
 
+/// Serializer for `Operation`
 pub struct OperationDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
@@ -202,6 +202,7 @@ pub struct OperationDeserializer {
 }
 
 impl OperationDeserializer {
+    /// Creates a `OperationDeserializer`
     pub fn new() -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -349,6 +350,7 @@ impl std::fmt::Display for OperationType {
     }
 }
 
+/// Serializer for `OperationType`
 pub struct OperationTypeSerializer {
     u32_serializer: U32VarIntSerializer,
     u64_serializer: U64VarIntSerializer,
@@ -359,6 +361,7 @@ pub struct OperationTypeSerializer {
 }
 
 impl OperationTypeSerializer {
+    /// Creates a new `OperationTypeSerializer`
     pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(Included(0), Included(u32::MAX)),
@@ -377,6 +380,12 @@ impl OperationTypeSerializer {
     }
 }
 
+impl Default for OperationTypeSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<OperationType> for OperationTypeSerializer {
     fn serialize(&self, value: &OperationType, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         match value {
@@ -385,19 +394,19 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 amount,
             } => {
                 self.u32_serializer
-                    .serialize(&u32::from(OperationTypeId::Transaction), buffer);
+                    .serialize(&u32::from(OperationTypeId::Transaction), buffer)?;
                 buffer.extend(recipient_address.to_bytes());
-                self.amount_serializer.serialize(amount, buffer);
+                self.amount_serializer.serialize(amount, buffer)?;
             }
             OperationType::RollBuy { roll_count } => {
                 self.u32_serializer
-                    .serialize(&u32::from(OperationTypeId::RollBuy), buffer);
-                self.u64_serializer.serialize(roll_count, buffer);
+                    .serialize(&u32::from(OperationTypeId::RollBuy), buffer)?;
+                self.u64_serializer.serialize(roll_count, buffer)?;
             }
             OperationType::RollSell { roll_count } => {
                 self.u32_serializer
-                    .serialize(&u32::from(OperationTypeId::RollSell), buffer);
-                self.u64_serializer.serialize(roll_count, buffer);
+                    .serialize(&u32::from(OperationTypeId::RollSell), buffer)?;
+                self.u64_serializer.serialize(roll_count, buffer)?;
             }
             OperationType::ExecuteSC {
                 data,
@@ -406,11 +415,11 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 gas_price,
             } => {
                 self.u32_serializer
-                    .serialize(&u32::from(OperationTypeId::ExecuteSC), buffer);
-                self.u64_serializer.serialize(max_gas, buffer);
-                self.amount_serializer.serialize(coins, buffer);
-                self.amount_serializer.serialize(gas_price, buffer);
-                self.vec_u8_serializer.serialize(data, buffer);
+                    .serialize(&u32::from(OperationTypeId::ExecuteSC), buffer)?;
+                self.u64_serializer.serialize(max_gas, buffer)?;
+                self.amount_serializer.serialize(coins, buffer)?;
+                self.amount_serializer.serialize(gas_price, buffer)?;
+                self.vec_u8_serializer.serialize(data, buffer)?;
             }
             OperationType::CallSC {
                 target_addr,
@@ -422,20 +431,22 @@ impl Serializer<OperationType> for OperationTypeSerializer {
                 gas_price,
             } => {
                 self.u32_serializer
-                    .serialize(&u32::from(OperationTypeId::CallSC), buffer);
-                self.u64_serializer.serialize(max_gas, buffer);
-                self.amount_serializer.serialize(parallel_coins, buffer);
-                self.amount_serializer.serialize(sequential_coins, buffer);
-                self.amount_serializer.serialize(gas_price, buffer);
+                    .serialize(&u32::from(OperationTypeId::CallSC), buffer)?;
+                self.u64_serializer.serialize(max_gas, buffer)?;
+                self.amount_serializer.serialize(parallel_coins, buffer)?;
+                self.amount_serializer.serialize(sequential_coins, buffer)?;
+                self.amount_serializer.serialize(gas_price, buffer)?;
                 buffer.extend(target_addr.to_bytes());
-                self.function_name_serializer.serialize(target_func, buffer);
-                self.parameter_serializer.serialize(param, buffer);
+                self.function_name_serializer
+                    .serialize(target_func, buffer)?;
+                self.parameter_serializer.serialize(param, buffer)?;
             }
         }
         Ok(())
     }
 }
 
+/// Serializer for `OperationType`
 pub struct OperationTypeDeserializer {
     u32_deserializer: U32VarIntDeserializer,
     u64_deserializer: U64VarIntDeserializer,
@@ -447,6 +458,7 @@ pub struct OperationTypeDeserializer {
 }
 
 impl OperationTypeDeserializer {
+    /// Creates a new `OperationTypeDeserializer`
     pub fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -463,6 +475,12 @@ impl OperationTypeDeserializer {
                 Included(u16::MAX),
             )),
         }
+    }
+}
+
+impl Default for OperationTypeDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -670,11 +688,13 @@ impl WrappedOperation {
 /// Set of operation ids
 pub type OperationIds = Set<OperationId>;
 
+/// Serializer for `OperationIds`
 pub struct OperationIdsSerializer {
     u32_serializer: U32VarIntSerializer,
 }
 
 impl OperationIdsSerializer {
+    /// Creates a new `OperationIdsSerializer`
     pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(
@@ -696,7 +716,7 @@ impl Serializer<OperationIds> for OperationIdsSerializer {
         let list_len: u32 = value.len().try_into().map_err(|_| {
             SerializeError::NumberTooBig("could not encode OperationIds list length as u32".into())
         })?;
-        self.u32_serializer.serialize(&list_len, buffer);
+        self.u32_serializer.serialize(&list_len, buffer)?;
         for hash in value {
             buffer.extend(hash.into_bytes());
         }
@@ -704,12 +724,14 @@ impl Serializer<OperationIds> for OperationIdsSerializer {
     }
 }
 
+/// Deserializer for `OperationIds`
 pub struct OperationIdsDeserializer {
     u32_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
 }
 
 impl OperationIdsDeserializer {
+    /// Creates a new `OperationIdsDeserializer`
     pub fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
@@ -743,7 +765,7 @@ impl Deserializer<OperationIds> for OperationIdsDeserializer {
                 }),
             ),
         )
-        .map(|hashes| hashes.into_iter().map(|hash| OperationId(hash)).collect())
+        .map(|hashes| hashes.into_iter().map(OperationId).collect())
         .parse(buffer)
     }
 }
@@ -751,12 +773,14 @@ impl Deserializer<OperationIds> for OperationIdsDeserializer {
 /// Set of self containing signed operations.
 pub type Operations = Vec<WrappedOperation>;
 
+/// Serializer for `Operations`
 pub struct OperationsSerializer {
     u32_serializer: U32VarIntSerializer,
     signed_op_serializer: WrappedOperationSerializer,
 }
 
 impl OperationsSerializer {
+    /// Creates a new `OperationsSerializer`
     pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(
@@ -779,7 +803,7 @@ impl Serializer<Operations> for OperationsSerializer {
         let list_len: u32 = value.len().try_into().map_err(|_| {
             SerializeError::NumberTooBig("could not encode Operations list length as u32".into())
         })?;
-        self.u32_serializer.serialize(&list_len, buffer);
+        self.u32_serializer.serialize(&list_len, buffer)?;
         for op in value {
             self.signed_op_serializer.serialize(op, buffer)?;
         }
@@ -787,12 +811,14 @@ impl Serializer<Operations> for OperationsSerializer {
     }
 }
 
+/// Deserializer for `Operations`
 pub struct OperationsDeserializer {
     u32_deserializer: U32VarIntDeserializer,
     signed_op_deserializer: WrappedOperationDeserializer,
 }
 
 impl OperationsDeserializer {
+    /// Creates a new `OperationsDeserializer`
     pub fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(

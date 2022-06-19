@@ -463,7 +463,7 @@ where
                 SerializeError::StringTooBig("The string is too big to be serialized".to_string())
             })?,
             buffer,
-        );
+        )?;
         buffer.extend(value.as_bytes());
         Ok(())
     }

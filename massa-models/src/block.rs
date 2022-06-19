@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
+use crate::constants::BLOCK_ID_SIZE_BYTES;
 use crate::endorsement::{WrappedEndorsementDeserializer, WrappedEndorsementSerializer};
 use crate::node_configuration::{MAX_BLOCK_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT};
 use crate::operation::{
@@ -9,17 +9,13 @@ use crate::operation::{
 use crate::prehash::{Map, PreHashed, Set};
 use crate::wrapped::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
 use crate::{
-    array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
-    DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementDeserializer, EndorsementId,
-    ModelsError, Operation, OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt,
-    Slot, SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation,
+    Address, EndorsementDeserializer, EndorsementId, ModelsError, OperationId, Slot,
+    SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation,
 };
-use massa_hash::HASH_SIZE_BYTES;
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::error::context;
@@ -134,8 +130,11 @@ pub struct Block {
     pub operations: Vec<WrappedOperation>,
 }
 
+/// Wrapped Block
 pub type WrappedBlock = Wrapped<Block, BlockId>;
+/// Serializer for `WrappedBlock`
 pub type WrappedBlockSerializer = WrappedSerializer<Block, BlockId>;
+/// Deserializer for `WrappedBlock`
 pub type WrappedBlockDeserializer = WrappedDeserializer<Block, BlockId, BlockDeserializer>;
 
 pub struct BlockSerializer {
@@ -351,9 +350,11 @@ pub struct BlockHeader {
 //     }
 // }
 
-/// signed header
+/// wrapped header
 pub type WrappedHeader = Wrapped<BlockHeader, BlockId>;
+/// Serializer for `WrappedHeader`
 pub type WrappedHeaderSerializer = WrappedSerializer<BlockHeader, BlockId>;
+/// Deserializer for `WrappedHeader`
 pub type WrappedHeaderDeserializer =
     WrappedDeserializer<BlockHeader, BlockId, BlockHeaderDeserializer>;
 
@@ -627,10 +628,15 @@ mod test {
         assert!(rest.is_empty());
 
         // check equality
-        // TODO: AURELIEN UNCOMMENT
-        //let generated_res_id = res_block.header.content.compute_id().unwrap();
-        //assert_eq!(orig_id, res_id);
-        //assert_eq!(orig_id, generated_res_id);
+        assert_eq!(orig_block.header.id, res_block.header.id);
+        assert_eq!(
+            orig_block.header.content.slot,
+            res_block.header.content.slot
+        );
+        assert_eq!(
+            orig_block.header.serialized_data,
+            res_block.header.serialized_data
+        );
         assert_eq!(res_block.header.signature, orig_block.header.signature);
     }
 }

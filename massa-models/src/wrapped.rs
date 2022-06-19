@@ -128,6 +128,16 @@ where
     }
 }
 
+impl<T, U> Default for WrappedSerializer<T, U>
+where
+    T: Display,
+    U: Id,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T, U> Serializer<Wrapped<T, U>> for WrappedSerializer<T, U>
 where
     T: Display,

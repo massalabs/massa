@@ -1,21 +1,15 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
+use crate::constants::ENDORSEMENT_ID_SIZE_BYTES;
 use crate::node_configuration::{ENDORSEMENT_COUNT, THREAD_COUNT};
 use crate::prehash::PreHashed;
 use crate::wrapped::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
-use crate::{
-    serialization::{
-        array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
-    },
-    with_serialization_context, BlockId, ModelsError, Slot,
-};
+use crate::{BlockId, ModelsError, Slot};
 use crate::{SlotDeserializer, SlotSerializer};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::{PublicKey, PublicKeyDeserializer, PUBLIC_KEY_SIZE_BYTES};
 use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
@@ -172,6 +166,7 @@ impl Serializer<Endorsement> for EndorsementSerializer {
     }
 }
 
+/// Deserializer for `Endorsement`
 pub struct EndorsementDeserializer {
     slot_deserializer: SlotDeserializer,
     u32_deserializer: U32VarIntDeserializer,
@@ -179,6 +174,7 @@ pub struct EndorsementDeserializer {
 }
 
 impl EndorsementDeserializer {
+    /// Creates a new `EndorsementDeserializer`
     pub fn new() -> Self {
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
