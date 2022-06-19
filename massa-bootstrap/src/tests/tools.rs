@@ -13,12 +13,12 @@ use massa_graph::{
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
-use massa_models::signed::Signable;
+use massa_models::wrapped::Signable;
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     rolls::{RollCounts, RollUpdate, RollUpdateSerializer, RollUpdates},
-    signed::Wrapped,
+    wrapped::Wrapped,
     Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement, Operation,
     SerializeCompact, Slot,
 };

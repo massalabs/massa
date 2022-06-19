@@ -9,7 +9,7 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
-    signed::Signable,
+    wrapped::Signable,
 };
 use massa_models::{BlockId, OperationId, SerializeCompact, SerializeVarInt};
 use massa_network_exports::{

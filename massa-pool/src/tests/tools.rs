@@ -5,8 +5,8 @@ use crate::{pool_controller, settings::PoolConfig, PoolCommandSender, PoolManage
 use futures::Future;
 use massa_hash::Hash;
 use massa_models::{
-    signed::Wrapped, Address, Amount, BlockId, Endorsement, Operation, OperationType,
-    WrappedEndorsement, WrappedOperation, Slot,
+    wrapped::Wrapped, Address, Amount, BlockId, Endorsement, Operation, OperationType, Slot,
+    WrappedEndorsement, WrappedOperation,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_storage::Storage;

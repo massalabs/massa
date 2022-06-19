@@ -13,7 +13,7 @@ use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
-use massa_models::signed::{Signable, Wrapped};
+use massa_models::wrapped::{Signable, Wrapped};
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,

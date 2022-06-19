@@ -3,7 +3,8 @@
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
 use massa_models::{
-    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, WrappedOperation, Slot,
+    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, Slot,
+    WrappedOperation,
 };
 use massa_storage::Storage;
 use num::rational::Ratio;

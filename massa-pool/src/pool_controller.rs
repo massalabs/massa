@@ -11,8 +11,8 @@ use massa_models::{
     constants::CHANNEL_SIZE,
     prehash::{Map, Set},
     stats::PoolStats,
-    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, WrappedEndorsement,
-    WrappedOperation, Slot,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, Slot, WrappedEndorsement,
+    WrappedOperation,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use massa_storage::Storage;

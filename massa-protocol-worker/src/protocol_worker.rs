@@ -10,7 +10,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
     prehash::{BuildMap, Map, Set},
-    signed::Signable,
+    wrapped::Signable,
     Address, Block, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};

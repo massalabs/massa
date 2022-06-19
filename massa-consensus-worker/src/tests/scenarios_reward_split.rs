@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 use massa_models::ledger_models::LedgerData;
-use massa_models::signed::Wrapped;
+use massa_models::wrapped::Wrapped;
 use massa_models::{Address, Amount, BlockId, Endorsement, Slot};
 use massa_time::MassaTime;
 use serial_test::serial;

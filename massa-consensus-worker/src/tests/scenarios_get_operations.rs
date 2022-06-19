@@ -4,7 +4,7 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
-use massa_models::signed::Signable;
+use massa_models::wrapped::Signable;
 use massa_models::WrappedOperation;
 use massa_models::{
     clique::Clique, ledger_models::LedgerData, Amount, BlockId, OperationSearchResult,

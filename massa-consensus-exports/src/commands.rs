@@ -6,7 +6,7 @@ use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Statu
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
-    Address, BlockId, OperationSearchResult, WrappedEndorsement, Slot, StakersCycleProductionStats,
+    Address, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats, WrappedEndorsement,
 };
 
 use massa_proof_of_stake_exports::ExportProofOfStake;

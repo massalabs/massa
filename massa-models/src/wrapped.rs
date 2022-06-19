@@ -53,6 +53,9 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Signature: {}", self.signature)?;
+        writeln!(f, "Creator pubkey: {}", self.creator_public_key)?;
+        writeln!(f, "Creator address: {}", self.creator_address)?;
+        writeln!(f, "Id: {}", self.id.hash())?;
         writeln!(f, "{}", self.content)?;
         Ok(())
     }
@@ -101,6 +104,7 @@ where
 }
 
 // NOTE FOR EXPLICATION: No content serializer because serialized data is already here.
+/// Serializer for `Wrapped` structure
 pub struct WrappedSerializer<T, U>
 where
     T: Display,
@@ -115,6 +119,7 @@ where
     T: Display,
     U: Id,
 {
+    /// Creates a new `WrappedSerializer`
     pub fn new() -> Self {
         Self {
             marker_t: std::marker::PhantomData,
@@ -130,11 +135,12 @@ where
 {
     fn serialize(&self, value: &Wrapped<T, U>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         buffer.extend(value.signature.into_bytes());
-        buffer.extend(value.serialized_data);
+        buffer.extend(value.serialized_data.clone());
         Ok(())
     }
 }
 
+/// Deserializer for Wrapped structure
 pub struct WrappedDeserializer<T, U, DT>
 where
     T: Display,
@@ -154,6 +160,10 @@ where
     U: Id,
     DT: Deserializer<T>,
 {
+    /// Creates a new WrappedDeserializer
+    ///
+    /// # Arguments
+    /// * `content_deserializer` - Deserializer for the content
     pub fn new(content_deserializer: DT) -> Self {
         Self {
             signature_deserializer: SignatureDeserializer::new(),

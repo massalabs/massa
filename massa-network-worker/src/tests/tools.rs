@@ -11,9 +11,9 @@ use crate::NetworkSettings;
 
 use massa_hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::signed::Wrapped;
+use massa_models::wrapped::Wrapped;
 use massa_models::{
-    Address, Amount, BlockId, Operation, OperationType, SerializeCompact, WrappedOperation, Version,
+    Address, Amount, BlockId, Operation, OperationType, SerializeCompact, Version, WrappedOperation,
 };
 use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
 use massa_network_exports::{

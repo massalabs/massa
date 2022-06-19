@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    constants::CHANNEL_SIZE, signed::Signable, Block, BlockId, SerializeCompact, WrappedHeader,
+    constants::CHANNEL_SIZE, wrapped::Signable, Block, BlockId, SerializeCompact, WrappedHeader,
 };
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,

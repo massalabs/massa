@@ -7,8 +7,8 @@ use massa_models::prehash::{Map, Set};
 use massa_models::stats::PoolStats;
 use massa_models::SerializeCompact;
 use massa_models::{
-    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, WrappedEndorsement,
-    WrappedOperation, Slot,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, Slot, WrappedEndorsement,
+    WrappedOperation,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use massa_storage::Storage;

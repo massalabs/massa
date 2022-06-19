@@ -9,7 +9,7 @@ use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Wrapped;
+use massa_models::wrapped::Wrapped;
 use massa_models::{Operation, WrappedOperation};
 use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
 use serde::{Deserialize, Serialize};

@@ -18,9 +18,9 @@ use massa_models::DeserializeCompact;
 use massa_models::SerializeCompact;
 use massa_models::{
     node::NodeId,
-    signed::{Signable, Wrapped},
+    wrapped::{Signable, Wrapped},
 };
-use massa_models::{BlockId, Endorsement, WrappedOperation, Slot};
+use massa_models::{BlockId, Endorsement, Slot, WrappedOperation};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
@@ -1214,7 +1214,9 @@ async fn test_endorsements_messages() {
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Wrapped::new_wrapped(content.clone(), &sender_priv).unwrap().1;
+            let endorsement = Wrapped::new_wrapped(content.clone(), &sender_priv)
+                .unwrap()
+                .1;
             let ref_id = endorsement.content.compute_id().unwrap();
             conn1_w
                 .send(
@@ -1253,7 +1255,9 @@ async fn test_endorsements_messages() {
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Wrapped::new_wrapped(content.clone(), &sender_priv).unwrap().1;
+            let endorsement = Wrapped::new_wrapped(content.clone(), &sender_priv)
+                .unwrap()
+                .1;
             let ref_id = endorsement.content.compute_id().unwrap();
 
             // reply with another endorsement

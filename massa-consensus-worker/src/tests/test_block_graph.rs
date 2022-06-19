@@ -5,14 +5,14 @@ use massa_graph::{
     settings::GraphConfig, BlockGraph, BootstrapableGraph,
 };
 use massa_hash::Hash;
-use massa_models::signed::Signable;
+use massa_models::wrapped::Signable;
 use massa_models::{
     active_block::ActiveBlock,
     clique::Clique,
     init_serialization_context,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     prehash::{Map, Set},
-    signed::Wrapped,
+    wrapped::Wrapped,
     Address, Block, BlockHeader, BlockId, DeserializeCompact, SerializeCompact, Slot,
 };
 use massa_models::{Amount, Endorsement};

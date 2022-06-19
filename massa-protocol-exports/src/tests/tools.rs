@@ -7,10 +7,10 @@ use crate::{
 };
 use massa_hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::signed::{Signable, Wrapped};
+use massa_models::wrapped::{Signable, Wrapped};
 use massa_models::SerializeCompact;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, WrappedEndorsement, WrappedOperation, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, Slot, WrappedEndorsement, WrappedOperation,
 };
 use massa_models::{Endorsement, Operation, OperationType};
 use massa_network_exports::NetworkCommand;

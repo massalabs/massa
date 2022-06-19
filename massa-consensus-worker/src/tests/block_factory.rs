@@ -10,8 +10,8 @@ use super::{
 };
 use massa_hash::Hash;
 use massa_models::{
-    signed::{Signable, Wrapped},
-    Block, BlockHeader, BlockId, WrappedEndorsement, WrappedOperation, Slot,
+    wrapped::{Signable, Wrapped},
+    Block, BlockHeader, BlockId, Slot, WrappedEndorsement, WrappedOperation,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 

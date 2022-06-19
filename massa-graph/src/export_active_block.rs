@@ -5,7 +5,7 @@ use massa_models::{
     ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
     rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
-    signed::Signable,
+    wrapped::Signable,
     *,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};

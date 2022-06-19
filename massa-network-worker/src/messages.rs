@@ -4,11 +4,11 @@ use massa_models::{
     array_from_slice,
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
     operation::{OperationIds, Operations},
-    signed::Wrapped,
-    with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, IpAddrDeserializer, IpAddrSerializer, ModelsError,
-    SerializeCompact, SerializeVarInt, WrappedEndorsement, WrappedHeader, WrappedOperation, Version,
-    VersionDeserializer, VersionSerializer,
+    with_serialization_context,
+    wrapped::Wrapped,
+    Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt, Endorsement, EndorsementId,
+    IpAddrDeserializer, IpAddrSerializer, ModelsError, SerializeCompact, SerializeVarInt, Version,
+    VersionDeserializer, VersionSerializer, WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};

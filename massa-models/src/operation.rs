@@ -4,7 +4,7 @@ use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::node_configuration::MAX_OPERATIONS_PER_MESSAGE;
 use crate::prehash::{BuildMap, PreHashed, Set};
 use crate::serialization::StringDeserializer;
-use crate::signed::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
+use crate::wrapped::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,

@@ -5,7 +5,7 @@
 use super::tools::protocol_test;
 use massa_models::{self, Address, Amount, Slot};
 use massa_models::{operation::OperationIds, prehash::Set};
-use massa_models::{prehash::Map, signed::Signable};
+use massa_models::{prehash::Map, wrapped::Signable};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};

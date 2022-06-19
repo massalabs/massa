@@ -23,7 +23,7 @@ use massa_ledger_exports::{
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::signed::Signable;
+use massa_models::wrapped::Signable;
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;

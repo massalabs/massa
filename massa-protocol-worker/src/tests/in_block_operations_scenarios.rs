@@ -2,7 +2,7 @@
 
 use super::tools::protocol_test;
 use massa_hash::Hash;
-use massa_models::signed::Wrapped;
+use massa_models::wrapped::Wrapped;
 use massa_models::{get_serialization_context, Address, Amount, Block, BlockHeader, Slot};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{

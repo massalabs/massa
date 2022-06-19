@@ -3,7 +3,7 @@
 use massa_consensus_exports::tools;
 use massa_consensus_exports::{settings::ConsensusChannels, ConsensusConfig};
 use massa_execution_exports::test_exports::MockExecutionController;
-use massa_models::signed::Signable;
+use massa_models::wrapped::Signable;
 use massa_models::{Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;

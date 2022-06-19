@@ -12,7 +12,7 @@ pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
 };
-pub use endorsement::{Endorsement, EndorsementId, WrappedEndorsement};
+pub use endorsement::{Endorsement, EndorsementDeserializer, EndorsementId, WrappedEndorsement};
 pub use error::ModelsError;
 pub use operation::{Operation, OperationId, OperationType, WrappedOperation};
 pub use serialization::{
@@ -59,8 +59,6 @@ pub mod prehash;
 pub mod rolls;
 mod serialization;
 mod serialization_context;
-/// trait for signed structure
-pub mod signed;
 /// slots
 pub mod slot;
 /// various statistics
@@ -68,6 +66,8 @@ pub mod stats;
 /// management of the relation between time and slots
 pub mod timeslots;
 mod version;
+/// trait for signed structure
+pub mod wrapped;
 pub use node_configuration::CompactConfig;
 /// Expose constants
 pub mod constants {

@@ -11,7 +11,7 @@ use massa_hash::Hash;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
-use massa_models::{address::AddressState, signed::Wrapped};
+use massa_models::{address::AddressState, wrapped::Wrapped};
 use massa_models::{
     api::{LedgerInfo, RollsInfo},
     WrappedEndorsement,

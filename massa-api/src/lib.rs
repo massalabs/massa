@@ -22,7 +22,7 @@ use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
-use massa_models::{Address, BlockId, EndorsementId, WrappedOperation, Version};
+use massa_models::{Address, BlockId, EndorsementId, Version, WrappedOperation};
 use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;

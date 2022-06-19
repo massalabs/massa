@@ -1,8 +1,8 @@
 use massa_models::{
     prehash::{Map, Set},
-    signed::Wrapped,
-    Address, Amount, Operation, OperationId, OperationType, SerializeCompact, WrappedOperation,
-    Slot,
+    wrapped::Wrapped,
+    Address, Amount, Operation, OperationId, OperationType, SerializeCompact, Slot,
+    WrappedOperation,
 };
 use massa_signature::{derive_public_key, generate_random_private_key};
 use serial_test::serial;

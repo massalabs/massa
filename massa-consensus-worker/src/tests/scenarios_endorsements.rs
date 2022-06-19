@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{signed::Wrapped, Amount, BlockId, Endorsement, Slot};
+use massa_models::{wrapped::Wrapped, Amount, BlockId, Endorsement, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -91,7 +91,9 @@ async fn test_endorsement_check() {
                 index: 0,
                 endorsed_block: parents[0],
             };
-            let ed = Wrapped::new_wrapped(content.clone(), &sender_priv).unwrap().1;
+            let ed = Wrapped::new_wrapped(content.clone(), &sender_priv)
+                .unwrap()
+                .1;
             b10.header.content.endorsements = vec![ed];
 
             propagate_block(&mut protocol_controller, b10, false, 500).await;
@@ -103,7 +105,9 @@ async fn test_endorsement_check() {
                 index: 0,
                 endorsed_block: parents[1],
             };
-            let ed = Wrapped::new_wrapped(content.clone(), &sender_priv).unwrap().1;
+            let ed = Wrapped::new_wrapped(content.clone(), &sender_priv)
+                .unwrap()
+                .1;
             let (_, mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), priv_key_a);
             b10.header.content.endorsements = vec![ed];
 
@@ -116,7 +120,9 @@ async fn test_endorsement_check() {
                 index: 0,
                 endorsed_block: parents[1],
             };
-            let ed = Wrapped::new_wrapped(content.clone(), &sender_priv).unwrap().1;
+            let ed = Wrapped::new_wrapped(content.clone(), &sender_priv)
+                .unwrap()
+                .1;
             let (_, mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), priv_key_a);
             b10.header.content.endorsements = vec![ed];
 
@@ -129,7 +135,9 @@ async fn test_endorsement_check() {
                 index: 0,
                 endorsed_block: parents[0],
             };
-            let ed = Wrapped::new_wrapped(content.clone(), &sender_priv).unwrap().1;
+            let ed = Wrapped::new_wrapped(content.clone(), &sender_priv)
+                .unwrap()
+                .1;
             let (_, mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), priv_key_a);
             b10.header.content.endorsements = vec![ed];
 

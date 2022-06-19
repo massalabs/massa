@@ -2,7 +2,7 @@
 
 use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signable;
+use massa_models::wrapped::Signable;
 use massa_models::{BlockId, Slot};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;

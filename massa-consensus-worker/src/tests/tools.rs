@@ -14,9 +14,9 @@ use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, Boot
 use massa_hash::Hash;
 use massa_models::{
     prehash::Set,
-    signed::{Signable, Wrapped},
+    wrapped::{Signable, Wrapped},
     Address, Amount, Block, BlockHeader, BlockId, Endorsement, Operation, OperationType,
-    SerializeCompact, WrappedEndorsement, WrappedOperation, Slot,
+    SerializeCompact, Slot, WrappedEndorsement, WrappedOperation,
 };
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;

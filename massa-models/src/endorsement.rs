@@ -3,7 +3,7 @@
 use crate::constants::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::node_configuration::{ENDORSEMENT_COUNT, THREAD_COUNT};
 use crate::prehash::PreHashed;
-use crate::signed::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
+use crate::wrapped::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -222,7 +222,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use crate::signed::Wrapped;
+    use crate::wrapped::Wrapped;
 
     use super::*;
     use massa_signature::{derive_public_key, generate_random_private_key};
