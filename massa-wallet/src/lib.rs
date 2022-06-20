@@ -6,8 +6,7 @@
 
 pub use error::WalletError;
 
-use aes_gcm_siv::aead::{Aead, NewAead};
-use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
+use massa_cipher::{decrypt, encrypt};
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
@@ -17,7 +16,6 @@ use massa_models::{Operation, SignedOperation};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
 };
-use rand::{thread_rng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -40,15 +38,8 @@ impl Wallet {
         let content = &std::fs::read(&path)?[..];
         let priv_keys = if !content.is_empty() {
             // If wallet contains data decipher it
-            let cipher = Aes256GcmSiv::new(Key::from_slice(
-                Hash::compute_from(password.as_bytes()).to_bytes(),
-            ));
-            let mut iter = content.split(|c| c == &b':');
-            let nonce = Nonce::from_slice(iter.next().expect("Missing nonce"));
-            let text = cipher
-                .decrypt(nonce, iter.next().expect("Missing content"))
-                .map_err(|_| WalletError::DecryptionError("Wrong password".to_string()))?;
-            serde_json::from_slice::<Vec<PrivateKey>>(&text[..])?
+            let decrypted_content = decrypt(&password, content)?;
+            serde_json::from_slice::<Vec<PrivateKey>>(&decrypted_content[..])?
         } else {
             // If wallet is empty add a new private key
             vec![generate_random_private_key()]
@@ -137,21 +128,10 @@ impl Wallet {
     /// Save the wallet in json format in a file
     /// Only the private keys are dumped
     fn save(&self) -> Result<(), WalletError> {
-        let cipher = Aes256GcmSiv::new(Key::from_slice(
-            Hash::compute_from(self.password.as_bytes()).to_bytes(),
-        ));
-        let mut bytes = [0u8; 12];
-        thread_rng().fill_bytes(&mut bytes);
-        let nonce = Nonce::from_slice(&bytes);
-        let keys =
+        let ser_keys =
             serde_json::to_string(&self.keys.iter().map(|(_, (_, pk))| *pk).collect::<Vec<_>>())?;
-        let text = cipher
-            .encrypt(nonce, keys.as_ref())
-            .map_err(|e| WalletError::EncryptionError(e.to_string()))?;
-        let mut content = bytes.to_vec();
-        content.extend(b":");
-        content.extend(text);
-        std::fs::write(&self.wallet_path, content)?;
+        let encrypted_content = encrypt(&self.password, ser_keys.as_bytes())?;
+        std::fs::write(&self.wallet_path, encrypted_content)?;
         Ok(())
     }
 

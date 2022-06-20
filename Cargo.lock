@@ -1654,6 +1654,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_cipher"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm-siv",
+ "displaydoc",
+ "massa_hash",
+ "massa_models",
+ "massa_signature",
+ "rand 0.8.5",
+ "serde 1.0.136",
+ "serde_json",
+ "serde_qs",
+ "thiserror",
+]
+
+[[package]]
 name = "massa_consensus_exports"
 version = "0.1.0"
 dependencies = [
@@ -2040,12 +2056,11 @@ dependencies = [
 name = "massa_wallet"
 version = "0.1.0"
 dependencies = [
- "aes-gcm-siv",
  "displaydoc",
+ "massa_cipher",
  "massa_hash",
  "massa_models",
  "massa_signature",
- "rand 0.8.5",
  "serde 1.0.136",
  "serde_json",
  "serde_qs",

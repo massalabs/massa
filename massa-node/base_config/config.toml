@@ -70,6 +70,7 @@
     pos_draw_cached_cycles = 10
 
     # path to your staking private keys (not encrypted)
+    # HERE 1
     staking_keys_path = "config/staking_keys.json"
     # considered timespan for stats info
     stats_timespan = 60000
@@ -139,6 +140,7 @@
     # interval in milliseconds for asking peer lists from peers we are connected to
     ask_peer_list_interval = 30000
     # path to the node private key (not the staking key)
+    # HERE 2
     private_key_file = "config/node_privkey.key"
     # max number of asked blocks per message
     max_ask_blocks_per_message = 128
