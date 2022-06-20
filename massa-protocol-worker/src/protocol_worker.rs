@@ -1095,7 +1095,22 @@ impl ProtocolWorker {
         let mut seen_ops = vec![];
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
-        for (idx, operation) in operations.into_iter().enumerate() {
+
+        // Ensure we have a Vec<Vec<u8>> to zip with the Operations.
+        let serialized = if let Some(serialized) = serialized {
+            serialized
+        } else {
+            let serialized: Result<Vec<Vec<u8>>, _> =
+                operations.iter().map(|op| op.to_bytes_compact()).collect();
+
+            serialized?
+        };
+
+        for ((idx, operation), serialized) in operations
+            .into_iter()
+            .enumerate()
+            .zip(serialized.into_iter())
+        {
             let operation_id = operation.content.compute_id()?;
             seen_ops.push(operation_id);
 
@@ -1117,12 +1132,6 @@ impl ProtocolWorker {
                 // check signature
                 operation.verify_signature(&operation.content.sender_public_key)?;
 
-                let serialized = if let Some(serialized_ops) = serialized.as_ref() {
-                    // TODO: remove clone #2669.
-                    serialized_ops[idx].clone()
-                } else {
-                    operation.to_bytes_compact()?
-                };
                 new_operations.insert(operation_id, (operation, serialized));
             };
         }
