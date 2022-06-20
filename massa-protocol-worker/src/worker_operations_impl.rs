@@ -72,7 +72,7 @@ impl ProtocolWorker {
         let now = Instant::now();
         let mut count_reask = 0;
         for op_id in op_batch {
-            if self.op_prefix_adapter.contains_key(&op_id) {
+            if self.op_prefix_adapter.contains(&op_id) {
                 continue;
             }
             let wish = match self.asked_operations.get_mut(&op_id) {

@@ -3,7 +3,7 @@
 use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::error::ModelsResult;
 use crate::node_configuration::OPERATION_ID_PREFIX_SIZE_BYTES;
-use crate::prehash::{BuildMap, PreHashed, Set};
+use crate::prehash::{BuildMap, Map, PreHashed, Set};
 use crate::signed::{Id, Signable, Signed};
 use crate::with_serialization_context;
 use crate::{
@@ -17,6 +17,7 @@ use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use nom::AsBytes;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::Entry;
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::mem::transmute_copy;
@@ -35,6 +36,45 @@ pub struct OperationPrefixId(Vec<u8>);
 /// Right part of the operation id hash, contains the remains of `OperationId - OperationPrefixId`
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationSuffixId(Vec<u8>);
+
+/// Manage the relation between [OperationPrefixId] and [OperationId]
+///
+/// note: we could think about replace `Vec<OperationId>` with `Vec<OperationSuffixId>`
+///       if the execution time CPU is equivalent
+#[derive(Default)]
+pub struct OperationIdAdapter(Map<OperationPrefixId, OperationIds>);
+
+impl OperationIdAdapter {
+    /// Insert in the adapter an operation id
+    pub fn insert(&mut self, id: &OperationId) {
+        let prefix = id.split().0;
+        match self.0.entry(prefix) {
+            Entry::Occupied(mut e) => {
+                e.get_mut().insert(*id);
+            }
+            Entry::Vacant(e) => {
+                let mut ids = OperationIds::default();
+                ids.insert(*id);
+                e.insert(ids);
+            }
+        }
+    }
+
+    /// Check if prefix id is in the adapter
+    pub fn contains(&self, prefix: &OperationPrefixId) -> bool {
+        self.0.contains_key(prefix)
+    }
+
+    /// Get a set of [OperationIds] matching with the givec `prefix`
+    pub fn get(&self, prefix: &OperationPrefixId) -> Option<&OperationIds> {
+        self.0.get(prefix)
+    }
+
+    /// Prune the adapter
+    pub fn prune(&mut self) {
+        todo!()
+    }
+}
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
