@@ -13,9 +13,9 @@ pub(crate) struct ActiveHistory(pub VecDeque<ExecutionOutput>);
 
 /// Result of a lazy, active history search
 pub enum HistorySearchResult<T> {
-    Found(T),
-    NotFound,
-    Deleted,
+    Present(T),
+    Absent,
+    NoInfo,
 }
 
 impl ActiveHistory {
@@ -27,22 +27,26 @@ impl ActiveHistory {
         addr: &Address,
         index: Option<usize>,
     ) -> HistorySearchResult<Amount> {
-        let iter = self.0.iter().skip(index.unwrap_or_default()).rev();
+        let iter = self
+            .0
+            .iter()
+            .take(index.unwrap_or_default().saturating_add(1))
+            .rev();
 
         for output in iter {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(v)) => {
-                    return HistorySearchResult::Found(v.parallel_balance)
+                    return HistorySearchResult::Present(v.parallel_balance)
                 }
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
                     parallel_balance: SetOrKeep::Set(v),
                     ..
-                })) => return HistorySearchResult::Found(*v),
-                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                })) => return HistorySearchResult::Present(*v),
+                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,
                 _ => (),
             }
         }
-        HistorySearchResult::NotFound
+        HistorySearchResult::NoInfo
     }
 
     /// Lazily query (from end to beginning) the active bytecode of an address after a given index.
@@ -53,22 +57,26 @@ impl ActiveHistory {
         addr: &Address,
         index: Option<usize>,
     ) -> HistorySearchResult<Vec<u8>> {
-        let iter = self.0.iter().skip(index.unwrap_or_default()).rev();
+        let iter = self
+            .0
+            .iter()
+            .take(index.unwrap_or_default().saturating_add(1))
+            .rev();
 
         for output in iter {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(v)) => {
-                    return HistorySearchResult::Found(v.bytecode.to_vec())
+                    return HistorySearchResult::Present(v.bytecode.to_vec())
                 }
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
                     bytecode: SetOrKeep::Set(v),
                     ..
-                })) => return HistorySearchResult::Found(v.to_vec()),
-                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                })) => return HistorySearchResult::Present(v.to_vec()),
+                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,
                 _ => (),
             }
         }
-        HistorySearchResult::NotFound
+        HistorySearchResult::NoInfo
     }
 
     /// Lazily query (from end to beginning) the active datastore entry of an address after a given index.
@@ -80,29 +88,33 @@ impl ActiveHistory {
         key: &Hash,
         index: Option<usize>,
     ) -> HistorySearchResult<Vec<u8>> {
-        let iter = self.0.iter().skip(index.unwrap_or_default()).rev();
+        let iter = self
+            .0
+            .iter()
+            .take(index.unwrap_or_default().saturating_add(1))
+            .rev();
 
         for output in iter {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
                     match datastore.get(key) {
-                        Some(value) => return HistorySearchResult::Found(value.to_vec()),
-                        None => (),
+                        Some(value) => return HistorySearchResult::Present(value.to_vec()),
+                        None => return HistorySearchResult::Absent,
                     }
                 }
                 Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
                     match datastore.get(key) {
                         Some(SetOrDelete::Set(value)) => {
-                            return HistorySearchResult::Found(value.to_vec())
+                            return HistorySearchResult::Present(value.to_vec())
                         }
-                        Some(SetOrDelete::Delete) => return HistorySearchResult::Deleted,
+                        Some(SetOrDelete::Delete) => return HistorySearchResult::Absent,
                         None => (),
                     }
                 }
-                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
+                Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,
                 None => (),
             }
         }
-        HistorySearchResult::NotFound
+        HistorySearchResult::NoInfo
     }
 }

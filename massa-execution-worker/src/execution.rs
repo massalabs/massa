@@ -783,9 +783,9 @@ impl ExecutionState {
         (
             final_balance,
             match search_result {
-                HistorySearchResult::Found(active_balance) => Some(active_balance),
-                HistorySearchResult::NotFound => final_balance,
-                HistorySearchResult::Deleted => None,
+                HistorySearchResult::Present(active_balance) => Some(active_balance),
+                HistorySearchResult::NoInfo => final_balance,
+                HistorySearchResult::Absent => None,
             },
         )
     }
@@ -806,9 +806,9 @@ impl ExecutionState {
         (
             final_entry.clone(),
             match search_result {
-                HistorySearchResult::Found(active_entry) => Some(active_entry),
-                HistorySearchResult::NotFound => final_entry,
-                HistorySearchResult::Deleted => None,
+                HistorySearchResult::Present(active_entry) => Some(active_entry),
+                HistorySearchResult::NoInfo => final_entry,
+                HistorySearchResult::Absent => None,
             },
         )
     }
