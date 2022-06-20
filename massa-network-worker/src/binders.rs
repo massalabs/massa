@@ -4,7 +4,7 @@
 use super::messages::{
     deserialize_message_with_optional_serialized_object, Message, SerializedForm,
 };
-use async_speed_limit::{clock::StandardClock, Resource};
+use async_speed_limit::{clock::StandardClock, Limiter, Resource};
 use massa_models::{with_serialization_context, DeserializeMinBEInt, SerializeMinBEInt};
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use std::convert::TryInto;
@@ -17,13 +17,13 @@ pub struct WriteBinder {
 }
 
 impl WriteBinder {
-    /// Creates a new `WriteBinder`.
+    /// Creates a new `WriteBinder` with a bandwidth `limit` in bytes per second.
     ///
     /// # Argument
     /// * `write_half`: writer half.
-    pub fn new(write_half: Resource<WriteHalf, StandardClock>) -> Self {
+    pub fn new(write_half: WriteHalf, limit: u32) -> Self {
         WriteBinder {
-            write_half,
+            write_half: <Limiter>::new(limit.into()).limit(write_half),
             message_index: 0,
         }
     }
@@ -66,13 +66,13 @@ pub struct ReadBinder {
 }
 
 impl ReadBinder {
-    /// Creates a new `ReadBinder`.
+    /// Creates a new `ReadBinder` with a bandwidth `limit` in bytes per second.
     ///
     /// # Argument
     /// * `read_half`: reader half.
-    pub fn new(read_half: Resource<ReadHalf, StandardClock>) -> Self {
+    pub fn new(read_half: ReadHalf, limit: u32) -> Self {
         ReadBinder {
-            read_half,
+            read_half: <Limiter>::new(limit.into()).limit(read_half),
             message_index: 0,
             buf: Vec::new(),
             cursor: 0,

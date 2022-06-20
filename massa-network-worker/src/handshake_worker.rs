@@ -6,7 +6,6 @@ use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
 };
-use async_speed_limit::{clock::StandardClock, Resource};
 use futures::future::try_join;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
@@ -58,14 +57,17 @@ impl HandshakeWorker {
     /// * `timeout_duration`: after `timeout_duration` milliseconds, the handshake attempt is dropped.
     /// * `connection_id`: Node we are trying to connect for debugging
     /// * `version`: Node version used in handshake initialization (check peers compatibility)
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn(
-        socket_reader: Resource<ReadHalf, StandardClock>,
-        socket_writer: Resource<WriteHalf, StandardClock>,
+        socket_reader: ReadHalf,
+        socket_writer: WriteHalf,
         self_node_id: NodeId,
         private_key: PrivateKey,
         timeout_duration: MassaTime,
         version: Version,
         connection_id: ConnectionId,
+        max_bit_read: u32,
+        max_bit_write: u32,
     ) -> JoinHandle<(ConnectionId, HandshakeReturnType)> {
         debug!("starting handshake with connection_id={}", connection_id);
         massa_trace!("network_worker.new_connection", {
@@ -77,8 +79,8 @@ impl HandshakeWorker {
             (
                 connection_id_copy,
                 HandshakeWorker {
-                    reader: ReadBinder::new(socket_reader),
-                    writer: WriteBinder::new(socket_writer),
+                    reader: ReadBinder::new(socket_reader, max_bit_read),
+                    writer: WriteBinder::new(socket_writer, max_bit_write),
                     self_node_id,
                     private_key,
                     timeout_duration,

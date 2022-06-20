@@ -7,7 +7,7 @@ use crate::messages::{
     BootstrapServerMessageSerializer,
 };
 use async_speed_limit::clock::StandardClock;
-use async_speed_limit::Resource;
+use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::Version;
@@ -38,7 +38,7 @@ impl BootstrapServerBinder {
     ///
     /// # Argument
     /// * duplex: duplex stream.
-    pub fn new(duplex: Resource<Duplex, StandardClock>, local_privkey: PrivateKey) -> Self {
+    pub fn new(duplex: Duplex, local_privkey: PrivateKey, limit: u32) -> Self {
         let max_bootstrap_message_size =
             with_serialization_context(|context| context.max_bootstrap_message_size);
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
@@ -46,7 +46,7 @@ impl BootstrapServerBinder {
             max_bootstrap_message_size,
             size_field_len,
             local_privkey,
-            duplex,
+            duplex: <Limiter>::new(limit.into()).limit(duplex),
             prev_message: None,
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),

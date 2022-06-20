@@ -10,7 +10,6 @@ use crate::{
     messages::Message,
     network_event::EventSender,
 };
-use async_speed_limit::{clock::StandardClock, Limiter, Resource};
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, SerializeCompact, Version};
@@ -577,8 +576,6 @@ impl NetworkWorker {
                     .peer_info_db
                     .try_out_connection_attempt_success(&ip_addr)?
                 {
-                    let reader = <Limiter>::new(self.cfg.max_bit_read.into()).limit(reader);
-                    let writer = <Limiter>::new(self.cfg.max_bit_write.into()).limit(writer);
                     // outgoing connection established
                     let connection_id = *cur_connection_id;
                     debug!(
@@ -633,8 +630,6 @@ impl NetworkWorker {
     ) -> Result<(), NetworkError> {
         match res {
             Ok((reader, writer, remote_addr)) => {
-                let reader = <Limiter>::new(self.cfg.max_bit_read.into()).limit(reader);
-                let writer = <Limiter>::new(self.cfg.max_bit_write.into()).limit(writer);
                 match self.peer_info_db.try_new_in_connection(&remote_addr.ip()) {
                     Ok(_) => {
                         let connection_id = *cur_connection_id;
@@ -696,8 +691,8 @@ impl NetworkWorker {
     /// main loop.
     fn try_send_peer_list_in_handshake(
         &self,
-        reader: Resource<ReadHalf, StandardClock>,
-        writer: Resource<WriteHalf, StandardClock>,
+        reader: ReadHalf,
+        writer: WriteHalf,
         remote_addr: SocketAddr,
     ) {
         massa_trace!(
@@ -707,10 +702,12 @@ impl NetworkWorker {
         if self.cfg.max_in_connection_overflow > self.handshake_peer_list_futures.len() {
             let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
             let timeout = self.cfg.peer_list_send_timeout.to_duration();
+            let max_bit_read = self.cfg.max_bit_read;
+            let max_bit_write = self.cfg.max_bit_write;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
-                    let mut writer = WriteBinder::new(writer);
-                    let mut reader = ReadBinder::new(reader);
+                    let mut writer = WriteBinder::new(writer, max_bit_read);
+                    let mut reader = ReadBinder::new(reader, max_bit_write);
                     match tokio::time::timeout(
                         timeout,
                         futures::future::try_join(
@@ -741,8 +738,8 @@ impl NetworkWorker {
     fn manage_successful_connection(
         &mut self,
         connection_id: ConnectionId,
-        reader: Resource<ReadHalf, StandardClock>,
-        writer: Resource<WriteHalf, StandardClock>,
+        reader: ReadHalf,
+        writer: WriteHalf,
     ) -> Result<(), NetworkError> {
         if !self.running_handshakes.insert(connection_id) {
             return Err(NetworkError::HandshakeError(
@@ -757,6 +754,8 @@ impl NetworkWorker {
             self.cfg.connect_timeout,
             self.version,
             connection_id,
+            self.cfg.max_bit_read,
+            self.cfg.max_bit_write,
         ));
         Ok(())
     }
