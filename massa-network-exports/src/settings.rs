@@ -52,9 +52,9 @@ pub struct NetworkSettings {
     pub max_in_connection_overflow: usize,
     /// Max operations per message in the network to avoid sending to big data packet.
     pub max_operations_per_message: u32,
-    /// Read limitation for a connection in bit by 0.100 milliseconds
+    /// Read limitation for a connection in bytes per seconds
     pub max_bit_read: u32,
-    /// Write limitation for a connection in bit by 0.100 milliseconds
+    /// Write limitation for a connection in bytes per seconds
     pub max_bit_write: u32,
 }
 
