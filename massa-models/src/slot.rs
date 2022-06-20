@@ -76,6 +76,7 @@ impl Serializer<Slot> for SlotSerializer {
             )));
         }
         self.u64_serializer.serialize(&value.period, buffer)?;
+        println!("added thread: {}", value.thread);
         buffer.push(value.thread);
         Ok(())
     }
@@ -127,6 +128,7 @@ impl Deserializer<Slot> for SlotDeserializer {
                     nom::error::ErrorKind::LengthValue,
                 ))
             })?;
+            println!("deserialized thread: {}", thread);
             if !self.range_thread.contains(&thread) {
                 return Err(nom::Err::Error(ParseError::from_error_kind(
                     &rest[0..1],

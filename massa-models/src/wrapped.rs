@@ -7,7 +7,7 @@ use massa_signature::{
     Signature, SignatureDeserializer,
 };
 use nom::{
-    error::{ContextError, ParseError},
+    error::{context, ContextError, ParseError},
     sequence::tuple,
     IResult,
 };
@@ -105,40 +105,17 @@ where
 
 // NOTE FOR EXPLICATION: No content serializer because serialized data is already here.
 /// Serializer for `Wrapped` structure
-pub struct WrappedSerializer<T, U>
-where
-    T: Display,
-    U: Id,
-{
-    marker_t: std::marker::PhantomData<T>,
-    marker_u: std::marker::PhantomData<U>,
-}
+#[derive(Default)]
+pub struct WrappedSerializer;
 
-impl<T, U> WrappedSerializer<T, U>
-where
-    T: Display,
-    U: Id,
-{
+impl WrappedSerializer {
     /// Creates a new `WrappedSerializer`
     pub fn new() -> Self {
-        Self {
-            marker_t: std::marker::PhantomData,
-            marker_u: std::marker::PhantomData,
-        }
+        Self
     }
 }
 
-impl<T, U> Default for WrappedSerializer<T, U>
-where
-    T: Display,
-    U: Id,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T, U> Serializer<Wrapped<T, U>> for WrappedSerializer<T, U>
+impl<T, U> Serializer<Wrapped<T, U>> for WrappedSerializer
 where
     T: Display,
     U: Id,
@@ -151,23 +128,20 @@ where
 }
 
 /// Deserializer for Wrapped structure
-pub struct WrappedDeserializer<T, U, DT>
+pub struct WrappedDeserializer<T, DT>
 where
     T: Display,
-    U: Id,
     DT: Deserializer<T>,
 {
     signature_deserializer: SignatureDeserializer,
     public_key_deserializer: PublicKeyDeserializer,
     content_deserializer: DT,
     marker_t: std::marker::PhantomData<T>,
-    marker_u: std::marker::PhantomData<U>,
 }
 
-impl<T, U, DT> WrappedDeserializer<T, U, DT>
+impl<T, DT> WrappedDeserializer<T, DT>
 where
     T: Display,
-    U: Id,
     DT: Deserializer<T>,
 {
     /// Creates a new WrappedDeserializer
@@ -180,33 +154,59 @@ where
             public_key_deserializer: PublicKeyDeserializer::new(),
             content_deserializer,
             marker_t: std::marker::PhantomData,
-            marker_u: std::marker::PhantomData,
         }
     }
 }
 
-impl<T, U, DT> Deserializer<Wrapped<T, U>> for WrappedDeserializer<T, U, DT>
+impl<T, U, DT> Deserializer<Wrapped<T, U>> for WrappedDeserializer<T, DT>
 where
     T: Display,
     U: Id,
     DT: Deserializer<T>,
 {
+    /// ```
+    /// use massa_models::{StringSerializer, BlockId, StringDeserializer, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer}};
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
+    /// use massa_signature::{derive_public_key, generate_random_private_key};
+    /// use std::ops::Bound::Included;
+    ///
+    /// let wrapped: Wrapped<String, BlockId> = Wrapped::new_wrapped(
+    ///    String::from("Hello world"),
+    ///    StringSerializer::new(U16VarIntSerializer::new(Included(0), Included (u16::MAX))),
+    ///    &generate_random_private_key()
+    /// ).unwrap();
+    /// let mut serialized_data = Vec::new();
+    /// let serialized = WrappedSerializer::new().serialize(&wrapped, &mut serialized_data).unwrap();
+    /// let deserializer = WrappedDeserializer::new(StringDeserializer::new(U16VarIntDeserializer::new(Included(0), Included (u16::MAX))));
+    /// let (rest, deserialized): (&[u8], Wrapped<String, BlockId>) = deserializer.deserialize::<DeserializeError>(&serialized_data).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(wrapped.id, deserialized.id);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Wrapped<T, U>, E> {
-        let (serialized_data, (signature, creator_public_key)) = tuple((
-            |input| self.signature_deserializer.deserialize(input),
-            |input| self.public_key_deserializer.deserialize(input),
-        ))(buffer)?;
+        let (serialized_data, (signature, creator_public_key)) = context(
+            "Failed wrapped deserialization",
+            tuple((
+                context("Failed signature deserialization", |input| {
+                    self.signature_deserializer.deserialize(input)
+                }),
+                context("Failed public_key deserialization", |input| {
+                    self.public_key_deserializer.deserialize(input)
+                }),
+            )),
+        )(buffer)?;
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]
         let thread_count = THREAD_COUNT;
         let (rest, content) = self.content_deserializer.deserialize(serialized_data)?;
         // Avoid getting the rest of the data in the serialized data
-        let serialized_data = &serialized_data[..serialized_data.len() - rest.len()];
+        let content_serialized = &serialized_data[..serialized_data.len() - rest.len()];
         let creator_address = Address::from_public_key(&creator_public_key);
+        let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
+        serialized_full_data.extend(content_serialized);
         Ok((
             rest,
             Wrapped {
@@ -215,8 +215,8 @@ where
                 creator_public_key,
                 creator_address,
                 thread: creator_address.get_thread(thread_count),
-                serialized_data: serialized_data.to_vec(),
-                id: U::new(Hash::compute_from(serialized_data)),
+                serialized_data: serialized_full_data.to_vec(),
+                id: U::new(Hash::compute_from(&serialized_full_data)),
             },
         ))
     }

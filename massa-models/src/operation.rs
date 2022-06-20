@@ -154,11 +154,6 @@ impl std::fmt::Display for Operation {
 
 /// signed operation
 pub type WrappedOperation = Wrapped<Operation, OperationId>;
-/// Serializer for `WrappedOperation`
-pub type WrappedOperationSerializer = WrappedSerializer<Operation, OperationId>;
-/// Deserializer for `WrappedOperation`
-pub type WrappedOperationDeserializer =
-    WrappedDeserializer<Operation, OperationId, OperationDeserializer>;
 
 /// Serializer for `Operation`
 pub struct OperationSerializer {
@@ -776,7 +771,7 @@ pub type Operations = Vec<WrappedOperation>;
 /// Serializer for `Operations`
 pub struct OperationsSerializer {
     u32_serializer: U32VarIntSerializer,
-    signed_op_serializer: WrappedOperationSerializer,
+    signed_op_serializer: WrappedSerializer,
 }
 
 impl OperationsSerializer {
@@ -787,7 +782,7 @@ impl OperationsSerializer {
                 Included(0),
                 Included(MAX_OPERATIONS_PER_MESSAGE),
             ),
-            signed_op_serializer: WrappedOperationSerializer::new(),
+            signed_op_serializer: WrappedSerializer::new(),
         }
     }
 }
@@ -814,7 +809,7 @@ impl Serializer<Operations> for OperationsSerializer {
 /// Deserializer for `Operations`
 pub struct OperationsDeserializer {
     u32_deserializer: U32VarIntDeserializer,
-    signed_op_deserializer: WrappedOperationDeserializer,
+    signed_op_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
 }
 
 impl OperationsDeserializer {
@@ -825,7 +820,7 @@ impl OperationsDeserializer {
                 Included(0),
                 Included(MAX_OPERATIONS_PER_MESSAGE),
             ),
-            signed_op_deserializer: WrappedOperationDeserializer::new(OperationDeserializer::new()),
+            signed_op_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
         }
     }
 }
@@ -859,6 +854,7 @@ impl Deserializer<Operations> for OperationsDeserializer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use massa_serialization::DeserializeError;
     use massa_signature::{derive_public_key, generate_random_private_key};
     use serial_test::serial;
 
@@ -866,7 +862,6 @@ mod tests {
     #[serial]
     fn test_transaction() {
         let sender_priv = generate_random_private_key();
-        let sender_pub = derive_public_key(&sender_priv);
 
         let recv_priv = generate_random_private_key();
         let recv_pub = derive_public_key(&recv_priv);
@@ -880,7 +875,7 @@ mod tests {
             .serialize(&op, &mut ser_type)
             .unwrap();
         let (_, res_type) = OperationTypeDeserializer::new()
-            .deserialize(&ser_type)
+            .deserialize::<DeserializeError>(&ser_type)
             .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
@@ -895,7 +890,7 @@ mod tests {
             .serialize(&content, &mut ser_content)
             .unwrap();
         let (_, res_content) = OperationDeserializer::new()
-            .deserialize(&ser_content)
+            .deserialize::<DeserializeError>(&ser_content)
             .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
@@ -903,12 +898,13 @@ mod tests {
         let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv).unwrap();
 
         let mut ser_op = Vec::new();
-        WrappedOperationSerializer::new()
+        WrappedSerializer::new()
             .serialize(&op, &mut ser_op)
             .unwrap();
-        let (_, res_op) = WrappedOperationDeserializer::new(OperationDeserializer::new())
-            .deserialize(&ser_op)
-            .unwrap();
+        let (_, res_op): (&[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new())
+                .deserialize::<DeserializeError>(&ser_op)
+                .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);
@@ -918,7 +914,6 @@ mod tests {
     #[serial]
     fn test_executesc() {
         let sender_priv = generate_random_private_key();
-        let sender_pub = derive_public_key(&sender_priv);
 
         let op = OperationType::ExecuteSC {
             max_gas: 123,
@@ -931,7 +926,7 @@ mod tests {
             .serialize(&op, &mut ser_type)
             .unwrap();
         let (_, res_type) = OperationTypeDeserializer::new()
-            .deserialize(&ser_type)
+            .deserialize::<DeserializeError>(&ser_type)
             .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
@@ -946,7 +941,7 @@ mod tests {
             .serialize(&content, &mut ser_content)
             .unwrap();
         let (_, res_content) = OperationDeserializer::new()
-            .deserialize(&ser_content)
+            .deserialize::<DeserializeError>(&ser_content)
             .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
@@ -954,22 +949,22 @@ mod tests {
         let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv).unwrap();
 
         let mut ser_op = Vec::new();
-        WrappedOperationSerializer::new()
+        WrappedSerializer::new()
             .serialize(&op, &mut ser_op)
             .unwrap();
-        let (_, res_op) = WrappedOperationDeserializer::new(OperationDeserializer::new())
-            .deserialize(&ser_op)
-            .unwrap();
+        let (_, res_op): (&[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new())
+                .deserialize::<DeserializeError>(&ser_op)
+                .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
-        assert_eq!(op.content.get_validity_range(10), 40..=50);
+        assert_eq!(op.get_validity_range(10), 40..=50);
     }
 
     #[test]
     #[serial]
     fn test_callsc() {
         let sender_priv = generate_random_private_key();
-        let sender_pub = derive_public_key(&sender_priv);
 
         let target_priv = generate_random_private_key();
         let target_pub = derive_public_key(&target_priv);
@@ -989,7 +984,7 @@ mod tests {
             .serialize(&op, &mut ser_type)
             .unwrap();
         let (_, res_type) = OperationTypeDeserializer::new()
-            .deserialize(&ser_type)
+            .deserialize::<DeserializeError>(&ser_type)
             .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
@@ -1004,7 +999,7 @@ mod tests {
             .serialize(&content, &mut ser_content)
             .unwrap();
         let (_, res_content) = OperationDeserializer::new()
-            .deserialize(&ser_content)
+            .deserialize::<DeserializeError>(&ser_content)
             .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
@@ -1012,14 +1007,15 @@ mod tests {
         let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv).unwrap();
 
         let mut ser_op = Vec::new();
-        WrappedOperationSerializer::new()
+        WrappedSerializer::new()
             .serialize(&op, &mut ser_op)
             .unwrap();
-        let (_, res_op) = WrappedOperationDeserializer::new(OperationDeserializer::new())
-            .deserialize(&ser_op)
-            .unwrap();
+        let (_, res_op): (&[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new())
+                .deserialize::<DeserializeError>(&ser_op)
+                .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
-        assert_eq!(op.content.get_validity_range(10), 40..=50);
+        assert_eq!(op.get_validity_range(10), 40..=50);
     }
 }

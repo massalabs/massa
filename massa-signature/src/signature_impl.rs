@@ -408,11 +408,30 @@ impl PublicKeyDeserializer {
 }
 
 impl Deserializer<PublicKey> for PublicKeyDeserializer {
+    /// ```
+    /// use massa_signature::{PublicKey, PublicKeyDeserializer, derive_public_key, generate_random_private_key, sign};
+    /// use massa_serialization::{DeserializeError, Deserializer};
+    /// use massa_hash::Hash;
+    ///
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
+    /// let serialized = public_key.to_bytes();
+    /// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(public_key, deser_public_key);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], PublicKey, E> {
-        let key = PublicKey::from_bytes(buffer.try_into().map_err(|_| {
+        // Can't use try into directly because it fails if there is more data in the buffer
+        if buffer.len() < PUBLIC_KEY_SIZE_BYTES {
+            return Err(nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::LengthValue,
+            )));
+        }
+        let key = PublicKey::from_bytes(buffer[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(|_| {
             nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::LengthValue,
@@ -788,17 +807,32 @@ impl SignatureDeserializer {
 }
 
 impl Deserializer<Signature> for SignatureDeserializer {
+    /// ```
+    /// use massa_signature::{Signature, SignatureDeserializer, generate_random_private_key, sign};
+    /// use massa_serialization::{DeserializeError, Deserializer};
+    /// use massa_hash::Hash;
+    ///
+    /// let private_key = generate_random_private_key();
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
+    /// let signature = sign(&data, &private_key).unwrap();
+    /// let serialized = signature.into_bytes();
+    /// let (rest, deser_signature) = SignatureDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(signature, deser_signature);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Signature, E> {
-        let signature = Signature::from_bytes(buffer.try_into().map_err(|_| {
-            nom::Err::Error(ParseError::from_error_kind(
+        // Can't use try into directly because it fails if there is more data in the buffer
+        if buffer.len() < SIGNATURE_SIZE_BYTES {
+            return Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::LengthValue,
-            ))
-        })?)
-        .map_err(|_| {
+            )));
+        }
+        let signature = Signature::from_bytes(buffer[..SIGNATURE_SIZE_BYTES].try_into().unwrap())
+            .map_err(|_| {
             nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Fail,

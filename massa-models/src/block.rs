@@ -1,16 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::BLOCK_ID_SIZE_BYTES;
-use crate::endorsement::{WrappedEndorsementDeserializer, WrappedEndorsementSerializer};
 use crate::node_configuration::{MAX_BLOCK_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT};
-use crate::operation::{
-    OperationDeserializer, WrappedOperationDeserializer, WrappedOperationSerializer,
-};
+use crate::operation::OperationDeserializer;
 use crate::prehash::{Map, PreHashed, Set};
 use crate::wrapped::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
 use crate::{
-    Address, EndorsementDeserializer, EndorsementId, ModelsError, OperationId, Slot,
-    SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation,
+    Address, Endorsement, EndorsementDeserializer, EndorsementId, ModelsError, Operation,
+    OperationId, Slot, SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation,
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
@@ -132,22 +129,18 @@ pub struct Block {
 
 /// Wrapped Block
 pub type WrappedBlock = Wrapped<Block, BlockId>;
-/// Serializer for `WrappedBlock`
-pub type WrappedBlockSerializer = WrappedSerializer<Block, BlockId>;
-/// Deserializer for `WrappedBlock`
-pub type WrappedBlockDeserializer = WrappedDeserializer<Block, BlockId, BlockDeserializer>;
 
 pub struct BlockSerializer {
-    header_serializer: WrappedHeaderSerializer,
-    operation_serializer: WrappedOperationSerializer,
+    header_serializer: WrappedSerializer,
+    operation_serializer: WrappedSerializer,
     u32_serializer: U32VarIntSerializer,
 }
 
 impl BlockSerializer {
     pub fn new() -> Self {
         BlockSerializer {
-            header_serializer: WrappedHeaderSerializer::new(),
-            operation_serializer: WrappedOperationSerializer::new(),
+            header_serializer: WrappedSerializer::new(),
+            operation_serializer: WrappedSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(
                 Included(0),
                 Included(MAX_OPERATIONS_PER_BLOCK),
@@ -179,16 +172,16 @@ impl Serializer<Block> for BlockSerializer {
 }
 
 pub struct BlockDeserializer {
-    header_deserializer: WrappedHeaderDeserializer,
-    operation_deserializer: WrappedOperationDeserializer,
+    header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
+    operation_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
     u32_deserializer: U32VarIntDeserializer,
 }
 
 impl BlockDeserializer {
     pub fn new() -> Self {
         BlockDeserializer {
-            header_deserializer: WrappedHeaderDeserializer::new(BlockHeaderDeserializer::new()),
-            operation_deserializer: WrappedOperationDeserializer::new(OperationDeserializer::new()),
+            header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
+            operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(MAX_OPERATIONS_PER_BLOCK),
@@ -352,15 +345,10 @@ pub struct BlockHeader {
 
 /// wrapped header
 pub type WrappedHeader = Wrapped<BlockHeader, BlockId>;
-/// Serializer for `WrappedHeader`
-pub type WrappedHeaderSerializer = WrappedSerializer<BlockHeader, BlockId>;
-/// Deserializer for `WrappedHeader`
-pub type WrappedHeaderDeserializer =
-    WrappedDeserializer<BlockHeader, BlockId, BlockHeaderDeserializer>;
 
 pub struct BlockHeaderSerializer {
     slot_serializer: SlotSerializer,
-    endorsement_serializer: WrappedEndorsementSerializer,
+    endorsement_serializer: WrappedSerializer,
     u32_serializer: U32VarIntSerializer,
 }
 
@@ -375,7 +363,7 @@ impl BlockHeaderSerializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Included(thread_count)),
             ),
-            endorsement_serializer: WrappedEndorsementSerializer::new(),
+            endorsement_serializer: WrappedSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(Included(0), Included(u32::MAX)),
         }
     }
@@ -418,7 +406,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
 
 pub struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
-    endorsement_deserializer: WrappedEndorsementDeserializer,
+    endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
     u32_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
 }
@@ -434,9 +422,7 @@ impl BlockHeaderDeserializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Included(thread_count)),
             ),
-            endorsement_deserializer: WrappedEndorsementDeserializer::new(
-                EndorsementDeserializer::new(),
-            ),
+            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new()),
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             hash_deserializer: HashDeserializer::new(),
         }
@@ -543,43 +529,22 @@ mod test {
     use super::*;
     use crate::{endorsement::EndorsementSerializer, Endorsement};
     use massa_serialization::DeserializeError;
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use massa_signature::generate_random_private_key;
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_block_serialization() {
-        let ctx = crate::SerializationContext {
-            max_block_size: 1024 * 1024,
-            max_operations_per_block: 1024,
-            thread_count: 3,
-            max_advertise_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_bootstrap_pos_cycles: 1000,
-            max_bootstrap_pos_entries: 1000,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_endorsements_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-            endorsement_count: 8,
-        };
-        crate::init_serialization_context(ctx);
         let private_key = generate_random_private_key();
-        let public_key = derive_public_key(&private_key);
+        let parents = (0..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .collect();
 
         // create block header
         let orig_header = Wrapped::new_wrapped(
             BlockHeader {
                 slot: Slot::new(1, 2),
-                parents: vec![
-                    BlockId(Hash::compute_from("abc".as_bytes())),
-                    BlockId(Hash::compute_from("def".as_bytes())),
-                    BlockId(Hash::compute_from("ghi".as_bytes())),
-                ],
+                parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![
                     Wrapped::new_wrapped(
@@ -626,7 +591,6 @@ mod test {
             .deserialize::<DeserializeError>(&orig_bytes)
             .unwrap();
         assert!(rest.is_empty());
-
         // check equality
         assert_eq!(orig_block.header.id, res_block.header.id);
         assert_eq!(

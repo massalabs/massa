@@ -7,10 +7,7 @@ extern crate lazy_static;
 
 pub use address::{Address, AddressDeserializer};
 pub use amount::{Amount, AmountDeserializer, AmountSerializer};
-pub use block::{
-    Block, BlockHeader, BlockId, WrappedBlock, WrappedBlockDeserializer, WrappedBlockSerializer,
-    WrappedHeader, WrappedHeaderDeserializer, WrappedHeaderSerializer,
-};
+pub use block::{Block, BlockHeader, BlockId, WrappedBlock, WrappedHeader};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
@@ -23,7 +20,7 @@ pub use operation::{Operation, OperationId, OperationType, WrappedOperation};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
     IpAddrDeserializer, IpAddrSerializer, SerializeCompact, SerializeMinBEInt, SerializeVarInt,
-    StringSerializer, VecU8Deserializer, VecU8Serializer,
+    StringDeserializer, StringSerializer, VecU8Deserializer, VecU8Serializer,
 };
 pub use serialization_context::{
     get_serialization_context, init_serialization_context, with_serialization_context,
