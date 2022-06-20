@@ -17,14 +17,11 @@ use massa_models::{Operation, SignedOperation};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
 };
+use rand::{thread_rng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 mod error;
-
-/// Nonce slice used for cypher
-/// TODO: change this? not sure if we must
-pub const NONCE_SLICE: &[u8] = b"unique nonce";
 
 /// Contains the private keys created in the wallet.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -40,15 +37,16 @@ pub struct Wallet {
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
-        let content = std::fs::read(&path)?;
+        let content = &std::fs::read(&path)?[..];
         let priv_keys = if !content.is_empty() {
             // If wallet contains data decipher it
             let cipher = Aes256GcmSiv::new(Key::from_slice(
                 Hash::compute_from(password.as_bytes()).to_bytes(),
             ));
-            let nonce = Nonce::from_slice(NONCE_SLICE);
+            let mut iter = content.split(|c| c == &b':');
+            let nonce = Nonce::from_slice(iter.next().expect("Missing nonce"));
             let text = cipher
-                .decrypt(nonce, content.as_ref())
+                .decrypt(nonce, iter.next().expect("Missing content"))
                 .map_err(|_| WalletError::DecryptionError("Wrong password".to_string()))?;
             serde_json::from_slice::<Vec<PrivateKey>>(&text[..])?
         } else {
@@ -142,13 +140,18 @@ impl Wallet {
         let cipher = Aes256GcmSiv::new(Key::from_slice(
             Hash::compute_from(self.password.as_bytes()).to_bytes(),
         ));
-        let nonce = Nonce::from_slice(NONCE_SLICE);
+        let mut bytes = [0u8; 12];
+        thread_rng().fill_bytes(&mut bytes);
+        let nonce = Nonce::from_slice(&bytes);
         let keys =
             serde_json::to_string(&self.keys.iter().map(|(_, (_, pk))| *pk).collect::<Vec<_>>())?;
         let text = cipher
             .encrypt(nonce, keys.as_ref())
             .map_err(|e| WalletError::EncryptionError(e.to_string()))?;
-        std::fs::write(&self.wallet_path, text)?;
+        let mut content = bytes.to_vec();
+        content.extend(b":");
+        content.extend(text);
+        std::fs::write(&self.wallet_path, content)?;
         Ok(())
     }
 
