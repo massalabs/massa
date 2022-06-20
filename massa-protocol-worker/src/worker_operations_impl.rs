@@ -14,7 +14,7 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
-    operation::{OperationIds, Operations},
+    operation::{OperationIds, OperationPrefixIds, Operations},
     prehash::BuildMap,
 };
 use massa_network_exports::NetworkError;
@@ -25,14 +25,14 @@ use tracing::warn;
 
 /// Structure containing a Batch of `operation_ids` we would like to ask
 /// to a `node_id` now or later. Mainly used in protocol and translated into
-/// simple combination of a `node_id` and `operations_ids`
+/// simple combination of a `node_id` and `operations_prefix_ids`
 pub struct OperationBatchItem {
     /// last updated at instant
     pub instant: Instant,
     /// node id
     pub node_id: NodeId,
-    /// operation ids
-    pub operations_ids: OperationIds,
+    /// operation prefix ids
+    pub operations_prefix_ids: OperationPrefixIds,
 }
 
 /// Queue containing every `[OperationsBatchItem]` we want to ask now or later.
@@ -61,18 +61,18 @@ impl ProtocolWorker {
     ///```
     pub(crate) async fn on_operations_announcements_received(
         &mut self,
-        op_batch: OperationIds,
+        op_batch: OperationPrefixIds,
         node_id: NodeId,
     ) -> Result<(), ProtocolError> {
         let mut ask_set =
-            OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
+            OperationPrefixIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
         let mut future_set =
-            OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
+            OperationPrefixIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
         // exactitude isn't important, we want to have a now for that function call
         let now = Instant::now();
         let mut count_reask = 0;
         for op_id in op_batch {
-            if self.checked_operations.contains(&op_id) {
+            if self.op_prefix_adapter.contains_key(&op_id) {
                 continue;
             }
             let wish = match self.asked_operations.get_mut(&op_id) {
@@ -101,7 +101,7 @@ impl ProtocolWorker {
                     future_set.insert(op_id);
                 }
             } else {
-                ask_set.insert(op_id);
+                ask_set.insert(op_id.clone());
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         } // EndOf for op_id in op_batch:
@@ -116,7 +116,7 @@ impl ProtocolWorker {
                     .checked_add(self.protocol_settings.operation_batch_proc_period.into())
                     .ok_or(TimeError::TimeOverflowError)?,
                 node_id,
-                operations_ids: future_set,
+                operations_prefix_ids: future_set,
             });
         }
         if !ask_set.is_empty() {
@@ -179,7 +179,7 @@ impl ProtocolWorker {
         {
             let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
             self.on_operations_announcements_received(
-                op_batch_item.operations_ids,
+                op_batch_item.operations_prefix_ids,
                 op_batch_item.node_id,
             )
             .await?;
@@ -198,23 +198,30 @@ impl ProtocolWorker {
     }
 
     /// Process the reception of a batch of asked operations, that means that
-    /// we sent already a batch of ids in the network notifying that we already
+    /// we have already sent a batch of ids in the network, notifying that we already
     /// have those operations. Ask pool for the operations.
     ///
     /// See also `on_operation_results_from_pool`
     pub(crate) async fn on_asked_operations_received(
         &mut self,
         node_id: NodeId,
-        op_ids: OperationIds,
+        op_pre_ids: OperationPrefixIds,
     ) -> Result<(), ProtocolError> {
-        let mut operation_ids = OperationIds::default();
-        for op_id in op_ids.iter() {
-            if self.checked_operations.get(op_id).is_some() {
-                operation_ids.insert(*op_id);
+        let mut req_operation_ids = OperationIds::default();
+        for prefix in op_pre_ids {
+            if let Some(op_ids) = self.op_prefix_adapter.get(&prefix) {
+                for op_id in op_ids {
+                    if self.checked_operations.get(op_id).is_some() {
+                        req_operation_ids.insert(*op_id);
+                    }
+                }
             }
         }
-        self.send_protocol_pool_event(ProtocolPoolEvent::GetOperations((node_id, operation_ids)))
-            .await;
+        self.send_protocol_pool_event(ProtocolPoolEvent::GetOperations((
+            node_id,
+            req_operation_ids,
+        )))
+        .await;
         Ok(())
     }
 

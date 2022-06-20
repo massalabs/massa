@@ -79,11 +79,10 @@ impl EventSender {
 pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
+    use massa_models::operation::OperationPrefixIds;
     use massa_models::signed::Signable;
     use massa_models::{
-        node::NodeId,
-        operation::{OperationIds, Operations},
-        Block, BlockId, SignedEndorsement, SignedHeader,
+        node::NodeId, operation::Operations, Block, BlockId, SignedEndorsement, SignedHeader,
     };
     use massa_network_exports::NodeCommand;
     use massa_network_exports::{NetworkError, NetworkEvent};
@@ -245,17 +244,17 @@ pub mod event_impl {
     pub async fn on_received_operations_annoncement(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operation_ids: OperationIds,
+        operation_prefix_ids: OperationPrefixIds,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperationAnnouncements",
-            { "operations": operation_ids }
+            { "operations": operation_prefix_ids }
         );
         if let Err(err) = worker
             .event
             .send(NetworkEvent::ReceivedOperationAnnouncements {
                 node: from,
-                operation_ids,
+                operation_prefix_ids,
             })
             .await
         {
@@ -268,17 +267,17 @@ pub mod event_impl {
     pub async fn on_received_ask_for_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operation_ids: OperationIds,
+        operation_prefix_ids: OperationPrefixIds,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceiveAskForOperations",
-            { "operations": operation_ids }
+            { "operations": operation_prefix_ids }
         );
         if let Err(err) = worker
             .event
             .send(NetworkEvent::ReceiveAskForOperations {
                 node: from,
-                operation_ids,
+                operation_prefix_ids,
             })
             .await
         {

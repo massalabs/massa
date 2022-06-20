@@ -4,6 +4,7 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::operation::OperationPrefixId;
 use massa_models::SerializeCompact;
 use massa_models::{
     constants::CHANNEL_SIZE,
@@ -20,6 +21,7 @@ use massa_protocol_exports::{
     ProtocolSettings,
 };
 use massa_time::TimeError;
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use tokio::{
     sync::mpsc,
@@ -148,9 +150,13 @@ pub struct ProtocolWorker {
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
     /// List of ids of operations that we asked to the nodes
-    pub(crate) asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
+    pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
     pub(crate) op_batch_buffer: OperationBatchBuffer,
+    /// Adapter to retreive full operation ids from a given prefix
+    /// nit: we could change Vec<OperationId> into a Vec<OperationSuffixId> if it doesn't cost
+    ///      much in execution CPU time.
+    pub(crate) op_prefix_adapter: Map<OperationPrefixId, Vec<OperationId>>,
 }
 
 /// channels used by the protocol worker
@@ -213,6 +219,7 @@ impl ProtocolWorker {
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 protocol_settings.operation_batch_buffer_capacity,
             ),
+            op_prefix_adapter: Default::default(),
         }
     }
 
@@ -511,8 +518,15 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
-                self.checked_operations
-                    .extend(operation_ids.iter().cloned());
+                for id in operation_ids.iter() {
+                    let prefix = id.split().0;
+                    match self.op_prefix_adapter.entry(prefix) {
+                        Entry::Occupied(mut e) => e.get_mut().push(*id),
+                        Entry::Vacant(e) => {
+                            e.insert(vec![*id]);
+                        }
+                    }
+                }
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_ops: OperationIds = operation_ids
                         .iter()
@@ -525,7 +539,10 @@ impl ProtocolWorker {
                     );
                     if !new_ops.is_empty() {
                         self.network_command_sender
-                            .send_operations_batch(*node, new_ops)
+                            .send_operations_batch(
+                                *node,
+                                new_ops.iter().map(|id| id.split().0).collect(),
+                            )
                             .await?;
                     }
                 }
@@ -1112,6 +1129,16 @@ impl ProtocolWorker {
             // Accumulate gas
             total_gas = total_gas.saturating_add(operation.content.get_gas_usage());
 
+            // Store in the adapter the operation id.
+            match self.op_prefix_adapter.entry(operation_id.split().0) {
+                Entry::Occupied(mut e) => {
+                    e.get_mut().push(operation_id);
+                }
+                Entry::Vacant(e) => {
+                    e.insert(vec![operation_id]);
+                }
+            };
+
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(operation_id) {
                 // check signature
@@ -1347,18 +1374,18 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperationAnnouncements {
                 node,
-                operation_ids,
+                operation_prefix_ids,
             } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_announcements", { "node": node, "operation_ids": operation_ids});
-                self.on_operations_announcements_received(operation_ids, node)
+                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_announcements", { "node": node, "operation_ids": operation_prefix_ids});
+                self.on_operations_announcements_received(operation_prefix_ids, node)
                     .await?;
             }
             NetworkEvent::ReceiveAskForOperations {
                 node,
-                operation_ids,
+                operation_prefix_ids,
             } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.receive_ask_for_operations", { "node": node, "operation_ids": operation_ids});
-                self.on_asked_operations_received(node, operation_ids)
+                massa_trace!("protocol.protocol_worker.on_network_event.receive_ask_for_operations", { "node": node, "operation_ids": operation_prefix_ids});
+                self.on_asked_operations_received(node, operation_prefix_ids)
                     .await?;
             }
         }
