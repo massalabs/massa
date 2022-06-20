@@ -62,7 +62,7 @@ struct JsonError {
     error: String,
 }
 
-fn retrieve_password(wallet_path: &PathBuf) -> String {
+fn ask_password(wallet_path: &PathBuf) -> String {
     if wallet_path.is_file() {
         Password::new()
             .with_prompt("Enter wallet password")
@@ -97,9 +97,7 @@ async fn main(args: Args) -> Result<()> {
         None => settings.default_node.private_port,
     };
     // ...
-    let password = args
-        .password
-        .unwrap_or_else(|| retrieve_password(&args.wallet));
+    let password = args.password.unwrap_or_else(|| ask_password(&args.wallet));
     let mut wallet = Wallet::new(args.wallet, password)?;
     let client = Client::new(address, public_port, private_port).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
