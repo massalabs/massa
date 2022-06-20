@@ -27,7 +27,11 @@ impl ActiveHistory {
         addr: &Address,
         index: Option<usize>,
     ) -> HistorySearchResult<Amount> {
-        let iter = self.0.iter().skip(index.unwrap_or_default()).rev();
+        let iter = self
+            .0
+            .iter()
+            .take(index.unwrap_or_default().saturating_add(1))
+            .rev();
 
         for output in iter {
             match output.state_changes.ledger_changes.0.get(addr) {
@@ -53,7 +57,11 @@ impl ActiveHistory {
         addr: &Address,
         index: Option<usize>,
     ) -> HistorySearchResult<Vec<u8>> {
-        let iter = self.0.iter().skip(index.unwrap_or_default()).rev();
+        let iter = self
+            .0
+            .iter()
+            .take(index.unwrap_or_default().saturating_add(1))
+            .rev();
 
         for output in iter {
             match output.state_changes.ledger_changes.0.get(addr) {
@@ -80,7 +88,11 @@ impl ActiveHistory {
         key: &Hash,
         index: Option<usize>,
     ) -> HistorySearchResult<Vec<u8>> {
-        let iter = self.0.iter().skip(index.unwrap_or_default()).rev();
+        let iter = self
+            .0
+            .iter()
+            .take(index.unwrap_or_default().saturating_add(1))
+            .rev();
 
         for output in iter {
             match output.state_changes.ledger_changes.0.get(addr) {
