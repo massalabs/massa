@@ -81,11 +81,11 @@ impl SpeculativeLedger {
                 .read()
                 .fetch_active_history_balance(addr, None)
             {
-                HistorySearchResult::Found(active_balance) => Some(active_balance),
-                HistorySearchResult::NotFound => {
+                HistorySearchResult::Present(active_balance) => Some(active_balance),
+                HistorySearchResult::NoInfo => {
                     self.final_state.read().ledger.get_parallel_balance(addr)
                 }
-                HistorySearchResult::Deleted => None,
+                HistorySearchResult::Absent => None,
             }
         })
     }
@@ -105,9 +105,9 @@ impl SpeculativeLedger {
                 .read()
                 .fetch_active_history_bytecode(addr, None)
             {
-                HistorySearchResult::Found(bytecode) => Some(bytecode),
-                HistorySearchResult::NotFound => self.final_state.read().ledger.get_bytecode(addr),
-                HistorySearchResult::Deleted => None,
+                HistorySearchResult::Present(bytecode) => Some(bytecode),
+                HistorySearchResult::NoInfo => self.final_state.read().ledger.get_bytecode(addr),
+                HistorySearchResult::Absent => None,
             }
         })
     }
@@ -175,9 +175,9 @@ impl SpeculativeLedger {
                 .read()
                 .fetch_active_history_balance(addr, None)
             {
-                HistorySearchResult::Found(_balance) => true,
-                HistorySearchResult::NotFound => self.final_state.read().ledger.entry_exists(addr),
-                HistorySearchResult::Deleted => false,
+                HistorySearchResult::Present(_balance) => true,
+                HistorySearchResult::NoInfo => self.final_state.read().ledger.entry_exists(addr),
+                HistorySearchResult::Absent => false,
             }
         })
     }
@@ -238,11 +238,11 @@ impl SpeculativeLedger {
                 .read()
                 .fetch_active_history_data_entry(addr, key, None)
             {
-                HistorySearchResult::Found(entry) => Some(entry),
-                HistorySearchResult::NotFound => {
+                HistorySearchResult::Present(entry) => Some(entry),
+                HistorySearchResult::NoInfo => {
                     self.final_state.read().ledger.get_data_entry(addr, key)
                 }
-                HistorySearchResult::Deleted => None,
+                HistorySearchResult::Absent => None,
             }
         })
     }
@@ -263,11 +263,11 @@ impl SpeculativeLedger {
                 .read()
                 .fetch_active_history_data_entry(addr, key, None)
             {
-                HistorySearchResult::Found(_entry) => true,
-                HistorySearchResult::NotFound => {
+                HistorySearchResult::Present(_entry) => true,
+                HistorySearchResult::NoInfo => {
                     self.final_state.read().ledger.has_data_entry(addr, key)
                 }
-                HistorySearchResult::Deleted => false,
+                HistorySearchResult::Absent => false,
             }
         })
     }
