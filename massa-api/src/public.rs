@@ -581,7 +581,7 @@ impl Endpoints for API<Public> {
             for &address in addresses.iter() {
                 let mut pool_cmd_snd = pool_command_sender.clone();
                 let cmd_snd = cmd_sender.clone();
-                let exec_snd = execution_controller.clone();
+                let _exec_snd = execution_controller.clone();
                 concurrent_getters.push(async move {
                     let blocks = cmd_snd
                         .get_block_ids_by_creator(address)
@@ -608,7 +608,7 @@ impl Endpoints for API<Public> {
                         .collect();
 
                     let (final_sce, candidate_sce) = Default::default();
-                    /*TODO replace with simple balance summary
+                    /* IMPORTANT TODO: replace with simple balance summary
                         match exec_snd.get_final_and_active_ledger_entry(&address) {
                             (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
                             (None, Some(candidate)) => (
