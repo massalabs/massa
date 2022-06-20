@@ -782,7 +782,13 @@ impl ExecutionState {
     fn get_active_index(&self, slot: Slot) -> Option<usize> {
         if let Some(hist_front) = &self.active_history.read().0.front() {
             slot.slots_since(&hist_front.slot, self.config.thread_count)
-                .map(|v| v.try_into().ok())
+                .map(|v| {
+                    if v >= self.active_history.read().0.len() as u64 {
+                        None
+                    } else {
+                        v.try_into().ok()
+                    }
+                })
                 .ok()
                 .flatten()
         } else {
@@ -797,12 +803,8 @@ impl ExecutionState {
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
         let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
-        let next_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        self.verify_active_slot(next_slot);
-        let index = self.get_active_index(next_slot);
+        self.verify_active_slot(self.active_cursor);
+        let index = self.get_active_index(self.active_cursor);
         let search_result = self
             .active_history
             .read()
@@ -824,12 +826,8 @@ impl ExecutionState {
         key: &Hash,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
-        let next_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        self.verify_active_slot(next_slot);
-        let index = self.get_active_index(next_slot);
+        self.verify_active_slot(self.active_cursor);
+        let index = self.get_active_index(self.active_cursor);
         let search_result = self
             .active_history
             .read()

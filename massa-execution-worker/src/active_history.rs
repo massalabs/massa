@@ -7,6 +7,8 @@ use massa_models::{Address, Amount};
 use std::collections::VecDeque;
 
 #[derive(Default)]
+/// History of the outputs of recently executed slots.
+/// Slots should be consecutive, oldest at the beginning and latest at the back.
 pub(crate) struct ActiveHistory(pub VecDeque<ExecutionOutput>);
 
 /// Result of a lazy, active history search
