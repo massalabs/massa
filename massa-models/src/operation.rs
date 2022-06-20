@@ -70,9 +70,19 @@ impl OperationIdAdapter {
         self.0.get(prefix)
     }
 
-    /// Prune the adapter
-    pub fn prune(&mut self) {
-        todo!()
+    /// Clear the content of the adapter
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
+
+    /// Returns the number of prefix keys in the adapter.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Returns `true` if the adapter contains no elements.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 

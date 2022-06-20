@@ -960,6 +960,13 @@ impl ProtocolWorker {
         }
     }
 
+    /// Prune `op_prefix_adapter` if it has grown too large.
+    fn prune_operation_ids_adapter(&mut self) {
+        if self.op_prefix_adapter.len() > self.protocol_settings.max_known_ops_size {
+            self.op_prefix_adapter.clear();
+        }
+    }
+
     /// Prune `checked_headers` if it is too large
     fn prune_checked_headers(&mut self) {
         if self.checked_headers.len() > self.protocol_settings.max_known_blocks_size {
@@ -1156,6 +1163,7 @@ impl ProtocolWorker {
 
             // prune checked operations cache
             self.prune_checked_operations();
+            self.prune_operation_ids_adapter();
         }
 
         Ok((seen_ops, received_ids, has_duplicate_operations, total_gas))
