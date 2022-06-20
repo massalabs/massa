@@ -184,8 +184,13 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident">massa_models::SerializeCompact</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants::CHANNEL_SIZE</span>,
     <span class="ident">node::NodeId</span>,
@@ -282,7 +287,10 @@
     <span class="doccomment">/// send operations</span>
     <span class="doccomment">/// todo inconsistency with names</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">operations</span>: <span class="ident">Operations</span>) {
-        <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">operations</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Default::default</span>()).<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">operations</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> <span class="ident">op</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>())
+            .<span class="ident">collect</span>();
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedOperations</span> {
                 <span class="ident">node</span>: <span class="ident">source_node_id</span>,
@@ -364,5 +372,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (21e9336fe 2022-06-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (bb8c2f411 2022-06-19)" ></div>
 </body></html>

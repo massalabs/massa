@@ -1537,6 +1537,15 @@
 <span id="1530">1530</span>
 <span id="1531">1531</span>
 <span id="1532">1532</span>
+<span id="1533">1533</span>
+<span id="1534">1534</span>
+<span id="1535">1535</span>
+<span id="1536">1536</span>
+<span id="1537">1537</span>
+<span id="1538">1538</span>
+<span id="1539">1539</span>
+<span id="1540">1540</span>
+<span id="1541">1541</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node_info::NodeInfo</span>, <span class="ident">worker_operations_impl::OperationBatchBuffer</span>};
@@ -2634,7 +2643,22 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">seen_ops</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_operations</span> <span class="op">=</span> <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">length</span>, <span class="ident">BuildMap::default</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">received_ids</span> <span class="op">=</span> <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">length</span>, <span class="ident">BuildMap::default</span>());
-        <span class="kw">for</span> (<span class="ident">idx</span>, <span class="ident">operation</span>) <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">into_iter</span>().<span class="ident">enumerate</span>() {
+
+        <span class="comment">// Ensure we have a Vec&lt;Vec&lt;u8&gt;&gt; to zip with the Operations.</span>
+        <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">serialized</span>) <span class="op">=</span> <span class="ident">serialized</span> {
+            <span class="ident">serialized</span>
+        } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">serialized</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
+                <span class="ident">operations</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> <span class="ident">op</span>.<span class="ident">to_bytes_compact</span>()).<span class="ident">collect</span>();
+
+            <span class="ident">serialized</span><span class="question-mark">?</span>
+        };
+
+        <span class="kw">for</span> ((<span class="ident">idx</span>, <span class="ident">operation</span>), <span class="ident">serialized</span>) <span class="kw">in</span> <span class="ident">operations</span>
+            .<span class="ident">into_iter</span>()
+            .<span class="ident">enumerate</span>()
+            .<span class="ident">zip</span>(<span class="ident">serialized</span>.<span class="ident">into_iter</span>())
+        {
             <span class="kw">let</span> <span class="ident">operation_id</span> <span class="op">=</span> <span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>;
             <span class="ident">seen_ops</span>.<span class="ident">push</span>(<span class="ident">operation_id</span>);
 
@@ -2656,12 +2680,6 @@
                 <span class="comment">// check signature</span>
                 <span class="ident">operation</span>.<span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">sender_public_key</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">serialized_ops</span>) <span class="op">=</span> <span class="ident">serialized</span>.<span class="ident">as_ref</span>() {
-                    <span class="comment">// TODO: remove clone #2669.</span>
-                    <span class="ident">serialized_ops</span>[<span class="ident">idx</span>].<span class="ident">clone</span>()
-                } <span class="kw">else</span> {
-                    <span class="ident">operation</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>
-                };
                 <span class="ident">new_operations</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>, (<span class="ident">operation</span>, <span class="ident">serialized</span>));
             };
         }
@@ -3070,5 +3088,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (21e9336fe 2022-06-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (bb8c2f411 2022-06-19)" ></div>
 </body></html>
