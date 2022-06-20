@@ -6,7 +6,6 @@ use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_hash::Hash;
-use massa_ledger_exports::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
@@ -44,15 +43,6 @@ pub trait ExecutionController: Send + Sync {
         addr: &Address,
         key: &Hash,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>);
-
-    /// Get a copy of a full ledger entry with its final and active values
-    ///
-    /// # Return value
-    /// * `(final_entry, active_entry)`
-    fn get_final_and_active_ledger_entry(
-        &self,
-        addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>);
 
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///

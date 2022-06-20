@@ -73,7 +73,7 @@ impl FinalState {
         self.ledger
             .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool
-            .apply_changes_unchecked(changes.async_pool_changes.clone());
+            .apply_changes_unchecked(&changes.async_pool_changes);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {

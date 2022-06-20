@@ -3,14 +3,18 @@
 //! The speculative asynchronous pool represents the state of
 //! the pool at an arbitrary execution slot.
 
+use crate::active_history::ActiveHistory;
 use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges};
+use massa_final_state::FinalState;
 use massa_models::Slot;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 /// The `SpeculativeAsyncPool` holds a copy of the final state asynchronous pool
 /// to which it applies the previous changes.
 /// The `SpeculativeAsyncPool` manipulates this copy to compute the full pool
 /// while keeping track of all the newly added changes.
-pub struct SpeculativeAsyncPool {
+pub(crate) struct SpeculativeAsyncPool {
     /// Copy of the final asynchronous pool with the previous changes applied
     async_pool: AsyncPool,
 
@@ -25,10 +29,16 @@ impl SpeculativeAsyncPool {
     /// Creates a new `SpeculativeAsyncPool`
     ///
     /// # Arguments
-    /// * `async_pool`: a copy of the final state `AsyncPool`
-    /// * `previous_changes`: accumulation of changes that previously happened to the asynchronous pool since finality
-    pub fn new(mut async_pool: AsyncPool, previous_changes: AsyncPoolChanges) -> Self {
-        async_pool.apply_changes_unchecked(previous_changes);
+    pub fn new(
+        final_state: Arc<RwLock<FinalState>>,
+        active_history: Arc<RwLock<ActiveHistory>>,
+    ) -> Self {
+        // deduce speculative async pool from history
+        let mut async_pool = final_state.read().async_pool.clone();
+        for history_item in active_history.read().0.iter() {
+            async_pool.apply_changes_unchecked(&history_item.state_changes.async_pool_changes);
+        }
+
         SpeculativeAsyncPool {
             async_pool,
             emitted: Default::default(),

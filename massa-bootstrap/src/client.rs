@@ -75,7 +75,7 @@ async fn stream_final_state(
                         .apply_changes(final_state_changes.ledger_changes.clone(), slot);
                     write_final_state
                         .async_pool
-                        .apply_changes_unchecked(final_state_changes.async_pool_changes.clone());
+                        .apply_changes_unchecked(&final_state_changes.async_pool_changes);
                     write_final_state.slot = slot;
                     if let Some(BootstrapClientMessage::AskFinalStatePart {
                         last_key: old_key,

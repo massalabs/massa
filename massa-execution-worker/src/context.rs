@@ -107,21 +107,16 @@ impl ExecutionContext {
     ///
     /// # arguments
     /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
-    /// * `previous_changes`: list of ledger changes that happened since the final ledger state and before the current execution
     ///
     /// # returns
     /// A new (empty) `ExecutionContext` instance
     pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
-        previous_changes: StateChanges,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         ExecutionContext {
-            speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history),
-            speculative_async_pool: SpeculativeAsyncPool::new(
-                final_state.read().async_pool.clone(),
-                previous_changes.async_pool_changes,
-            ),
+            speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history.clone()),
+            speculative_async_pool: SpeculativeAsyncPool::new(final_state, active_history),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
@@ -171,7 +166,6 @@ impl ExecutionContext {
     /// # arguments
     /// * `slot`: slot at which the execution will happen
     /// * `req`: parameters of the read only execution
-    /// * `previous_changes`: list of state changes that happened since the `final_state` state and before this execution
     /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
@@ -181,7 +175,6 @@ impl ExecutionContext {
         max_gas: u64,
         gas_price: Amount,
         call_stack: Vec<ExecutionStackElement>,
-        previous_changes: StateChanges,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
@@ -208,7 +201,7 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, previous_changes, active_history)
+            ..ExecutionContext::new(final_state, active_history)
         }
     }
 
@@ -238,7 +231,6 @@ impl ExecutionContext {
     /// # arguments
     /// * `slot`: slot at which the execution will happen
     /// * `opt_block_id`: optional ID of the block at that slot
-    /// * `previous_changes`: list of state changes that happened since the final state state and before this execution
     /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
@@ -246,7 +238,6 @@ impl ExecutionContext {
     pub(crate) fn active_slot(
         slot: Slot,
         opt_block_id: Option<BlockId>,
-        previous_changes: StateChanges,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
@@ -270,7 +261,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, previous_changes, active_history)
+            ..ExecutionContext::new(final_state, active_history)
         }
     }
 

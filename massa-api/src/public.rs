@@ -607,7 +607,8 @@ impl Endpoints for API<Public> {
                         .chain(get_consensus_eds?.into_keys())
                         .collect();
 
-                    let (final_sce, candidate_sce) =
+                    let (final_sce, candidate_sce) = Default::default();
+                    /*TODO replace with simple balance summary
                         match exec_snd.get_final_and_active_ledger_entry(&address) {
                             (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
                             (None, Some(candidate)) => (
@@ -639,7 +640,7 @@ impl Endpoints for API<Public> {
                                 },
                             ),
                         };
-
+                    */
                     Result::<
                         (
                             Address,

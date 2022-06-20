@@ -16,10 +16,8 @@ use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_final_state::{FinalState, StateChanges};
+use massa_final_state::FinalState;
 use massa_hash::Hash;
-
-use massa_ledger_exports::{Applicable, LedgerEntry, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
@@ -84,11 +82,13 @@ impl ExecutionState {
         // This should be among the latest final slots.
         let last_final_slot = final_state.read().slot;
 
+        // Create default active history
+        let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
+
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             final_state.clone(),
-            Default::default(),
-            Default::default(),
+            active_history.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -104,7 +104,7 @@ impl ExecutionState {
             execution_context,
             execution_interface,
             // empty execution output history: it is not recovered through bootstrap
-            active_history: Default::default(),
+            active_history,
             // empty final event store: it is not recovered through bootstrap
             final_events: Default::default(),
             // no active slots executed yet: set active_cursor to the last final block
@@ -231,27 +231,6 @@ impl ExecutionState {
                 );
             }
         }
-    }
-
-    /// Returns the state changes accumulated from the beginning of the output history,
-    /// up until a provided slot (excluded).
-    /// Only used in the VM main loop because the lock on the final ledger
-    /// carried by the returned `SpeculativeLedger` is not held.
-    /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry
-    /// by scanning through history from end to beginning
-    /// `https://github.com/massalabs/massa/issues/2343`
-    pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> StateChanges {
-        self.verify_active_slot(slot);
-        // gather the history of state changes in the relevant history range
-        let mut accumulated_changes = StateChanges::default();
-        for previous_output in self.active_history.read().0.iter() {
-            if previous_output.slot >= slot {
-                break;
-            }
-            accumulated_changes.apply(previous_output.state_changes.clone());
-        }
-
-        accumulated_changes
     }
 
     /// Execute an operation in the context of a block.
@@ -637,14 +616,10 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(&self, slot: Slot, opt_block_id: Option<BlockId>) -> ExecutionOutput {
-        // accumulate previous active changes from output history
-        let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
-
         // create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             slot,
             opt_block_id,
-            previous_changes,
             self.final_state.clone(),
             self.active_history.clone(),
         );
@@ -711,16 +686,12 @@ impl ExecutionState {
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow in readonly execution");
 
-        // accumulate state changes that happened in the output history before this slot
-        let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
-
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
             slot,
             req.max_gas,
             req.simulated_gas_price,
             req.call_stack,
-            previous_changes,
             self.final_state.clone(),
             self.active_history.clone(),
         );
@@ -840,54 +811,6 @@ impl ExecutionState {
                 HistorySearchResult::Deleted => None,
             },
         )
-    }
-
-    /// Gets a full ledger entry both at the latest final and active executed slots
-    /// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`
-    /// TODO: remove when API is updated
-    ///
-    /// # Returns
-    /// `(final_entry, active_entry)`
-    pub fn get_final_and_active_ledger_entry(
-        &self,
-        addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        // get the full entry from the final ledger
-        let final_entry = self.final_state.read().ledger.get_full_entry(addr);
-
-        // get cumulative active changes and apply them
-        // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
-        // also we should proceed backwards through history for performance
-        // https://github.com/massalabs/massa/issues/2343
-        // Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one
-        // in order to take all available active slots into account (and not forget the last one)
-        // and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.
-        let next_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        let active_change = self
-            .get_accumulated_active_changes_at_slot(next_slot)
-            .ledger_changes
-            .get(addr)
-            .cloned();
-        let active_entry = match (&final_entry, active_change) {
-            (final_v, None) => final_v.clone(),
-            (_, Some(SetUpdateOrDelete::Set(v))) => Some(v),
-            (_, Some(SetUpdateOrDelete::Delete)) => None,
-            (None, Some(SetUpdateOrDelete::Update(u))) => {
-                let mut v = LedgerEntry::default();
-                v.apply(u);
-                Some(v)
-            }
-            (Some(final_v), Some(SetUpdateOrDelete::Update(u))) => {
-                let mut v = final_v.clone();
-                v.apply(u);
-                Some(v)
-            }
-        };
-
-        (final_entry, active_entry)
     }
 
     /// Gets execution events optionally filtered by:
