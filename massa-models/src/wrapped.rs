@@ -3,8 +3,8 @@ use std::fmt::Display;
 use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
-    derive_public_key, sign, verify_signature, PrivateKey, PublicKey, PublicKeyDeserializer,
-    Signature, SignatureDeserializer,
+    sign, verify_signature, PrivateKey, PublicKey, PublicKeyDeserializer, Signature,
+    SignatureDeserializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -71,24 +71,26 @@ where
         content: T,
         content_serializer: ST,
         private_key: &PrivateKey,
+        public_key: &PublicKey,
     ) -> Result<Self, ModelsError> {
-        let mut serialized_data = Vec::new();
-        let creator_public_key = derive_public_key(private_key);
-        serialized_data.extend(creator_public_key.to_bytes());
-        content_serializer.serialize(&content, &mut serialized_data)?;
-        let hash = Hash::compute_from(&serialized_data);
-        let creator_address = Address::from_public_key(&creator_public_key);
+        let mut content_serialized = Vec::new();
+        content_serializer.serialize(&content, &mut content_serialized)?;
+        let mut hash_data = Vec::new();
+        hash_data.extend(public_key.to_bytes());
+        hash_data.extend(content_serialized.clone());
+        let hash = Hash::compute_from(&hash_data);
+        let creator_address = Address::from_public_key(public_key);
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]
         let thread_count = THREAD_COUNT;
         Ok(Self {
             signature: sign(&hash, private_key)?,
-            creator_public_key,
+            creator_public_key: *public_key,
             creator_address,
             thread: creator_address.get_thread(thread_count),
             content,
-            serialized_data,
+            serialized_data: content_serialized,
             id: U::new(hash),
         })
     }
@@ -122,6 +124,7 @@ where
 {
     fn serialize(&self, value: &Wrapped<T, U>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         buffer.extend(value.signature.into_bytes());
+        buffer.extend(value.creator_public_key.into_bytes());
         buffer.extend(value.serialized_data.clone());
         Ok(())
     }
@@ -170,10 +173,13 @@ where
     /// use massa_signature::{derive_public_key, generate_random_private_key};
     /// use std::ops::Bound::Included;
     ///
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
     /// let wrapped: Wrapped<String, BlockId> = Wrapped::new_wrapped(
     ///    String::from("Hello world"),
     ///    StringSerializer::new(U16VarIntSerializer::new(Included(0), Included (u16::MAX))),
-    ///    &generate_random_private_key()
+    ///    &private_key,
+    ///    &public_key
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = WrappedSerializer::new().serialize(&wrapped, &mut serialized_data).unwrap();
@@ -215,7 +221,7 @@ where
                 creator_public_key,
                 creator_address,
                 thread: creator_address.get_thread(thread_count),
-                serialized_data: serialized_full_data.to_vec(),
+                serialized_data: content_serialized.to_vec(),
                 id: U::new(Hash::compute_from(&serialized_full_data)),
             },
         ))

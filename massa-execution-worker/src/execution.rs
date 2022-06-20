@@ -23,7 +23,6 @@ use massa_ledger_exports::{
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::wrapped::Signable;
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
@@ -374,31 +373,19 @@ impl ExecutionState {
             _ => return Ok(()),
         };
 
-        // get the operation's sender address
-        let sender_addr = Address::from_public_key(&operation.content.sender_public_key);
-
-        // get operation ID
-        // TODO have operation_id contained in the Operation object in the future to avoid recomputation
-        // https://github.com/massalabs/massa/issues/1121
-        // https://github.com/massalabs/massa/issues/2264
-        let operation_id = operation
-            .content
-            .compute_id()
-            .expect("could not compute operation ID");
-
         // call the execution process specific to the operation type
         match &operation.content.op {
             OperationType::ExecuteSC { .. } => self.execute_executesc_op(
                 &operation.content.op,
                 block_creator_addr,
-                operation_id,
-                sender_addr,
+                operation.id,
+                operation.creator_address,
             ),
             OperationType::CallSC { .. } => self.execute_callsc_op(
                 &operation.content.op,
                 block_creator_addr,
-                operation_id,
-                sender_addr,
+                operation.id,
+                operation.creator_address,
             ),
             _ => panic!("unexpected operation type"), // checked at the beginning of the function
         }
@@ -775,11 +762,10 @@ impl ExecutionState {
             let stored_block = block.read();
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
-                if let Err(err) = self.execute_operation(
-                    operation,
-                    Address::from_public_key(&stored_block.block.header.content.creator),
-                ) {
+            for (op_idx, operation) in stored_block.content.operations.iter().enumerate() {
+                if let Err(err) =
+                    self.execute_operation(operation, stored_block.content.header.creator_address)
+                {
                     debug!(
                         "failed executing operation index {} in block {}: {}",
                         op_idx, block_id, err

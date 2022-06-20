@@ -11,7 +11,6 @@ use crate::{
 };
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::wrapped::{Signable, Wrapped};
 use massa_models::{
@@ -22,8 +21,9 @@ use massa_models::{
 };
 use massa_models::{clique::Clique, SerializeCompact};
 use massa_models::{
-    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, OperationId,
-    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
+    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockHeaderSerializer, BlockId,
+    BlockSerializer, EndorsementId, OperationId, OperationSearchResult,
+    OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
 };
 use massa_proof_of_stake_exports::{
     error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
@@ -403,26 +403,35 @@ enum BlockOperationsCheckOutcome {
 /// * `cfg`: consensus configuration
 /// * `serialization_context`: ref to a `SerializationContext` instance
 /// * `thread_number`: thread in which we want a genesis block
-pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {
+pub fn create_genesis_block(
+    cfg: &GraphConfig,
+    thread_number: u8,
+) -> Result<(BlockId, WrappedBlock)> {
     let private_key = cfg.genesis_key;
-    let public_key = derive_public_key(&private_key);
-    let (header_hash, header) = Wrapped::new_wrapped(
+    let public_key = private_key.public_key();
+    let header = Wrapped::new_wrapped(
         BlockHeader {
-            creator: public_key,
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
         },
+        BlockHeaderSerializer::new(),
         &private_key,
+        &public_key,
     )?;
 
     Ok((
-        header_hash,
-        Block {
-            header,
-            operations: Vec::new(),
-        },
+        header.id,
+        Wrapped::new_wrapped(
+            Block {
+                header,
+                operations: Vec::new(),
+            },
+            BlockSerializer::new(),
+            &private_key,
+            &public_key,
+        )?,
     ))
 }
 
@@ -451,7 +460,7 @@ impl BlockGraph {
             block_statuses.insert(
                 block_id,
                 BlockStatus::Active(Box::new(ActiveBlock {
-                    creator_address: Address::from_public_key(&block.header.content.creator),
+                    creator_address: block.header.creator_address,
                     parents: Vec::new(),
                     children: vec![Map::default(); cfg.thread_count as usize],
                     dependencies: Set::<BlockId>::default(),
@@ -468,10 +477,7 @@ impl BlockGraph {
                     slot: block.header.content.slot,
                 })),
             );
-
-            // Store in shared storage.
-            let serialized = block.to_bytes_compact()?;
-            storage.store_block(block_id, block, serialized);
+            storage.store_block(block);
         }
 
         massa_trace!("consensus.block_graph.new", {});

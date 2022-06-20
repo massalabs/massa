@@ -862,6 +862,7 @@ mod tests {
     #[serial]
     fn test_transaction() {
         let sender_priv = generate_random_private_key();
+        let sender_pub = derive_public_key(&sender_priv);
 
         let recv_priv = generate_random_private_key();
         let recv_pub = derive_public_key(&recv_priv);
@@ -895,7 +896,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv).unwrap();
+        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv, &sender_pub).unwrap();
 
         let mut ser_op = Vec::new();
         WrappedSerializer::new()
@@ -914,6 +915,7 @@ mod tests {
     #[serial]
     fn test_executesc() {
         let sender_priv = generate_random_private_key();
+        let public_key = derive_public_key(&sender_priv);
 
         let op = OperationType::ExecuteSC {
             max_gas: 123,
@@ -946,7 +948,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv).unwrap();
+        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
 
         let mut ser_op = Vec::new();
         WrappedSerializer::new()
@@ -965,6 +967,7 @@ mod tests {
     #[serial]
     fn test_callsc() {
         let sender_priv = generate_random_private_key();
+        let public_key = derive_public_key(&sender_priv);
 
         let target_priv = generate_random_private_key();
         let target_pub = derive_public_key(&target_priv);
@@ -1004,7 +1007,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv).unwrap();
+        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
 
         let mut ser_op = Vec::new();
         WrappedSerializer::new()

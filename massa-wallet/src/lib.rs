@@ -8,6 +8,7 @@ pub use error::WalletError;
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
+use massa_models::operation::OperationSerializer;
 use massa_models::prehash::{Map, Set};
 use massa_models::wrapped::Wrapped;
 use massa_models::{Operation, WrappedOperation};
@@ -129,13 +130,17 @@ impl Wallet {
     /// Signs an operation with the private key corresponding to the given address
     pub fn create_operation(
         &self,
+        public_key: &PublicKey,
         content: Operation,
         address: Address,
     ) -> Result<WrappedOperation, WalletError> {
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;
-        Ok(Wrapped::new_wrapped(content, sender_priv).unwrap().1)
+        Ok(
+            Wrapped::new_wrapped(content, OperationSerializer::new(), sender_priv, public_key)
+                .unwrap(),
+        )
     }
 }
 

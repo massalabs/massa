@@ -229,21 +229,26 @@ mod tests {
 
     use super::*;
     use massa_serialization::DeserializeError;
-    use massa_signature::generate_random_private_key;
+    use massa_signature::{derive_public_key, generate_random_private_key};
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_endorsement_serialization() {
         let sender_priv = generate_random_private_key();
+        let public_key = derive_public_key(&sender_priv);
         let content = Endorsement {
             slot: Slot::new(10, 1),
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement: WrappedEndorsement =
-            Wrapped::new_wrapped(content.clone(), EndorsementSerializer::new(), &sender_priv)
-                .unwrap();
+        let endorsement: WrappedEndorsement = Wrapped::new_wrapped(
+            content.clone(),
+            EndorsementSerializer::new(),
+            &sender_priv,
+            &public_key,
+        )
+        .unwrap();
 
         let mut ser_endorsement: Vec<u8> = Vec::new();
         let serializer = WrappedSerializer::new();

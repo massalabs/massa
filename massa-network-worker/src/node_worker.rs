@@ -9,12 +9,13 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
-    wrapped::Signable,
+    wrapped::WrappedSerializer,
 };
 use massa_models::{BlockId, OperationId, SerializeCompact, SerializeVarInt};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
 };
+use massa_serialization::Serializer;
 use massa_storage::Storage;
 use tokio::{
     sync::mpsc,
@@ -191,21 +192,20 @@ impl NodeWorker {
                                 res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
                                 let len = (operation_ids.len() as u32).to_varint_bytes();
                                 res.extend(len);
+                                let wrapped_operation_serializer = WrappedSerializer::new();
 
-                                storage.with_serialized_operations(
-                                    &operation_ids,
-                                    |operations| {
-                                        for operation in operations {
-                                            match operation {
-                                                Some(operation) => {
-                                                    res.extend(*operation);
-                                                }
-                                                None => return Err(NetworkError::MissingOperation),
+                                storage.with_operations(&operation_ids, |operations| {
+                                    for operation in operations {
+                                        match operation {
+                                            Some(operation) => {
+                                                wrapped_operation_serializer
+                                                    .serialize(*operation, &mut res)?;
                                             }
+                                            None => return Err(NetworkError::MissingOperation),
                                         }
-                                        Ok(())
-                                    },
-                                )?;
+                                    }
+                                    Ok(())
+                                })?;
 
                                 res
                             }

@@ -431,18 +431,19 @@ impl Deserializer<PublicKey> for PublicKeyDeserializer {
                 nom::error::ErrorKind::LengthValue,
             )));
         }
-        let key = PublicKey::from_bytes(buffer[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(|_| {
-            nom::Err::Error(ParseError::from_error_kind(
-                buffer,
-                nom::error::ErrorKind::LengthValue,
-            ))
-        })?)
-        .map_err(|_| {
-            nom::Err::Error(ParseError::from_error_kind(
-                buffer,
-                nom::error::ErrorKind::Fail,
-            ))
-        })?;
+        let key =
+            PublicKey::from_bytes(buffer[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(|_| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    buffer,
+                    nom::error::ErrorKind::LengthValue,
+                ))
+            })?)
+            .map_err(|_| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    buffer,
+                    nom::error::ErrorKind::Fail,
+                ))
+            })?;
         // Safe because the signature deserialization success
         Ok((&buffer[PUBLIC_KEY_SIZE_BYTES..], key))
     }

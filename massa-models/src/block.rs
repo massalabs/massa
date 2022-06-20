@@ -130,6 +130,7 @@ pub struct Block {
 /// Wrapped Block
 pub type WrappedBlock = Wrapped<Block, BlockId>;
 
+/// Serializer for `Block`
 pub struct BlockSerializer {
     header_serializer: WrappedSerializer,
     operation_serializer: WrappedSerializer,
@@ -137,6 +138,7 @@ pub struct BlockSerializer {
 }
 
 impl BlockSerializer {
+    /// Creates a new `BlockSerializer`
     pub fn new() -> Self {
         BlockSerializer {
             header_serializer: WrappedSerializer::new(),
@@ -346,6 +348,7 @@ pub struct BlockHeader {
 /// wrapped header
 pub type WrappedHeader = Wrapped<BlockHeader, BlockId>;
 
+/// Serializer for `BlockHeader`
 pub struct BlockHeaderSerializer {
     slot_serializer: SlotSerializer,
     endorsement_serializer: WrappedSerializer,
@@ -353,6 +356,7 @@ pub struct BlockHeaderSerializer {
 }
 
 impl BlockHeaderSerializer {
+    /// Creates a new `BlockHeaderSerializer`
     pub fn new() -> Self {
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
@@ -529,13 +533,14 @@ mod test {
     use super::*;
     use crate::{endorsement::EndorsementSerializer, Endorsement};
     use massa_serialization::DeserializeError;
-    use massa_signature::generate_random_private_key;
+    use massa_signature::{derive_public_key, generate_random_private_key};
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_block_serialization() {
         let private_key = generate_random_private_key();
+        let public_key = derive_public_key(&private_key);
         let parents = (0..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
@@ -555,6 +560,7 @@ mod test {
                         },
                         EndorsementSerializer::new(),
                         &private_key,
+                        &public_key,
                     )
                     .unwrap(),
                     Wrapped::new_wrapped(
@@ -565,12 +571,14 @@ mod test {
                         },
                         EndorsementSerializer::new(),
                         &private_key,
+                        &public_key,
                     )
                     .unwrap(),
                 ],
             },
             BlockHeaderSerializer::new(),
             &private_key,
+            &public_key,
         )
         .unwrap();
 

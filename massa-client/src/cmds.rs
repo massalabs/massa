@@ -1051,8 +1051,8 @@ async fn send_operation(
     };
 
     let op = wallet.create_operation(
+        &sender_public_key,
         Operation {
-            sender_public_key,
             fee,
             expire_period,
             op,

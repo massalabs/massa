@@ -8,7 +8,6 @@ use massa_consensus_exports::{
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::Hash;
-use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
 use massa_models::{address::AddressState, wrapped::Wrapped};
@@ -18,7 +17,12 @@ use massa_models::{
 };
 use massa_models::{ledger_models::LedgerData, WrappedOperation};
 use massa_models::{
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, SerializeCompact, Slot,
+    prehash::{BuildMap, Map, Set},
+    EndorsementSerializer,
+};
+use massa_models::{
+    Address, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, EndorsementId,
+    SerializeCompact, Slot,
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
@@ -462,12 +466,12 @@ impl ConsensusWorker {
         // create empty block
         let (_block_id, header) = Wrapped::new_wrapped(
             BlockHeader {
-                creator: *creator_public_key,
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
                 operation_merkle_root: Hash::compute_from(&Vec::new()[..]),
                 endorsements: endorsements.clone(),
             },
+            BlockHeaderSerializer::new(),
             creator_private_key,
         )?;
         let block = Block {
@@ -594,12 +598,12 @@ impl ConsensusWorker {
         // compile resulting block
         let (block_id, header) = Wrapped::new_wrapped(
             BlockHeader {
-                creator: *creator_public_key,
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
                 operation_merkle_root: Hash::compute_from(&total_hash),
                 endorsements,
             },
+            BlockHeaderSerializer::new(),
             creator_private_key,
         )?;
         let block = Block { header, operations };
@@ -1422,11 +1426,11 @@ pub fn create_endorsement(
     endorsed_block: BlockId,
 ) -> Result<(EndorsementId, WrappedEndorsement)> {
     let content = Endorsement {
-        sender_public_key,
         slot,
         index,
         endorsed_block,
     };
-    let (e_id, endorsement) = Wrapped::new_wrapped(content, private_key)?;
+    let (e_id, endorsement) =
+        Wrapped::new_wrapped(content, EndorsementSerializer::new(), private_key)?;
     Ok((e_id, endorsement))
 }
