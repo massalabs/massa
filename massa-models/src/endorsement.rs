@@ -3,7 +3,7 @@
 use crate::constants::ENDORSEMENT_ID_SIZE_BYTES;
 use crate::node_configuration::{ENDORSEMENT_COUNT, THREAD_COUNT};
 use crate::prehash::PreHashed;
-use crate::wrapped::{Id, Wrapped};
+use crate::wrapped::{Id, Wrapped, WrappedContent};
 use crate::{BlockId, ModelsError, Slot};
 use crate::{SlotDeserializer, SlotSerializer};
 use massa_hash::{Hash, HashDeserializer};
@@ -126,6 +126,8 @@ pub struct Endorsement {
 /// Wrapped endorsement
 pub type WrappedEndorsement = Wrapped<Endorsement, EndorsementId>;
 
+impl WrappedContent for Endorsement {}
+
 /// Serializer for `Endorsement`
 pub struct EndorsementSerializer {
     slot_serializer: SlotSerializer,
@@ -225,7 +227,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializer {
 
 #[cfg(test)]
 mod tests {
-    use crate::wrapped::{Wrapped, WrappedDeserializer, WrappedSerializer};
+    use crate::wrapped::{WrappedDeserializer, WrappedSerializer};
 
     use super::*;
     use massa_serialization::DeserializeError;
@@ -242,7 +244,7 @@ mod tests {
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement: WrappedEndorsement = Wrapped::new_wrapped(
+        let endorsement: WrappedEndorsement = Endorsement::new_wrapped(
             content.clone(),
             EndorsementSerializer::new(),
             &sender_priv,

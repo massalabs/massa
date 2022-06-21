@@ -19,7 +19,7 @@ use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Wrapped<T, U>
 where
-    T: Display,
+    T: Display + WrappedContent,
     U: Id,
 {
     /// content
@@ -46,9 +46,104 @@ pub trait Id {
     fn hash(&self) -> Hash;
 }
 
+/// Trait that define methods that can be override to create the hash and the signature
+pub trait WrappedContent
+where
+    Self: Sized + Display,
+{
+    /// Creates a wrapped version of the object
+    fn new_wrapped<SC: Serializer<Self>, U: Id>(
+        content: Self,
+        content_serializer: SC,
+        private_key: &PrivateKey,
+        public_key: &PublicKey,
+    ) -> Result<Wrapped<Self, U>, ModelsError> {
+        let mut content_serialized = Vec::new();
+        content_serializer.serialize(&content, &mut content_serialized)?;
+        let mut hash_data = Vec::new();
+        hash_data.extend(public_key.to_bytes());
+        hash_data.extend(content_serialized.clone());
+        let hash = Hash::compute_from(&hash_data);
+        let creator_address = Address::from_public_key(public_key);
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        Ok(Wrapped {
+            signature: sign(&hash, private_key)?,
+            creator_public_key: *public_key,
+            creator_address,
+            thread: creator_address.get_thread(thread_count),
+            content,
+            serialized_data: content_serialized,
+            id: U::new(hash),
+        })
+    }
+
+    /// Serialize the wrapped structure
+    fn serialize(
+        signature: &Signature,
+        creator_public_key: &PublicKey,
+        serialized_content: &Vec<u8>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        buffer.extend(signature.into_bytes());
+        buffer.extend(creator_public_key.into_bytes());
+        buffer.extend(serialized_content.clone());
+        Ok(())
+    }
+
+    /// Deserialize the wrapped structure
+    fn deserialize<
+        'a,
+        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
+        DC: Deserializer<Self>,
+        U: Id,
+    >(
+        signature_deserializer: &SignatureDeserializer,
+        creator_public_key_deserializer: &PublicKeyDeserializer,
+        content_deserializer: &DC,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Wrapped<Self, U>, E> {
+        let (serialized_data, (signature, creator_public_key)) = context(
+            "Failed wrapped deserialization",
+            tuple((
+                context("Failed signature deserialization", |input| {
+                    signature_deserializer.deserialize(input)
+                }),
+                context("Failed public_key deserialization", |input| {
+                    creator_public_key_deserializer.deserialize(input)
+                }),
+            )),
+        )(buffer)?;
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        let (rest, content) = content_deserializer.deserialize(serialized_data)?;
+        // Avoid getting the rest of the data in the serialized data
+        let content_serialized = &serialized_data[..serialized_data.len() - rest.len()];
+        let creator_address = Address::from_public_key(&creator_public_key);
+        let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
+        serialized_full_data.extend(content_serialized);
+        Ok((
+            rest,
+            Wrapped {
+                content,
+                signature,
+                creator_public_key,
+                creator_address,
+                thread: creator_address.get_thread(thread_count),
+                serialized_data: content_serialized.to_vec(),
+                id: U::new(Hash::compute_from(&serialized_full_data)),
+            },
+        ))
+    }
+}
+
 impl<T, U> Display for Wrapped<T, U>
 where
-    T: Display,
+    T: Display + WrappedContent,
     U: Id,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -63,38 +158,9 @@ where
 
 impl<T, U> Wrapped<T, U>
 where
-    T: Display,
+    T: Display + WrappedContent,
     U: Id,
 {
-    /// generate new signed structure and id
-    pub fn new_wrapped<ST: Serializer<T>>(
-        content: T,
-        content_serializer: ST,
-        private_key: &PrivateKey,
-        public_key: &PublicKey,
-    ) -> Result<Self, ModelsError> {
-        let mut content_serialized = Vec::new();
-        content_serializer.serialize(&content, &mut content_serialized)?;
-        let mut hash_data = Vec::new();
-        hash_data.extend(public_key.to_bytes());
-        hash_data.extend(content_serialized.clone());
-        let hash = Hash::compute_from(&hash_data);
-        let creator_address = Address::from_public_key(public_key);
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
-        Ok(Self {
-            signature: sign(&hash, private_key)?,
-            creator_public_key: *public_key,
-            creator_address,
-            thread: creator_address.get_thread(thread_count),
-            content,
-            serialized_data: content_serialized,
-            id: U::new(hash),
-        })
-    }
-
     /// check if self has been signed by public key
     pub fn verify_signature(&self, public_key: &PublicKey) -> Result<(), ModelsError> {
         Ok(verify_signature(
@@ -119,21 +185,23 @@ impl WrappedSerializer {
 
 impl<T, U> Serializer<Wrapped<T, U>> for WrappedSerializer
 where
-    T: Display,
+    T: Display + WrappedContent,
     U: Id,
 {
     fn serialize(&self, value: &Wrapped<T, U>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        buffer.extend(value.signature.into_bytes());
-        buffer.extend(value.creator_public_key.into_bytes());
-        buffer.extend(value.serialized_data.clone());
-        Ok(())
+        T::serialize(
+            &value.signature,
+            &value.creator_public_key,
+            &value.serialized_data,
+            buffer,
+        )
     }
 }
 
 /// Deserializer for Wrapped structure
 pub struct WrappedDeserializer<T, DT>
 where
-    T: Display,
+    T: Display + WrappedContent,
     DT: Deserializer<T>,
 {
     signature_deserializer: SignatureDeserializer,
@@ -144,7 +212,7 @@ where
 
 impl<T, DT> WrappedDeserializer<T, DT>
 where
-    T: Display,
+    T: Display + WrappedContent,
     DT: Deserializer<T>,
 {
     /// Creates a new WrappedDeserializer
@@ -163,28 +231,34 @@ where
 
 impl<T, U, DT> Deserializer<Wrapped<T, U>> for WrappedDeserializer<T, DT>
 where
-    T: Display,
+    T: Display + WrappedContent,
     U: Id,
     DT: Deserializer<T>,
 {
     /// ```
-    /// use massa_models::{StringSerializer, BlockId, StringDeserializer, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer}};
+    /// use massa_models::{BlockId, Endorsement, EndorsementSerializer, EndorsementDeserializer, Slot, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer, WrappedContent}};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
     /// use massa_signature::{derive_public_key, generate_random_private_key};
     /// use std::ops::Bound::Included;
+    /// use massa_hash::Hash;
     ///
+    /// let content = Endorsement {
+    ///    slot: Slot::new(10, 1),
+    ///    index: 0,
+    ///    endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
+    /// };
     /// let private_key = generate_random_private_key();
     /// let public_key = derive_public_key(&private_key);
-    /// let wrapped: Wrapped<String, BlockId> = Wrapped::new_wrapped(
-    ///    String::from("Hello world"),
-    ///    StringSerializer::new(U16VarIntSerializer::new(Included(0), Included (u16::MAX))),
+    /// let wrapped: Wrapped<Endorsement, BlockId> = Endorsement::new_wrapped(
+    ///    content,
+    ///    EndorsementSerializer::new(),
     ///    &private_key,
     ///    &public_key
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = WrappedSerializer::new().serialize(&wrapped, &mut serialized_data).unwrap();
-    /// let deserializer = WrappedDeserializer::new(StringDeserializer::new(U16VarIntDeserializer::new(Included(0), Included (u16::MAX))));
-    /// let (rest, deserialized): (&[u8], Wrapped<String, BlockId>) = deserializer.deserialize::<DeserializeError>(&serialized_data).unwrap();
+    /// let deserializer = WrappedDeserializer::new(EndorsementDeserializer::new());
+    /// let (rest, deserialized): (&[u8], Wrapped<Endorsement, BlockId>) = deserializer.deserialize::<DeserializeError>(&serialized_data).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(wrapped.id, deserialized.id);
     /// ```
@@ -192,38 +266,11 @@ where
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Wrapped<T, U>, E> {
-        let (serialized_data, (signature, creator_public_key)) = context(
-            "Failed wrapped deserialization",
-            tuple((
-                context("Failed signature deserialization", |input| {
-                    self.signature_deserializer.deserialize(input)
-                }),
-                context("Failed public_key deserialization", |input| {
-                    self.public_key_deserializer.deserialize(input)
-                }),
-            )),
-        )(buffer)?;
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
-        let (rest, content) = self.content_deserializer.deserialize(serialized_data)?;
-        // Avoid getting the rest of the data in the serialized data
-        let content_serialized = &serialized_data[..serialized_data.len() - rest.len()];
-        let creator_address = Address::from_public_key(&creator_public_key);
-        let mut serialized_full_data = creator_public_key.to_bytes().to_vec();
-        serialized_full_data.extend(content_serialized);
-        Ok((
-            rest,
-            Wrapped {
-                content,
-                signature,
-                creator_public_key,
-                creator_address,
-                thread: creator_address.get_thread(thread_count),
-                serialized_data: content_serialized.to_vec(),
-                id: U::new(Hash::compute_from(&serialized_full_data)),
-            },
-        ))
+        T::deserialize(
+            &self.signature_deserializer,
+            &self.public_key_deserializer,
+            &self.content_deserializer,
+            buffer,
+        )
     }
 }

@@ -4,7 +4,7 @@ use crate::constants::BLOCK_ID_SIZE_BYTES;
 use crate::node_configuration::{MAX_BLOCK_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT};
 use crate::operation::OperationDeserializer;
 use crate::prehash::{Map, PreHashed, Set};
-use crate::wrapped::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
+use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
     Address, Endorsement, EndorsementDeserializer, EndorsementId, ModelsError, Operation,
     OperationId, Slot, SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation,
@@ -13,6 +13,7 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
+use massa_signature::{PublicKey, Signature};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::error::context;
@@ -130,6 +131,67 @@ pub struct Block {
 /// Wrapped Block
 pub type WrappedBlock = Wrapped<Block, BlockId>;
 
+impl WrappedContent for Block {
+    fn new_wrapped<SC: Serializer<Self>, U: Id>(
+        content: Self,
+        content_serializer: SC,
+        _private_key: &massa_signature::PrivateKey,
+        public_key: &massa_signature::PublicKey,
+    ) -> Result<Wrapped<Self, U>, ModelsError> {
+        let mut content_serialized = Vec::new();
+        content_serializer.serialize(&content, &mut content_serialized)?;
+        let creator_address = Address::from_public_key(public_key);
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        Ok(Wrapped {
+            signature: content.header.signature,
+            creator_public_key: *public_key,
+            creator_address,
+            thread: creator_address.get_thread(thread_count),
+            id: U::new(content.header.id.hash()),
+            content,
+            serialized_data: content_serialized,
+        })
+    }
+
+    fn serialize(
+        _signature: &Signature,
+        _creator_public_key: &PublicKey,
+        serialized_content: &Vec<u8>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        buffer.extend(serialized_content);
+        Ok(())
+    }
+
+    fn deserialize<
+        'a,
+        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
+        DC: Deserializer<Self>,
+        U: Id,
+    >(
+        _signature_deserializer: &massa_signature::SignatureDeserializer,
+        _creator_public_key_deserializer: &massa_signature::PublicKeyDeserializer,
+        content_deserializer: &DC,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Wrapped<Self, U>, E> {
+        let (rest, content) = content_deserializer.deserialize(buffer)?;
+        Ok((
+            rest,
+            Wrapped {
+                signature: content.header.signature,
+                creator_public_key: content.header.creator_public_key,
+                creator_address: content.header.creator_address,
+                thread: content.header.thread,
+                id: U::new(content.header.id.hash()),
+                content,
+                serialized_data: buffer[..buffer.len() - rest.len()].to_vec(),
+            },
+        ))
+    }
+}
 /// Serializer for `Block`
 pub struct BlockSerializer {
     header_serializer: WrappedSerializer,
@@ -348,6 +410,8 @@ pub struct BlockHeader {
 /// wrapped header
 pub type WrappedHeader = Wrapped<BlockHeader, BlockId>;
 
+impl WrappedContent for BlockHeader {}
+
 /// Serializer for `BlockHeader`
 pub struct BlockHeaderSerializer {
     slot_serializer: SlotSerializer,
@@ -546,13 +610,13 @@ mod test {
             .collect();
 
         // create block header
-        let orig_header = Wrapped::new_wrapped(
+        let orig_header = BlockHeader::new_wrapped(
             BlockHeader {
                 slot: Slot::new(1, 2),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![
-                    Wrapped::new_wrapped(
+                    Endorsement::new_wrapped(
                         Endorsement {
                             slot: Slot::new(1, 1),
                             index: 1,
@@ -563,7 +627,7 @@ mod test {
                         &public_key,
                     )
                     .unwrap(),
-                    Wrapped::new_wrapped(
+                    Endorsement::new_wrapped(
                         Endorsement {
                             slot: Slot::new(4, 0),
                             index: 3,
@@ -589,26 +653,39 @@ mod test {
         };
 
         // serialize block
-        let mut orig_bytes = Vec::new();
-        BlockSerializer::new()
-            .serialize(&orig_block, &mut orig_bytes)
+        let wrapped_block: WrappedBlock = Block::new_wrapped(
+            orig_block.clone(),
+            BlockSerializer::new(),
+            &private_key,
+            &public_key,
+        )
+        .unwrap();
+        let mut ser_block = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&wrapped_block, &mut ser_block)
             .unwrap();
 
         // deserialize
-        let (rest, res_block) = BlockDeserializer::new()
-            .deserialize::<DeserializeError>(&orig_bytes)
-            .unwrap();
+        let (rest, res_block): (&[u8], WrappedBlock) =
+            WrappedDeserializer::new(BlockDeserializer::new())
+                .deserialize::<DeserializeError>(&ser_block)
+                .unwrap();
         assert!(rest.is_empty());
         // check equality
-        assert_eq!(orig_block.header.id, res_block.header.id);
+        assert_eq!(orig_block.header.id, res_block.content.header.id);
+        assert_eq!(orig_block.header.id, res_block.id);
         assert_eq!(
             orig_block.header.content.slot,
-            res_block.header.content.slot
+            res_block.content.header.content.slot
         );
         assert_eq!(
             orig_block.header.serialized_data,
-            res_block.header.serialized_data
+            res_block.content.header.serialized_data
         );
-        assert_eq!(res_block.header.signature, orig_block.header.signature);
+        assert_eq!(
+            orig_block.header.signature,
+            res_block.content.header.signature
+        );
+        assert_eq!(orig_block.header.signature, res_block.signature);
     }
 }

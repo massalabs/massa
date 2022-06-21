@@ -4,7 +4,7 @@ use crate::constants::OPERATION_ID_SIZE_BYTES;
 use crate::node_configuration::MAX_OPERATIONS_PER_MESSAGE;
 use crate::prehash::{PreHashed, Set};
 use crate::serialization::StringDeserializer;
-use crate::wrapped::{Id, Wrapped, WrappedDeserializer, WrappedSerializer};
+use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{Address, Amount, ModelsError};
 use crate::{
     AddressDeserializer, AmountDeserializer, AmountSerializer, StringSerializer, VecU8Deserializer,
@@ -154,6 +154,8 @@ impl std::fmt::Display for Operation {
 
 /// signed operation
 pub type WrappedOperation = Wrapped<Operation, OperationId>;
+
+impl WrappedContent for Operation {}
 
 /// Serializer for `Operation`
 pub struct OperationSerializer {
@@ -896,7 +898,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv, &sender_pub).unwrap();
+        let op = Operation::new_wrapped(content, op_serializer, &sender_priv, &sender_pub).unwrap();
 
         let mut ser_op = Vec::new();
         WrappedSerializer::new()
@@ -948,7 +950,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
+        let op = Operation::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
 
         let mut ser_op = Vec::new();
         WrappedSerializer::new()
@@ -1007,7 +1009,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Wrapped::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
+        let op = Operation::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
 
         let mut ser_op = Vec::new();
         WrappedSerializer::new()
