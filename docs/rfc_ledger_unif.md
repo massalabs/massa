@@ -14,6 +14,18 @@ The goal here is to move the management of both ledgers into the execution modul
 
 ## Proof-of-Stake
 
+### Overview
+
+* draws at cycle C are generated using the seed from cycle C-2 and roll distribution from cycle C-3
+* after its last slot of a cycle C is executed:
+  * miss stats from cycle C trigger implicit roll sales
+  * deferred credits are reimbursed
+  * a snapshot of the roll distribution is taken for this cycle
+* in case of roll sell at cycle C, the roll is removed and a deferred credit is registered for cycle C+3 to reimburse the cost of the roll after a lock cycle
+* in case of slashing, both rolls and deferred credits can be slashed
+
+![PoS Schematic](pos.jpeg)
+
 ### Final PoS state in massa-final-state
 
 ```rust
