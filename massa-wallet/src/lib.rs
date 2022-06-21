@@ -13,9 +13,7 @@ use massa_models::composite::PubkeySig;
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signed;
 use massa_models::{Operation, SignedOperation};
-use massa_signature::{
-    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
-};
+use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -35,31 +33,32 @@ pub struct Wallet {
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
+        // File check was already performed before in `massa-client/main.rs`
         let content = &std::fs::read(&path)?[..];
+        // Retrieve private keys
         let priv_keys = if !content.is_empty() {
             // If wallet contains data decipher it
             let decrypted_content = decrypt(&password, content)?;
             serde_json::from_slice::<Vec<PrivateKey>>(&decrypted_content[..])?
         } else {
-            // If wallet is empty add a new private key
-            vec![generate_random_private_key()]
+            // If wallet is freshly created return an empty vec
+            Vec::new()
         };
-        let keys = priv_keys
+        // Derive public key and address
+        let keys: Result<Map<Address, (PublicKey, PrivateKey)>, WalletError> = priv_keys
             .iter()
             .map(|key| {
                 let pub_key = derive_public_key(key);
                 Ok((Address::from_public_key(&pub_key), (pub_key, *key)))
             })
-            .collect::<Result<Map<Address, _>, WalletError>>()?;
+            .collect();
+        // Create the wallet
         let wallet = Wallet {
-            keys,
+            keys: keys?,
             wallet_path: path,
             password,
         };
-        if content.is_empty() {
-            // If wallet is empty cipher and save the new private key
-            wallet.save()?;
-        }
+        wallet.save()?;
         Ok(wallet)
     }
 
