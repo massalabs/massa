@@ -7,12 +7,10 @@ use crate::{
     client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
     tests::tools::get_bootstrap_config, BootstrapPeers,
 };
-use async_speed_limit::clock::StandardClock;
-use async_speed_limit::{Limiter, Resource};
 use massa_models::Version;
 use massa_signature::PrivateKey;
 use serial_test::serial;
-use tokio::io::DuplexStream;
+use tokio::io::duplex;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_SETTINGS_PRIVATE_KEY: (BootstrapSettings, PrivateKey) = {
@@ -21,30 +19,16 @@ lazy_static::lazy_static! {
     };
 }
 
-// Wrap tokio io duplex around a async-speed-limit's `Resource`
-fn duplex(
-    max_buf_size: usize,
-) -> (
-    Resource<DuplexStream, StandardClock>,
-    Resource<DuplexStream, StandardClock>,
-) {
-    let (client, server) = tokio::io::duplex(max_buf_size);
-    (
-        <Limiter>::new(std::f64::INFINITY).limit(client),
-        <Limiter>::new(std::f64::INFINITY).limit(server),
-    )
-}
-
 /// The server and the client will handshake and then send message in both ways in order
 #[tokio::test]
 #[serial]
 async fn test_binders() {
     let (bootstrap_settings, server_private_key): &(BootstrapSettings, PrivateKey) =
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
-
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_private_key);
-    let mut client = BootstrapClientBinder::new(client, bootstrap_settings.bootstrap_list[0].1);
+    let mut server = BootstrapServerBinder::new(server, *server_private_key, u32::MAX);
+    let mut client =
+        BootstrapClientBinder::new(client, bootstrap_settings.bootstrap_list[0].1, u32::MAX);
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -128,8 +112,9 @@ async fn test_binders_double_send_server_works() {
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
 
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_private_key);
-    let mut client = BootstrapClientBinder::new(client, bootstrap_settings.bootstrap_list[0].1);
+    let mut server = BootstrapServerBinder::new(server, *server_private_key, u32::MAX);
+    let mut client =
+        BootstrapClientBinder::new(client, bootstrap_settings.bootstrap_list[0].1, u32::MAX);
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -198,8 +183,9 @@ async fn test_binders_try_double_send_client_works() {
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
 
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_private_key);
-    let mut client = BootstrapClientBinder::new(client, bootstrap_settings.bootstrap_list[0].1);
+    let mut server = BootstrapServerBinder::new(server, *server_private_key, u32::MAX);
+    let mut client =
+        BootstrapClientBinder::new(client, bootstrap_settings.bootstrap_list[0].1, u32::MAX);
 
     let server_thread = tokio::spawn(async move {
         // Test message 1

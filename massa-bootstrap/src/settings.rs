@@ -38,5 +38,5 @@ pub struct BootstrapSettings {
     /// Max size of the IP list
     pub ip_list_max_size: usize,
     /// Read-Write limitation for a connection in bytes per seconds
-    pub max_bit_read_write: u32,
+    pub max_bytes_read_write: u32,
 }

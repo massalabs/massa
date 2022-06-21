@@ -66,8 +66,8 @@ impl HandshakeWorker {
         timeout_duration: MassaTime,
         version: Version,
         connection_id: ConnectionId,
-        max_bit_read: u32,
-        max_bit_write: u32,
+        max_bytes_read: u32,
+        max_bytes_write: u32,
     ) -> JoinHandle<(ConnectionId, HandshakeReturnType)> {
         debug!("starting handshake with connection_id={}", connection_id);
         massa_trace!("network_worker.new_connection", {
@@ -79,8 +79,8 @@ impl HandshakeWorker {
             (
                 connection_id_copy,
                 HandshakeWorker {
-                    reader: ReadBinder::new(socket_reader, max_bit_read),
-                    writer: WriteBinder::new(socket_writer, max_bit_write),
+                    reader: ReadBinder::new(socket_reader, max_bytes_read),
+                    writer: WriteBinder::new(socket_writer, max_bytes_write),
                     self_node_id,
                     private_key,
                     timeout_duration,

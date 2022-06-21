@@ -9,7 +9,6 @@ use crate::NetworkError;
 use crate::NetworkEvent;
 use crate::NetworkSettings;
 
-use async_speed_limit::Limiter;
 use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::Signed;
@@ -83,8 +82,6 @@ pub async fn full_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let mock_read_half = <Limiter>::new(std::f64::INFINITY).limit(mock_read_half);
-    let mock_write_half = <Limiter>::new(std::f64::INFINITY).limit(mock_write_half);
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -93,6 +90,8 @@ pub async fn full_connection_to_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
+        u32::MAX,
+        u32::MAX,
     )
     .await
     .expect("handshake creation failed")
@@ -143,8 +142,6 @@ pub async fn rejected_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let mock_read_half = <Limiter>::new(std::f64::INFINITY).limit(mock_read_half);
-    let mock_write_half = <Limiter>::new(std::f64::INFINITY).limit(mock_write_half);
     let result = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -153,6 +150,8 @@ pub async fn rejected_connection_to_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
+        u32::MAX,
+        u32::MAX,
     )
     .await
     .expect("handshake creation failed")
@@ -229,8 +228,6 @@ pub async fn full_connection_from_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let mock_read_half = <Limiter>::new(std::f64::INFINITY).limit(mock_read_half);
-    let mock_write_half = <Limiter>::new(std::f64::INFINITY).limit(mock_write_half);
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -239,6 +236,8 @@ pub async fn full_connection_from_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
+        u32::MAX,
+        u32::MAX,
     )
     .await
     .expect("handshake creation failed")

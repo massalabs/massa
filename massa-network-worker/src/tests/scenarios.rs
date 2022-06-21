@@ -11,7 +11,6 @@ use crate::{
     binders::{ReadBinder, WriteBinder},
     NetworkSettings,
 };
-use async_speed_limit::Limiter;
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
@@ -68,10 +67,8 @@ async fn test_node_worker_shutdown() {
     let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
-    let duplex_mock_read = <Limiter>::new(std::f64::INFINITY).limit(duplex_mock_read);
-    let duplex_mock_write = <Limiter>::new(std::f64::INFINITY).limit(duplex_mock_write);
-    let reader = ReadBinder::new(duplex_mock_read);
-    let writer = WriteBinder::new(duplex_mock_write);
+    let reader = ReadBinder::new(duplex_mock_read, u32::MAX);
+    let writer = WriteBinder::new(duplex_mock_write, u32::MAX);
 
     // Note: both channels have size 1.
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
@@ -126,8 +123,8 @@ async fn test_node_worker_operations_message() {
     let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
-    let reader = ReadBinder::new(duplex_mock_read);
-    let writer = WriteBinder::new(duplex_mock_write);
+    let reader = ReadBinder::new(duplex_mock_read, u32::MAX);
+    let writer = WriteBinder::new(duplex_mock_write, u32::MAX);
 
     // Note: both channels have size 1.
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);

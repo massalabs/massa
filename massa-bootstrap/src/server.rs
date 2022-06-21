@@ -151,96 +151,92 @@ impl BootstrapServer {
                 }
 
                 // listener
-                Ok((dplx, remote_addr)) = listener.accept() => {
+                Ok((dplx, remote_addr)) = listener.accept() => if bootstrap_sessions.len() < self.bootstrap_settings.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
+                    massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
+                    let now = Instant::now();
 
-                    // limit communication bandwidth
-                    if bootstrap_sessions.len() < self.bootstrap_settings.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
-                        massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
-                        let now = Instant::now();
-
-                        // clear IP history if necessary
+                    // clear IP history if necessary
+                    if self.ip_hist_map.len() > self.bootstrap_settings.ip_list_max_size {
+                        self.ip_hist_map.retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
                         if self.ip_hist_map.len() > self.bootstrap_settings.ip_list_max_size {
-                            self.ip_hist_map.retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
-                            if self.ip_hist_map.len() > self.bootstrap_settings.ip_list_max_size {
-                                // too many IPs are spamming us: clear cache
-                                warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}ms", self.ip_hist_map.len(), self.bootstrap_settings.per_ip_min_interval);
-                                self.ip_hist_map.clear();
-                            }
+                            // too many IPs are spamming us: clear cache
+                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}ms", self.ip_hist_map.len(), self.bootstrap_settings.per_ip_min_interval);
+                            self.ip_hist_map.clear();
                         }
-
-                        // check IP's bootstrap attempt history
-                        match self.ip_hist_map.entry(remote_addr.ip()) {
-                            hash_map::Entry::Occupied(mut occ) => {
-                                if now.duration_since(*occ.get()) <= per_ip_min_interval {
-                                    let mut server = BootstrapServerBinder::new(dplx, self.private_key, self.bootstrap_settings.max_bit_read_write);
-                                    let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
-                                        error:
-                                        format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
-                                    })).await {
-                                        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
-                                        Ok(Err(e)) => Err(e),
-                                        Ok(Ok(_)) => Ok(()),
-                                    };
-                                    // in list, non-expired => refuse
-                                    massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
-                                    continue;
-                                } else {
-                                    // in list, expired
-                                    occ.insert(now);
-                                }
-                            },
-                            hash_map::Entry::Vacant(vac) => {
-                                vac.insert(now);
-                            }
-                        }
-
-                        // load cache if absent
-                        if bootstrap_data.is_none() {
-                            massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
-
-                            // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
-                            // This is done to ensure that the execution bootstrap state is older than the consensus state.
-                            // If the consensus state snapshot is older than the execution state snapshot,
-                            //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
-                            let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
-                            let (pos_boot, graph_boot) = self.consensus_command_sender.get_bootstrap_state().await?;
-                            bootstrap_data = Some((pos_boot, graph_boot, peer_boot, self.final_state.clone()));
-                            cache_timer.set(sleep(cache_timeout));
-                        }
-                        massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
-
-                        // launch bootstrap
-                        let private_key = self.private_key;
-                        let compensation_millis = self.compensation_millis;
-                        let version = self.version;
-                        let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
-                        bootstrap_sessions.push(async move {
-                            //Socket lifetime
-                            {
-                                let mut server = BootstrapServerBinder::new(dplx, private_key, self.bootstrap_settings.max_bit_read_write);
-                                match manage_bootstrap(self.bootstrap_settings, &mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
-                                    Ok(_) => info!("bootstrapped peer {}", remote_addr),
-                                    Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
-                                    Err(err) => {
-                                        debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
-                                        // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                        let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
-                                    },
-                                }
-                            }
-                        });
-                        massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
-                    } else {
-                        let mut server = BootstrapServerBinder::new(dplx, self.private_key, self.bootstrap_settings.max_bit_read_write);
-                        let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
-                            error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
-                        })).await {
-                            Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
-                            Ok(Err(e)) => Err(e),
-                            Ok(Ok(_)) => Ok(()),
-                        };
-                        debug!("did not bootstrap {}: no available slots", remote_addr);
                     }
+
+                    // check IP's bootstrap attempt history
+                    match self.ip_hist_map.entry(remote_addr.ip()) {
+                        hash_map::Entry::Occupied(mut occ) => {
+                            if now.duration_since(*occ.get()) <= per_ip_min_interval {
+                                let mut server = BootstrapServerBinder::new(dplx, self.private_key, self.bootstrap_settings.max_bytes_read_write);
+                                let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
+                                    error:
+                                    format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
+                                })).await {
+                                    Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
+                                    Ok(Err(e)) => Err(e),
+                                    Ok(Ok(_)) => Ok(()),
+                                };
+                                // in list, non-expired => refuse
+                                massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {"remote_addr": remote_addr});
+                                continue;
+                            } else {
+                            // in list, expired
+                            occ.insert(now);
+                            }
+                        },
+                        hash_map::Entry::Vacant(vac) => {
+                            vac.insert(now);
+                        }
+                    }
+
+                    // load cache if absent
+                    if bootstrap_data.is_none() {
+                        massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
+
+                        // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
+                        // This is done to ensure that the execution bootstrap state is older than the consensus state.
+                        // If the consensus state snapshot is older than the execution state snapshot,
+                        //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
+                        let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
+                        let (pos_boot, graph_boot) = self.consensus_command_sender.get_bootstrap_state().await?;
+                        bootstrap_data = Some((pos_boot, graph_boot, peer_boot, self.final_state.clone()));
+                        cache_timer.set(sleep(cache_timeout));
+                    }
+                    massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
+
+                    // launch bootstrap
+                    let private_key = self.private_key;
+                    let compensation_millis = self.compensation_millis;
+                    let version = self.version;
+                    let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
+                    bootstrap_sessions.push(async move {
+                        //Socket lifetime
+                        {
+                            let mut server = BootstrapServerBinder::new(dplx, private_key, self.bootstrap_settings.max_bytes_read_write);
+                            match manage_bootstrap(self.bootstrap_settings, &mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
+                                Ok(_) => info!("bootstrapped peer {}", remote_addr),
+                                Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
+                                Err(err) => {
+                                    debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
+                                    // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                                    let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
+                                },
+                            }
+                        }
+                    });
+                    massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
+                } else {
+                    let mut server = BootstrapServerBinder::new(dplx, self.private_key, self.bootstrap_settings.max_bytes_read_write);
+                    let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
+                        error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
+                    })).await {
+                        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
+                        Ok(Err(e)) => Err(e),
+                        Ok(Ok(_)) => Ok(()),
+                    };
+                    debug!("did not bootstrap {}: no available slots", remote_addr);
                 }
             }
         }

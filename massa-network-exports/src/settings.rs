@@ -53,9 +53,9 @@ pub struct NetworkSettings {
     /// Max operations per message in the network to avoid sending to big data packet.
     pub max_operations_per_message: u32,
     /// Read limitation for a connection in bytes per seconds
-    pub max_bit_read: u32,
+    pub max_bytes_read: u32,
     /// Write limitation for a connection in bytes per seconds
-    pub max_bit_write: u32,
+    pub max_bytes_write: u32,
 }
 
 /// Connection configuration for a peer type
@@ -122,8 +122,8 @@ pub mod tests {
                 max_in_connection_overflow: 2,
                 peer_types_config,
                 max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
-                max_bit_read: std::u64::MAX,
-                max_bit_write: std::u64::MAX,
+                max_bytes_read: std::u32::MAX,
+                max_bytes_write: std::u32::MAX,
             }
         }
     }
@@ -181,8 +181,8 @@ pub mod tests {
                 max_in_connection_overflow: 10,
                 peer_types_config,
                 max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
-                max_bit_read: std::u64::MAX,
-                max_bit_write: std::u64::MAX,
+                max_bytes_read: std::u32::MAX,
+                max_bytes_write: std::u32::MAX,
             }
         }
     }

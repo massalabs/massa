@@ -154,7 +154,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         max_simultaneous_bootstraps: 2,
         ip_list_max_size: 10,
         per_ip_min_interval: 10000.into(),
-        max_bit_read_write: std::u32::MAX,
+        max_bytes_read_write: std::u32::MAX,
     }
 }
 
