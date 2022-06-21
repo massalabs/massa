@@ -62,5 +62,10 @@ testing = [
     "massa_ledger_worker/testing",
     "massa_async_pool/testing",
 ]
-sandbox = ["massa_async_pool/sandbox", "massa_final_state/sandbox"]
-
+sandbox = [
+    "massa_async_pool/sandbox",
+    "massa_consensus_exports/sandbox",
+    "massa_final_state/sandbox",
+    "massa_models/sandbox",
+    "massa_proof_of_stake_exports/sandbox",
+]

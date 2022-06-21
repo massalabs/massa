@@ -40,5 +40,7 @@ instrument = [
     "massa_protocol_exports/instrument",
     "massa_time/instrument",
 ]
-sandbox = []
+sandbox = [
+    "massa_proof_of_stake_exports/sandbox",
+]
 testing = ["massa_models/testing", "massa_execution_exports/testing"]

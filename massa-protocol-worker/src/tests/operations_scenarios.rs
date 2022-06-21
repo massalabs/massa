@@ -3,7 +3,8 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test;
-use massa_models::{self, Address, Amount, Slot};
+use massa_models::DeserializeCompact;
+use massa_models::{self, Address, Amount, SignedOperation, Slot};
 use massa_models::{operation::OperationIds, prehash::Set};
 use massa_models::{prehash::Map, signed::Signable};
 use massa_network_exports::NetworkCommand;
@@ -29,15 +30,22 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
-            // 1. Create an operation
-            let operation =
+            // 1. Create operation 1 and 2
+            let operation_1 =
                 tools::create_operation_with_expire_period(&creator_node.private_key, 1);
 
-            let expected_operation_id = operation.verify_integrity().unwrap();
+            let operation_2 =
+                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+
+            let expected_operation_id_1 = operation_1.verify_integrity().unwrap();
+            let expected_operation_id_2 = operation_2.verify_integrity().unwrap();
 
             // 3. Send operation to protocol.
             network_controller
-                .send_operations(creator_node.id, vec![operation])
+                .send_operations(
+                    creator_node.id,
+                    vec![operation_1.clone(), operation_2.clone()],
+                )
                 .await;
 
             // Check protocol sends operations to consensus.
@@ -54,7 +62,32 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
                 Some(ProtocolPoolEvent::ReceivedOperations { operations, .. }) => operations,
                 _ => panic!("Unexpected or no protocol pool event."),
             };
-            assert!(received_operations.contains_key(&expected_operation_id));
+
+            // Check the event includes the expected operations.
+            assert!(received_operations.contains_key(&expected_operation_id_1));
+            assert!(received_operations.contains_key(&expected_operation_id_2));
+
+            // Check that the operations come with their serialized representations.
+            assert_eq!(
+                expected_operation_id_1,
+                SignedOperation::from_bytes_compact(
+                    &received_operations.get(&expected_operation_id_1).unwrap().1
+                )
+                .unwrap()
+                .0
+                .verify_integrity()
+                .unwrap()
+            );
+            assert_eq!(
+                expected_operation_id_2,
+                SignedOperation::from_bytes_compact(
+                    &received_operations.get(&expected_operation_id_2).unwrap().1
+                )
+                .unwrap()
+                .0
+                .verify_integrity()
+                .unwrap()
+            );
 
             (
                 network_controller,
@@ -745,6 +778,16 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                     assert!(!propagate);
                     assert!(operations.contains_key(&expected_id));
                     assert_eq!(operations.len(), 1);
+                    assert_eq!(
+                        expected_id,
+                        SignedOperation::from_bytes_compact(
+                            &operations.get(&expected_id).unwrap().1
+                        )
+                        .unwrap()
+                        .0
+                        .verify_integrity()
+                        .unwrap()
+                    );
                 }
                 Some(_) => panic!("Unexpected protocol pool event."),
             }
