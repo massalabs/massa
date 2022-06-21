@@ -159,7 +159,7 @@ impl WrappedContent for Block {
     fn serialize(
         _signature: &Signature,
         _creator_public_key: &PublicKey,
-        serialized_content: &Vec<u8>,
+        serialized_content: &[u8],
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         buffer.extend(serialized_content);
@@ -235,6 +235,7 @@ impl Serializer<Block> for BlockSerializer {
     }
 }
 
+/// Deserializer for `Block`
 pub struct BlockDeserializer {
     header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
     operation_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
@@ -242,6 +243,7 @@ pub struct BlockDeserializer {
 }
 
 impl BlockDeserializer {
+    /// Creates a new `BlockDeserializer`
     pub fn new() -> Self {
         BlockDeserializer {
             header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
@@ -298,20 +300,18 @@ impl WrappedBlock {
     pub fn bytes_count(&self) -> u64 {
         self.serialized_data.len() as u64
     }
-}
 
-impl Block {
     /// true if given operation is included in the block
     /// may fail if computing an id of an operation in the block
     pub fn contains_operation(&self, op: WrappedOperation) -> Result<bool, ModelsError> {
         let op_id = op.id;
-        Ok(self.operations.iter().any(|o| op_id == o.id))
+        Ok(self.content.operations.iter().any(|o| op_id == o.id))
     }
 
     /// Retrieve roll involving addresses
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut roll_involved_addrs = Set::<Address>::default();
-        for op in self.operations.iter() {
+        for op in self.content.operations.iter() {
             roll_involved_addrs.extend(op.get_roll_involved_addresses()?);
         }
         Ok(roll_involved_addrs)
@@ -327,7 +327,7 @@ impl Block {
         operation_set
             .iter()
             .try_for_each::<_, Result<(), ModelsError>>(|(op_id, (op_idx, _op_expiry))| {
-                let op = &self.operations[*op_idx];
+                let op = &self.content.operations[*op_idx];
                 let addrs = op.get_ledger_involved_addresses();
                 for ad in addrs.into_iter() {
                     if let Some(entry) = addresses_to_operations.get_mut(&ad) {
@@ -348,7 +348,8 @@ impl Block {
         &self,
     ) -> Result<Map<Address, Set<EndorsementId>>, ModelsError> {
         let mut res: Map<Address, Set<EndorsementId>> = Map::default();
-        self.header
+        self.content
+            .header
             .content
             .endorsements
             .iter()

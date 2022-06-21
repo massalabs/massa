@@ -10,7 +10,7 @@ use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
 use massa_models::operation::OperationSerializer;
 use massa_models::prehash::{Map, Set};
-use massa_models::wrapped::Wrapped;
+use massa_models::wrapped::WrappedContent;
 use massa_models::{Operation, WrappedOperation};
 use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
 use serde::{Deserialize, Serialize};
@@ -138,7 +138,7 @@ impl Wallet {
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;
         Ok(
-            Wrapped::new_wrapped(content, OperationSerializer::new(), sender_priv, public_key)
+            Operation::new_wrapped(content, OperationSerializer::new(), sender_priv, public_key)
                 .unwrap(),
         )
     }

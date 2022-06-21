@@ -11,23 +11,24 @@ use crate::{
 };
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::prehash::{BuildMap, Map, Set};
-use massa_models::wrapped::{Signable, Wrapped};
+use massa_models::clique::Clique;
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
     WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
-use massa_models::{clique::Clique, SerializeCompact};
 use massa_models::{
     ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockHeaderSerializer, BlockId,
     BlockSerializer, EndorsementId, OperationId, OperationSearchResult,
     OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
 };
-use massa_proof_of_stake_exports::{
-    error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
+use massa_models::{
+    prehash::{BuildMap, Map, Set},
+    wrapped::WrappedContent,
+    WrappedBlock,
 };
+use massa_proof_of_stake_exports::{error::ProofOfStakeError, ProofOfStake};
 use massa_signature::{derive_public_key, PublicKey};
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
@@ -226,7 +227,7 @@ impl<'a> BlockGraphExport {
                         export.active_blocks.insert(
                             *hash,
                             ExportCompiledBlock {
-                                header: stored_block.block.header.clone(),
+                                header: stored_block.content.header.clone(),
                                 children: a_block
                                     .children
                                     .iter()
@@ -408,8 +409,8 @@ pub fn create_genesis_block(
     thread_number: u8,
 ) -> Result<(BlockId, WrappedBlock)> {
     let private_key = cfg.genesis_key;
-    let public_key = private_key.public_key();
-    let header = Wrapped::new_wrapped(
+    let public_key = derive_public_key(&private_key);
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
@@ -423,7 +424,7 @@ pub fn create_genesis_block(
 
     Ok((
         header.id,
-        Wrapped::new_wrapped(
+        Block::new_wrapped(
             Block {
                 header,
                 operations: Vec::new(),
@@ -460,7 +461,7 @@ impl BlockGraph {
             block_statuses.insert(
                 block_id,
                 BlockStatus::Active(Box::new(ActiveBlock {
-                    creator_address: block.header.creator_address,
+                    creator_address: block.creator_address,
                     parents: Vec::new(),
                     children: vec![Map::default(); cfg.thread_count as usize],
                     dependencies: Set::<BlockId>::default(),
@@ -474,7 +475,7 @@ impl BlockGraph {
                     production_events: vec![],
                     block_id,
                     addresses_to_endorsements: Default::default(),
-                    slot: block.header.content.slot,
+                    slot: block.content.header.content.slot,
                 })),
             );
             storage.store_block(block);

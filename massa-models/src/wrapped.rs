@@ -46,7 +46,7 @@ pub trait Id {
     fn hash(&self) -> Hash;
 }
 
-/// Trait that define methods that can be override to create the hash and the signature
+/// Trait that define a structure that can be wrapped.
 pub trait WrappedContent
 where
     Self: Sized + Display,
@@ -84,12 +84,12 @@ where
     fn serialize(
         signature: &Signature,
         creator_public_key: &PublicKey,
-        serialized_content: &Vec<u8>,
+        serialized_content: &[u8],
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         buffer.extend(signature.into_bytes());
         buffer.extend(creator_public_key.into_bytes());
-        buffer.extend(serialized_content.clone());
+        buffer.extend(serialized_content);
         Ok(())
     }
 

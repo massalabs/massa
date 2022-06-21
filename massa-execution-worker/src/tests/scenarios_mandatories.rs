@@ -12,8 +12,9 @@ use massa_ledger_worker::FinalLedger;
 use massa_models::{
     api::EventFilter,
     constants::{AMOUNT_DECIMAL_FACTOR, FINAL_HISTORY_LENGTH, THREAD_COUNT},
-    Block, BlockHeader, BlockId, Operation, OperationType, SerializeCompact, WrappedHeader,
-    WrappedOperation,
+    wrapped::WrappedContent,
+    Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Operation,
+    OperationSerializer, OperationType, WrappedBlock, WrappedOperation,
 };
 use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
@@ -128,17 +129,17 @@ fn test_nested_call_gas_usage() {
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
     // create the block containing the smart contract execution operation
-    let (block_id, block) = create_block(
+    let block = create_block(
         vec![create_execute_sc_operation(priv_key, pub_key, bytecode).unwrap()],
         Slot::new(1, 0),
     )
     .unwrap();
     // store the block in storage
-    storage.store_block(block_id, block.clone(), Vec::new());
+    storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.header.content.slot, block_id);
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
     controller.update_blockclique_status(finalized_blocks.clone(), Default::default());
 
     // sleep for 300ms to reach the message execution period
@@ -163,12 +164,12 @@ fn test_nested_call_gas_usage() {
         address,
     )
     .unwrap();
-    let (block_id, block) = create_block(vec![operation], Slot::new(1, 1)).unwrap();
+    let block = create_block(vec![operation], Slot::new(1, 1)).unwrap();
     // store the block in storage
-    storage.store_block(block_id, block.clone(), Vec::new());
+    storage.store_block(block.clone());
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.header.content.slot, block_id);
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(300));
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
@@ -225,17 +226,17 @@ fn send_and_receive_async_message() {
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
     // create the block contaning the smart contract execution operation
-    let (block_id, block) = create_block(
+    let block = create_block(
         vec![create_execute_sc_operation(priv_key, pub_key, bytecode).unwrap()],
         Slot::new(1, 0),
     )
     .unwrap();
     // store the block in storage
-    storage.store_block(block_id, block.clone(), Vec::new());
+    storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.header.content.slot, block_id);
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
     controller.update_blockclique_status(finalized_blocks, Default::default());
 
     // sleep for 300ms to reach the message execution period
@@ -270,7 +271,7 @@ fn generate_events() {
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
-    let (block_id, block) = create_block(
+    let block = create_block(
         vec![
             create_execute_sc_operation(sender_private_key, sender_public_key, event_test_data)
                 .unwrap(),
@@ -278,14 +279,14 @@ fn generate_events() {
         Slot::new(1, 0),
     )
     .unwrap();
-    let slot = block.header.content.slot;
+    let slot = block.content.header.content.slot;
 
-    storage.store_block(block_id, block, Default::default());
+    storage.store_block(block.clone());
 
     let finalized_blocks: HashMap<Slot, BlockId> = Default::default();
     let mut blockclique: HashMap<Slot, BlockId> = Default::default();
 
-    blockclique.insert(slot, block_id);
+    blockclique.insert(slot, block.id);
 
     controller.update_blockclique_status(finalized_blocks, blockclique);
 
@@ -312,14 +313,15 @@ fn create_execute_sc_operation(
         coins: Amount::from_raw(u64::MAX),
         gas_price: Amount::from_raw(AMOUNT_DECIMAL_FACTOR),
     };
-    let (_, op) = WrappedOperation::new_wrapped(
+    let op = Operation::new_wrapped(
         Operation {
-            sender_public_key,
             fee: Amount::zero(),
             expire_period: 10,
             op,
         },
+        OperationSerializer::new(),
         &sender_private_key,
+        &sender_public_key,
     )?;
     Ok(op)
 }
@@ -344,14 +346,15 @@ fn create_call_sc_operation(
         target_func,
         param,
     };
-    let (_, op) = WrappedOperation::new_wrapped(
+    let op = Operation::new_wrapped(
         Operation {
-            sender_public_key,
             fee: Amount::zero(),
             expire_period: 10,
             op,
         },
+        OperationSerializer::new(),
         &sender_private_key,
+        &sender_public_key,
     )?;
     Ok(op)
 }
@@ -363,25 +366,32 @@ fn create_call_sc_operation(
 fn create_block(
     operations: Vec<WrappedOperation>,
     slot: Slot,
-) -> Result<(BlockId, Block), ExecutionError> {
+) -> Result<WrappedBlock, ExecutionError> {
     let creator = generate_random_private_key();
     let public_key = derive_public_key(&creator);
 
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.to_bytes_compact().unwrap()].concat()
+            [acc, v.serialized_data.clone()].concat()
         })[..],
     );
 
-    let (id, header) = WrappedHeader::new_wrapped(
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: public_key,
             slot,
             parents: vec![],
             operation_merkle_root,
             endorsements: vec![],
         },
+        BlockHeaderSerializer::new(),
         &creator,
+        &public_key,
     )?;
-    Ok((id, Block { header, operations }))
+
+    Ok(Block::new_wrapped(
+        Block { header, operations },
+        BlockSerializer::new(),
+        &creator,
+        &public_key,
+    )?)
 }

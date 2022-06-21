@@ -8,8 +8,8 @@ extern crate lazy_static;
 pub use address::{Address, AddressDeserializer};
 pub use amount::{Amount, AmountDeserializer, AmountSerializer};
 pub use block::{
-    Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, WrappedBlock,
-    WrappedHeader,
+    Block, BlockDeserializer, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
+    WrappedBlock, WrappedHeader,
 };
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
