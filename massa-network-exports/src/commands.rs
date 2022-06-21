@@ -75,7 +75,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
     stats::NetworkStats,
-    Block, BlockId, WrappedEndorsement, WrappedHeader,
+    Block, BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
@@ -237,9 +237,7 @@ pub enum NetworkEvent {
         /// from node id
         node: NodeId,
         /// block
-        block: Block,
-        /// serialized block
-        serialized: Vec<u8>,
+        block: WrappedBlock,
     },
     /// A block header was received
     ReceivedBlockHeader {
@@ -268,8 +266,6 @@ pub enum NetworkEvent {
         node: NodeId,
         /// operations
         operations: Operations,
-        /// serialized operations.
-        serialized: Vec<Vec<u8>>,
     },
     /// Receive a list of `OperationId`
     ReceivedOperationAnnouncements {

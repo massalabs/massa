@@ -14,9 +14,10 @@ use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, Boot
 use massa_hash::Hash;
 use massa_models::{
     prehash::Set,
-    wrapped::{Signable, Wrapped},
-    Address, Amount, Block, BlockHeader, BlockId, Endorsement, Operation, OperationType,
-    SerializeCompact, Slot, WrappedEndorsement, WrappedOperation,
+    wrapped::{Id, Signable, Wrapped, WrappedContent},
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
+    Endorsement, Operation, OperationSerializer, OperationType, SerializeCompact, Slot,
+    WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -341,12 +342,17 @@ pub fn create_roll_transaction(
     };
 
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Wrapped::new_wrapped(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 pub async fn wait_pool_slot(
@@ -384,12 +390,17 @@ pub fn create_transaction(
     };
 
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Wrapped::new_wrapped(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -411,12 +422,17 @@ pub fn create_executesc(
     };
 
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Wrapped::new_wrapped(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 pub fn create_roll_buy(
@@ -428,12 +444,17 @@ pub fn create_roll_buy(
     let op = OperationType::RollBuy { roll_count };
     let sender_public_key = derive_public_key(&priv_key);
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Wrapped::new_wrapped(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 pub fn create_roll_sell(
@@ -445,12 +466,17 @@ pub fn create_roll_sell(
     let op = OperationType::RollSell { roll_count };
     let sender_public_key = derive_public_key(&priv_key);
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Wrapped::new_wrapped(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 // returns hash and resulting discarded blocks
@@ -476,26 +502,33 @@ pub fn create_block_with_merkle_root(
     slot: Slot,
     best_parents: Vec<BlockId>,
     creator: PrivateKey,
-) -> (BlockId, Block, PrivateKey) {
+) -> (WrappedBlock, PrivateKey) {
     let public_key = derive_public_key(&creator);
-    let (hash, header) = Wrapped::new_wrapped(
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: public_key,
             slot,
             parents: best_parents,
             operation_merkle_root,
             endorsements: Vec::new(),
         },
+        BlockHeaderSerializer::new(),
         &creator,
+        &public_key,
     )
     .unwrap();
 
-    let block = Block {
-        header,
-        operations: Vec::new(),
-    };
+    let block = Block::new_wrapped(
+        Block {
+            header,
+            operations: Vec::new(),
+        },
+        BlockSerializer::new(),
+        &creator,
+        &public_key,
+    )
+    .unwrap();
 
-    (hash, block, creator)
+    (block, creator)
 }
 
 /// Creates an endorsement for use in consensus tests.
@@ -508,12 +541,17 @@ pub fn create_endorsement(
     let sender_public_key = derive_public_key(&sender_priv);
 
     let content = Endorsement {
-        sender_public_key,
         slot,
         index,
         endorsed_block,
     };
-    Wrapped::new_wrapped(content, &sender_priv).unwrap().1
+    Endorsement::new_wrapped(
+        content,
+        EndorsementSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 pub fn get_export_active_test_block(
@@ -522,42 +560,47 @@ pub fn get_export_active_test_block(
     operations: Vec<WrappedOperation>,
     slot: Slot,
     is_final: bool,
-) -> (BlockId, ExportActiveBlock) {
-    let block = Block {
-        header: Wrapped::new_wrapped(
-            BlockHeader {
-                creator,
-                operation_merkle_root: Hash::compute_from(
-                    &operations
-                        .iter()
-                        .flat_map(|op| op.content.compute_id().unwrap().into_bytes())
-                        .collect::<Vec<_>>()[..],
-                ),
-                parents: parents.iter().map(|(id, _)| *id).collect(),
-                slot,
-                endorsements: Vec::new(),
-            },
-            &generate_random_private_key(),
-        )
-        .unwrap()
-        .1,
-        operations: operations.clone(),
-    };
-    let id = block.header.content.compute_id().unwrap();
-    (
-        id,
-        ExportActiveBlock {
-            parents,
-            dependencies: Default::default(),
-            block: block,
-            block_id: id,
-            children: vec![Default::default(), Default::default()],
-            is_final,
-            block_ledger_changes: Default::default(),
-            roll_updates: Default::default(),
-            production_events: vec![],
+) -> ExportActiveBlock {
+    let private_key = &generate_random_private_key();
+    let public_key = derive_public_key(private_key);
+    let block = Block::new_wrapped(
+        Block {
+            header: BlockHeader::new_wrapped(
+                BlockHeader {
+                    operation_merkle_root: Hash::compute_from(
+                        &operations
+                            .iter()
+                            .flat_map(|op| op.content.compute_id().unwrap().into_bytes())
+                            .collect::<Vec<_>>()[..],
+                    ),
+                    parents: parents.iter().map(|(id, _)| *id).collect(),
+                    slot,
+                    endorsements: Vec::new(),
+                },
+                BlockHeaderSerializer::new(),
+                &private_key,
+                &public_key,
+            )
+            .unwrap(),
+            operations: operations.clone(),
         },
+        BlockSerializer::new(),
+        &private_key,
+        &public_key,
     )
+    .unwrap();
+
+    ExportActiveBlock {
+        parents,
+        dependencies: Default::default(),
+        block: block,
+        block_id: id,
+        children: vec![Default::default(), Default::default()],
+        is_final,
+        block_ledger_changes: Default::default(),
+        roll_updates: Default::default(),
+        production_events: vec![],
+    }
 }
 
 pub fn create_block_with_operations(
@@ -566,7 +609,7 @@ pub fn create_block_with_operations(
     best_parents: &Vec<BlockId>,
     creator: PrivateKey,
     operations: Vec<WrappedOperation>,
-) -> (BlockId, Block, PrivateKey) {
+) -> (WrappedBlock, PrivateKey) {
     let public_key = derive_public_key(&creator);
 
     let operation_merkle_root = Hash::compute_from(
@@ -575,21 +618,28 @@ pub fn create_block_with_operations(
         })[..],
     );
 
-    let (hash, header) = Wrapped::new_wrapped(
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: public_key,
             slot,
             parents: best_parents.clone(),
             operation_merkle_root,
             endorsements: Vec::new(),
         },
+        BlockHeaderSerializer::new(),
         &creator,
+        &public_key,
     )
     .unwrap();
 
-    let block = Block { header, operations };
+    let block = Block::new_wrapped(
+        Block { header, operations },
+        BlockSerializer::new(),
+        &creator,
+        &public_key,
+    )
+    .unwrap();
 
-    (hash, block, creator)
+    (block, creator)
 }
 
 pub fn create_block_with_operations_and_endorsements(
@@ -599,28 +649,35 @@ pub fn create_block_with_operations_and_endorsements(
     creator: PrivateKey,
     operations: Vec<WrappedOperation>,
     endorsements: Vec<WrappedEndorsement>,
-) -> (BlockId, Block, PrivateKey) {
+) -> (WrappedBlock, PrivateKey) {
     let public_key = derive_public_key(&creator);
 
     let operation_merkle_root = Hash::compute_from(
-        &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.to_bytes_compact().unwrap()].concat()
-        })[..],
+        &operations
+            .iter()
+            .fold(Vec::new(), |acc, v| [acc, v.id.hash()].concat())[..],
     );
 
-    let (hash, header) = Wrapped::new_wrapped(
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: public_key,
             slot,
             parents: best_parents.clone(),
             operation_merkle_root,
             endorsements,
         },
+        BlockHeaderSerializer::new(),
         &creator,
+        &public_key,
     )
     .unwrap();
 
-    let block = Block { header, operations };
+    let block = Block::new_wrapped(
+        Block { header, operations },
+        BlockSerializer::new(),
+        &creator,
+        &public_key,
+    )
+    .unwrap();
 
     (hash, block, creator)
 }
@@ -661,11 +718,7 @@ pub async fn consensus_pool_test<F, V>(
     let storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
         for (block_id, export_block) in &graph.active_blocks {
-            let serialized_block = export_block
-                .block
-                .to_bytes_compact()
-                .expect("Fail to serialize block");
-            storage.store_block(*block_id, export_block.block.clone(), serialized_block);
+            storage.store_block(export_block.block);
         }
     }
     // mock protocol & pool
@@ -754,11 +807,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     let storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
         for (block_id, export_block) in &graph.active_blocks {
-            let serialized_block = export_block
-                .block
-                .to_bytes_compact()
-                .expect("Fail to serialize block");
-            storage.store_block(*block_id, export_block.block.clone(), serialized_block);
+            storage.store_block(export_block.block);
         }
     }
     // mock protocol & pool

@@ -1,5 +1,4 @@
 use massa_models::node::NodeId;
-use massa_models::wrapped::Id;
 use massa_network_exports::{ConnectionId, NetworkError, NetworkEvent, NodeCommand, NodeEvent};
 use std::time::Duration;
 use tokio::sync::mpsc::{self, error::SendTimeoutError};
@@ -118,7 +117,7 @@ pub mod event_impl {
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-            {"block_id": block.header.content.compute_id()?, "block": block, "node": from}
+            {"block_id": block.id, "block": block, "node": from}
         );
         if let Err(err) = worker
             .event

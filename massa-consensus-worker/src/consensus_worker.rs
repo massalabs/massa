@@ -8,7 +8,6 @@ use massa_consensus_exports::{
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::Hash;
-use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
 use massa_models::{address::AddressState, wrapped::Wrapped};
 use massa_models::{
@@ -19,6 +18,10 @@ use massa_models::{ledger_models::LedgerData, WrappedOperation};
 use massa_models::{
     prehash::{BuildMap, Map, Set},
     EndorsementSerializer,
+};
+use massa_models::{
+    timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
+    wrapped::WrappedContent,
 };
 use massa_models::{
     Address, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, EndorsementId,
@@ -474,12 +477,15 @@ impl ConsensusWorker {
             BlockHeaderSerializer::new(),
             creator_private_key,
         )?;
-        let block = Block {
-            header,
-            operations: Vec::new(),
-        };
-
-        let serialized_block = block.to_bytes_compact()?;
+        let block = Block::new_wrapped(
+            Block {
+                header,
+                operations: Vec::new(),
+            },
+            BlockSerializer::new(),
+            creator_private_key,
+            creator_public_key,
+        )?;
 
         // initialize remaining block space and remaining operation count
         let mut remaining_block_space = (self.cfg.max_block_size as u64)
@@ -495,7 +501,7 @@ impl ConsensusWorker {
 
         // exclude operations that were used in block ancestry
         let mut exclude_operations = Set::<OperationId>::default();
-        let mut ancestor_id = block.header.content.parents[cur_slot.thread as usize];
+        let mut ancestor_id = block.content.header.content.parents[cur_slot.thread as usize];
         let stop_period = cur_slot
             .period
             .saturating_sub(self.cfg.operation_validity_periods);
@@ -522,7 +528,7 @@ impl ConsensusWorker {
         // init block state accumulator
         let mut state_accu = self
             .block_db
-            .block_state_accumulator_init(&block.header, &mut self.pos)?;
+            .block_state_accumulator_init(&block.content.header, &mut self.pos)?;
 
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
@@ -573,7 +579,12 @@ impl ConsensusWorker {
                 // on failure, the block state is not modified
                 if self
                     .block_db
-                    .block_state_try_apply_op(&mut state_accu, &block.header, &op, &mut self.pos)
+                    .block_state_try_apply_op(
+                        &mut state_accu,
+                        &block.content.header,
+                        &op,
+                        &mut self.pos,
+                    )
                     .is_err()
                 {
                     continue;
@@ -596,7 +607,7 @@ impl ConsensusWorker {
         }
 
         // compile resulting block
-        let (block_id, header) = Wrapped::new_wrapped(
+        let header = BlockHeader::new_wrapped(
             BlockHeader {
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
@@ -605,21 +616,25 @@ impl ConsensusWorker {
             },
             BlockHeaderSerializer::new(),
             creator_private_key,
+            creator_public_key,
         )?;
-        let block = Block { header, operations };
-        let slot = block.header.content.slot;
+        let block = Block::new_wrapped(
+            Block { header, operations },
+            BlockSerializer::new(),
+            creator_private_key,
+            creator_public_key,
+        )?;
+        let slot = block.content.header.content.slot;
         massa_trace!("create block", { "block": block });
 
         let serialized_block = block.to_bytes_compact()?;
 
         // Add to shared storage
-        self.block_db
-            .storage
-            .store_block(block_id, block, serialized_block);
+        self.block_db.storage.store_block(block);
 
         info!(
             "Staked block {} with address {}, at cycle {}, period {}, thread {}",
-            block_id,
+            block.id,
             creator_addr,
             cur_slot.get_cycle(self.cfg.periods_per_cycle),
             cur_slot.period,
@@ -628,7 +643,7 @@ impl ConsensusWorker {
 
         // add block to db
         self.block_db.incoming_block(
-            block_id,
+            block.id,
             slot,
             operation_set,
             endorsement_ids,

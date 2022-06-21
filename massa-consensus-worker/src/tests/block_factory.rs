@@ -10,8 +10,9 @@ use super::{
 };
 use massa_hash::Hash;
 use massa_models::{
-    wrapped::{Signable, Wrapped},
-    Block, BlockHeader, BlockId, Slot, WrappedEndorsement, WrappedOperation,
+    wrapped::{Signable, Wrapped, WrappedContent},
+    Block, BlockHeader, BlockHeaderSerializer, BlockId, Slot, WrappedBlock, WrappedEndorsement,
+    WrappedOperation,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 
@@ -39,11 +40,10 @@ impl BlockFactory {
         }
     }
 
-    pub async fn create_and_receive_block(&mut self, valid: bool) -> (BlockId, Block) {
+    pub async fn create_and_receive_block(&mut self, valid: bool) -> WrappedBlock {
         let public_key = derive_public_key(&self.creator_priv_key);
-        let (hash, header) = Wrapped::new_wrapped(
+        let (hash, header) = BlockHeader::new_wrapped(
             BlockHeader {
-                creator: public_key,
                 slot: self.slot,
                 parents: self.best_parents.clone(),
                 operation_merkle_root: Hash::compute_from(
@@ -55,7 +55,9 @@ impl BlockFactory {
                 ),
                 endorsements: self.endorsements.clone(),
             },
+            BlockHeaderSerializer::new(),
             &self.creator_priv_key,
+            &public_key,
         )
         .unwrap();
 

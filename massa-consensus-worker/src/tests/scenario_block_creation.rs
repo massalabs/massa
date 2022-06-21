@@ -827,15 +827,16 @@ async fn test_block_filling() {
             }
 
             // create empty block
-            let (_block_id, header) = Wrapped::new_wrapped(
+            let header = BlochHeader::new_wrapped(
                 BlockHeader {
-                    creator: block.header.content.creator,
                     slot: block.header.content.slot,
                     parents: block.header.content.parents.clone(),
                     operation_merkle_root: Hash::compute_from(&Vec::new()[..]),
                     endorsements: eds.iter().map(|(_e_id, endo)| endo.clone()).collect(),
                 },
+                BlockHeaderSerializer::new(),
                 &priv_a,
+                &pubkey_a,
             )
             .unwrap();
             let empty = Block {
