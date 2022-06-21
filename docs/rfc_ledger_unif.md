@@ -79,7 +79,7 @@ struct PoSChanges {
   production_stats: ProductionStats
 
   /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
-  /// ordered structure to ensure iteration order is deterministic
+  /// ordered structure to ensure slot iteration order is deterministic
   deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
 }
 ```
@@ -148,7 +148,7 @@ Speculative execution of a slot S of cycle C:
   * at every denunciation (penalty = 1 roll):
     * speculatively query the current amount of rolls the offender has
     * speculatively remove the slashed roll inside new_pos_changes
-    * if the slashing could not slash a roll (0 active rolls):
+    * if the slashing could not slash a roll:
       * speculatively slash roll_price coins from deferred_credits going from the lowest to the highest slot until the full remaining penalty amount is slashed. This prevents an attacker from launching a roll sell, then attacking, then being reimbursed.
 * speculatively credit coins from all deferred credits targeting the end of slot S
 * if S was the last slot of cycle C:
