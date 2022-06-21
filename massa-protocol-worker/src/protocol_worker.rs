@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::operation_id_adapter::OperationIdAdapter;
+use crate::checked_operations::CheckedOperations;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::Hash;
@@ -145,7 +145,7 @@ pub struct ProtocolWorker {
     /// List of processed endorsements
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
-    pub(crate) checked_operations: OperationIdAdapter,
+    pub(crate) checked_operations: CheckedOperations,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
     /// List of ids of operations that we asked to the nodes

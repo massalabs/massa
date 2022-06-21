@@ -5,14 +5,14 @@ use massa_models::{
     prehash::Map,
 };
 
+/// The structure store the previously checked operations.
 /// Manage the relation between [OperationPrefixId] and [OperationId]
-///
 /// note: we could think about replace `Vec<OperationId>` with `Vec<OperationSuffixId>`
 ///       if the execution time CPU is equivalent
 #[derive(Default)]
-pub(crate) struct OperationIdAdapter(Map<OperationPrefixId, OperationIds>);
+pub(crate) struct CheckedOperations(Map<OperationPrefixId, OperationIds>);
 
-impl OperationIdAdapter {
+impl CheckedOperations {
     /// Insert in the adapter an operation `id`.
     ///
     /// If the set did not have this value present, `true` is returned.
@@ -51,14 +51,14 @@ pub(crate) trait Contains<T> {
     fn contains(&self, e: &T) -> bool;
 }
 
-impl Contains<OperationPrefixId> for OperationIdAdapter {
+impl Contains<OperationPrefixId> for CheckedOperations {
     /// Check if prefix id is in the adapter
     fn contains(&self, prefix: &OperationPrefixId) -> bool {
         self.0.contains_key(prefix)
     }
 }
 
-impl Contains<OperationId> for OperationIdAdapter {
+impl Contains<OperationId> for CheckedOperations {
     /// Check if operation id is in the adapter
     fn contains(&self, id: &OperationId) -> bool {
         let prefix = id.split().0;
