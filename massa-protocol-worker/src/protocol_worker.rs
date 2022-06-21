@@ -1,15 +1,15 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::operation_id_adapter::OperationIdAdapter;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::operation::{OperationIdAdapter, OperationPrefixId};
 use massa_models::SerializeCompact;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
-    operation::{OperationIds, Operations},
+    operation::{OperationIds, OperationPrefixId, Operations},
     prehash::{BuildMap, Map, Set},
     signed::Signable,
     Address, Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader,
@@ -145,15 +145,13 @@ pub struct ProtocolWorker {
     /// List of processed endorsements
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
-    pub(crate) checked_operations: OperationIds,
+    pub(crate) checked_operations: OperationIdAdapter,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
     /// List of ids of operations that we asked to the nodes
     pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
     pub(crate) op_batch_buffer: OperationBatchBuffer,
-    /// Adapter to retreive full operation ids from a given prefix
-    pub(crate) op_prefix_adapter: OperationIdAdapter,
 }
 
 /// channels used by the protocol worker
@@ -216,7 +214,6 @@ impl ProtocolWorker {
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 protocol_settings.operation_batch_buffer_capacity,
             ),
-            op_prefix_adapter: Default::default(),
         }
     }
 
@@ -516,7 +513,7 @@ impl ProtocolWorker {
                     { "operation_ids": operation_ids }
                 );
                 for id in operation_ids.iter() {
-                    self.op_prefix_adapter.insert(id);
+                    self.checked_operations.insert(id);
                 }
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_ops: OperationIds = operation_ids
@@ -960,13 +957,6 @@ impl ProtocolWorker {
         }
     }
 
-    /// Prune `op_prefix_adapter` if it has grown too large.
-    fn prune_operation_ids_adapter(&mut self) {
-        if self.op_prefix_adapter.len() > self.protocol_settings.max_known_ops_size {
-            self.op_prefix_adapter.clear();
-        }
-    }
-
     /// Prune `checked_headers` if it is too large
     fn prune_checked_headers(&mut self) {
         if self.checked_headers.len() > self.protocol_settings.max_known_blocks_size {
@@ -1127,11 +1117,8 @@ impl ProtocolWorker {
             // Accumulate gas
             total_gas = total_gas.saturating_add(operation.content.get_gas_usage());
 
-            // Store in the adapter the operation id.
-            self.op_prefix_adapter.insert(&operation_id);
-
             // Check operation signature only if not already checked.
-            if self.checked_operations.insert(operation_id) {
+            if self.checked_operations.insert(&operation_id) {
                 // check signature
                 operation.verify_signature(&operation.content.sender_public_key)?;
 
@@ -1163,7 +1150,6 @@ impl ProtocolWorker {
 
             // prune checked operations cache
             self.prune_checked_operations();
-            self.prune_operation_ids_adapter();
         }
 
         Ok((seen_ops, received_ids, has_duplicate_operations, total_gas))

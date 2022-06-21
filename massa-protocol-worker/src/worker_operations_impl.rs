@@ -10,7 +10,7 @@
 
 use std::collections::VecDeque;
 
-use crate::protocol_worker::ProtocolWorker;
+use crate::{operation_id_adapter::Contains, protocol_worker::ProtocolWorker};
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
@@ -72,7 +72,7 @@ impl ProtocolWorker {
         let now = Instant::now();
         let mut count_reask = 0;
         for op_id in op_batch {
-            if self.op_prefix_adapter.contains(&op_id) {
+            if self.checked_operations.contains(&op_id) {
                 continue;
             }
             let wish = match self.asked_operations.get_mut(&op_id) {
@@ -209,9 +209,9 @@ impl ProtocolWorker {
     ) -> Result<(), ProtocolError> {
         let mut req_operation_ids = OperationIds::default();
         for prefix in op_pre_ids {
-            if let Some(op_ids) = self.op_prefix_adapter.get(&prefix) {
+            if let Some(op_ids) = self.checked_operations.get(&prefix) {
                 for op_id in op_ids {
-                    if self.checked_operations.get(op_id).is_some() {
+                    if self.checked_operations.contains(op_id) {
                         req_operation_ids.insert(*op_id);
                     }
                 }
