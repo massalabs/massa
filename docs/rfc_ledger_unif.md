@@ -145,11 +145,11 @@ Speculative execution of a slot S of cycle C:
     * speculatively query the current amount of rolls the seller has and check if it has enough to sell
     * speculatively remove the sold rolls inside new_pos_changes
     * speculatively add the reimbursement into deferred_credits for the end of the last slot of cycle C + 3
-  * at every denunciation (penalty = n rolls):
+  * at every denunciation (penalty = 1 roll):
     * speculatively query the current amount of rolls the offender has
-    * speculatively remove the slashed rolls inside new_pos_changes
-    * if the slashing could only slash k out of n rolls:
-      * speculatively slash (n-k)*roll_price coins from deferred_credits going from the lowest to the highest slot until the full remaining penalty amount is slashed. This prevents an attacker from launching a roll sell, then attacking, then being reimbursed.
+    * speculatively remove the slashed roll inside new_pos_changes
+    * if the slashing could not slash a roll (0 active rolls):
+      * speculatively slash roll_price coins from deferred_credits going from the lowest to the highest slot until the full remaining penalty amount is slashed. This prevents an attacker from launching a roll sell, then attacking, then being reimbursed.
 * speculatively credit coins from all deferred credits targeting the end of slot S
 * if S was the last slot of cycle C:
   * if the speculative production stats of an address are not satisfactory:
