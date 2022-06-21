@@ -9,6 +9,7 @@ use massa_hash::Hash;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
+use massa_models::Amount;
 use massa_models::BlockId;
 use massa_models::Slot;
 use std::collections::HashMap;
@@ -33,6 +34,15 @@ pub trait ExecutionController: Send + Sync {
     /// * original caller address
     /// * operation id
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent>;
+
+    /// Get a balance final and active values
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    fn get_final_and_active_parallel_balance(
+        &self,
+        address: &Address,
+    ) -> (Option<Amount>, Option<Amount>);
 
     /// Get a copy of a single datastore entry with its final and active values
     ///

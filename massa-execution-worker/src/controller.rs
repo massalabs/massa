@@ -12,7 +12,7 @@ use massa_execution_exports::{
 use massa_hash::Hash;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::Address;
+use massa_models::{Address, Amount};
 use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::HashMap;
@@ -92,6 +92,19 @@ impl ExecutionController for ExecutionControllerImpl {
         self.execution_state
             .read()
             .get_filtered_sc_output_event(filter)
+    }
+
+    /// Get a balance final and active values
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    fn get_final_and_active_parallel_balance(
+        &self,
+        address: &Address,
+    ) -> (Option<Amount>, Option<Amount>) {
+        self.execution_state
+            .read()
+            .get_final_and_active_parallel_balance(address)
     }
 
     /// Get a copy of a single datastore entry with its final and active values
