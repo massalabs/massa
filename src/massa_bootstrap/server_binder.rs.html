@@ -182,6 +182,10 @@
 <span id="175">175</span>
 <span id="176">176</span>
 <span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::BootstrapError</span>;
@@ -190,6 +194,8 @@
     <span class="ident">BootstrapClientMessage</span>, <span class="ident">BootstrapClientMessageDeserializer</span>, <span class="ident">BootstrapServerMessage</span>,
     <span class="ident">BootstrapServerMessageSerializer</span>,
 };
+<span class="kw">use</span> <span class="ident">async_speed_limit::clock::StandardClock</span>;
+<span class="kw">use</span> <span class="ident">async_speed_limit</span>::{<span class="ident">Limiter</span>, <span class="ident">Resource</span>};
 <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Version</span>;
@@ -209,7 +215,7 @@
     <span class="ident">max_bootstrap_message_size</span>: <span class="ident">u32</span>,
     <span class="ident">size_field_len</span>: <span class="ident">usize</span>,
     <span class="ident">local_privkey</span>: <span class="ident">PrivateKey</span>,
-    <span class="ident">duplex</span>: <span class="ident">Duplex</span>,
+    <span class="ident">duplex</span>: <span class="ident">Resource</span><span class="op">&lt;</span><span class="ident">Duplex</span>, <span class="ident">StandardClock</span><span class="op">&gt;</span>,
     <span class="ident">prev_message</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Hash</span><span class="op">&gt;</span>,
     <span class="ident">version_serializer</span>: <span class="ident">VersionSerializer</span>,
     <span class="ident">version_deserializer</span>: <span class="ident">VersionDeserializer</span>,
@@ -220,7 +226,9 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Argument</span>
     <span class="doccomment">/// * duplex: duplex stream.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">duplex</span>: <span class="ident">Duplex</span>, <span class="ident">local_privkey</span>: <span class="ident">PrivateKey</span>) -&gt; <span class="self">Self</span> {
+    <span class="doccomment">/// * local_privkey: local node user private key</span>
+    <span class="doccomment">/// * limit: limit max bytes per second (up and down)</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">duplex</span>: <span class="ident">Duplex</span>, <span class="ident">local_privkey</span>: <span class="ident">PrivateKey</span>, <span class="ident">limit</span>: <span class="ident">f64</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">max_bootstrap_message_size</span> <span class="op">=</span>
             <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_bootstrap_message_size</span>);
         <span class="kw">let</span> <span class="ident">size_field_len</span> <span class="op">=</span> <span class="ident">u32::be_bytes_min_length</span>(<span class="ident">max_bootstrap_message_size</span>);
@@ -228,7 +236,7 @@
             <span class="ident">max_bootstrap_message_size</span>,
             <span class="ident">size_field_len</span>,
             <span class="ident">local_privkey</span>,
-            <span class="ident">duplex</span>,
+            <span class="ident">duplex</span>: <span class="op">&lt;</span><span class="ident">Limiter</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">limit</span>).<span class="ident">limit</span>(<span class="ident">duplex</span>),
             <span class="ident">prev_message</span>: <span class="prelude-val">None</span>,
             <span class="ident">version_serializer</span>: <span class="ident">VersionSerializer::new</span>(),
             <span class="ident">version_deserializer</span>: <span class="ident">VersionDeserializer::new</span>(),

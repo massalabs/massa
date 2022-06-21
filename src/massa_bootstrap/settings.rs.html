@@ -45,6 +45,8 @@
 <span id="38">38</span>
 <span id="39">39</span>
 <span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_signature::PublicKey</span>;
@@ -84,6 +86,8 @@
     <span class="kw">pub</span> <span class="ident">per_ip_min_interval</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Max size of the IP list</span>
     <span class="kw">pub</span> <span class="ident">ip_list_max_size</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// Read-Write limitation for a connection in bytes per seconds</span>
+    <span class="kw">pub</span> <span class="ident">max_bytes_read_write</span>: <span class="ident">f64</span>,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5750a6aa2 2022-06-20)" ></div>

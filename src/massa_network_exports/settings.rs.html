@@ -186,6 +186,14 @@
 <span id="179">179</span>
 <span id="180">180</span>
 <span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">enum_map::EnumMap</span>;
@@ -240,6 +248,10 @@
     <span class="kw">pub</span> <span class="ident">max_in_connection_overflow</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Max operations per message in the network to avoid sending to big data packet.</span>
     <span class="kw">pub</span> <span class="ident">max_operations_per_message</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// Read limitation for a connection in bytes per seconds</span>
+    <span class="kw">pub</span> <span class="ident">max_bytes_read</span>: <span class="ident">f64</span>,
+    <span class="doccomment">/// Write limitation for a connection in bytes per seconds</span>
+    <span class="kw">pub</span> <span class="ident">max_bytes_write</span>: <span class="ident">f64</span>,
 }
 
 <span class="doccomment">/// Connection configuration for a peer type</span>
@@ -306,6 +318,8 @@
                 <span class="ident">max_in_connection_overflow</span>: <span class="number">2</span>,
                 <span class="ident">peer_types_config</span>,
                 <span class="ident">max_operations_per_message</span>: <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>,
+                <span class="ident">max_bytes_read</span>: <span class="ident">std::f64::INFINITY</span>,
+                <span class="ident">max_bytes_write</span>: <span class="ident">std::f64::INFINITY</span>,
             }
         }
     }
@@ -363,6 +377,8 @@
                 <span class="ident">max_in_connection_overflow</span>: <span class="number">10</span>,
                 <span class="ident">peer_types_config</span>,
                 <span class="ident">max_operations_per_message</span>: <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>,
+                <span class="ident">max_bytes_read</span>: <span class="ident">std::f64::INFINITY</span>,
+                <span class="ident">max_bytes_write</span>: <span class="ident">std::f64::INFINITY</span>,
             }
         }
     }

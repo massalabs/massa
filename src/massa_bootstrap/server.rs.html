@@ -671,7 +671,7 @@
                     <span class="kw">match</span> <span class="self">self</span>.<span class="ident">ip_hist_map</span>.<span class="ident">entry</span>(<span class="ident">remote_addr</span>.<span class="ident">ip</span>()) {
                         <span class="ident">hash_map::Entry::Occupied</span>(<span class="kw-2">mut</span> <span class="ident">occ</span>) =&gt; {
                             <span class="kw">if</span> <span class="ident">now</span>.<span class="ident">duration_since</span>(<span class="kw-2">*</span><span class="ident">occ</span>.<span class="ident">get</span>()) <span class="op">&lt;</span><span class="op">=</span> <span class="ident">per_ip_min_interval</span> {
-                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server</span> <span class="op">=</span> <span class="ident">BootstrapServerBinder::new</span>(<span class="ident">dplx</span>, <span class="self">self</span>.<span class="ident">private_key</span>);
+                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server</span> <span class="op">=</span> <span class="ident">BootstrapServerBinder::new</span>(<span class="ident">dplx</span>, <span class="self">self</span>.<span class="ident">private_key</span>, <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">max_bytes_read_write</span>);
                                 <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(<span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>(), <span class="ident">server</span>.<span class="ident">send</span>(<span class="ident">BootstrapServerMessage::BootstrapError</span> {
                                     <span class="ident">error</span>:
                                     <span class="macro">format!</span>(<span class="string">&quot;Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.&quot;</span>, <span class="ident">occ</span>.<span class="ident">get</span>().<span class="ident">elapsed</span>(), <span class="ident">per_ip_min_interval</span>.<span class="ident">saturating_sub</span>(<span class="ident">occ</span>.<span class="ident">get</span>().<span class="ident">elapsed</span>()))
@@ -684,8 +684,8 @@
                                 <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_limit&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: <span class="ident">remote_addr</span>});
                                 <span class="kw">continue</span>;
                             } <span class="kw">else</span> {
-                                <span class="comment">// in list, expired</span>
-                                <span class="ident">occ</span>.<span class="ident">insert</span>(<span class="ident">now</span>);
+                            <span class="comment">// in list, expired</span>
+                            <span class="ident">occ</span>.<span class="ident">insert</span>(<span class="ident">now</span>);
                             }
                         },
                         <span class="ident">hash_map::Entry::Vacant</span>(<span class="ident">vac</span>) =&gt; {
@@ -716,7 +716,7 @@
                     <span class="ident">bootstrap_sessions</span>.<span class="ident">push</span>(<span class="kw">async</span> <span class="kw">move</span> {
                         <span class="comment">//Socket lifetime</span>
                         {
-                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server</span> <span class="op">=</span> <span class="ident">BootstrapServerBinder::new</span>(<span class="ident">dplx</span>, <span class="ident">private_key</span>);
+                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server</span> <span class="op">=</span> <span class="ident">BootstrapServerBinder::new</span>(<span class="ident">dplx</span>, <span class="ident">private_key</span>, <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">max_bytes_read_write</span>);
                             <span class="kw">match</span> <span class="ident">manage_bootstrap</span>(<span class="self">self</span>.<span class="ident">bootstrap_settings</span>, <span class="kw-2">&amp;mut</span> <span class="ident">server</span>, <span class="ident">data_pos</span>, <span class="ident">data_graph</span>, <span class="ident">data_peers</span>, <span class="ident">data_execution</span>, <span class="ident">compensation_millis</span>, <span class="ident">version</span>).<span class="kw">await</span> {
                                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, <span class="ident">remote_addr</span>),
                                 <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::ReceivedError</span>(<span class="ident">error</span>)) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>, <span class="ident">remote_addr</span>, <span class="ident">error</span>),
@@ -730,7 +730,7 @@
                     });
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: <span class="ident">bootstrap_sessions</span>.<span class="ident">len</span>()});
                 } <span class="kw">else</span> {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server</span> <span class="op">=</span> <span class="ident">BootstrapServerBinder::new</span>(<span class="ident">dplx</span>, <span class="self">self</span>.<span class="ident">private_key</span>);
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server</span> <span class="op">=</span> <span class="ident">BootstrapServerBinder::new</span>(<span class="ident">dplx</span>, <span class="self">self</span>.<span class="ident">private_key</span>, <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">max_bytes_read_write</span>);
                     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(<span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">write_error_timeout</span>.<span class="ident">into</span>(), <span class="ident">server</span>.<span class="ident">send</span>(<span class="ident">BootstrapServerMessage::BootstrapError</span> {
                         <span class="ident">error</span>: <span class="string">&quot;Bootstrap failed because the bootstrap server currently has no slots available.&quot;</span>.<span class="ident">to_string</span>()
                     })).<span class="kw">await</span> {

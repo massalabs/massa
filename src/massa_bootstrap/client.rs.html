@@ -408,6 +408,10 @@
 <span id="401">401</span>
 <span id="402">402</span>
 <span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">net::SocketAddr</span>, <span class="ident">sync::Arc</span>, <span class="ident">time::Duration</span>};
 
 <span class="kw">use</span> <span class="ident">massa_final_state::FinalState</span>;
@@ -740,7 +744,11 @@
         .<span class="ident">get_connector</span>(<span class="ident">bootstrap_settings</span>.<span class="ident">connect_timeout</span>)
         .<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable</span>
     <span class="kw">let</span> <span class="ident">socket</span> <span class="op">=</span> <span class="ident">connector</span>.<span class="ident">connect</span>(<span class="kw-2">*</span><span class="ident">addr</span>).<span class="kw">await</span><span class="question-mark">?</span>; <span class="comment">// cancellable</span>
-    <span class="prelude-val">Ok</span>(<span class="ident">BootstrapClientBinder::new</span>(<span class="ident">socket</span>, <span class="kw-2">*</span><span class="ident">pub_key</span>))
+    <span class="prelude-val">Ok</span>(<span class="ident">BootstrapClientBinder::new</span>(
+        <span class="ident">socket</span>,
+        <span class="kw-2">*</span><span class="ident">pub_key</span>,
+        <span class="ident">bootstrap_settings</span>.<span class="ident">max_bytes_read_write</span>,
+    ))
 }
 
 <span class="doccomment">/// Gets the state from a bootstrap server</span>
