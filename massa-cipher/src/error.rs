@@ -3,7 +3,7 @@
 use displaydoc::Display;
 use thiserror::Error;
 
-/// wallet error
+/// Cipher error
 #[derive(Display, Error, Debug)]
 pub enum CipherError {
     /// Encryption error: {0}

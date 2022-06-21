@@ -7,6 +7,9 @@ use massa_hash::Hash;
 use crate::constants::NONCE_SIZE;
 use crate::error::CipherError;
 
+/// Decryption function using AES-GCM-SIV cipher.
+///
+/// Read `lib.rs` module documentation for more information.
 pub fn decrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
     let cipher = Aes256GcmSiv::new(Key::from_slice(
         Hash::compute_from(password.as_bytes()).to_bytes(),
