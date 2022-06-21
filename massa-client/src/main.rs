@@ -67,13 +67,13 @@ fn ask_password(wallet_path: &PathBuf) -> String {
         Password::new()
             .with_prompt("Enter wallet password")
             .interact()
-            .expect("Input error")
+            .expect("IO error: Password reading failed, walled couldn't be unlocked")
     } else {
         let pwd = Password::new()
             .with_prompt("Enter new password for wallet")
             .with_confirmation("Confirm password", "Passwords mismatching")
             .interact()
-            .expect("Input error");
+            .expect("IO error: Password reading failed, wallet couldn't be created");
         let _file = std::fs::File::create(wallet_path).expect("Could not create wallet");
         pwd
     }
