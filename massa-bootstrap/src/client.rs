@@ -330,7 +330,11 @@ async fn connect_to_server(
         .get_connector(bootstrap_settings.connect_timeout)
         .await?; // cancellable
     let socket = connector.connect(*addr).await?; // cancellable
-    Ok(BootstrapClientBinder::new(socket, *pub_key))
+    Ok(BootstrapClientBinder::new(
+        socket,
+        *pub_key,
+        bootstrap_settings.max_bytes_read_write,
+    ))
 }
 
 /// Gets the state from a bootstrap server

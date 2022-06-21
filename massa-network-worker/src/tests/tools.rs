@@ -90,6 +90,8 @@ pub async fn full_connection_to_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
+        f64::INFINITY,
+        f64::INFINITY,
     )
     .await
     .expect("handshake creation failed")
@@ -140,7 +142,6 @@ pub async fn rejected_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-
     let result = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -149,6 +150,8 @@ pub async fn rejected_connection_to_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
+        f64::INFINITY,
+        f64::INFINITY,
     )
     .await
     .expect("handshake creation failed")
@@ -233,6 +236,8 @@ pub async fn full_connection_from_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
+        f64::INFINITY,
+        f64::INFINITY,
     )
     .await
     .expect("handshake creation failed")
