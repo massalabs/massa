@@ -11,16 +11,20 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
     let cipher = Aes256GcmSiv::new(Key::from_slice(
         Hash::compute_from(password.as_bytes()).to_bytes(),
     ));
-    let nonce = Nonce::from_slice(
-        data.get(..NONCE_SIZE)
-            .ok_or_else(|| CipherError::DecryptionError("Missing nonce".to_string()))?,
-    );
+    let nonce = Nonce::from_slice(data.get(..NONCE_SIZE).ok_or_else(|| {
+        CipherError::DecryptionError(
+            "wallet file truncated: nonce missing or incomplete".to_string(),
+        )
+    })?);
     let decrypted_bytes = cipher
         .decrypt(
             nonce,
-            data.get(NONCE_SIZE..)
-                .ok_or_else(|| CipherError::DecryptionError("Missing content".to_string()))?,
+            data.get(NONCE_SIZE..).ok_or_else(|| {
+                CipherError::DecryptionError(
+                    "wallet file truncated: encrypted data missing or incomplete".to_string(),
+                )
+            })?,
         )
-        .map_err(|_| CipherError::DecryptionError("Wrong password".to_string()))?;
+        .map_err(|_| CipherError::DecryptionError("wrong password".to_string()))?;
     Ok(decrypted_bytes)
 }
