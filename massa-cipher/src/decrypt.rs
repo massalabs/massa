@@ -13,13 +13,13 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
     ));
     let nonce = Nonce::from_slice(
         data.get(..NONCE_SIZE)
-            .ok_or(CipherError::DecryptionError("Missing nonce".to_string()))?,
+            .ok_or_else(|| CipherError::DecryptionError("Missing nonce".to_string()))?,
     );
     let decrypted_bytes = cipher
         .decrypt(
             nonce,
             data.get(NONCE_SIZE..)
-                .ok_or(CipherError::DecryptionError("Missing content".to_string()))?,
+                .ok_or_else(|| CipherError::DecryptionError("Missing content".to_string()))?,
         )
         .map_err(|_| CipherError::DecryptionError("Wrong password".to_string()))?;
     Ok(decrypted_bytes)

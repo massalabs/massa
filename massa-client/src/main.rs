@@ -13,7 +13,7 @@ use massa_sdk::Client;
 use massa_wallet::Wallet;
 use serde::Serialize;
 use std::net::IpAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 mod cmds;
@@ -62,20 +62,18 @@ struct JsonError {
     error: String,
 }
 
-fn ask_password(wallet_path: &PathBuf) -> String {
+fn ask_password(wallet_path: &Path) -> String {
     if wallet_path.is_file() {
         Password::new()
             .with_prompt("Enter wallet password")
             .interact()
             .expect("IO error: Password reading failed, walled couldn't be unlocked")
     } else {
-        let pwd = Password::new()
+        Password::new()
             .with_prompt("Enter new password for wallet")
             .with_confirmation("Confirm password", "Passwords mismatching")
             .interact()
-            .expect("IO error: Password reading failed, wallet couldn't be created");
-        let _file = std::fs::File::create(wallet_path).expect("Could not create wallet");
-        pwd
+            .expect("IO error: Password reading failed, wallet couldn't be created")
     }
 }
 

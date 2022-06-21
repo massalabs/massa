@@ -33,33 +33,31 @@ pub struct Wallet {
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
-        // File check was already performed before in `massa-client/main.rs`
-        let content = &std::fs::read(&path)?[..];
-        // Retrieve private keys
-        let priv_keys = if !content.is_empty() {
-            // If wallet contains data decipher it
+        if path.is_file() {
+            let content = &std::fs::read(&path)?[..];
             let decrypted_content = decrypt(&password, content)?;
-            serde_json::from_slice::<Vec<PrivateKey>>(&decrypted_content[..])?
-        } else {
-            // If wallet is freshly created return an empty vec
-            Vec::new()
-        };
-        // Derive public key and address
-        let keys: Result<Map<Address, (PublicKey, PrivateKey)>, WalletError> = priv_keys
-            .iter()
-            .map(|key| {
-                let pub_key = derive_public_key(key);
-                Ok((Address::from_public_key(&pub_key), (pub_key, *key)))
+            let priv_keys = serde_json::from_slice::<Vec<PrivateKey>>(&decrypted_content[..])?;
+            let keys: Result<Map<Address, (PublicKey, PrivateKey)>, WalletError> = priv_keys
+                .iter()
+                .map(|priv_key| {
+                    let pub_key = derive_public_key(priv_key);
+                    Ok((Address::from_public_key(&pub_key), (pub_key, *priv_key)))
+                })
+                .collect();
+            Ok(Wallet {
+                keys: keys?,
+                wallet_path: path,
+                password,
             })
-            .collect();
-        // Create the wallet
-        let wallet = Wallet {
-            keys: keys?,
-            wallet_path: path,
-            password,
-        };
-        wallet.save()?;
-        Ok(wallet)
+        } else {
+            let wallet = Wallet {
+                keys: Map::default(),
+                wallet_path: path,
+                password,
+            };
+            wallet.save()?;
+            Ok(wallet)
+        }
     }
 
     /// Sign arbitrary message with the associated private key
@@ -127,8 +125,13 @@ impl Wallet {
     /// Save the wallet in json format in a file
     /// Only the private keys are dumped
     fn save(&self) -> Result<(), WalletError> {
-        let ser_keys =
-            serde_json::to_string(&self.keys.iter().map(|(_, (_, pk))| *pk).collect::<Vec<_>>())?;
+        let ser_keys = serde_json::to_string(
+            &self
+                .keys
+                .iter()
+                .map(|(_, (_, private_key))| *private_key)
+                .collect::<Vec<_>>(),
+        )?;
         let encrypted_content = encrypt(&self.password, ser_keys.as_bytes())?;
         std::fs::write(&self.wallet_path, encrypted_content)?;
         Ok(())
