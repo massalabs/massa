@@ -102,7 +102,9 @@ pub enum ProtocolCommand {
     GetBlocksResults(BlocksResults),
     /// The response to a `[ProtocolEvent::GetOperations]`.
     GetOperationsResults((NodeId, OperationIds)),
-    /// Propagate operations prefix ids (send batches)
+    /// Propagate operations (send batches)
+    /// note: OperationIds are replaced with OperationPrefixIds
+    ///       by the controller
     PropagateOperations(OperationIds),
     /// Propagate endorsements
     PropagateEndorsements(Map<EndorsementId, SignedEndorsement>),
