@@ -117,7 +117,7 @@ impl SerializeCompact for ExportActiveBlock {
         }
 
         // block
-        WrappedSerializer::new().serialize(&self.block, &mut res);
+        WrappedSerializer::new().serialize(&self.block, &mut res)?;
 
         // parents (note: there should be none if slot period=0)
         if self.parents.is_empty() {
@@ -371,8 +371,8 @@ impl DeserializeCompact for ExportActiveBlock {
         Ok((
             ExportActiveBlock {
                 is_final,
-                block,
                 block_id: block.id,
+                block,
                 parents,
                 children,
                 dependencies,
