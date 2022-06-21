@@ -209,12 +209,9 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Sequential balance:\n{}", self.ledger_info)?;
-        writeln!(f, "Final Parallel balance:\n{:?}", self.final_balance_info)?;
-        writeln!(
-            f,
-            "Candidate Parallel balance:\n{:?}",
-            self.candidate_balance_info
-        )?;
+        writeln!(f, "Parallel balance:",)?;
+        writeln!(f, "\tFinal: {:?}", self.final_balance_info)?;
+        writeln!(f, "\tCandidate: {:?}\n", self.candidate_balance_info)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,
