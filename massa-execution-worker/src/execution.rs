@@ -751,10 +751,12 @@ impl ExecutionState {
 
     /// Computes the index of a given slot in the active history
     fn get_active_index(&self, slot: Slot) -> Option<usize> {
-        if let Some(hist_front) = &self.active_history.read().0.front() {
+        let history_lock = self.active_history.read();
+        let history_len = history_lock.0.len() as u64;
+        if let Some(hist_front) = &history_lock.0.front() {
             slot.slots_since(&hist_front.slot, self.config.thread_count)
                 .map(|v| {
-                    if v >= self.active_history.read().0.len() as u64 {
+                    if v >= history_len {
                         None
                     } else {
                         v.try_into().ok()

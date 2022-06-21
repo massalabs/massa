@@ -27,10 +27,11 @@ impl ActiveHistory {
         addr: &Address,
         index: Option<usize>,
     ) -> HistorySearchResult<Amount> {
+        let history_length = self.0.len();
         let iter = self
             .0
             .iter()
-            .take(index.unwrap_or_default().saturating_add(1))
+            .take(index.map_or_else(|| history_length, |v| v.saturating_add(1)))
             .rev();
 
         for output in iter {
@@ -57,10 +58,11 @@ impl ActiveHistory {
         addr: &Address,
         index: Option<usize>,
     ) -> HistorySearchResult<Vec<u8>> {
+        let history_length = self.0.len();
         let iter = self
             .0
             .iter()
-            .take(index.unwrap_or_default().saturating_add(1))
+            .take(index.map_or_else(|| history_length, |v| v.saturating_add(1)))
             .rev();
 
         for output in iter {
@@ -88,10 +90,11 @@ impl ActiveHistory {
         key: &Hash,
         index: Option<usize>,
     ) -> HistorySearchResult<Vec<u8>> {
+        let history_length = self.0.len();
         let iter = self
             .0
             .iter()
-            .take(index.unwrap_or_default().saturating_add(1))
+            .take(index.map_or_else(|| history_length, |v| v.saturating_add(1)))
             .rev();
 
         for output in iter {
