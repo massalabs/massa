@@ -607,35 +607,35 @@ impl Endpoints for API<Public> {
                         .chain(get_consensus_eds?.into_keys())
                         .collect();
 
-                    let (final_sce, candidate_sce) = Default::default();
                     // TODO: remove unused fields
-                    match exec_snd.get_final_and_active_parallel_balance(&address) {
-                        (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
-                        (None, Some(balance)) => (
-                            SCELedgerInfo::default(),
-                            SCELedgerInfo {
-                                balance,
-                                ..Default::default()
-                            },
-                        ),
-                        (Some(balance), None) => (
-                            SCELedgerInfo {
-                                balance,
-                                ..Default::default()
-                            },
-                            SCELedgerInfo::default(),
-                        ),
-                        (Some(final_balance), Some(candidate_balance)) => (
-                            SCELedgerInfo {
-                                balance: final_balance,
-                                ..Default::default()
-                            },
-                            SCELedgerInfo {
-                                balance: candidate_balance,
-                                ..Default::default()
-                            },
-                        ),
-                    };
+                    let (final_sce, candidate_sce) =
+                        match exec_snd.get_final_and_active_parallel_balance(&address) {
+                            (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
+                            (None, Some(balance)) => (
+                                SCELedgerInfo::default(),
+                                SCELedgerInfo {
+                                    balance,
+                                    ..Default::default()
+                                },
+                            ),
+                            (Some(balance), None) => (
+                                SCELedgerInfo {
+                                    balance,
+                                    ..Default::default()
+                                },
+                                SCELedgerInfo::default(),
+                            ),
+                            (Some(final_balance), Some(candidate_balance)) => (
+                                SCELedgerInfo {
+                                    balance: final_balance,
+                                    ..Default::default()
+                                },
+                                SCELedgerInfo {
+                                    balance: candidate_balance,
+                                    ..Default::default()
+                                },
+                            ),
+                        };
                     Result::<
                         (
                             Address,
