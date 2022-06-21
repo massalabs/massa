@@ -2,6 +2,7 @@ var sourcesIndex = {};
 sourcesIndex["massa_api"] = {"name":"","files":["error.rs","lib.rs","private.rs","public.rs","settings.rs"]};
 sourcesIndex["massa_async_pool"] = {"name":"","files":["changes.rs","config.rs","lib.rs","message.rs","pool.rs"]};
 sourcesIndex["massa_bootstrap"] = {"name":"","files":["client.rs","client_binder.rs","error.rs","establisher.rs","lib.rs","messages.rs","server.rs","server_binder.rs","settings.rs"]};
+sourcesIndex["massa_cipher"] = {"name":"","files":["constants.rs","decrypt.rs","encrypt.rs","error.rs","lib.rs"]};
 sourcesIndex["massa_client"] = {"name":"","files":["cmds.rs","main.rs","repl.rs","settings.rs","utils.rs"]};
 sourcesIndex["massa_consensus_exports"] = {"name":"","files":["commands.rs","consensus_controller.rs","error.rs","events.rs","lib.rs","settings.rs","tools.rs"]};
 sourcesIndex["massa_consensus_worker"] = {"name":"","files":["consensus_worker.rs","lib.rs","tools.rs"]};

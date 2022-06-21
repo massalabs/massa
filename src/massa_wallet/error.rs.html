@@ -28,6 +28,8 @@
 <span id="21">21</span>
 <span id="22">22</span>
 <span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
@@ -50,6 +52,8 @@
     <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_hash::MassaHashError</span>),
     <span class="doccomment">/// Missing key error: {0}</span>
     <span class="ident">MissingKeyError</span>(<span class="ident">Address</span>),
+    <span class="doccomment">/// `MassaCipher` error: {0}</span>
+    <span class="ident">MassaCipherError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_cipher::CipherError</span>),
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_wallet" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5750a6aa2 2022-06-20)" ></div>
