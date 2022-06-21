@@ -90,8 +90,8 @@ pub async fn full_connection_to_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
-        u32::MAX,
-        u32::MAX,
+        f64::INFINITY,
+        f64::INFINITY,
     )
     .await
     .expect("handshake creation failed")
@@ -150,8 +150,8 @@ pub async fn rejected_connection_to_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
-        u32::MAX,
-        u32::MAX,
+        f64::INFINITY,
+        f64::INFINITY,
     )
     .await
     .expect("handshake creation failed")
@@ -236,8 +236,8 @@ pub async fn full_connection_from_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
-        u32::MAX,
-        u32::MAX,
+        f64::INFINITY,
+        f64::INFINITY,
     )
     .await
     .expect("handshake creation failed")

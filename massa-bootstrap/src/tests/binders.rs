@@ -26,9 +26,12 @@ async fn test_binders() {
     let (bootstrap_settings, server_private_key): &(BootstrapSettings, PrivateKey) =
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_private_key, u32::MAX);
-    let mut client =
-        BootstrapClientBinder::new(client, bootstrap_settings.bootstrap_list[0].1, u32::MAX);
+    let mut server = BootstrapServerBinder::new(server, *server_private_key, f64::INFINITY);
+    let mut client = BootstrapClientBinder::new(
+        client,
+        bootstrap_settings.bootstrap_list[0].1,
+        f64::INFINITY,
+    );
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -112,9 +115,12 @@ async fn test_binders_double_send_server_works() {
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
 
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_private_key, u32::MAX);
-    let mut client =
-        BootstrapClientBinder::new(client, bootstrap_settings.bootstrap_list[0].1, u32::MAX);
+    let mut server = BootstrapServerBinder::new(server, *server_private_key, f64::INFINITY);
+    let mut client = BootstrapClientBinder::new(
+        client,
+        bootstrap_settings.bootstrap_list[0].1,
+        f64::INFINITY,
+    );
 
     let server_thread = tokio::spawn(async move {
         // Test message 1
@@ -183,9 +189,12 @@ async fn test_binders_try_double_send_client_works() {
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
 
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_private_key, u32::MAX);
-    let mut client =
-        BootstrapClientBinder::new(client, bootstrap_settings.bootstrap_list[0].1, u32::MAX);
+    let mut server = BootstrapServerBinder::new(server, *server_private_key, f64::INFINITY);
+    let mut client = BootstrapClientBinder::new(
+        client,
+        bootstrap_settings.bootstrap_list[0].1,
+        f64::INFINITY,
+    );
 
     let server_thread = tokio::spawn(async move {
         // Test message 1

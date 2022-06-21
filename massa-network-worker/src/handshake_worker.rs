@@ -66,8 +66,8 @@ impl HandshakeWorker {
         timeout_duration: MassaTime,
         version: Version,
         connection_id: ConnectionId,
-        max_bytes_read: u32,
-        max_bytes_write: u32,
+        max_bytes_read: f64,
+        max_bytes_write: f64,
     ) -> JoinHandle<(ConnectionId, HandshakeReturnType)> {
         debug!("starting handshake with connection_id={}", connection_id);
         massa_trace!("network_worker.new_connection", {

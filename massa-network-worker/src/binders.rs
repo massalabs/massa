@@ -21,9 +21,10 @@ impl WriteBinder {
     ///
     /// # Argument
     /// * `write_half`: writer half.
-    pub fn new(write_half: WriteHalf, limit: u32) -> Self {
+    /// * `limit`: limit max bytes per second write
+    pub fn new(write_half: WriteHalf, limit: f64) -> Self {
         WriteBinder {
-            write_half: <Limiter>::new(limit.into()).limit(write_half),
+            write_half: <Limiter>::new(limit).limit(write_half),
             message_index: 0,
         }
     }
@@ -70,9 +71,10 @@ impl ReadBinder {
     ///
     /// # Argument
     /// * `read_half`: reader half.
-    pub fn new(read_half: ReadHalf, limit: u32) -> Self {
+    /// * `limit`: limit max bytes per second read.
+    pub fn new(read_half: ReadHalf, limit: f64) -> Self {
         ReadBinder {
-            read_half: <Limiter>::new(limit.into()).limit(read_half),
+            read_half: <Limiter>::new(limit).limit(read_half),
             message_index: 0,
             buf: Vec::new(),
             cursor: 0,

@@ -38,7 +38,9 @@ impl BootstrapServerBinder {
     ///
     /// # Argument
     /// * duplex: duplex stream.
-    pub fn new(duplex: Duplex, local_privkey: PrivateKey, limit: u32) -> Self {
+    /// * local_privkey: local node user private key
+    /// * limit: limit max bytes per second (up and down)
+    pub fn new(duplex: Duplex, local_privkey: PrivateKey, limit: f64) -> Self {
         let max_bootstrap_message_size =
             with_serialization_context(|context| context.max_bootstrap_message_size);
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
@@ -46,7 +48,7 @@ impl BootstrapServerBinder {
             max_bootstrap_message_size,
             size_field_len,
             local_privkey,
-            duplex: <Limiter>::new(limit.into()).limit(duplex),
+            duplex: <Limiter>::new(limit).limit(duplex),
             prev_message: None,
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),
