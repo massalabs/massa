@@ -22,6 +22,7 @@ use crate::consensus_worker::ConsensusWorker;
 /// * `cfg`: consensus configuration
 /// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.
 /// * `protocol_event_receiver`: a `ProtocolEventReceiver` instance to receive events from Protocol.
+#[allow(clippy::too_many_arguments)]
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
     channels: ConsensusChannels,

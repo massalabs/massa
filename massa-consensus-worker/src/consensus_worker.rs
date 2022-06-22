@@ -183,7 +183,7 @@ impl ConsensusWorker {
             stale_block_stats: VecDeque::new(),
             stats_desync_detection_timespan,
             stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
-            cfg: cfg.clone(),
+            cfg,
             launch_time: MassaTime::compensated_now(clock_compensation)?,
             endorsed_slots: HashSet::new(),
         })
