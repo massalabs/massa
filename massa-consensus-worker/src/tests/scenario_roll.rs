@@ -566,7 +566,6 @@ async fn test_roll_block_creation() {
     // cycle 0
 
     // respond to first pool batch command
-    // HERE
     pool_controller
         .wait_command(300.into(), |cmd| match cmd {
             PoolCommand::GetOperationBatch {
