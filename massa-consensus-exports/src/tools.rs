@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use massa_cipher::encrypt;
 use massa_models::{
     ledger_models::LedgerData,
     rolls::{RollCounts, RollUpdate, RollUpdates},
@@ -7,6 +8,9 @@ use massa_models::{
 };
 use massa_signature::{derive_public_key, PrivateKey};
 use tempfile::NamedTempFile;
+
+/// Password used for encryption in tests
+pub const TEST_PASSWORD: &str = "PASSWORD";
 
 /// generate a named temporary JSON ledger file
 pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedTempFile {
@@ -25,8 +29,9 @@ pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedT
 pub fn generate_staking_keys_file(staking_keys: &[PrivateKey]) -> NamedTempFile {
     use std::io::prelude::*;
     let file_named = NamedTempFile::new().expect("cannot create temp file");
-    serde_json::to_writer_pretty(file_named.as_file(), &staking_keys)
-        .expect("unable to write ledger file");
+    let json = serde_json::to_string_pretty(&staking_keys).expect("json serialization failed");
+    let encrypted_data = encrypt(TEST_PASSWORD, json.as_bytes()).expect("encryption failed");
+    std::fs::write(file_named.as_ref(), encrypted_data).expect("data writing failed");
     file_named
         .as_file()
         .seek(std::io::SeekFrom::Start(0))

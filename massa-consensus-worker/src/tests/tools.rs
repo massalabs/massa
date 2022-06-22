@@ -6,6 +6,8 @@ use super::{
     mock_protocol_controller::MockProtocolController,
 };
 use crate::start_consensus_controller;
+
+use massa_consensus_exports::tools::TEST_PASSWORD;
 use massa_consensus_exports::{
     settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig, ConsensusEventReceiver,
 };
@@ -695,6 +697,7 @@ pub async fn consensus_pool_test<F, V>(
             boot_graph,
             storage.clone(),
             0,
+            TEST_PASSWORD.to_string(),
         )
         .await
         .expect("could not start consensus controller");
@@ -788,6 +791,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
             boot_graph,
             storage.clone(),
             0,
+            TEST_PASSWORD.to_string(),
         )
         .await
         .expect("could not start consensus controller");
@@ -863,6 +867,7 @@ where
             None,
             storage.clone(),
             0,
+            TEST_PASSWORD.to_string(),
         )
         .await
         .expect("could not start consensus controller");
@@ -930,6 +935,7 @@ where
             None,
             storage.clone(),
             0,
+            TEST_PASSWORD.to_string(),
         )
         .await
         .expect("could not start consensus controller");

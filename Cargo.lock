@@ -1540,6 +1540,7 @@ dependencies = [
 name = "massa-node"
 version = "0.1.0"
 dependencies = [
+ "dialoguer",
  "lazy_static",
  "massa_api",
  "massa_async_pool",

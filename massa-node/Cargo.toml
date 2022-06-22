@@ -17,6 +17,7 @@ tracing = { version = "0.1", features = [
     "release_max_level_debug",
 ] }
 tracing-subscriber = "0.3"
+dialoguer = "0.10"
 # custom modules
 massa_api = { path = "../massa-api" }
 massa_async_pool = { path = "../massa-async-pool" }

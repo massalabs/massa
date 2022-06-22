@@ -14,7 +14,7 @@ serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1.15", features = ["full"] }
 tracing = "0.1"
-tempfile = "3.2"
+tempfile = { version = "3.2", optional = true }    # use with testing feature
 # custom modules
 massa_cipher = { path = "../massa-cipher" }
 massa_execution_exports = { path = "../massa-execution-exports" }
@@ -42,4 +42,8 @@ instrument = [
     "massa_time/instrument",
 ]
 sandbox = ["massa_proof_of_stake_exports/sandbox"]
-testing = ["massa_models/testing", "massa_execution_exports/testing"]
+testing = [
+    "massa_models/testing",
+    "massa_execution_exports/testing",
+    "tempfile",
+]

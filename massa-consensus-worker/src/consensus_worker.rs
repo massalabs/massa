@@ -167,7 +167,7 @@ impl ConsensusWorker {
                 .collect(),
         );
 
-        Ok(ConsensusWorker {
+        let worker = ConsensusWorker {
             genesis_public_key,
             block_db,
             pos,
@@ -183,10 +183,14 @@ impl ConsensusWorker {
             stale_block_stats: VecDeque::new(),
             stats_desync_detection_timespan,
             stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
-            cfg,
+            cfg: cfg.clone(),
             launch_time: MassaTime::compensated_now(clock_compensation)?,
             endorsed_slots: HashSet::new(),
-        })
+        };
+        if !cfg.staking_keys_path.is_file() {
+            worker.dump_staking_keys().await?;
+        }
+        Ok(worker)
     }
 
     /// Consensus work is managed here.

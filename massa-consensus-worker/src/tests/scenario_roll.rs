@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_consensus_exports::tools;
-use massa_consensus_exports::{settings::ConsensusChannels, ConsensusConfig};
+use massa_consensus_exports::{settings::ConsensusChannels, tools::TEST_PASSWORD, ConsensusConfig};
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::signed::Signable;
 use massa_models::{Address, Amount, BlockId, Slot};
@@ -522,6 +522,7 @@ async fn test_roll_block_creation() {
             None,
             storage.clone(),
             0,
+            TEST_PASSWORD.to_string(),
         )
         .await
         .expect("could not start consensus controller");
@@ -816,6 +817,7 @@ async fn test_roll_deactivation() {
             None,
             storage,
             0,
+            TEST_PASSWORD.to_string(),
         )
         .await
         .expect("could not start consensus controller");

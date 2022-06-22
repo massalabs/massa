@@ -6,6 +6,8 @@
 #![warn(unused_crate_dependencies)]
 extern crate massa_logging;
 use crate::settings::{POOL_CONFIG, SETTINGS};
+
+use dialoguer::Password;
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
@@ -190,7 +192,21 @@ async fn launch() -> (
         shared_storage.clone(),
     );
 
+    // init consensus configuration
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
+    // get staking keys file password
+    let password = if consensus_config.staking_keys_path.is_file() {
+        Password::new()
+            .with_prompt("Enter staking keys file password")
+            .interact()
+            .expect("IO error: Password reading failed, staking keys file couldn't be unlocked")
+    } else {
+        Password::new()
+            .with_prompt("Enter new password for staking keys file")
+            .with_confirmation("Confirm password", "Passwords mismatching")
+            .interact()
+            .expect("IO error: Password reading failed, staking keys file couldn't be created")
+    };
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -205,7 +221,7 @@ async fn launch() -> (
             bootstrap_state.graph,
             shared_storage.clone(),
             bootstrap_state.compensation_millis,
-            "PASSWORD".to_string(),
+            password,
         )
         .await
         .expect("could not start consensus controller");
