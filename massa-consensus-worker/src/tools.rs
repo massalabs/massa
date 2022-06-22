@@ -1,3 +1,5 @@
+use massa_cipher::decrypt;
+use massa_consensus_exports::settings::ConsensusConfig;
 use massa_consensus_exports::{
     commands::{ConsensusCommand, ConsensusManagementCommand},
     error::{ConsensusError, ConsensusResult as Result},
@@ -5,10 +7,6 @@ use massa_consensus_exports::{
     settings::{ConsensusChannels, ConsensusWorkerChannels},
     ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
 };
-use tracing::{debug, error, info};
-
-use crate::consensus_worker::ConsensusWorker;
-use massa_consensus_exports::settings::ConsensusConfig;
 use massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
 use massa_models::{constants::CHANNEL_SIZE, prehash::Map, Address};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ProofOfStake, ProofOfStakeConfig};
@@ -16,6 +14,9 @@ use massa_signature::{derive_public_key, PrivateKey, PublicKey};
 use massa_storage::Storage;
 use std::path::Path;
 use tokio::sync::mpsc;
+use tracing::{debug, error, info};
+
+use crate::consensus_worker::ConsensusWorker;
 
 /// Load staking keys from file
 /// and derive public keys and addresses
@@ -28,7 +29,8 @@ async fn load_initial_staking_keys(path: &Path) -> Result<Map<Address, (PublicKe
     if !std::path::Path::is_file(path) {
         return Ok(Map::default());
     }
-    serde_json::from_str::<Vec<PrivateKey>>(&tokio::fs::read_to_string(path).await?)?
+    // HERE DECRYPT
+    serde_json::from_slice::<Vec<PrivateKey>>(&decrypt("PASSWORD", &tokio::fs::read(path).await?)?)?
         .iter()
         .map(|private_key| {
             let public_key = derive_public_key(private_key);

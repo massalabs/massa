@@ -16,6 +16,7 @@ tokio = { version = "1.15", features = ["full"] }
 tracing = "0.1"
 tempfile = "3.2"
 # custom modules
+massa_cipher = { path = "../massa-cipher" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_graph = { path = "../massa-graph" }
 massa_logging = { path = "../massa-logging" }
@@ -40,7 +41,5 @@ instrument = [
     "massa_protocol_exports/instrument",
     "massa_time/instrument",
 ]
-sandbox = [
-    "massa_proof_of_stake_exports/sandbox",
-]
+sandbox = ["massa_proof_of_stake_exports/sandbox"]
 testing = ["massa_models/testing", "massa_execution_exports/testing"]

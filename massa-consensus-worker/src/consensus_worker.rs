@@ -1,4 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+use massa_cipher::encrypt;
 use massa_consensus_exports::{
     commands::ConsensusCommand,
     error::{ConsensusError, ConsensusResult as Result},
@@ -962,6 +963,7 @@ impl ConsensusWorker {
             }
         };
 
+        // HERE ENCRYPT
         if let Err(e) = tokio::fs::write(self.cfg.staking_keys_path.clone(), json).await {
             warn!("Error while dumping staking keys {}", e);
         }
