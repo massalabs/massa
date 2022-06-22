@@ -873,7 +873,7 @@ impl ConsensusWorker {
                 }
                 self.pos
                     .set_watched_addresses(self.staking_keys.keys().copied().collect());
-                self.dump_staking_keys().await;
+                self.dump_staking_keys().await?;
                 Ok(())
             }
             ConsensusCommand::RemoveStakingAddresses(addresses) => {
@@ -882,7 +882,7 @@ impl ConsensusWorker {
                 }
                 self.pos
                     .set_watched_addresses(self.staking_keys.keys().copied().collect());
-                self.dump_staking_keys().await;
+                self.dump_staking_keys().await?;
                 Ok(())
             }
             ConsensusCommand::GetStakingAddresses(response_tx) => {
@@ -949,24 +949,18 @@ impl ConsensusWorker {
     }
 
     /// Save the staking keys to a file
-    async fn dump_staking_keys(&self) {
+    async fn dump_staking_keys(&self) -> Result<()> {
         let keys = self
             .staking_keys
             .iter()
             .map(|(_, (_, key))| *key)
             .collect::<Vec<_>>();
-        let json = match serde_json::to_string_pretty(&keys) {
-            Ok(json) => json,
-            Err(e) => {
-                warn!("Error while serializing staking keys {}", e);
-                return;
-            }
-        };
+        let json = serde_json::to_string_pretty(&keys)?;
 
         // HERE ENCRYPT
-        if let Err(e) = tokio::fs::write(self.cfg.staking_keys_path.clone(), json).await {
-            warn!("Error while dumping staking keys {}", e);
-        }
+        let encrypted_data = encrypt("PASSWORD", json.as_bytes())?;
+        tokio::fs::write(self.cfg.staking_keys_path.clone(), encrypted_data).await?;
+        Ok(())
     }
 
     /// retrieve stats
