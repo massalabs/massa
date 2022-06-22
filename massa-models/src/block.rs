@@ -473,6 +473,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     }
 }
 
+/// Deserializer for `BlockHeader`
 pub struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
@@ -481,6 +482,7 @@ pub struct BlockHeaderDeserializer {
 }
 
 impl BlockHeaderDeserializer {
+    /// Creates a new `BlockHeaderDeserializer`
     pub fn new() -> Self {
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;

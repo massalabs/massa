@@ -45,24 +45,24 @@ impl EndorsementPool {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<(EndorsementId, WrappedEndorsement)>, PoolError> {
+    ) -> Result<Vec<WrappedEndorsement>, PoolError> {
         let mut candidates = self
             .endorsements
             .iter()
-            .filter_map(|(endo_id, endorsement)| {
-                let creator = Address::from_public_key(&endorsement.content.sender_public_key);
+            .filter_map(|(_endo_id, endorsement)| {
+                let creator = &endorsement.creator_address;
                 if endorsement.content.endorsed_block == parent
                     && endorsement.content.slot == target_slot
                     && creators.get(endorsement.content.index as usize) == Some(&creator)
                 {
-                    Some(Ok((*endo_id, endorsement.clone())))
+                    Some(Ok(endorsement.clone()))
                 } else {
                     None
                 }
             })
-            .collect::<Result<Vec<(EndorsementId, WrappedEndorsement)>, PoolError>>()?;
-        candidates.sort_unstable_by_key(|(_e_id, endo)| endo.content.index);
-        candidates.dedup_by_key(|(_e_id, endo)| endo.content.index);
+            .collect::<Result<Vec<WrappedEndorsement>, PoolError>>()?;
+        candidates.sort_unstable_by_key(|endo| endo.content.index);
+        candidates.dedup_by_key(|endo| endo.content.index);
         Ok(candidates)
     }
 
@@ -153,7 +153,7 @@ impl EndorsementPool {
     ) -> Result<Map<EndorsementId, WrappedEndorsement>, PoolError> {
         let mut res = Map::default();
         for (id, ed) in self.endorsements.iter() {
-            if Address::from_public_key(&ed.content.sender_public_key) == address {
+            if ed.creator_address == address {
                 res.insert(*id, ed.clone());
             }
         }

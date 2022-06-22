@@ -52,7 +52,7 @@ pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
         /// the operations
-        operations: Map<OperationId, (WrappedOperation, Vec<u8>)>,
+        operations: Map<OperationId, WrappedOperation>,
         /// whether or not to propagate operations
         propagate: bool,
     },

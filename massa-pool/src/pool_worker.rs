@@ -5,7 +5,6 @@ use crate::operation_pool::OperationPool;
 use crate::{endorsement_pool::EndorsementPool, settings::PoolConfig};
 use massa_models::prehash::{Map, Set};
 use massa_models::stats::PoolStats;
-use massa_models::SerializeCompact;
 use massa_models::{
     Address, BlockId, EndorsementId, OperationId, OperationSearchResult, Slot, WrappedEndorsement,
     WrappedOperation,
@@ -35,7 +34,7 @@ pub enum PoolCommand {
         /// max size of an operation in bytes
         max_size: u64,
         /// response channel
-        response_tx: oneshot::Sender<Vec<(OperationId, WrappedOperation, u64)>>,
+        response_tx: oneshot::Sender<Vec<(WrappedOperation, u64)>>,
     },
     /// get operations by id
     GetOperations {
@@ -63,7 +62,7 @@ pub enum PoolCommand {
         /// expected creators
         creators: Vec<Address>,
         /// response channel
-        response_tx: oneshot::Sender<Vec<(EndorsementId, WrappedEndorsement)>>,
+        response_tx: oneshot::Sender<Vec<WrappedEndorsement>>,
     },
     /// add endorsements to pool
     AddEndorsements(Map<EndorsementId, WrappedEndorsement>),
@@ -186,14 +185,6 @@ impl PoolWorker {
     async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
             PoolCommand::AddOperations(operations) => {
-                let operations = operations
-                    .into_iter()
-                    .filter_map(|(id, op)| {
-                        op.to_bytes_compact()
-                            .map(|serialized| (id, (op, serialized)))
-                            .ok()
-                    })
-                    .collect();
                 let newly_added = self.operation_pool.process_operations(operations)?;
                 if !newly_added.is_empty() {
                     self.protocol_command_sender

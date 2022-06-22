@@ -143,14 +143,14 @@ impl PoolCommandSender {
     }
 
     /// Returns a batch of operations ordered from highest to lowest rentability
-    /// Return value: vector of `(OperationId, Operation, operation_size: u64)`
+    /// Return value: vector of `(Operation, operation_size: u64)`
     pub async fn send_get_operations_announcement(
         &mut self,
         target_slot: Slot,
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-    ) -> Result<Vec<(OperationId, WrappedOperation, u64)>, PoolError> {
+    ) -> Result<Vec<(WrappedOperation, u64)>, PoolError> {
         massa_trace!("pool.command_sender.get_operation_batch", {
             "target_slot": target_slot
         });
@@ -183,7 +183,7 @@ impl PoolCommandSender {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<(EndorsementId, WrappedEndorsement)>, PoolError> {
+    ) -> Result<Vec<WrappedEndorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements", {
             "target_slot": target_slot
         });

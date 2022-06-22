@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::prehash::Map;
-use massa_models::SerializeCompact;
 use massa_models::{constants::CHANNEL_SIZE, EndorsementId, OperationId};
 use massa_models::{WrappedEndorsement, WrappedOperation};
 use massa_protocol_exports::{
@@ -48,15 +47,6 @@ impl MockProtocolController {
     }
 
     pub async fn received_operations(&mut self, operations: Map<OperationId, WrappedOperation>) {
-        let operations = operations
-            .into_iter()
-            .filter_map(|(id, op)| {
-                op.to_bytes_compact()
-                    .map(|serialized| (id, (op, serialized)))
-                    .ok()
-            })
-            .collect();
-
         self.pool_event_tx
             .send(ProtocolPoolEvent::ReceivedOperations {
                 operations,
