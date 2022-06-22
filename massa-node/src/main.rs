@@ -37,6 +37,7 @@ use massa_protocol_worker::start_protocol_controller;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
+use structopt::StructOpt;
 use std::{process, sync::Arc};
 use tokio::signal;
 use tokio::sync::mpsc;
@@ -345,12 +346,19 @@ async fn stop(
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 }
 
+#[derive(StructOpt)]
+struct Args {
+    /// Wallet password
+    password: Option<String>,
+}
+
 /// To instrument `massa-node` with `tokio-console` run
 /// ```shell
 /// RUSTFLAGS="--cfg tokio_unstable" cargo run --bin massa-node --features instrument
 /// ```
+#[paw::main]
 #[tokio::main]
-async fn main() {
+async fn main(_args: Args) {
     use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
     #[cfg(feature = "instrument")]

@@ -17,6 +17,8 @@ tracing = { version = "0.1", features = [
     "release_max_level_debug",
 ] }
 tracing-subscriber = "0.3"
+paw = "1.0"
+structopt = { version = "0.3", features = ["paw"] }
 dialoguer = "0.10"
 # custom modules
 massa_api = { path = "../massa-api" }
