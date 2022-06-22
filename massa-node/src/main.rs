@@ -205,6 +205,7 @@ async fn launch() -> (
             bootstrap_state.graph,
             shared_storage.clone(),
             bootstrap_state.compensation_millis,
+            "PASSWORD".to_string(),
         )
         .await
         .expect("could not start consensus controller");

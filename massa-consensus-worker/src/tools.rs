@@ -25,12 +25,14 @@ use crate::consensus_worker::ConsensusWorker;
 /// Maybe it would be worth considering returning the default map
 /// when the read to string or the parse is failing
 /// but eh that's left for another refactor
-async fn load_initial_staking_keys(path: &Path) -> Result<Map<Address, (PublicKey, PrivateKey)>> {
+async fn load_initial_staking_keys(
+    path: &Path,
+    password: &str,
+) -> Result<Map<Address, (PublicKey, PrivateKey)>> {
     if !std::path::Path::is_file(path) {
         return Ok(Map::default());
     }
-    // HERE DECRYPT
-    serde_json::from_slice::<Vec<PrivateKey>>(&decrypt("PASSWORD", &tokio::fs::read(path).await?)?)?
+    serde_json::from_slice::<Vec<PrivateKey>>(&decrypt(password, &tokio::fs::read(path).await?)?)?
         .iter()
         .map(|private_key| {
             let public_key = derive_public_key(private_key);
@@ -55,6 +57,7 @@ pub async fn start_consensus_controller(
     boot_graph: Option<BootstrapableGraph>,
     storage: Storage,
     clock_compensation: i64,
+    password: String,
 ) -> Result<(
     ConsensusCommandSender,
     ConsensusEventReceiver,
@@ -83,7 +86,7 @@ pub async fn start_consensus_controller(
             "thread_count should divide t0".to_string(),
         ));
     }
-    let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
+    let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path, &password).await?;
 
     // start worker
     let block_db = BlockGraph::new(GraphConfig::from(&cfg), boot_graph, storage).await?;
@@ -114,6 +117,7 @@ pub async fn start_consensus_controller(
             pos,
             clock_compensation,
             staking_keys,
+            password,
         )
         .await?
         .run_loop()

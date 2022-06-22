@@ -56,6 +56,8 @@ pub struct ConsensusWorker {
     clock_compensation: i64,
     /// staking keys
     staking_keys: Map<Address, (PublicKey, PrivateKey)>,
+    /// staking keys password
+    password: String,
     /// stats `(block -> tx_count, creator)`
     final_block_stats: VecDeque<(MassaTime, u64, Address)>,
     /// No idea what this is used for. My guess is one timestamp per stale block
@@ -66,7 +68,7 @@ pub struct ConsensusWorker {
     stats_desync_detection_timespan: MassaTime,
     /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,
-    // endorsed slots cache
+    /// endorsed slots cache
     endorsed_slots: HashSet<Slot>,
 }
 
@@ -88,6 +90,7 @@ impl ConsensusWorker {
         pos: ProofOfStake,
         clock_compensation: i64,
         staking_keys: Map<Address, (PublicKey, PrivateKey)>,
+        password: String,
     ) -> Result<ConsensusWorker> {
         let now = MassaTime::compensated_now(clock_compensation)?;
         let previous_slot = get_latest_block_slot_at_timestamp(
@@ -175,6 +178,7 @@ impl ConsensusWorker {
             clock_compensation,
             channels,
             staking_keys,
+            password,
             final_block_stats,
             stale_block_stats: VecDeque::new(),
             stats_desync_detection_timespan,
@@ -956,9 +960,7 @@ impl ConsensusWorker {
             .map(|(_, (_, key))| *key)
             .collect::<Vec<_>>();
         let json = serde_json::to_string_pretty(&keys)?;
-
-        // HERE ENCRYPT
-        let encrypted_data = encrypt("PASSWORD", json.as_bytes())?;
+        let encrypted_data = encrypt(&self.password, json.as_bytes())?;
         tokio::fs::write(self.cfg.staking_keys_path.clone(), encrypted_data).await?;
         Ok(())
     }
