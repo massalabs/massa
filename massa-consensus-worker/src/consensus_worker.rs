@@ -167,7 +167,7 @@ impl ConsensusWorker {
                 .collect(),
         );
 
-        let worker = ConsensusWorker {
+        Ok(ConsensusWorker {
             genesis_public_key,
             block_db,
             pos,
@@ -186,11 +186,7 @@ impl ConsensusWorker {
             cfg: cfg.clone(),
             launch_time: MassaTime::compensated_now(clock_compensation)?,
             endorsed_slots: HashSet::new(),
-        };
-        if !cfg.staking_keys_path.is_file() {
-            worker.dump_staking_keys().await?;
-        }
-        Ok(worker)
+        })
     }
 
     /// Consensus work is managed here.

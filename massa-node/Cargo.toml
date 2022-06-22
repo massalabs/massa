@@ -7,6 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0"
 lazy_static = "1.4.0"
 parking_lot = "0.12"
 serde = { version = "1.0", features = ["derive"] }
@@ -26,8 +27,10 @@ massa_async_pool = { path = "../massa-async-pool" }
 massa_bootstrap = { path = "../massa-bootstrap" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_consensus_worker = { path = "../massa-consensus-worker" }
+massa_cipher = { path = "../massa-cipher" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_execution_worker = { path = "../massa-execution-worker" }
+massa_signature = { path = "../massa-signature" }
 massa_logging = { path = "../massa-logging" }
 massa_final_state = { path = "../massa-final-state" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }

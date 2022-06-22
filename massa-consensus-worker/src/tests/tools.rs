@@ -14,6 +14,7 @@ use massa_consensus_exports::{
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
 use massa_hash::Hash;
+use massa_models::prehash::Map;
 use massa_models::{
     prehash::Set,
     signed::{Signable, Signed},
@@ -698,6 +699,7 @@ pub async fn consensus_pool_test<F, V>(
             storage.clone(),
             0,
             TEST_PASSWORD.to_string(),
+            Map::default(),
         )
         .await
         .expect("could not start consensus controller");
@@ -792,6 +794,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
             storage.clone(),
             0,
             TEST_PASSWORD.to_string(),
+            Map::default(),
         )
         .await
         .expect("could not start consensus controller");
@@ -868,6 +871,7 @@ where
             storage.clone(),
             0,
             TEST_PASSWORD.to_string(),
+            Map::default(),
         )
         .await
         .expect("could not start consensus controller");
@@ -936,6 +940,7 @@ where
             storage.clone(),
             0,
             TEST_PASSWORD.to_string(),
+            Map::default(),
         )
         .await
         .expect("could not start consensus controller");

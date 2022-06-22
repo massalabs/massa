@@ -15,6 +15,7 @@ use massa_graph::{ledger::Ledger, LedgerConfig};
 use massa_models::ledger_models::LedgerData;
 use massa_models::ledger_models::{LedgerChange, LedgerChanges};
 use massa_models::{Amount, Slot};
+use massa_models::prehash::Map;
 use massa_signature::PrivateKey;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -517,6 +518,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             storage,
             0,
             TEST_PASSWORD.to_string(),
+            Map::default(),
         )
         .await
         .expect("could not start consensus controller");

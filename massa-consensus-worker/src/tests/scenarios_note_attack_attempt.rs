@@ -12,6 +12,7 @@ use massa_consensus_exports::tools::TEST_PASSWORD;
 use massa_consensus_exports::ConsensusConfig;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
+use massa_models::prehash::Map;
 use massa_models::{BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use massa_storage::Storage;
@@ -50,6 +51,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
             storage,
             0,
             TEST_PASSWORD.to_string(),
+            Map::default(),
         )
         .await
         .expect("could not start consensus controller");
@@ -117,6 +119,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
             storage,
             0,
             TEST_PASSWORD.to_string(),
+            Map::default(),
         )
         .await
         .expect("could not start consensus controller");
