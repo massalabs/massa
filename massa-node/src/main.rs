@@ -383,7 +383,7 @@ async fn load_or_create_staking_keys_file(
                 .interact()
                 .expect("IO error: Password reading failed, staking keys file couldn't be created")
         });
-        let json = serde_json::to_string(&Vec::<PrivateKey>::new())?;
+        let json = serde_json::to_string_pretty(&Vec::<PrivateKey>::new())?;
         let encrypted_data = encrypt(&password, json.as_bytes())?;
         tokio::fs::write(path, encrypted_data).await?;
         Ok((password, Map::default()))
