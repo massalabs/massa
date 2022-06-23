@@ -88,7 +88,7 @@ async fn test_queueing() {
                 .await;
             }
 
-            let (missed_hash, _missed_block, _missed_key) = create_block(
+            let (missed_block, _missed_key) = create_block(
                 &cfg,
                 Slot::new(32, 0),
                 vec![valid_hasht0, valid_hasht1],
@@ -100,7 +100,7 @@ async fn test_queueing() {
                 &mut protocol_controller,
                 &cfg,
                 Slot::new(33, 0),
-                vec![missed_hash, valid_hasht1],
+                vec![missed_block.id, valid_hasht1],
                 false,
                 false,
                 staking_keys[0],
@@ -324,32 +324,32 @@ async fn test_double_staking() {
 
             // same creator same slot, different block
             let operation_merkle_root = Hash::compute_from("42".as_bytes());
-            let (hash_1, block_1, _key) = create_block_with_merkle_root(
+            let (block_1, _key) = create_block_with_merkle_root(
                 &cfg,
                 operation_merkle_root,
                 Slot::new(41, 0),
                 vec![valid_hasht0, valid_hasht1],
                 staking_keys[0],
             );
-            propagate_block(&mut protocol_controller, block_1, true, 150).await;
+            propagate_block(&mut protocol_controller, block_1.clone(), true, 150).await;
 
             let operation_merkle_root =
                 Hash::compute_from("so long and thanks for all the fish".as_bytes());
-            let (hash_2, block_2, _key) = create_block_with_merkle_root(
+            let (block_2, _key) = create_block_with_merkle_root(
                 &cfg,
                 operation_merkle_root,
                 Slot::new(41, 0),
                 vec![valid_hasht0, valid_hasht1],
                 staking_keys[0],
             );
-            propagate_block(&mut protocol_controller, block_2, true, 150).await;
+            propagate_block(&mut protocol_controller, block_2.clone(), true, 150).await;
 
             let graph = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
                 .unwrap();
-            let cliques_1 = get_cliques(&graph, hash_1);
-            let cliques_2 = get_cliques(&graph, hash_2);
+            let cliques_1 = get_cliques(&graph, block_1.id);
+            let cliques_2 = get_cliques(&graph, block_2.id);
             assert!(cliques_1.is_disjoint(&cliques_2));
             (
                 protocol_controller,

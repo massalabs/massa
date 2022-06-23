@@ -14,9 +14,9 @@ use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, Boot
 use massa_hash::Hash;
 use massa_models::{
     prehash::Set,
-    wrapped::{Id, Signable, Wrapped, WrappedContent},
+    wrapped::{Id, WrappedContent},
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
-    Endorsement, Operation, OperationSerializer, OperationType, SerializeCompact, Slot,
+    Endorsement, EndorsementSerializer, Operation, OperationSerializer, OperationType, Slot,
     WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
 use massa_pool::PoolCommand;
@@ -293,29 +293,30 @@ pub async fn create_and_test_block(
     trace: bool,
     creator: PrivateKey,
 ) -> BlockId {
-    let (block_hash, block, _) = create_block(cfg, slot, best_parents, creator);
+    let (block, _) = create_block(cfg, slot, best_parents, creator);
+    let block_id = block.id;
     if trace {
-        info!("create block:{}", block_hash);
+        info!("create block:{}", block.id);
     }
 
     protocol_controller.receive_block(block).await;
     if valid {
         // Assert that the block is propagated.
-        validate_propagate_block(protocol_controller, block_hash, 2000).await;
+        validate_propagate_block(protocol_controller, block_id, 2000).await;
     } else {
         // Assert that the the block is not propagated.
-        validate_notpropagate_block(protocol_controller, block_hash, 500).await;
+        validate_notpropagate_block(protocol_controller, block_id, 500).await;
     }
-    block_hash
+    block_id
 }
 
 pub async fn propagate_block(
     protocol_controller: &mut MockProtocolController,
-    block: Block,
+    block: WrappedBlock,
     valid: bool,
     timeout_ms: u64,
 ) -> BlockId {
-    let block_hash = block.header.content.compute_id().unwrap();
+    let block_hash = block.id;
     protocol_controller.receive_block(block).await;
     if valid {
         // see if the block is propagated.
@@ -485,7 +486,7 @@ pub fn create_block(
     slot: Slot,
     best_parents: Vec<BlockId>,
     creator: PrivateKey,
-) -> (BlockId, Block, PrivateKey) {
+) -> (WrappedBlock, PrivateKey) {
     create_block_with_merkle_root(
         cfg,
         Hash::compute_from("default_val".as_bytes()),
@@ -548,7 +549,7 @@ pub fn create_endorsement(
     Endorsement::new_wrapped(
         content,
         EndorsementSerializer::new(),
-        &priv_key,
+        &sender_priv,
         &sender_public_key,
     )
     .unwrap()
@@ -562,7 +563,7 @@ pub fn get_export_active_test_block(
     is_final: bool,
 ) -> ExportActiveBlock {
     let private_key = &generate_random_private_key();
-    let public_key = derive_public_key(private_key);
+    let public_key = creator;
     let block = Block::new_wrapped(
         Block {
             header: BlockHeader::new_wrapped(
@@ -570,7 +571,7 @@ pub fn get_export_active_test_block(
                     operation_merkle_root: Hash::compute_from(
                         &operations
                             .iter()
-                            .flat_map(|op| op.content.compute_id().unwrap().into_bytes())
+                            .flat_map(|op| op.id.into_bytes())
                             .collect::<Vec<_>>()[..],
                     ),
                     parents: parents.iter().map(|(id, _)| *id).collect(),
@@ -593,8 +594,8 @@ pub fn get_export_active_test_block(
     ExportActiveBlock {
         parents,
         dependencies: Default::default(),
-        block: block,
-        block_id: id,
+        block: block.clone(),
+        block_id: block.id,
         children: vec![Default::default(), Default::default()],
         is_final,
         block_ledger_changes: Default::default(),
@@ -614,7 +615,7 @@ pub fn create_block_with_operations(
 
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.to_bytes_compact().unwrap()].concat()
+            [acc, v.id.hash().to_bytes().to_vec()].concat()
         })[..],
     );
 
@@ -653,9 +654,9 @@ pub fn create_block_with_operations_and_endorsements(
     let public_key = derive_public_key(&creator);
 
     let operation_merkle_root = Hash::compute_from(
-        &operations
-            .iter()
-            .fold(Vec::new(), |acc, v| [acc, v.id.hash()].concat())[..],
+        &operations.iter().fold(Vec::new(), |acc, v| {
+            [acc, v.id.hash().to_bytes().to_vec()].concat()
+        })[..],
     );
 
     let header = BlockHeader::new_wrapped(
@@ -679,7 +680,7 @@ pub fn create_block_with_operations_and_endorsements(
     )
     .unwrap();
 
-    (hash, block, creator)
+    (block, creator)
 }
 
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateKey {
@@ -717,8 +718,8 @@ pub async fn consensus_pool_test<F, V>(
 {
     let storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
-        for (block_id, export_block) in &graph.active_blocks {
-            storage.store_block(export_block.block);
+        for (_, export_block) in &graph.active_blocks {
+            storage.store_block(export_block.block.clone());
         }
     }
     // mock protocol & pool
@@ -806,8 +807,8 @@ pub async fn consensus_pool_test_with_storage<F, V>(
 {
     let storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
-        for (block_id, export_block) in &graph.active_blocks {
-            storage.store_block(export_block.block);
+        for (_, export_block) in &graph.active_blocks {
+            storage.store_block(export_block.block.clone());
         }
     }
     // mock protocol & pool

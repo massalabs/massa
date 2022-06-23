@@ -79,7 +79,7 @@ async fn test_ti() {
             assert_eq!(block1_clic, block2_clic);
 
             // Create other clique bock T0S2
-            let (fork_block_hash, block, _) = create_block_with_merkle_root(
+            let (fork_block, _) = create_block_with_merkle_root(
                 &cfg,
                 Hash::compute_from("Other hash!".as_bytes()),
                 Slot::new(2, 0),
@@ -87,8 +87,8 @@ async fn test_ti() {
                 staking_keys[0],
             );
 
-            protocol_controller.receive_block(block).await;
-            validate_propagate_block(&mut protocol_controller, fork_block_hash, 1000).await;
+            protocol_controller.receive_block(fork_block.clone()).await;
+            validate_propagate_block(&mut protocol_controller, fork_block.id, 1000).await;
             // two clique with valid_hasht0s1 and valid_hasht1s1 in one and fork_block_hash, valid_hasht1s1 in the other
             // test the first clique hasn't changed.
             let block_graph = consensus_command_sender
@@ -101,7 +101,7 @@ async fn test_ti() {
             assert_eq!(2, block2_clic.len());
             assert!(block2_clic.intersection(&block1_clic).next().is_some());
             // test the new click
-            let fork_clic = get_cliques(&block_graph, fork_block_hash);
+            let fork_clic = get_cliques(&block_graph, fork_block.id);
             assert_eq!(1, fork_clic.len());
             assert!(fork_clic.intersection(&block1_clic).next().is_none());
             assert!(fork_clic.intersection(&block2_clic).next().is_some());
@@ -125,34 +125,27 @@ async fn test_ti() {
                     .await
                     .unwrap();
                 let block_clic = get_cliques(&block_graph, block_hash);
-                let fork_clic = get_cliques(&block_graph, fork_block_hash);
+                let fork_clic = get_cliques(&block_graph, fork_block.id);
                 assert!(fork_clic.intersection(&block_clic).next().is_none());
 
                 parentt0sn_hash = block_hash;
             }
 
             // create new block in other clique
-            let (invalid_block_hasht1s2, block, _) = create_block(
+            let (block, _) = create_block(
                 &cfg,
                 Slot::new(2, 1),
-                vec![fork_block_hash, valid_hasht1s1],
+                vec![fork_block.id, valid_hasht1s1],
                 staking_keys[0],
             );
-            protocol_controller.receive_block(block).await;
-            assert!(
-                !validate_notpropagate_block(
-                    &mut protocol_controller,
-                    invalid_block_hasht1s2,
-                    1000,
-                )
-                .await
-            );
+            protocol_controller.receive_block(block.clone()).await;
+            assert!(!validate_notpropagate_block(&mut protocol_controller, block.id, 1000,).await);
             // verify that the clique has been pruned.
             let block_graph = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
                 .unwrap();
-            let fork_clic = get_cliques(&block_graph, fork_block_hash);
+            let fork_clic = get_cliques(&block_graph, fork_block.id);
             assert_eq!(0, fork_clic.len());
             (
                 protocol_controller,

@@ -3,7 +3,6 @@
 use massa_consensus_exports::tools;
 use massa_consensus_exports::{settings::ConsensusChannels, ConsensusConfig};
 use massa_execution_exports::test_exports::MockExecutionController;
-use massa_models::wrapped::Signable;
 use massa_models::{Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
@@ -101,7 +100,7 @@ async fn test_roll() {
             let addresses = addresses;
 
             // cycle 0
-            let (_, block1_err1, _) = create_block_with_operations(
+            let (block1_err1, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &parents,
@@ -113,7 +112,7 @@ async fn test_roll() {
             // invalid because a1 has not enough coins to buy a roll
             propagate_block(&mut protocol_controller, block1_err1, false, 150).await;
 
-            let (_, block1_err2, _) = create_block_with_operations(
+            let (block1_err2, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &parents,
@@ -123,7 +122,7 @@ async fn test_roll() {
             // invalid because a2 does not have enough rolls to sell
             propagate_block(&mut protocol_controller, block1_err2, false, 150).await;
 
-            let (id_1, block1, _) = create_block_with_operations(
+            let (block1, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &parents,
@@ -132,8 +131,8 @@ async fn test_roll() {
             );
 
             // valid
-            propagate_block(&mut protocol_controller, block1, true, 150).await;
-            parents[0] = id_1;
+            propagate_block(&mut protocol_controller, block1.clone(), true, 150).await;
+            parents[0] = block1.id;
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -150,17 +149,17 @@ async fn test_roll() {
                 Amount::from_str("9000").unwrap()
             );
 
-            let (id_1t1, block1t1, _) =
+            let (block1t1, _) =
                 create_block_with_operations(&cfg, Slot::new(1, 1), &parents, priv_1, vec![]);
 
             wait_pool_slot(&mut pool_controller, cfg.t0, 1, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block1t1, true, 150).await;
-            parents[1] = id_1t1;
+            propagate_block(&mut protocol_controller, block1t1.clone(), true, 150).await;
+            parents[1] = block1t1.id;
 
             // cycle 1
 
-            let (id_2, block2, _) = create_block_with_operations(
+            let (block2, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(2, 0),
                 &parents,
@@ -170,8 +169,8 @@ async fn test_roll() {
 
             wait_pool_slot(&mut pool_controller, cfg.t0, 2, 0).await;
             // valid
-            propagate_block(&mut protocol_controller, block2, true, 150).await;
-            parents[0] = id_2;
+            propagate_block(&mut protocol_controller, block2.clone(), true, 150).await;
+            parents[0] = block2.id;
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -186,47 +185,47 @@ async fn test_roll() {
             let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("9000").unwrap());
 
-            let (id_2t, block2t2, _) =
+            let (block2t2, _) =
                 create_block_with_operations(&cfg, Slot::new(2, 1), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 2, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block2t2, true, 150).await;
-            parents[1] = id_2t;
+            propagate_block(&mut protocol_controller, block2t2.clone(), true, 150).await;
+            parents[1] = block2t2.id;
 
             // miss block 3 in thread 0
 
             // block 3 in thread 1
-            let (id_3t1, block3t1, _) =
+            let (block3t1, _) =
                 create_block_with_operations(&cfg, Slot::new(3, 1), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 3, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block3t1, true, 150).await;
-            parents[1] = id_3t1;
+            propagate_block(&mut protocol_controller, block3t1.clone(), true, 150).await;
+            parents[1] = block3t1.id;
 
             // cycle 2
 
             // miss block 4
 
-            let (id_4t1, block4t1, _) =
+            let (block4t1, _) =
                 create_block_with_operations(&cfg, Slot::new(4, 1), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 4, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block4t1, true, 150).await;
-            parents[1] = id_4t1;
+            propagate_block(&mut protocol_controller, block4t1.clone(), true, 150).await;
+            parents[1] = block4t1.id;
 
-            let (id_5, block5, _) =
+            let (block5, _) =
                 create_block_with_operations(&cfg, Slot::new(5, 0), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 5, 0).await;
             // valid
-            propagate_block(&mut protocol_controller, block5, true, 150).await;
-            parents[0] = id_5;
+            propagate_block(&mut protocol_controller, block5.clone(), true, 150).await;
+            parents[0] = block5.id;
 
-            let (id_5t1, block5t1, _) =
+            let (block5t1, _) =
                 create_block_with_operations(&cfg, Slot::new(5, 1), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 5, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block5t1, true, 150).await;
-            parents[1] = id_5t1;
+            propagate_block(&mut protocol_controller, block5t1.clone(), true, 150).await;
+            parents[1] = block5t1.id;
 
             // cycle 3
             let draws: HashMap<_, _> = consensus_command_sender
@@ -243,7 +242,7 @@ async fn test_roll() {
                 address_1
             };
 
-            let (_, block6_err, _) = create_block_with_operations(
+            let (block6_err, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(6, 0),
                 &parents,
@@ -254,7 +253,7 @@ async fn test_roll() {
             // invalid: other_addr wasn't drawn for that block creation
             propagate_block(&mut protocol_controller, block6_err, false, 150).await;
 
-            let (id_6, block6, _) = create_block_with_operations(
+            let (block6, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(6, 0),
                 &parents,
@@ -263,8 +262,8 @@ async fn test_roll() {
             );
 
             // valid
-            propagate_block(&mut protocol_controller, block6, true, 150).await;
-            parents[0] = id_6;
+            propagate_block(&mut protocol_controller, block6.clone(), true, 150).await;
+            parents[0] = block6.id;
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -277,7 +276,7 @@ async fn test_roll() {
             assert_eq!(addr_state.rolls.final_rolls, 0);
             assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
-            let (id_6t1, block6t1, _) = create_block_with_operations(
+            let (block6t1, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(6, 1),
                 &parents,
@@ -287,10 +286,10 @@ async fn test_roll() {
 
             wait_pool_slot(&mut pool_controller, cfg.t0, 6, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block6t1, true, 150).await;
-            parents[1] = id_6t1;
+            propagate_block(&mut protocol_controller, block6t1.clone(), true, 150).await;
+            parents[1] = block6t1.id;
 
-            let (id_7, block7, _) = create_block_with_operations(
+            let (block7, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(7, 0),
                 &parents,
@@ -300,8 +299,8 @@ async fn test_roll() {
 
             wait_pool_slot(&mut pool_controller, cfg.t0, 7, 0).await;
             // valid
-            propagate_block(&mut protocol_controller, block7, true, 150).await;
-            parents[0] = id_7;
+            propagate_block(&mut protocol_controller, block7.clone(), true, 150).await;
+            parents[0] = block7.id;
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -314,7 +313,7 @@ async fn test_roll() {
             assert_eq!(addr_state.rolls.final_rolls, 0);
             assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
-            let (id_7t1, block7t1, _) = create_block_with_operations(
+            let (block7t1, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(7, 1),
                 &parents,
@@ -324,12 +323,12 @@ async fn test_roll() {
 
             wait_pool_slot(&mut pool_controller, cfg.t0, 7, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block7t1, true, 150).await;
-            parents[1] = id_7t1;
+            propagate_block(&mut protocol_controller, block7t1.clone(), true, 150).await;
+            parents[1] = block7t1.id;
 
             // cycle 4
 
-            let (id_8, block8, _) = create_block_with_operations(
+            let (block8, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(8, 0),
                 &parents,
@@ -338,8 +337,8 @@ async fn test_roll() {
             );
             wait_pool_slot(&mut pool_controller, cfg.t0, 8, 0).await;
             // valid
-            propagate_block(&mut protocol_controller, block8, true, 150).await;
-            parents[0] = id_8;
+            propagate_block(&mut protocol_controller, block8.clone(), true, 150).await;
+            parents[0] = block8.id;
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -354,14 +353,14 @@ async fn test_roll() {
             let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("7000").unwrap());
 
-            let (id_8t1, block8t1, _) =
+            let (block8t1, _) =
                 create_block_with_operations(&cfg, Slot::new(8, 1), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 8, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block8t1, true, 150).await;
-            parents[1] = id_8t1;
+            propagate_block(&mut protocol_controller, block8t1.clone(), true, 150).await;
+            parents[1] = block8t1.id;
 
-            let (id_9, block9, _) = create_block_with_operations(
+            let (block9, _) = create_block_with_operations(
                 &cfg,
                 Slot::new(9, 0),
                 &parents,
@@ -370,8 +369,8 @@ async fn test_roll() {
             );
             wait_pool_slot(&mut pool_controller, cfg.t0, 9, 0).await;
             // valid
-            propagate_block(&mut protocol_controller, block9, true, 150).await;
-            parents[0] = id_9;
+            propagate_block(&mut protocol_controller, block9.clone(), true, 150).await;
+            parents[0] = block9.id;
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -386,21 +385,21 @@ async fn test_roll() {
             let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("9000").unwrap());
 
-            let (id_9t1, block9t1, _) =
+            let (block9t1, _) =
                 create_block_with_operations(&cfg, Slot::new(9, 1), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 9, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block9t1, true, 150).await;
-            parents[1] = id_9t1;
+            propagate_block(&mut protocol_controller, block9t1.clone(), true, 150).await;
+            parents[1] = block9t1.id;
 
             // cycle 5
 
-            let (id_10, block10, _) =
+            let (block10, _) =
                 create_block_with_operations(&cfg, Slot::new(10, 0), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 10, 0).await;
             // valid
-            propagate_block(&mut protocol_controller, block10, true, 150).await;
-            parents[0] = id_10;
+            propagate_block(&mut protocol_controller, block10.clone(), true, 150).await;
+            parents[0] = block10.id;
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -424,19 +423,19 @@ async fn test_roll() {
                 .balance;
             assert_eq!(balance, Amount::from_str("10000").unwrap());
 
-            let (id_10t1, block10t1, _) =
+            let (block10t1, _) =
                 create_block_with_operations(&cfg, Slot::new(10, 1), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 10, 1).await;
             // valid
-            propagate_block(&mut protocol_controller, block10t1, true, 150).await;
-            parents[1] = id_10t1;
+            propagate_block(&mut protocol_controller, block10t1.clone(), true, 150).await;
+            parents[1] = block10t1.id;
 
-            let (id_11, block11, _) =
+            let (block11, _) =
                 create_block_with_operations(&cfg, Slot::new(11, 0), &parents, priv_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 11, 0).await;
             // valid
-            propagate_block(&mut protocol_controller, block11, true, 150).await;
-            parents[0] = id_11;
+            propagate_block(&mut protocol_controller, block11.clone(), true, 150).await;
+            parents[0] = block11.id;
 
             let addr_state = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -567,13 +566,7 @@ async fn test_roll_block_creation() {
                 ..
             } => {
                 assert_eq!(target_slot, Slot::new(1, 0));
-                response_tx
-                    .send(vec![(
-                        rb_a2_r1.clone().content.compute_id().unwrap(),
-                        rb_a2_r1.clone(),
-                        10,
-                    )])
-                    .unwrap();
+                response_tx.send(vec![(rb_a2_r1.clone(), 10)]).unwrap();
                 Some(())
             }
             PoolCommand::GetEndorsements { response_tx, .. } => {
@@ -586,14 +579,14 @@ async fn test_roll_block_creation() {
         .expect("timeout while waiting for 1st operation batch request");
 
     // wait for block
-    let (_block_id, block) = protocol_controller
+    let block = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
             ProtocolCommand::IntegratedBlock { block_id, .. } => {
                 let block = storage
                     .retrieve_block(&block_id)
                     .expect(&format!("Block id : {} not found in storage", block_id));
                 let stored_block = block.read();
-                Some((block_id, stored_block.block.clone()))
+                Some(stored_block.clone())
             }
             _ => None,
         })
@@ -601,12 +594,9 @@ async fn test_roll_block_creation() {
         .expect("timeout while waiting for block");
 
     // assert it's the expected block
-    assert_eq!(block.header.content.slot, Slot::new(1, 0));
-    assert_eq!(block.operations.len(), 1);
-    assert_eq!(
-        block.operations[0].content.compute_id().unwrap(),
-        rb_a2_r1.clone().content.compute_id().unwrap()
-    );
+    assert_eq!(block.content.header.content.slot, Slot::new(1, 0));
+    assert_eq!(block.content.operations.len(), 1);
+    assert_eq!(block.content.operations[0].id, rb_a2_r1.id);
 
     let addr_state = consensus_command_sender
         .get_addresses_info(addresses.clone())
@@ -653,14 +643,14 @@ async fn test_roll_block_creation() {
         .expect("timeout while waiting for operation batch request");
 
     // wait for block
-    let (_block_id, block) = protocol_controller
+    let block = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
             ProtocolCommand::IntegratedBlock { block_id, .. } => {
                 let block = storage
                     .retrieve_block(&block_id)
                     .expect(&format!("Block id : {} not found in storage", block_id));
                 let stored_block = block.read();
-                Some((block_id, stored_block.block.clone()))
+                Some(stored_block.clone())
             }
             _ => None,
         })
@@ -668,8 +658,8 @@ async fn test_roll_block_creation() {
         .expect("timeout while waiting for block");
 
     // assert it's the expected block
-    assert_eq!(block.header.content.slot, Slot::new(1, 1));
-    assert!(block.operations.is_empty());
+    assert_eq!(block.content.header.content.slot, Slot::new(1, 1));
+    assert!(block.content.operations.is_empty());
 
     // cycle 1
 
@@ -681,13 +671,7 @@ async fn test_roll_block_creation() {
                 ..
             } => {
                 assert_eq!(target_slot, Slot::new(2, 0));
-                response_tx
-                    .send(vec![(
-                        rs_a2_r1.clone().content.compute_id().unwrap(),
-                        rs_a2_r1.clone(),
-                        10,
-                    )])
-                    .unwrap();
+                response_tx.send(vec![(rs_a2_r1.clone(), 10)]).unwrap();
                 Some(())
             }
             PoolCommand::GetEndorsements { response_tx, .. } => {
@@ -700,14 +684,14 @@ async fn test_roll_block_creation() {
         .expect("timeout while waiting for 1st operation batch request");
 
     // wait for block
-    let (_block_id, block) = protocol_controller
+    let block = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
             ProtocolCommand::IntegratedBlock { block_id, .. } => {
                 let block = storage
                     .retrieve_block(&block_id)
                     .expect(&format!("Block id : {} not found in storage", block_id));
                 let stored_block = block.read();
-                Some((block_id, stored_block.block.clone()))
+                Some(stored_block.clone())
             }
             _ => None,
         })
@@ -715,12 +699,9 @@ async fn test_roll_block_creation() {
         .expect("timeout while waiting for block");
 
     // assert it's the expected block
-    assert_eq!(block.header.content.slot, Slot::new(2, 0));
-    assert_eq!(block.operations.len(), 1);
-    assert_eq!(
-        block.operations[0].content.compute_id().unwrap(),
-        rs_a2_r1.clone().content.compute_id().unwrap()
-    );
+    assert_eq!(block.content.header.content.slot, Slot::new(2, 0));
+    assert_eq!(block.content.operations.len(), 1);
+    assert_eq!(block.content.operations[0].id, rs_a2_r1.id);
 
     let addr_state = consensus_command_sender
         .get_addresses_info(addresses.clone())
@@ -912,7 +893,7 @@ async fn test_roll_deactivation() {
                 };
                 let block_id = propagate_block(
                     &mut protocol_controller,
-                    create_block(&cfg, cur_slot, best_parents.clone(), creator_privkey).1,
+                    create_block(&cfg, cur_slot, best_parents.clone(), creator_privkey).0,
                     true,
                     500,
                 )

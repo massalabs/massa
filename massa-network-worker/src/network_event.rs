@@ -82,7 +82,8 @@ pub mod event_impl {
     use massa_models::{
         node::NodeId,
         operation::{OperationIds, Operations},
-        Block, BlockId, WrappedEndorsement, WrappedHeader,
+        wrapped::Id,
+        BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
     };
     use massa_network_exports::NodeCommand;
     use massa_network_exports::{NetworkError, NetworkEvent};
@@ -112,8 +113,7 @@ pub mod event_impl {
     pub async fn on_received_block(
         worker: &mut NetworkWorker,
         from: NodeId,
-        block: Block,
-        serialized: Vec<u8>,
+        block: WrappedBlock,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
@@ -121,11 +121,7 @@ pub mod event_impl {
         );
         if let Err(err) = worker
             .event
-            .send(NetworkEvent::ReceivedBlock {
-                node: from,
-                block,
-                serialized,
-            })
+            .send(NetworkEvent::ReceivedBlock { node: from, block })
             .await
         {
             evt_failed!(err)
@@ -154,7 +150,7 @@ pub mod event_impl {
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
-            {"hash": header.id.hash()?, "header": header, "node": from}
+            {"hash": header.id.hash(), "header": header, "node": from}
         );
         if let Err(err) = worker
             .event
@@ -220,7 +216,6 @@ pub mod event_impl {
         worker: &mut NetworkWorker,
         from: NodeId,
         operations: Operations,
-        serialized: Vec<Vec<u8>>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
@@ -231,7 +226,6 @@ pub mod event_impl {
             .send(NetworkEvent::ReceivedOperations {
                 node: from,
                 operations,
-                serialized,
             })
             .await
         {

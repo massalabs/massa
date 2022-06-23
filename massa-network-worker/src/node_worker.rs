@@ -2,14 +2,14 @@
 
 use super::{
     binders::{ReadBinder, WriteBinder},
-    messages::{Message, MessageTypeId, SerializedForm},
+    messages::{Message, MessageTypeId},
 };
 use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
-    wrapped::WrappedSerializer,
+    wrapped::{Id, WrappedSerializer},
 };
 use massa_models::{BlockId, OperationId, SerializeCompact, SerializeVarInt};
 use massa_network_exports::{
@@ -161,7 +161,7 @@ impl NodeWorker {
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
                                 let stored_block = block.read();
-                                res.extend(&stored_block.serialized);
+                                res.extend(&stored_block.serialized_data);
                                 res
                             }
                             ToSend::Header(block_id) => {
@@ -173,16 +173,8 @@ impl NodeWorker {
                                 let block = storage
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
-                                let mut stored_block = block.write();
-                                if let Some(serialized) = stored_block.serialized_header.as_ref() {
-                                    res.extend(serialized);
-                                } else {
-                                    let serialized =
-                                        stored_block.block.header.to_bytes_compact()?;
-                                    res.extend(&serialized);
-                                    stored_block.serialized_header = Some(serialized);
-                                }
-
+                                let stored_block = block.read();
+                                res.extend(&stored_block.content.header.serialized_data);
                                 res
                             }
                             ToSend::Operations(operation_ids) => {
@@ -288,25 +280,21 @@ impl NodeWorker {
 
                 // incoming socket data
                 res = self.socket_reader.next() => match res {
-                    Ok(Some((index, msg, serialized))) => {
+                    Ok(Some((index, msg))) => {
                         massa_trace!(
                             "node_worker.run_loop. receive self.socket_reader.next()", {"index": index});
                         match msg {
                             Message::Block(block) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::Block",
-                                    {"block_id": block.header.content.compute_id()?, "block": block, "node": self.node_id}
+                                    {"block_id": block.id.hash(), "block": block, "node": self.node_id}
                                 );
-                                let serialized = match serialized {
-                                    Some(SerializedForm::Block(serialized)) => serialized,
-                                    _ => panic!("Blocks should come with their serialized form.")
-                                };
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block, serialized))).await;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
                             },
                             Message::BlockHeader(header) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::BlockHeader",
-                                    {"block_id": header.content.compute_id()?, "header": header, "node": self.node_id}
+                                    {"block_id": header.id.hash(), "header": header, "node": self.node_id}
                                 );
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))).await;
                             },
@@ -331,11 +319,7 @@ impl NodeWorker {
                                     {"node": self.node_id, "operations": operations}
                                 );
                                 //massa_trace!("node_worker.run_loop. receive Message::Operations", {"node": self.node_id, "operations": operations});
-                                let serialized = match serialized {
-                                    Some(SerializedForm::Operations(serialized)) => serialized,
-                                    _ => panic!("Operations should come with their serialized form.")
-                                };
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations, serialized))).await;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
                             }
                             Message::AskForOperations(operation_ids) => {
                                 massa_trace!(

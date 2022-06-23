@@ -62,16 +62,16 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         .collect();
 
     // Block for a non-existent thread.
-    let (hash, block, _) = create_block_with_merkle_root(
+    let (block, _) = create_block_with_merkle_root(
         &cfg,
         Hash::compute_from("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
         staking_keys[0],
     );
-    protocol_controller.receive_block(block).await;
+    protocol_controller.receive_block(block.clone()).await;
 
-    validate_notify_block_attack_attempt(&mut protocol_controller, hash, 1000).await;
+    validate_notify_block_attack_attempt(&mut protocol_controller, block.id, 1000).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
@@ -128,16 +128,18 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         .collect();
 
     // Block for a non-existent thread.
-    let (hash, block, _) = create_block_with_merkle_root(
+    let (block, _) = create_block_with_merkle_root(
         &cfg,
         Hash::compute_from("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
         staking_keys[0],
     );
-    protocol_controller.receive_header(block.header).await;
+    protocol_controller
+        .receive_header(block.content.header)
+        .await;
 
-    validate_notify_block_attack_attempt(&mut protocol_controller, hash, 1000).await;
+    validate_notify_block_attack_attempt(&mut protocol_controller, block.id, 1000).await;
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);

@@ -135,7 +135,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                 .collect();
 
             // Too far into the future.
-            let (bad_parent, bad_block, _) =
+            let (bad_block, _) =
                 create_block(&cfg, Slot::new(10000, 0), parents.clone(), staking_keys[0]);
 
             for i in 1..4 {
@@ -144,7 +144,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                     &mut protocol_controller,
                     &cfg,
                     Slot::new(i, 0),
-                    vec![bad_parent, parents.clone()[0]],
+                    vec![bad_block.id, parents.clone()[0]],
                     false,
                     false,
                     staking_keys[0],
@@ -153,8 +153,10 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
             }
 
             // Now, send the bad parent.
-            protocol_controller.receive_header(bad_block.header).await;
-            validate_notpropagate_block_in_list(&mut protocol_controller, &vec![bad_parent], 10)
+            protocol_controller
+                .receive_header(bad_block.content.header)
+                .await;
+            validate_notpropagate_block_in_list(&mut protocol_controller, &vec![bad_block.id], 10)
                 .await;
 
             // Eventually, all blocks will be discarded due to their bad parent.

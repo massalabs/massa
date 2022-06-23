@@ -768,8 +768,8 @@ impl NetworkWorker {
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
                 event_impl::on_received_peer_list(self, from_node_id, &lst)?
             }
-            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block, serialized)) => {
-                event_impl::on_received_block(self, from_node_id, block, serialized).await?
+            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block)) => {
+                event_impl::on_received_block(self, from_node_id, block).await?
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) => {
                 event_impl::on_received_ask_for_blocks(self, from_node_id, list).await
@@ -783,8 +783,8 @@ impl NetworkWorker {
             NodeEvent(node, NodeEventType::BlockNotFound(block_id)) => {
                 event_impl::on_block_not_found(self, node, block_id).await
             }
-            NodeEvent(node, NodeEventType::ReceivedOperations(operations, serialized)) => {
-                event_impl::on_received_operations(self, node, operations, serialized).await
+            NodeEvent(node, NodeEventType::ReceivedOperations(operations)) => {
+                event_impl::on_received_operations(self, node, operations).await
             }
             NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) => {
                 event_impl::on_received_endorsements(self, node, endorsements).await

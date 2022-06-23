@@ -14,14 +14,10 @@ use crate::{
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
-use massa_models::wrapped::WrappedContent;
-use massa_models::SerializeCompact;
+use massa_models::EndorsementSerializer;
 use massa_models::{
-    node::NodeId,
-    wrapped::{Signable, Wrapped},
+    node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, SerializeCompact, Slot,
 };
-use massa_models::{BlockId, Endorsement, Slot, WrappedOperation};
-use massa_models::{DeserializeCompact, EndorsementSerializer};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
@@ -137,13 +133,10 @@ async fn test_node_worker_operations_message() {
     let storage: Storage = Default::default();
 
     // Create transaction.
-    let (transaction, _) = get_transaction(50, 10);
+    let transaction = get_transaction(50, 10);
     let ref_id = transaction.verify_integrity().unwrap();
 
     // Add to storage.
-    let serialized = transaction
-        .to_bytes_compact()
-        .expect("Failed to serialize operation.");
     storage.store_operation(transaction.clone());
 
     let node_fn_handle = tokio::spawn(async move {
@@ -1064,7 +1057,7 @@ async fn test_operation_messages() {
             // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
             // Send transaction message from connected peer
-            let (transaction, _) = get_transaction(50, 10);
+            let transaction = get_transaction(50, 10);
             let ref_id = transaction.verify_integrity().unwrap();
             conn1_w
                 .send(
@@ -1076,14 +1069,12 @@ async fn test_operation_messages() {
                 .unwrap();
 
             // assert it is sent to protocol
-            if let Some((operations, node, serialized)) =
+            if let Some((operations, node)) =
                 tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
                 {
-                    NetworkEvent::ReceivedOperations {
-                        operations,
-                        node,
-                        serialized,
-                    } => Some((operations, node, serialized)),
+                    NetworkEvent::ReceivedOperations { operations, node } => {
+                        Some((operations, node))
+                    }
                     _ => None,
                 })
                 .await
@@ -1091,25 +1082,15 @@ async fn test_operation_messages() {
                 assert_eq!(operations.len(), 1);
                 assert!(operations[0].verify_integrity().is_ok());
                 assert_eq!(operations[0].verify_integrity().unwrap(), ref_id);
-
-                // Check the serialized form.
-                let (serialized, _) = WrappedOperation::from_bytes_compact(&(serialized[0])[0..])
-                    .expect("Failed to deserialize operation.");
-                assert!(serialized.verify_integrity().is_ok());
-                assert_eq!(serialized.verify_integrity().unwrap(), ref_id);
-
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for received operations event");
             }
 
-            let (transaction2, _) = get_transaction(10, 50);
+            let transaction2 = get_transaction(10, 50);
             let ref_id2 = transaction2.verify_integrity().unwrap();
 
             // Add to storage.
-            let serialized = transaction2
-                .to_bytes_compact()
-                .expect("Failed to serialize operation.");
             storage.store_operation(transaction2);
 
             // reply with another transaction
@@ -1243,7 +1224,7 @@ async fn test_endorsements_messages() {
                 .await
             {
                 assert_eq!(endorsements.len(), 1);
-                let res_id = endorsements[0].content.compute_id().unwrap();
+                let res_id = endorsements[0].id;
                 assert_eq!(ref_id, res_id);
                 assert_eq!(node, conn1_id);
             } else {
@@ -1262,7 +1243,7 @@ async fn test_endorsements_messages() {
                 content.clone(),
                 EndorsementSerializer::new(),
                 &sender_priv,
-                &public_key,
+                &sender_public_key,
             )
             .unwrap();
             let ref_id = endorsement.id;

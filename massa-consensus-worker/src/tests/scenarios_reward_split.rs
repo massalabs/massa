@@ -3,8 +3,8 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 use massa_models::ledger_models::LedgerData;
-use massa_models::wrapped::Wrapped;
-use massa_models::{Address, Amount, BlockId, Endorsement, Slot};
+use massa_models::wrapped::WrappedContent;
+use massa_models::{Address, Amount, BlockId, Endorsement, EndorsementSerializer, Slot};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -89,11 +89,11 @@ async fn test_reward_split() {
                 .map(|(b, _p)| *b)
                 .collect();
 
-            let (b1_id, b1, _) = create_block(&cfg, Slot::new(1, 0), parents, slot_one_priv_key);
+            let (b1, _) = create_block(&cfg, Slot::new(1, 0), parents, slot_one_priv_key);
 
             propagate_block(
                 &mut protocol_controller,
-                b1,
+                b1.clone(),
                 true,
                 init_time
                     .saturating_add(cfg.t0.saturating_mul(2))
@@ -118,10 +118,9 @@ async fn test_reward_split() {
                 .iter()
                 .map(|(b, _p)| *b)
                 .collect();
-            assert!(parents.contains(&b1_id));
+            assert!(parents.contains(&b1.id));
 
-            let (_b2_id, mut b2, _) =
-                create_block(&cfg, Slot::new(2, 0), parents, slot_two_priv_key);
+            let (mut b2, _) = create_block(&cfg, Slot::new(2, 0), parents, slot_two_priv_key);
 
             // Endorsements in block 2.
 
@@ -131,14 +130,17 @@ async fn test_reward_split() {
                 .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key))
                 .unwrap() as u32;
             let content = Endorsement {
-                sender_public_key: slot_two_pub_key,
                 slot: Slot::new(1, 0),
                 index,
-                endorsed_block: b1_id,
+                endorsed_block: b1.id,
             };
-            let ed_1 = Wrapped::new_wrapped(content.clone(), &slot_two_priv_key)
-                .unwrap()
-                .1;
+            let ed_1 = Endorsement::new_wrapped(
+                content.clone(),
+                EndorsementSerializer::new(),
+                &slot_two_priv_key,
+                &slot_two_pub_key,
+            )
+            .unwrap();
 
             // Creator of first block endorses the first.
             let index = slot_one_endorsements_addrs
@@ -146,14 +148,17 @@ async fn test_reward_split() {
                 .position(|&addr| addr == Address::from_public_key(&slot_one_pub_key))
                 .unwrap() as u32;
             let content = Endorsement {
-                sender_public_key: slot_one_pub_key,
                 slot: Slot::new(1, 0),
                 index,
-                endorsed_block: b1_id,
+                endorsed_block: b1.id,
             };
-            let ed_2 = Wrapped::new_wrapped(content.clone(), &slot_one_priv_key)
-                .unwrap()
-                .1;
+            let ed_2 = Endorsement::new_wrapped(
+                content.clone(),
+                EndorsementSerializer::new(),
+                &slot_one_priv_key,
+                &slot_one_pub_key,
+            )
+            .unwrap();
 
             // Creator of second block endorses the first, again.
             let index = slot_one_endorsements_addrs
@@ -161,17 +166,20 @@ async fn test_reward_split() {
                 .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key))
                 .unwrap() as u32;
             let content = Endorsement {
-                sender_public_key: slot_two_pub_key,
                 slot: Slot::new(1, 0),
                 index,
-                endorsed_block: b1_id,
+                endorsed_block: b1.id,
             };
-            let ed_3 = Wrapped::new_wrapped(content.clone(), &slot_two_priv_key)
-                .unwrap()
-                .1;
+            let ed_3 = Endorsement::new_wrapped(
+                content.clone(),
+                EndorsementSerializer::new(),
+                &slot_two_priv_key,
+                &slot_two_pub_key,
+            )
+            .unwrap();
 
             // Add endorsements to block.
-            b2.header.content.endorsements = vec![ed_1, ed_2, ed_3];
+            b2.content.header.content.endorsements = vec![ed_1, ed_2, ed_3];
 
             // Propagate block.
             tokio::time::sleep(cfg.t0.to_duration()).await;

@@ -4,7 +4,6 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
-use massa_models::wrapped::Signable;
 use massa_models::WrappedOperation;
 use massa_models::{
     clique::Clique, ledger_models::LedgerData, Amount, BlockId, OperationSearchResult,
@@ -78,18 +77,14 @@ async fn test_get_operation() {
                     consensus_command_sender,
                     consensus_event_receiver| {
             let ops = consensus_command_sender
-                .get_operations(
-                    ops.iter()
-                        .map(|op| op.content.compute_id().unwrap())
-                        .collect(),
-                )
+                .get_operations(ops.iter().map(|op| op.id).collect())
                 .await
                 .unwrap();
 
             let mut expected = HashMap::new();
 
             expected.insert(
-                op2.content.compute_id().unwrap(),
+                op2.id,
                 OperationSearchResult {
                     status: OperationSearchResultStatus::Pending,
                     op: op2,
@@ -98,7 +93,7 @@ async fn test_get_operation() {
                 },
             );
             expected.insert(
-                op3.content.compute_id().unwrap(),
+                op3.id,
                 OperationSearchResult {
                     status: OperationSearchResultStatus::Pending,
                     op: op3,
@@ -126,10 +121,7 @@ async fn test_get_operation() {
                     in_blocks: ex_blocks,
                     ..
                 } = expected.get(id).unwrap();
-                assert_eq!(
-                    op.content.compute_id().unwrap(),
-                    ex_op.content.compute_id().unwrap()
-                );
+                assert_eq!(op.id, ex_op.id);
                 assert_eq!(in_pool, ex_pool);
                 assert_eq!(in_blocks.len(), ex_blocks.len());
                 for (b_id, val) in in_blocks.iter() {
@@ -153,27 +145,25 @@ fn get_bootgraph(
     operations: Vec<WrappedOperation>,
     ledger: ConsensusLedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
-    let (g0_id, genesis_0) =
-        get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);
-    let (g1_id, genesis_1) =
-        get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
-    let (p1t0_id, p1t0) = get_export_active_test_block(
+    let genesis_0 = get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);
+    let genesis_1 = get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
+    let p1t0 = get_export_active_test_block(
         creator,
-        vec![(g0_id, 0), (g1_id, 0)],
+        vec![(genesis_0.block_id, 0), (genesis_1.block_id, 0)],
         vec![operations[0].clone()],
         Slot::new(1, 0),
         true,
     );
-    let (p1t1_id, p1t1) = get_export_active_test_block(
+    let p1t1 = get_export_active_test_block(
         creator,
-        vec![(g0_id, 0), (g1_id, 0)],
+        vec![(genesis_0.block_id, 0), (genesis_1.block_id, 0)],
         vec![],
         Slot::new(1, 1),
         false,
     );
-    let (p2t0_id, p2t0) = get_export_active_test_block(
+    let p2t0 = get_export_active_test_block(
         creator,
-        vec![(p1t0_id, 1), (p1t1_id, 1)],
+        vec![(p1t0.block_id, 1), (p1t1.block_id, 1)],
         vec![operations[1].clone()],
         Slot::new(2, 0),
         false,
@@ -182,41 +172,50 @@ fn get_bootgraph(
         BootstrapableGraph {
             /// Map of active blocks, where blocks are in their exported version.
             active_blocks: vec![
-                (g0_id, genesis_0.clone()),
-                (g1_id, genesis_1.clone()),
-                (p1t0_id, p1t0.clone()),
-                (p1t1_id, p1t1.clone()),
-                (p2t0_id, p2t0.clone()),
+                (genesis_0.block_id, genesis_0.clone()),
+                (genesis_1.block_id, genesis_1.clone()),
+                (p1t0.block_id, p1t0.clone()),
+                (p1t1.block_id, p1t1.clone()),
+                (p2t0.block_id, p2t0.clone()),
             ]
             .into_iter()
             .collect(),
             /// Best parents hashes in each thread.
-            best_parents: vec![(p2t0_id, 2), (p1t1_id, 1)],
+            best_parents: vec![(p2t0.block_id, 2), (p1t1.block_id, 1)],
             /// Latest final period and block hash in each thread.
-            latest_final_blocks_periods: vec![(g0_id, 0u64), (g1_id, 0u64)],
+            latest_final_blocks_periods: vec![
+                (genesis_0.block_id, 0u64),
+                (genesis_1.block_id, 0u64),
+            ],
             /// Head of the incompatibility graph.
             gi_head: vec![
-                (g0_id, Default::default()),
-                (p1t0_id, Default::default()),
-                (p2t0_id, Default::default()),
-                (g1_id, Default::default()),
-                (p1t0_id, Default::default()),
-                (p2t0_id, Default::default()),
+                (genesis_0.block_id, Default::default()),
+                (p1t0.block_id, Default::default()),
+                (p2t0.block_id, Default::default()),
+                (genesis_1.block_id, Default::default()),
+                (p1t0.block_id, Default::default()),
+                (p2t0.block_id, Default::default()),
             ]
             .into_iter()
             .collect(),
 
             /// List of maximal cliques of compatible blocks.
             max_cliques: vec![Clique {
-                block_ids: vec![g0_id, p1t0_id, g1_id, p1t1_id, p2t0_id]
-                    .into_iter()
-                    .collect(),
+                block_ids: vec![
+                    genesis_0.block_id,
+                    p1t0.block_id,
+                    genesis_1.block_id,
+                    p1t1.block_id,
+                    p2t0.block_id,
+                ]
+                .into_iter()
+                .collect(),
                 fitness: 123,
                 is_blockclique: true,
             }],
             ledger,
         },
-        p1t0_id,
-        p2t0_id,
+        p1t0.block_id,
+        p2t0.block_id,
     )
 }

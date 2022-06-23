@@ -75,7 +75,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
     stats::NetworkStats,
-    Block, BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
+    BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
@@ -108,6 +108,7 @@ pub enum NodeCommand {
 /// Event types that node worker can emit
 /// Append on receive something from inside and outside.
 /// Outside initialization with `Received` prefix.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum NodeEventType {
     /// Node we are connected to asked for advertised peers
@@ -115,7 +116,7 @@ pub enum NodeEventType {
     /// Node we are connected to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
     /// Node we are connected to sent block
-    ReceivedBlock(Block, Vec<u8>),
+    ReceivedBlock(WrappedBlock),
     /// Node we are connected to sent block header
     ReceivedBlockHeader(WrappedHeader),
     /// Node we are connected to asks for a block.
@@ -123,7 +124,7 @@ pub enum NodeEventType {
     /// Didn't found given block,
     BlockNotFound(BlockId),
     /// Received full operations.
-    ReceivedOperations(Operations, Vec<Vec<u8>>),
+    ReceivedOperations(Operations),
     /// Received an operation id batch announcing new operations
     ReceivedOperationAnnouncements(OperationIds),
     /// Receive a list of wanted operations

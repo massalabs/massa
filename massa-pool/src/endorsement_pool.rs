@@ -53,7 +53,7 @@ impl EndorsementPool {
                 let creator = &endorsement.creator_address;
                 if endorsement.content.endorsed_block == parent
                     && endorsement.content.slot == target_slot
-                    && creators.get(endorsement.content.index as usize) == Some(&creator)
+                    && creators.get(endorsement.content.index as usize) == Some(creator)
                 {
                     Some(Ok(endorsement.clone()))
                 } else {

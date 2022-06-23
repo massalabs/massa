@@ -44,6 +44,7 @@ use std::{
 use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 enum HeaderOrBlock {
     Header(WrappedHeader),
     Block(

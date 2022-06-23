@@ -8,8 +8,11 @@ use massa_consensus_exports::{
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::Hash;
-use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
-use massa_models::{address::AddressState, wrapped::Wrapped};
+use massa_models::{
+    address::{AddressCycleProductionStats, AddressState},
+    stats::ConsensusStats,
+    OperationId, WrappedBlock,
+};
 use massa_models::{
     api::{LedgerInfo, RollsInfo},
     WrappedEndorsement,
@@ -21,11 +24,10 @@ use massa_models::{
 };
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-    wrapped::WrappedContent,
+    wrapped::{Id, WrappedContent},
 };
 use massa_models::{
-    Address, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, EndorsementId,
-    SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Endorsement, Slot,
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
@@ -456,7 +458,7 @@ impl ConsensusWorker {
                 .get_endorsements(thread_parent_slot, thread_parent, endorsement_draws)
                 .await?
                 .into_iter()
-                .map(|(id, e)| ((id, e.content.index), e))
+                .map(|e| ((e.id, e.content.index), e))
                 .unzip()
         } else {
             (Map::default(), Vec::new())
@@ -467,7 +469,7 @@ impl ConsensusWorker {
         });
 
         // create empty block
-        let (_block_id, header) = Wrapped::new_wrapped(
+        let header = BlockHeader::new_wrapped(
             BlockHeader {
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
@@ -476,8 +478,9 @@ impl ConsensusWorker {
             },
             BlockHeaderSerializer::new(),
             creator_private_key,
+            creator_public_key,
         )?;
-        let block = Block::new_wrapped(
+        let block: WrappedBlock = Block::new_wrapped(
             Block {
                 header,
                 operations: Vec::new(),
@@ -489,12 +492,12 @@ impl ConsensusWorker {
 
         // initialize remaining block space and remaining operation count
         let mut remaining_block_space = (self.cfg.max_block_size as u64)
-            .checked_sub(serialized_block.len() as u64)
+            .checked_sub(block.serialized_data.len() as u64)
             .ok_or_else(|| {
                 ConsensusError::BlockCreationError(format!(
                     "consensus config max_block_size ({}) is smaller than an empty block ({})",
                     self.cfg.max_block_size,
-                    serialized_block.len()
+                    block.serialized_data.len()
                 ))
             })?;
         let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
@@ -559,9 +562,9 @@ impl ConsensusWorker {
             finished = operation_batch.len() < self.cfg.operation_batch_size
                 || self.cfg.max_operations_fill_attempts == attempts;
 
-            for (op_id, op, op_size) in operation_batch.into_iter() {
+            for (op, op_size) in operation_batch.into_iter() {
                 // exclude operation from future batches
-                exclude_operations.insert(op_id);
+                exclude_operations.insert(op.id);
 
                 // check that the operation fits in size
                 if op_size > remaining_block_space {
@@ -569,7 +572,7 @@ impl ConsensusWorker {
                 }
 
                 // check that we have block gas left
-                let op_gas = op.content.get_gas_usage();
+                let op_gas = op.get_gas_usage();
                 if total_gas.saturating_add(op_gas) > self.cfg.max_gas_per_block {
                     // no more gas left: do not include
                     continue;
@@ -591,12 +594,13 @@ impl ConsensusWorker {
                 };
 
                 // add operation
-                operation_set.insert(op_id, (operation_set.len(), op.content.expire_period));
+                let op_hash = op.id.hash().into_bytes();
+                operation_set.insert(op.id, (operation_set.len(), op.content.expire_period));
                 operations.push(op);
                 remaining_block_space -= op_size;
                 remaining_operation_count -= 1;
                 total_gas += op_gas;
-                total_hash.extend(op_id.to_bytes());
+                total_hash.extend(op_hash);
 
                 // check if the block still has some space
                 if remaining_block_space == 0 || remaining_operation_count == 0 {
@@ -626,15 +630,14 @@ impl ConsensusWorker {
         )?;
         let slot = block.content.header.content.slot;
         massa_trace!("create block", { "block": block });
-
-        let serialized_block = block.to_bytes_compact()?;
+        let block_id = block.id;
 
         // Add to shared storage
         self.block_db.storage.store_block(block);
 
         info!(
             "Staked block {} with address {}, at cycle {}, period {}, thread {}",
-            block.id,
+            block_id,
             creator_addr,
             cur_slot.get_cycle(self.cfg.periods_per_cycle),
             cur_slot.period,
@@ -643,7 +646,7 @@ impl ConsensusWorker {
 
         // add block to db
         self.block_db.incoming_block(
-            block.id,
+            block_id,
             slot,
             operation_set,
             endorsement_ids,
@@ -1132,22 +1135,19 @@ impl ConsensusWorker {
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<()> {
         match event {
             ProtocolEvent::ReceivedBlock {
-                block_id,
                 block,
-                serialized,
                 slot,
                 operation_set,
                 endorsement_ids,
             } => {
                 massa_trace!(
                     "consensus.consensus_worker.process_protocol_event.received_block",
-                    { "block_id": block_id }
+                    { "block_id": block.id.hash() }
                 );
+                let block_id = block.id;
 
                 // Store block in shared storage.
-                self.block_db
-                    .storage
-                    .store_block(block_id, block, serialized);
+                self.block_db.storage.store_block(block);
 
                 self.block_db.incoming_block(
                     block_id,
@@ -1391,14 +1391,14 @@ impl ConsensusWorker {
                     if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
                         massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
                             { "index": endorsement_index, "addr": addr, "pubkey": pub_k, "unlocked": true });
-                        let (endorsement_id, endorsement) = create_endorsement(
+                        let endorsement = create_endorsement(
                             block_slot,
                             *pub_k,
                             priv_k,
                             endorsement_index as u32,
                             block_id,
                         )?;
-                        endorsements.insert(endorsement_id, endorsement);
+                        endorsements.insert(endorsement.id, endorsement);
                         self.endorsed_slots.insert(block_slot);
                     } else {
                         massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
@@ -1439,13 +1439,17 @@ pub fn create_endorsement(
     private_key: &PrivateKey,
     index: u32,
     endorsed_block: BlockId,
-) -> Result<(EndorsementId, WrappedEndorsement)> {
+) -> Result<WrappedEndorsement> {
     let content = Endorsement {
         slot,
         index,
         endorsed_block,
     };
-    let (e_id, endorsement) =
-        Wrapped::new_wrapped(content, EndorsementSerializer::new(), private_key)?;
-    Ok((e_id, endorsement))
+    let endorsement = Endorsement::new_wrapped(
+        content,
+        EndorsementSerializer::new(),
+        private_key,
+        &sender_public_key,
+    )?;
+    Ok(endorsement)
 }

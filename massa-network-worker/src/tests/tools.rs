@@ -11,7 +11,7 @@ use crate::NetworkSettings;
 
 use massa_hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::wrapped::{Wrapped, WrappedContent};
+use massa_models::wrapped::WrappedContent;
 use massa_models::{
     Address, Amount, BlockId, Operation, OperationSerializer, OperationType, SerializeCompact,
     Version, WrappedOperation,

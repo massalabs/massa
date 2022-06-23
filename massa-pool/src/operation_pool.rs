@@ -381,7 +381,7 @@ impl OperationPool {
                             (
                                 *op_id,
                                 OperationSearchResult {
-                                    op: op,
+                                    op,
                                     in_pool: true,
                                     in_blocks: Map::default(),
                                     status: OperationSearchResultStatus::Pending,

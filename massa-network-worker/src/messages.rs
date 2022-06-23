@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use std::{convert::TryInto, net::IpAddr};
 
 /// All messages that can be sent or received.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Message {
     /// Initiates handshake.
@@ -61,15 +62,6 @@ pub enum Message {
     Operations(Operations),
     /// Endorsements
     Endorsements(Vec<WrappedEndorsement>),
-}
-
-/// The serialized form of an object, as received from the network.
-#[derive(Debug)]
-pub enum SerializedForm {
-    /// A serialized block.
-    Block(Vec<u8>),
-    /// A serialized list of operations.
-    Operations(Vec<Vec<u8>>),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
