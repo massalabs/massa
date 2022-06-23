@@ -735,53 +735,16 @@ impl ExecutionState {
         Ok(context_guard!(self).settle_slot())
     }
 
-    /// Check that the slot is within the reach of history
-    fn verify_active_slot(&self, slot: Slot) {
-        if slot <= self.final_cursor {
-            panic!("cannot execute at a slot before finality");
-        }
-        let max_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        if slot > max_slot {
-            panic!("cannot execute at a slot beyond active cursor + 1");
-        }
-    }
-
-    /// Computes the index of a given slot in the active history
-    fn get_active_index(&self, slot: Slot) -> Option<usize> {
-        let history_lock = self.active_history.read();
-        let history_len = history_lock.0.len() as u64;
-        if let Some(hist_front) = &history_lock.0.front() {
-            slot.slots_since(&hist_front.slot, self.config.thread_count)
-                .map(|v| {
-                    if v >= history_len {
-                        None
-                    } else {
-                        v.try_into().ok()
-                    }
-                })
-                .ok()
-                .flatten()
-        } else {
-            None
-        }
-    }
-
     /// Gets a parallel balance both at the latest final and active executed slots
-    #[allow(dead_code)]
     pub fn get_final_and_active_parallel_balance(
         &self,
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
         let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
-        self.verify_active_slot(self.active_cursor);
-        let index = self.get_active_index(self.active_cursor);
         let search_result = self
             .active_history
             .read()
-            .fetch_active_history_balance(address, index);
+            .fetch_active_history_balance(address);
         (
             final_balance,
             match search_result {
@@ -799,12 +762,10 @@ impl ExecutionState {
         key: &Hash,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
-        self.verify_active_slot(self.active_cursor);
-        let index = self.get_active_index(self.active_cursor);
         let search_result = self
             .active_history
             .read()
-            .fetch_active_history_data_entry(address, key, index);
+            .fetch_active_history_data_entry(address, key);
         (
             final_entry.clone(),
             match search_result {

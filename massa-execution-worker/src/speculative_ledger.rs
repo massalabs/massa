@@ -79,7 +79,7 @@ impl SpeculativeLedger {
             match self
                 .active_history
                 .read()
-                .fetch_active_history_balance(addr, None)
+                .fetch_active_history_balance(addr)
             {
                 HistorySearchResult::Present(active_balance) => Some(active_balance),
                 HistorySearchResult::NoInfo => {
@@ -103,7 +103,7 @@ impl SpeculativeLedger {
             match self
                 .active_history
                 .read()
-                .fetch_active_history_bytecode(addr, None)
+                .fetch_active_history_bytecode(addr)
             {
                 HistorySearchResult::Present(bytecode) => Some(bytecode),
                 HistorySearchResult::NoInfo => self.final_state.read().ledger.get_bytecode(addr),
@@ -173,7 +173,7 @@ impl SpeculativeLedger {
             match self
                 .active_history
                 .read()
-                .fetch_active_history_balance(addr, None)
+                .fetch_active_history_balance(addr)
             {
                 HistorySearchResult::Present(_balance) => true,
                 HistorySearchResult::NoInfo => self.final_state.read().ledger.entry_exists(addr),
@@ -236,7 +236,7 @@ impl SpeculativeLedger {
             match self
                 .active_history
                 .read()
-                .fetch_active_history_data_entry(addr, key, None)
+                .fetch_active_history_data_entry(addr, key)
             {
                 HistorySearchResult::Present(entry) => Some(entry),
                 HistorySearchResult::NoInfo => {
@@ -261,7 +261,7 @@ impl SpeculativeLedger {
             match self
                 .active_history
                 .read()
-                .fetch_active_history_data_entry(addr, key, None)
+                .fetch_active_history_data_entry(addr, key)
             {
                 HistorySearchResult::Present(_entry) => true,
                 HistorySearchResult::NoInfo => {

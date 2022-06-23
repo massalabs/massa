@@ -22,19 +22,8 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active balance of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_active_history_balance(
-        &self,
-        addr: &Address,
-        index: Option<usize>,
-    ) -> HistorySearchResult<Amount> {
-        let history_length = self.0.len();
-        let iter = self
-            .0
-            .iter()
-            .take(index.map_or_else(|| history_length, |v| v.saturating_add(1)))
-            .rev();
-
-        for output in iter {
+    pub fn fetch_active_history_balance(&self, addr: &Address) -> HistorySearchResult<Amount> {
+        for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(v)) => {
                     return HistorySearchResult::Present(v.parallel_balance)
@@ -53,19 +42,8 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active bytecode of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_active_history_bytecode(
-        &self,
-        addr: &Address,
-        index: Option<usize>,
-    ) -> HistorySearchResult<Vec<u8>> {
-        let history_length = self.0.len();
-        let iter = self
-            .0
-            .iter()
-            .take(index.map_or_else(|| history_length, |v| v.saturating_add(1)))
-            .rev();
-
-        for output in iter {
+    pub fn fetch_active_history_bytecode(&self, addr: &Address) -> HistorySearchResult<Vec<u8>> {
+        for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(v)) => {
                     return HistorySearchResult::Present(v.bytecode.to_vec())
@@ -88,16 +66,8 @@ impl ActiveHistory {
         &self,
         addr: &Address,
         key: &Hash,
-        index: Option<usize>,
     ) -> HistorySearchResult<Vec<u8>> {
-        let history_length = self.0.len();
-        let iter = self
-            .0
-            .iter()
-            .take(index.map_or_else(|| history_length, |v| v.saturating_add(1)))
-            .rev();
-
-        for output in iter {
+        for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {
                 Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
                     match datastore.get(key) {
