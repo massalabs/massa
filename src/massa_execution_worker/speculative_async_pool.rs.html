@@ -108,19 +108,33 @@
 <span id="102">102</span>
 <span id="103">103</span>
 <span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The speculative asynchronous pool represents the state of</span>
 <span class="doccomment">//! the pool at an arbitrary execution slot.</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::active_history::ActiveHistory</span>;
 <span class="kw">use</span> <span class="ident">massa_async_pool</span>::{<span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>, <span class="ident">AsyncPool</span>, <span class="ident">AsyncPoolChanges</span>};
+<span class="kw">use</span> <span class="ident">massa_final_state::FinalState</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
+<span class="kw">use</span> <span class="ident">parking_lot::RwLock</span>;
+<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
 <span class="doccomment">/// The `SpeculativeAsyncPool` holds a copy of the final state asynchronous pool</span>
 <span class="doccomment">/// to which it applies the previous changes.</span>
 <span class="doccomment">/// The `SpeculativeAsyncPool` manipulates this copy to compute the full pool</span>
 <span class="doccomment">/// while keeping track of all the newly added changes.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SpeculativeAsyncPool</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">SpeculativeAsyncPool</span> {
     <span class="doccomment">/// Copy of the final asynchronous pool with the previous changes applied</span>
     <span class="ident">async_pool</span>: <span class="ident">AsyncPool</span>,
 
@@ -135,10 +149,16 @@
     <span class="doccomment">/// Creates a new `SpeculativeAsyncPool`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `async_pool`: a copy of the final state `AsyncPool`</span>
-    <span class="doccomment">/// * `previous_changes`: accumulation of changes that previously happened to the asynchronous pool since finality</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="kw-2">mut</span> <span class="ident">async_pool</span>: <span class="ident">AsyncPool</span>, <span class="ident">previous_changes</span>: <span class="ident">AsyncPoolChanges</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">async_pool</span>.<span class="ident">apply_changes_unchecked</span>(<span class="ident">previous_changes</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">active_history</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ActiveHistory</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="self">Self</span> {
+        <span class="comment">// deduce speculative async pool from history</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">async_pool</span> <span class="op">=</span> <span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">async_pool</span>.<span class="ident">clone</span>();
+        <span class="kw">for</span> <span class="ident">history_item</span> <span class="kw">in</span> <span class="ident">active_history</span>.<span class="ident">read</span>().<span class="number">0</span>.<span class="ident">iter</span>() {
+            <span class="ident">async_pool</span>.<span class="ident">apply_changes_unchecked</span>(<span class="kw-2">&amp;</span><span class="ident">history_item</span>.<span class="ident">state_changes</span>.<span class="ident">async_pool_changes</span>);
+        }
+
         <span class="ident">SpeculativeAsyncPool</span> {
             <span class="ident">async_pool</span>,
             <span class="ident">emitted</span>: <span class="ident">Default::default</span>(),

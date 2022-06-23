@@ -488,7 +488,7 @@
                         .<span class="ident">apply_changes</span>(<span class="ident">final_state_changes</span>.<span class="ident">ledger_changes</span>.<span class="ident">clone</span>(), <span class="ident">slot</span>);
                     <span class="ident">write_final_state</span>
                         .<span class="ident">async_pool</span>
-                        .<span class="ident">apply_changes_unchecked</span>(<span class="ident">final_state_changes</span>.<span class="ident">async_pool_changes</span>.<span class="ident">clone</span>());
+                        .<span class="ident">apply_changes_unchecked</span>(<span class="kw-2">&amp;</span><span class="ident">final_state_changes</span>.<span class="ident">async_pool_changes</span>);
                     <span class="ident">write_final_state</span>.<span class="ident">slot</span> <span class="op">=</span> <span class="ident">slot</span>;
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BootstrapClientMessage::AskFinalStatePart</span> {
                         <span class="ident">last_key</span>: <span class="ident">old_key</span>,

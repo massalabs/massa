@@ -601,14 +601,6 @@
 <span id="595">595</span>
 <span id="596">596</span>
 <span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module represents the context in which the VM executes bytecode.</span>
@@ -618,6 +610,7 @@
 <span class="doccomment">//! More generally, the context acts only on its own state</span>
 <span class="doccomment">//! and does not write anything persistent to the consensus state.</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::active_history::ActiveHistory</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger</span>;
 <span class="kw">use</span> <span class="ident">massa_async_pool</span>::{<span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>};
@@ -717,23 +710,16 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
     <span class="doccomment">/// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing</span>
-    <span class="doccomment">/// * `previous_changes`: list of ledger changes that happened since the final ledger state and before the current execution</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
     <span class="doccomment">/// A new (empty) `ExecutionContext` instance</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">previous_changes</span>: <span class="ident">StateChanges</span>,
+        <span class="ident">active_history</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ActiveHistory</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="self">Self</span> {
         <span class="ident">ExecutionContext</span> {
-            <span class="ident">speculative_ledger</span>: <span class="ident">SpeculativeLedger::new</span>(
-                <span class="ident">final_state</span>.<span class="ident">clone</span>(),
-                <span class="ident">previous_changes</span>.<span class="ident">ledger_changes</span>,
-            ),
-            <span class="ident">speculative_async_pool</span>: <span class="ident">SpeculativeAsyncPool::new</span>(
-                <span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">async_pool</span>.<span class="ident">clone</span>(),
-                <span class="ident">previous_changes</span>.<span class="ident">async_pool_changes</span>,
-            ),
+            <span class="ident">speculative_ledger</span>: <span class="ident">SpeculativeLedger::new</span>(<span class="ident">final_state</span>.<span class="ident">clone</span>(), <span class="ident">active_history</span>.<span class="ident">clone</span>()),
+            <span class="ident">speculative_async_pool</span>: <span class="ident">SpeculativeAsyncPool::new</span>(<span class="ident">final_state</span>, <span class="ident">active_history</span>),
             <span class="ident">max_gas</span>: <span class="ident">Default::default</span>(),
             <span class="ident">gas_price</span>: <span class="ident">Default::default</span>(),
             <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="number">0</span>),
@@ -783,7 +769,6 @@
     <span class="doccomment">/// # arguments</span>
     <span class="doccomment">/// * `slot`: slot at which the execution will happen</span>
     <span class="doccomment">/// * `req`: parameters of the read only execution</span>
-    <span class="doccomment">/// * `previous_changes`: list of state changes that happened since the `final_state` state and before this execution</span>
     <span class="doccomment">/// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
@@ -793,8 +778,8 @@
         <span class="ident">max_gas</span>: <span class="ident">u64</span>,
         <span class="ident">gas_price</span>: <span class="ident">Amount</span>,
         <span class="ident">call_stack</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecutionStackElement</span><span class="op">&gt;</span>,
-        <span class="ident">previous_changes</span>: <span class="ident">StateChanges</span>,
         <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">active_history</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ActiveHistory</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="self">Self</span> {
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.</span>
         <span class="comment">// Note that consecutive read-only calls for the same slot will get the same random seed.</span>
@@ -819,7 +804,7 @@
             <span class="ident">stack</span>: <span class="ident">call_stack</span>,
             <span class="ident">read_only</span>: <span class="bool-val">true</span>,
             <span class="ident">unsafe_rng</span>,
-            ..<span class="ident">ExecutionContext::new</span>(<span class="ident">final_state</span>, <span class="ident">previous_changes</span>)
+            ..<span class="ident">ExecutionContext::new</span>(<span class="ident">final_state</span>, <span class="ident">active_history</span>)
         }
     }
 
@@ -849,7 +834,6 @@
     <span class="doccomment">/// # arguments</span>
     <span class="doccomment">/// * `slot`: slot at which the execution will happen</span>
     <span class="doccomment">/// * `opt_block_id`: optional ID of the block at that slot</span>
-    <span class="doccomment">/// * `previous_changes`: list of state changes that happened since the final state state and before this execution</span>
     <span class="doccomment">/// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
@@ -857,8 +841,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">active_slot</span>(
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
         <span class="ident">opt_block_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-        <span class="ident">previous_changes</span>: <span class="ident">StateChanges</span>,
         <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">active_history</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ActiveHistory</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="self">Self</span> {
         <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.</span>
 
@@ -880,7 +864,7 @@
             <span class="ident">slot</span>,
             <span class="ident">opt_block_id</span>,
             <span class="ident">unsafe_rng</span>,
-            ..<span class="ident">ExecutionContext::new</span>(<span class="ident">final_state</span>, <span class="ident">previous_changes</span>)
+            ..<span class="ident">ExecutionContext::new</span>(<span class="ident">final_state</span>, <span class="ident">active_history</span>)
         }
     }
 

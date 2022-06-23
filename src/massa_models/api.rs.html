@@ -527,35 +527,11 @@
 <span id="521">521</span>
 <span id="522">522</span>
 <span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::address::AddressCycleProductionStats</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ledger_models::LedgerData</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node::NodeId</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::Set</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::stats</span>::{<span class="ident">ConsensusStats</span>, <span class="ident">NetworkStats</span>, <span class="ident">PoolStats</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::SignedEndorsement</span>;
@@ -728,25 +704,6 @@
     }
 }
 
-<span class="doccomment">/// Sequential balance state (really same as `SCELedgerEntry`)</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SCELedgerInfo</span> {
-    <span class="doccomment">/// sequential coins</span>
-    <span class="kw">pub</span> <span class="ident">balance</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// stored bytes</span>
-    <span class="kw">pub</span> <span class="ident">module</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// datastore</span>
-    <span class="kw">pub</span> <span class="ident">datastore</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">SCELedgerInfo</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tBalance: {}&quot;</span>, <span class="self">self</span>.<span class="ident">balance</span>)<span class="question-mark">?</span>;
-        <span class="comment">// I choose not to display neither the module nor the datastore because bytes</span>
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
 <span class="doccomment">/// All you ever dream to know about an address</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddressInfo</span> {
@@ -757,9 +714,9 @@
     <span class="doccomment">/// parallel balance info</span>
     <span class="kw">pub</span> <span class="ident">ledger_info</span>: <span class="ident">LedgerInfo</span>,
     <span class="doccomment">/// final sequential balance</span>
-    <span class="kw">pub</span> <span class="ident">final_sce_ledger_info</span>: <span class="ident">SCELedgerInfo</span>,
+    <span class="kw">pub</span> <span class="ident">final_balance_info</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>,
     <span class="doccomment">/// latest sequential balance</span>
-    <span class="kw">pub</span> <span class="ident">candidate_sce_ledger_info</span>: <span class="ident">SCELedgerInfo</span>,
+    <span class="kw">pub</span> <span class="ident">candidate_balance_info</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>,
     <span class="doccomment">/// rolls</span>
     <span class="kw">pub</span> <span class="ident">rolls</span>: <span class="ident">RollsInfo</span>,
     <span class="doccomment">/// next slots this address will be selected to create a block</span>
@@ -781,12 +738,9 @@
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Address: {}&quot;</span>, <span class="self">self</span>.<span class="ident">address</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Thread: {}&quot;</span>, <span class="self">self</span>.<span class="ident">thread</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Sequential balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">ledger_info</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Final Parallel balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">final_sce_ledger_info</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
-            <span class="string">&quot;Candidate Parallel balance:\n{}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">candidate_sce_ledger_info</span>
-        )<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Parallel balance:&quot;</span>,)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tFinal: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">final_balance_info</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tCandidate: {:?}\n&quot;</span>, <span class="self">self</span>.<span class="ident">candidate_balance_info</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Rolls:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">rolls</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             <span class="ident">f</span>,
@@ -853,8 +807,8 @@
             <span class="ident">thread</span>: <span class="self">self</span>.<span class="ident">thread</span>,
             <span class="ident">balance</span>: <span class="self">self</span>.<span class="ident">ledger_info</span>,
             <span class="ident">rolls</span>: <span class="self">self</span>.<span class="ident">rolls</span>,
-            <span class="ident">final_sce_balance</span>: <span class="self">self</span>.<span class="ident">final_sce_ledger_info</span>.<span class="ident">clone</span>(),
-            <span class="ident">candidate_sce_balance</span>: <span class="self">self</span>.<span class="ident">candidate_sce_ledger_info</span>.<span class="ident">clone</span>(),
+            <span class="ident">final_balance</span>: <span class="self">self</span>.<span class="ident">final_balance_info</span>,
+            <span class="ident">candidate_balance</span>: <span class="self">self</span>.<span class="ident">candidate_balance_info</span>,
         }
     }
 }
@@ -886,9 +840,9 @@
     <span class="doccomment">/// rolls</span>
     <span class="kw">pub</span> <span class="ident">rolls</span>: <span class="ident">RollsInfo</span>,
     <span class="doccomment">/// final sequential balance</span>
-    <span class="kw">pub</span> <span class="ident">final_sce_balance</span>: <span class="ident">SCELedgerInfo</span>,
+    <span class="kw">pub</span> <span class="ident">final_balance</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>,
     <span class="doccomment">/// latest sequential balance</span>
-    <span class="kw">pub</span> <span class="ident">candidate_sce_balance</span>: <span class="ident">SCELedgerInfo</span>,
+    <span class="kw">pub</span> <span class="ident">candidate_balance</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">CompactAddressInfo</span> {
@@ -896,8 +850,8 @@
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Address: {}&quot;</span>, <span class="self">self</span>.<span class="ident">address</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Thread: {}&quot;</span>, <span class="self">self</span>.<span class="ident">thread</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Parallel balance:&quot;</span>,)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tFinal: {}&quot;</span>, <span class="self">self</span>.<span class="ident">final_sce_balance</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tCandidate: {}\n&quot;</span>, <span class="self">self</span>.<span class="ident">candidate_sce_balance</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tFinal: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">final_balance</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tCandidate: {:?}\n&quot;</span>, <span class="self">self</span>.<span class="ident">candidate_balance</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Sequential balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">balance</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Rolls:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">rolls</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())

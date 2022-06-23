@@ -274,17 +274,17 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
     <span class="doccomment">/// * `changes`: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_changes_unchecked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">changes</span>: <span class="ident">AsyncPoolChanges</span>) {
-        <span class="kw">for</span> <span class="ident">change</span> <span class="kw">in</span> <span class="ident">changes</span>.<span class="number">0</span>.<span class="ident">into_iter</span>() {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_changes_unchecked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">changes</span>: <span class="kw-2">&amp;</span><span class="ident">AsyncPoolChanges</span>) {
+        <span class="kw">for</span> <span class="ident">change</span> <span class="kw">in</span> <span class="ident">changes</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
             <span class="kw">match</span> <span class="ident">change</span> {
                 <span class="comment">// add a new message to the pool</span>
                 <span class="ident">Change::Add</span>(<span class="ident">msg_id</span>, <span class="ident">msg</span>) =&gt; {
-                    <span class="self">self</span>.<span class="ident">messages</span>.<span class="ident">insert</span>(<span class="ident">msg_id</span>, <span class="ident">msg</span>);
+                    <span class="self">self</span>.<span class="ident">messages</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">msg_id</span>, <span class="ident">msg</span>.<span class="ident">clone</span>());
                 }
 
                 <span class="comment">// delete a message from the pool</span>
                 <span class="ident">Change::Delete</span>(<span class="ident">msg_id</span>) =&gt; {
-                    <span class="self">self</span>.<span class="ident">messages</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">msg_id</span>);
+                    <span class="self">self</span>.<span class="ident">messages</span>.<span class="ident">remove</span>(<span class="ident">msg_id</span>);
                 }
             }
         }

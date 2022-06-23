@@ -1101,6 +1101,7 @@
 <span id="1095">1095</span>
 <span id="1096">1096</span>
 <span id="1097">1097</span>
+<span id="1098">1098</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -1991,7 +1992,8 @@
                                 <span class="kw">match</span> <span class="ident">addresses_info</span>.<span class="ident">get</span>(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(<span class="ident">info</span>) =&gt; {
                                         <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">total</span>
-                                            <span class="op">|</span><span class="op">|</span> <span class="ident">info</span>.<span class="ident">candidate_sce_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">coins</span>
+                                            <span class="op">|</span><span class="op">|</span> <span class="ident">info</span>.<span class="ident">candidate_balance_info</span>.<span class="ident">unwrap_or_default</span>()
+                                                <span class="op">&lt;</span> <span class="ident">coins</span>
                                         {
                                             <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
