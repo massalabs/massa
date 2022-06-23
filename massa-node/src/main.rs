@@ -198,6 +198,7 @@ async fn launch(
         execution_config,
         final_state.clone(),
         shared_storage.clone(),
+        None,
     );
 
     // init consensus configuration
