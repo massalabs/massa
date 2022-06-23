@@ -6,12 +6,16 @@ use super::{
     mock_protocol_controller::MockProtocolController,
 };
 use crate::start_consensus_controller;
+
+use massa_cipher::decrypt;
+use massa_consensus_exports::{error::ConsensusResult, tools::TEST_PASSWORD};
 use massa_consensus_exports::{
     settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig, ConsensusEventReceiver,
 };
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
 use massa_hash::Hash;
+use massa_models::prehash::Map;
 use massa_models::{
     prehash::Set,
     signed::{Signable, Signed},
@@ -24,7 +28,7 @@ use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use std::{collections::HashSet, future::Future};
+use std::{collections::HashSet, future::Future, path::Path};
 use std::{
     str::FromStr,
     sync::{Arc, Mutex},
@@ -636,6 +640,26 @@ pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateK
     panic!("Matching key for draw not found.");
 }
 
+/// Load staking keys from file and derive public keys and addresses
+pub async fn load_initial_staking_keys(
+    path: &Path,
+    password: &str,
+) -> ConsensusResult<Map<Address, (PublicKey, PrivateKey)>> {
+    if !std::path::Path::is_file(path) {
+        return Ok(Map::default());
+    }
+    serde_json::from_slice::<Vec<PrivateKey>>(&decrypt(password, &tokio::fs::read(path).await?)?)?
+        .iter()
+        .map(|private_key| {
+            let public_key = derive_public_key(private_key);
+            Ok((
+                Address::from_public_key(&public_key),
+                (public_key, *private_key),
+            ))
+        })
+        .collect()
+}
+
 /// Runs a consensus test, passing a mock pool controller to it.
 pub async fn consensus_pool_test<F, V>(
     cfg: ConsensusConfig,
@@ -682,6 +706,7 @@ pub async fn consensus_pool_test<F, V>(
         }
     });
     // launch consensus controller
+    let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -695,6 +720,10 @@ pub async fn consensus_pool_test<F, V>(
             boot_graph,
             storage.clone(),
             0,
+            password.clone(),
+            load_initial_staking_keys(&cfg.staking_keys_path, &password)
+                .await
+                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -775,6 +804,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         }
     });
     // launch consensus controller
+    let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -788,6 +818,10 @@ pub async fn consensus_pool_test_with_storage<F, V>(
             boot_graph,
             storage.clone(),
             0,
+            password.clone(),
+            load_initial_staking_keys(&cfg.staking_keys_path, &password)
+                .await
+                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -850,6 +884,7 @@ where
     });
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     // launch consensus controller
+    let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -863,6 +898,10 @@ where
             None,
             storage.clone(),
             0,
+            password.clone(),
+            load_initial_staking_keys(&cfg.staking_keys_path, &password)
+                .await
+                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -917,6 +956,7 @@ where
     });
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     // launch consensus controller
+    let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -930,6 +970,10 @@ where
             None,
             storage.clone(),
             0,
+            password.clone(),
+            load_initial_staking_keys(&cfg.staking_keys_path, &password)
+                .await
+                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
