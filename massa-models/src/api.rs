@@ -3,7 +3,6 @@
 use crate::address::AddressCycleProductionStats;
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
-use crate::prehash::Map;
 use crate::prehash::Set;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::SignedEndorsement;
@@ -176,25 +175,6 @@ impl std::fmt::Display for RollsInfo {
     }
 }
 
-/// Sequential balance state (really same as `SCELedgerEntry`)
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct SCELedgerInfo {
-    /// sequential coins
-    pub balance: Amount,
-    /// stored bytes
-    pub module: Vec<u8>,
-    /// datastore
-    pub datastore: Map<Hash, Vec<u8>>,
-}
-
-impl std::fmt::Display for SCELedgerInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "\tBalance: {}", self.balance)?;
-        // I choose not to display neither the module nor the datastore because bytes
-        Ok(())
-    }
-}
-
 /// All you ever dream to know about an address
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AddressInfo {
@@ -205,9 +185,9 @@ pub struct AddressInfo {
     /// parallel balance info
     pub ledger_info: LedgerInfo,
     /// final sequential balance
-    pub final_sce_ledger_info: SCELedgerInfo,
+    pub final_balance_info: Option<Amount>,
     /// latest sequential balance
-    pub candidate_sce_ledger_info: SCELedgerInfo,
+    pub candidate_balance_info: Option<Amount>,
     /// rolls
     pub rolls: RollsInfo,
     /// next slots this address will be selected to create a block
@@ -229,12 +209,9 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Sequential balance:\n{}", self.ledger_info)?;
-        writeln!(f, "Final Parallel balance:\n{}", self.final_sce_ledger_info)?;
-        writeln!(
-            f,
-            "Candidate Parallel balance:\n{}",
-            self.candidate_sce_ledger_info
-        )?;
+        writeln!(f, "Parallel balance:",)?;
+        writeln!(f, "\tFinal: {:?}", self.final_balance_info)?;
+        writeln!(f, "\tCandidate: {:?}\n", self.candidate_balance_info)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,
@@ -301,8 +278,8 @@ impl AddressInfo {
             thread: self.thread,
             balance: self.ledger_info,
             rolls: self.rolls,
-            final_sce_balance: self.final_sce_ledger_info.clone(),
-            candidate_sce_balance: self.candidate_sce_ledger_info.clone(),
+            final_balance: self.final_balance_info,
+            candidate_balance: self.candidate_balance_info,
         }
     }
 }
@@ -334,9 +311,9 @@ pub struct CompactAddressInfo {
     /// rolls
     pub rolls: RollsInfo,
     /// final sequential balance
-    pub final_sce_balance: SCELedgerInfo,
+    pub final_balance: Option<Amount>,
     /// latest sequential balance
-    pub candidate_sce_balance: SCELedgerInfo,
+    pub candidate_balance: Option<Amount>,
 }
 
 impl std::fmt::Display for CompactAddressInfo {
@@ -344,8 +321,8 @@ impl std::fmt::Display for CompactAddressInfo {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Parallel balance:",)?;
-        writeln!(f, "\tFinal: {}", self.final_sce_balance)?;
-        writeln!(f, "\tCandidate: {}\n", self.candidate_sce_balance)?;
+        writeln!(f, "\tFinal: {:?}", self.final_balance)?;
+        writeln!(f, "\tCandidate: {:?}\n", self.candidate_balance)?;
         writeln!(f, "Sequential balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         Ok(())

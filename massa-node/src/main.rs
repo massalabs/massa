@@ -6,9 +6,12 @@
 #![warn(unused_crate_dependencies)]
 extern crate massa_logging;
 use crate::settings::{POOL_CONFIG, SETTINGS};
+
+use dialoguer::Password;
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
+use massa_cipher::{decrypt, encrypt};
 use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
     ConsensusManager,
@@ -25,7 +28,9 @@ use massa_models::{
         END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
         OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
-    init_serialization_context, SerializationContext,
+    init_serialization_context,
+    prehash::Map,
+    Address, SerializationContext,
 };
 use massa_network_exports::{Establisher, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -34,10 +39,12 @@ use massa_pos_exports::SelectorManager;
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
+use massa_signature::{derive_public_key, PrivateKey, PublicKey};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
-use std::{process, sync::Arc};
+use std::{path::Path, process, sync::Arc};
+use structopt::StructOpt;
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
@@ -46,7 +53,10 @@ use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 mod settings;
 
-async fn launch() -> (
+async fn launch(
+    password: &str,
+    staking_keys: &Map<Address, (PublicKey, PrivateKey)>,
+) -> (
     ConsensusEventReceiver,
     Option<BootstrapManager>,
     ConsensusManager,
@@ -194,6 +204,7 @@ async fn launch() -> (
         selector_controller,
     );
 
+    // init consensus configuration
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -209,6 +220,8 @@ async fn launch() -> (
             bootstrap_state.graph,
             shared_storage.clone(),
             bootstrap_state.compensation_millis,
+            password.to_string(),
+            staking_keys.to_owned(),
         )
         .await
         .expect("could not start consensus controller");
@@ -335,12 +348,62 @@ async fn stop(
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 }
 
+#[derive(StructOpt)]
+struct Args {
+    /// Wallet password
+    #[structopt(short = "p", long = "pwd")]
+    password: Option<String>,
+}
+
+/// Ask for the staking keys file password and load them
+async fn load_or_create_staking_keys_file(
+    password: Option<String>,
+    path: &Path,
+) -> anyhow::Result<(String, Map<Address, (PublicKey, PrivateKey)>)> {
+    if path.is_file() {
+        let password = password.unwrap_or_else(|| {
+            Password::new()
+                .with_prompt("Enter staking keys file password")
+                .interact()
+                .expect("IO error: Password reading failed, staking keys file couldn't be unlocked")
+        });
+        let staking_keys: anyhow::Result<Map<Address, (PublicKey, PrivateKey)>> =
+            serde_json::from_slice::<Vec<PrivateKey>>(&decrypt(
+                &password,
+                &tokio::fs::read(path).await?,
+            )?)?
+            .iter()
+            .map(|private_key| {
+                let public_key = derive_public_key(private_key);
+                Ok((
+                    Address::from_public_key(&public_key),
+                    (public_key, *private_key),
+                ))
+            })
+            .collect();
+        Ok((password, staking_keys?))
+    } else {
+        let password = password.unwrap_or_else(|| {
+            Password::new()
+                .with_prompt("Enter new password for staking keys file")
+                .with_confirmation("Confirm password", "Passwords mismatching")
+                .interact()
+                .expect("IO error: Password reading failed, staking keys file couldn't be created")
+        });
+        let json = serde_json::to_string_pretty(&Vec::<PrivateKey>::new())?;
+        let encrypted_data = encrypt(&password, json.as_bytes())?;
+        tokio::fs::write(path, encrypted_data).await?;
+        Ok((password, Map::default()))
+    }
+}
+
 /// To instrument `massa-node` with `tokio-console` run
 /// ```shell
 /// RUSTFLAGS="--cfg tokio_unstable" cargo run --bin massa-node --features instrument
 /// ```
+#[paw::main]
 #[tokio::main]
-async fn main() {
+async fn main(args: Args) -> anyhow::Result<()> {
     use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
     #[cfg(feature = "instrument")]
@@ -364,6 +427,9 @@ async fn main() {
         .init();
 
     // run
+    let (password, staking_keys) =
+        load_or_create_staking_keys_file(args.password, &SETTINGS.consensus.staking_keys_path)
+            .await?;
     loop {
         let (
             mut consensus_event_receiver,
@@ -377,7 +443,7 @@ async fn main() {
             mut api_private_stop_rx,
             api_private_handle,
             api_public_handle,
-        ) = launch().await;
+        ) = launch(&password, &staking_keys).await;
 
         // interrupt signal listener
         let stop_signal = signal::ctrl_c();
@@ -432,4 +498,5 @@ async fn main() {
             break;
         }
     }
+    Ok(())
 }

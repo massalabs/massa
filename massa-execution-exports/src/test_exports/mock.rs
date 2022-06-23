@@ -5,7 +5,7 @@
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
-use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, BlockId, Slot};
+use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, Amount, BlockId, Slot};
 use std::{
     collections::HashMap,
     sync::{
@@ -107,28 +107,19 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
+    fn get_final_and_active_parallel_balance(
+        &self,
+        _address: &Address,
+    ) -> (Option<Amount>, Option<Amount>) {
+        (None, None)
+    }
+
     fn get_final_and_active_data_entry(
         &self,
         _addr: &Address,
         _key: &Hash,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         (None, None)
-    }
-
-    fn get_final_and_active_ledger_entry(
-        &self,
-        addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        let (response_tx, response_rx) = mpsc::channel();
-        self.0
-            .lock()
-            .unwrap()
-            .send(MockExecutionControllerMessage::GetFullLedgerEntry {
-                addr: *addr,
-                response_tx,
-            })
-            .unwrap();
-        response_rx.recv().unwrap()
     }
 
     fn execute_readonly_request(

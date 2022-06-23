@@ -24,7 +24,7 @@ mod error;
 pub struct Wallet {
     /// Private keys and derived public keys and addresses
     pub keys: Map<Address, (PublicKey, PrivateKey)>,
-    /// Path to the file containing the private keys (not encrypted)
+    /// Path to the file containing the private keys (encrypted)
     pub wallet_path: PathBuf,
     /// Password
     pub password: String,
