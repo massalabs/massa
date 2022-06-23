@@ -17,7 +17,7 @@ use std::str::FromStr;
 /// while providing a convenient decimal interface for users
 /// The underlying `u64` raw representation if a fixed-point value with factor `AMOUNT_DECIMAL_FACTOR`
 /// The minimal value is 0 and the maximal value is 18446744073.709551615
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
 impl Amount {
@@ -138,6 +138,13 @@ impl fmt::Display for Amount {
             .unwrap() // will never panic
             .to_string();
         write!(f, "{}", res_string)
+    }
+}
+
+/// Use display impl in debug to get the decimal representation
+impl fmt::Debug for Amount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
