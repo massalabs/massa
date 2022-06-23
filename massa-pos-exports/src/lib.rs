@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 mod controller_traits;
+mod pos_final_state_impl;
 mod types;
 
 pub use controller_traits::{SelectorController, SelectorManager};
