@@ -26,6 +26,7 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
 use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
 use massa_models::{Amount, Slot};
+use massa_pos_exports::SelectorController;
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
@@ -67,6 +68,9 @@ pub(crate) struct ExecutionState {
     execution_interface: Box<dyn Interface>,
     /// Shared storage across all modules
     storage: Storage,
+    /// PoS selector
+    #[allow(dead_code)]
+    selector: Box<dyn SelectorController>,
 }
 
 pub(crate) enum HistorySearchResult<T> {
@@ -89,6 +93,7 @@ impl ExecutionState {
         config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
         storage: Storage,
+        selector: Box<dyn SelectorController>,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -120,6 +125,7 @@ impl ExecutionState {
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
             storage,
+            selector,
         }
     }
 
