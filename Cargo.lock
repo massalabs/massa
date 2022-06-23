@@ -1961,6 +1961,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_pos_exports"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitvec",
+ "displaydoc",
+ "massa_final_state",
+ "massa_hash",
+ "massa_ledger_exports",
+ "massa_models",
+ "massa_time",
+ "thiserror",
+]
+
+[[package]]
+name = "massa_pos_worker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "massa_final_state",
+ "massa_models",
+ "massa_pos_exports",
+ "massa_time",
+ "parking_lot 0.12.0",
+ "rand 0.8.5",
+ "rand_xoshiro",
+ "tracing",
+]
+
+[[package]]
 name = "massa_proof_of_stake_exports"
 version = "0.1.0"
 dependencies = [

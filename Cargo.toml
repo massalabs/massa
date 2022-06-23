@@ -29,6 +29,8 @@ members = [
   "massa-ledger-worker",
   "massa-ledger-exports",
   "massa-final-state",
+  "massa-pos-exports",
+  "massa-pos-worker",
 ]
 resolver = "2"
 
