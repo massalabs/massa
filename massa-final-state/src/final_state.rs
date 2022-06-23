@@ -39,12 +39,6 @@ impl FinalState {
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
-        // NOTE: THIS SHOULD NOT BE DONE HERE
-        // load the initial final ledger from file
-        // let ledger = FinalLedger::new(config.ledger_config.clone()).map_err(|err| {
-        //     FinalStateError::LedgerError(format!("could not initialize ledger: {}", err))
-        // })?;
-
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
 
@@ -79,7 +73,7 @@ impl FinalState {
         self.ledger
             .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool
-            .apply_changes_unchecked(changes.async_pool_changes.clone());
+            .apply_changes_unchecked(&changes.async_pool_changes);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
