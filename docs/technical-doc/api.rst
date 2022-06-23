@@ -251,7 +251,6 @@ Get information on a block given its hash.
                     },
                     "signature": String
                 }
-                ],
                 "operation_merkle_root": String, // Hash of all operations
                 "parents": [String], // Block ids, as many as thread count
                 "slot": {
@@ -428,13 +427,8 @@ Get addresses.
                 final_rolls: Number,
             },
             thread: Number,
-            sce_ledger_info : {
-                balance: String // reprensents an amount
-                module: null OR [Number] // stored bytecode
-                datastore: [
-                    xxxxxxxxxxxxxxxxxxxxxx: [Number] // bytes
-                ]
-            }
+            final_balance_info: null OR Number,
+            candidate_balance_info: null OR Number,
         },
     ];
 

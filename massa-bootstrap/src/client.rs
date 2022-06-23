@@ -75,7 +75,7 @@ async fn stream_final_state(
                         .apply_changes(final_state_changes.ledger_changes.clone(), slot);
                     write_final_state
                         .async_pool
-                        .apply_changes_unchecked(final_state_changes.async_pool_changes.clone());
+                        .apply_changes_unchecked(&final_state_changes.async_pool_changes);
                     write_final_state.slot = slot;
                     if let Some(BootstrapClientMessage::AskFinalStatePart {
                         last_key: old_key,
@@ -330,7 +330,11 @@ async fn connect_to_server(
         .get_connector(bootstrap_settings.connect_timeout)
         .await?; // cancellable
     let socket = connector.connect(*addr).await?; // cancellable
-    Ok(BootstrapClientBinder::new(socket, *pub_key))
+    Ok(BootstrapClientBinder::new(
+        socket,
+        *pub_key,
+        bootstrap_settings.max_bytes_read_write,
+    ))
 }
 
 /// Gets the state from a bootstrap server

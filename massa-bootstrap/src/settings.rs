@@ -37,4 +37,6 @@ pub struct BootstrapSettings {
     pub per_ip_min_interval: MassaTime,
     /// Max size of the IP list
     pub ip_list_max_size: usize,
+    /// Read-Write limitation for a connection in bytes per seconds
+    pub max_bytes_read_write: f64,
 }

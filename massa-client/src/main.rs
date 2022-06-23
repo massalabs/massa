@@ -8,11 +8,12 @@ use anyhow::Result;
 use atty::Stream;
 use cmds::Command;
 use console::style;
+use dialoguer::Password;
 use massa_sdk::Client;
 use massa_wallet::Wallet;
 use serde::Serialize;
 use std::net::IpAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 mod cmds;
@@ -31,7 +32,7 @@ struct Args {
     /// Port to listen on (Massa private API).
     #[structopt(long)]
     private_port: Option<u16>,
-    /// Address to listen on.
+    /// Address to listen on
     #[structopt(long)]
     ip: Option<IpAddr>,
     /// Command that client would execute (non-interactive mode)
@@ -40,7 +41,7 @@ struct Args {
     /// Optional command parameter (as a JSON string)
     #[structopt(name = "PARAMETERS")]
     parameters: Vec<String>,
-    /// Path of wallet file.
+    /// Path of wallet file
     #[structopt(
         short = "w",
         long = "wallet",
@@ -51,11 +52,31 @@ struct Args {
     /// Enable a mode where input/output are serialized as JSON
     #[structopt(short = "j", long = "json")]
     json: bool,
+    #[structopt(short = "p", long = "pwd")]
+    /// Wallet password
+    password: Option<String>,
 }
 
 #[derive(Serialize)]
 struct JsonError {
     error: String,
+}
+
+/// Ask for the wallet password
+/// If the wallet does not exist, it will require password confirmation
+fn ask_password(wallet_path: &Path) -> String {
+    if wallet_path.is_file() {
+        Password::new()
+            .with_prompt("Enter wallet password")
+            .interact()
+            .expect("IO error: Password reading failed, walled couldn't be unlocked")
+    } else {
+        Password::new()
+            .with_prompt("Enter new password for wallet")
+            .with_confirmation("Confirm password", "Passwords mismatching")
+            .interact()
+            .expect("IO error: Password reading failed, wallet couldn't be created")
+    }
 }
 
 #[paw::main]
@@ -76,7 +97,8 @@ async fn main(args: Args) -> Result<()> {
         None => settings.default_node.private_port,
     };
     // ...
-    let mut wallet = Wallet::new(args.wallet)?;
+    let password = args.password.unwrap_or_else(|| ask_password(&args.wallet));
+    let mut wallet = Wallet::new(args.wallet, password)?;
     let client = Client::new(address, public_port, private_port).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode

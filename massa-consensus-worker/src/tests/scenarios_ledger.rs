@@ -1,19 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use super::tools::*;
 use super::{
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
 };
 use crate::start_consensus_controller;
-use massa_execution_exports::test_exports::MockExecutionController;
-
-use super::tools::*;
-use massa_consensus_exports::ConsensusConfig;
 
 use massa_consensus_exports::settings::ConsensusChannels;
+use massa_consensus_exports::tools::TEST_PASSWORD;
+use massa_consensus_exports::ConsensusConfig;
+use massa_execution_exports::test_exports::MockExecutionController;
 use massa_graph::{ledger::Ledger, LedgerConfig};
 use massa_models::ledger_models::LedgerData;
 use massa_models::ledger_models::{LedgerChange, LedgerChanges};
+use massa_models::prehash::Map;
 use massa_models::{Amount, Slot};
 use massa_signature::PrivateKey;
 use massa_storage::Storage;
@@ -516,6 +517,8 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             None,
             storage,
             0,
+            TEST_PASSWORD.to_string(),
+            Map::default(),
         )
         .await
         .expect("could not start consensus controller");

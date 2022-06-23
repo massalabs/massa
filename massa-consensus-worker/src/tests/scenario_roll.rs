@@ -1,9 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_consensus_exports::tools;
-use massa_consensus_exports::{settings::ConsensusChannels, ConsensusConfig};
+use massa_consensus_exports::{settings::ConsensusChannels, tools::TEST_PASSWORD, ConsensusConfig};
 use massa_execution_exports::test_exports::MockExecutionController;
-use massa_models::{Address, Amount, BlockId, Slot};
+use massa_models::{prehash::Map, Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
 use massa_storage::Storage;
@@ -28,6 +28,8 @@ use crate::{
 };
 use massa_models::ledger_models::LedgerData;
 use massa_models::prehash::Set;
+
+use super::tools::load_initial_staking_keys;
 
 #[tokio::test]
 #[serial]
@@ -508,6 +510,7 @@ async fn test_roll_block_creation() {
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
     let storage: Storage = Default::default();
     // launch consensus controller
+    let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -521,6 +524,10 @@ async fn test_roll_block_creation() {
             None,
             storage.clone(),
             0,
+            password.clone(),
+            load_initial_staking_keys(&cfg.staking_keys_path, &password)
+                .await
+                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -797,6 +804,8 @@ async fn test_roll_deactivation() {
             None,
             storage,
             0,
+            TEST_PASSWORD.to_string(),
+            Map::default(),
         )
         .await
         .expect("could not start consensus controller");

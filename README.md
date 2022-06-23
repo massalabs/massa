@@ -47,7 +47,7 @@ For project announcements, we mainly use
 -   [Creating a wallet](https://massa.readthedocs.io/en/latest/testnet/wallet.html)
 -   [Staking](https://massa.readthedocs.io/en/latest/testnet/staking.html)
 -   [Routability tutorial](https://massa.readthedocs.io/en/latest/testnet/routability.html) (Optional)
--   [Testnet rewards program]((https://massa.readthedocs.io/en/latest/testnet/rewards.html) (Optional)
+-   [Testnet rewards program](https://massa.readthedocs.io/en/latest/testnet/rewards.html) (Optional)
 
 ## More tutorials
 

@@ -702,10 +702,12 @@ impl NetworkWorker {
         if self.cfg.max_in_connection_overflow > self.handshake_peer_list_futures.len() {
             let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
             let timeout = self.cfg.peer_list_send_timeout.to_duration();
+            let max_bytes_read = self.cfg.max_bytes_read;
+            let max_bytes_write = self.cfg.max_bytes_write;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
-                    let mut writer = WriteBinder::new(writer);
-                    let mut reader = ReadBinder::new(reader);
+                    let mut writer = WriteBinder::new(writer, max_bytes_read);
+                    let mut reader = ReadBinder::new(reader, max_bytes_write);
                     match tokio::time::timeout(
                         timeout,
                         futures::future::try_join(
@@ -752,6 +754,8 @@ impl NetworkWorker {
             self.cfg.connect_timeout,
             self.version,
             connection_id,
+            self.cfg.max_bytes_read,
+            self.cfg.max_bytes_write,
         ));
         Ok(())
     }

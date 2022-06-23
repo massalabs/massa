@@ -11,8 +11,9 @@ extern crate massa_logging;
 
 pub use consensus_controller::{ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager};
 pub use error::ConsensusError;
-use massa_models::{Address, Slot};
 pub use settings::{ConsensusConfig, ConsensusSettings};
+
+use massa_models::{Address, Slot};
 
 mod consensus_controller;
 
@@ -32,4 +33,5 @@ pub mod events;
 type SelectionDraws = Vec<(Slot, (Address, Vec<Address>))>;
 
 /// consensus test tools
+#[cfg(feature = "testing")]
 pub mod tools;
