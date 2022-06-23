@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["DefaultNode",""],["SETTINGS",""],["Settings",""]]});
+window.SIDEBAR_ITEMS = {"struct":[["DefaultNode",""],["SETTINGS",""],["Settings",""]]};

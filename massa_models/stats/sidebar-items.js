@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["ConsensusStats","stats produced by consensus module"],["NetworkStats","stats produced by network module"],["PoolStats","stats produced by pool module"]]});
+window.SIDEBAR_ITEMS = {"struct":[["ConsensusStats","stats produced by consensus module"],["NetworkStats","stats produced by network module"],["PoolStats","stats produced by pool module"]]};

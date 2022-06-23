@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Clique","Mutually compatible blocks in the graph"]]});
+window.SIDEBAR_ITEMS = {"struct":[["Clique","Mutually compatible blocks in the graph"]]};

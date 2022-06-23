@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ReadOnlyResult","The result of the read-only execution."]],"struct":[["ExecuteReadOnlyResponse","The response to a request for a read-only execution."]]});
+window.SIDEBAR_ITEMS = {"enum":[["ReadOnlyResult","The result of the read-only execution."]],"struct":[["ExecuteReadOnlyResponse","The response to a request for a read-only execution."]]};

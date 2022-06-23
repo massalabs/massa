@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["ActiveBlock","Block that was checked as valid, with some useful pre-computed data"]]});
+window.SIDEBAR_ITEMS = {"struct":[["ActiveBlock","Block that was checked as valid, with some useful pre-computed data"]]};

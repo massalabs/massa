@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Storage","A storage of block, shared by various components."],["StoredBlock","Stored block: block + serialized block + (serialized header)"],["StoredOperation","Stored operation + serialized operation"]]});
+window.SIDEBAR_ITEMS = {"struct":[["Storage","A storage of block, shared by various components."],["StoredBlock","Stored block: block + serialized block + (serialized header)"],["StoredOperation","Stored operation + serialized operation"]]};

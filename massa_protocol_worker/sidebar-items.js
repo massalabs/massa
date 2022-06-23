@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["protocol_worker","protocol worker"],["worker_operations_impl","Contains the implementation of the life cycle of operations"]]});
+window.SIDEBAR_ITEMS = {"mod":[["protocol_worker","protocol worker"],["worker_operations_impl","Contains the implementation of the life cycle of operations"]]};
