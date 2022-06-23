@@ -1559,6 +1559,8 @@ dependencies = [
  "massa_network_exports",
  "massa_network_worker",
  "massa_pool",
+ "massa_pos_exports",
+ "massa_pos_worker",
  "massa_protocol_exports",
  "massa_protocol_worker",
  "massa_signature",

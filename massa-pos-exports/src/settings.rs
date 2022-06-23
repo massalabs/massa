@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use massa_signature::PrivateKey;
+use massa_signature::{PrivateKey, PRIVATE_KEY_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
 
 /// Configuration of selector thread
@@ -24,4 +24,20 @@ pub struct SelectorConfig {
     pub initial_rolls_path: PathBuf,
     /// initial seed
     pub initial_draw_seed: String,
+}
+
+impl Default for SelectorConfig {
+    fn default() -> Self {
+        Self {
+            thread_count: 0,
+            blocks_in_cycle: 0,
+            endorsement_count: 0,
+            max_draw_cache: 0,
+            lookback_cycles: 0,
+            periods_per_cycle: 0,
+            genesis_key: PrivateKey::from_bytes(&[0u8; PRIVATE_KEY_SIZE_BYTES]).unwrap(),
+            initial_rolls_path: PathBuf::default(),
+            initial_draw_seed: String::default(),
+        }
+    }
 }

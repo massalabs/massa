@@ -13,8 +13,8 @@ use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use massa_cipher::{decrypt, encrypt};
 use massa_consensus_exports::{
-    events::ConsensusEvent, settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig,
-    ConsensusEventReceiver, ConsensusManager,
+    events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
+    ConsensusManager,
 };
 use massa_consensus_worker::start_consensus_controller;
 use massa_execution_exports::{ExecutionConfig, ExecutionManager};
@@ -32,9 +32,11 @@ use massa_models::{
     prehash::Map,
     Address, SerializationContext,
 };
-use massa_network_exports::{Establisher, NetworkCommandSender, NetworkManager};
+use massa_network_exports::{Establisher, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
+use massa_pos_exports::{SelectorConfig, SelectorManager};
+use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
 use massa_signature::{derive_public_key, PrivateKey, PublicKey};
@@ -57,11 +59,10 @@ async fn launch(
 ) -> (
     PoolCommandSender,
     ConsensusEventReceiver,
-    ConsensusCommandSender,
-    NetworkCommandSender,
     Option<BootstrapManager>,
     ConsensusManager,
     Box<dyn ExecutionManager>,
+    Box<dyn SelectorManager>,
     PoolManager,
     ProtocolManager,
     NetworkManager,
@@ -183,6 +184,9 @@ async fn launch(
     .await
     .expect("could not start pool controller");
 
+    // launch selector worker
+    let (selector_manager, selector_controller) =
+        start_selector_worker(4096, SelectorConfig::default());
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -198,7 +202,7 @@ async fn launch(
         execution_config,
         final_state.clone(),
         shared_storage.clone(),
-        None,
+        selector_controller,
     );
 
     // init consensus configuration
@@ -265,11 +269,10 @@ async fn launch(
     (
         pool_command_sender,
         consensus_event_receiver,
-        consensus_command_sender,
-        network_command_sender,
         bootstrap_manager,
         consensus_manager,
         execution_manager,
+        selector_manager,
         pool_manager,
         protocol_manager,
         network_manager,
@@ -283,6 +286,7 @@ struct Managers {
     bootstrap_manager: Option<BootstrapManager>,
     consensus_manager: ConsensusManager,
     execution_manager: Box<dyn ExecutionManager>,
+    selector_manager: Box<dyn SelectorManager>,
     pool_manager: PoolManager,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
@@ -294,6 +298,7 @@ async fn stop(
         bootstrap_manager,
         consensus_manager,
         mut execution_manager,
+        mut selector_manager,
         pool_manager,
         protocol_manager,
         network_manager,
@@ -321,8 +326,11 @@ async fn stop(
         .await
         .expect("consensus shutdown failed");
 
-    // Stop execution controller.
+    // stop execution controller
     execution_manager.stop();
+
+    // stop selector controller
+    selector_manager.stop();
 
     // stop pool controller
     let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
@@ -426,13 +434,12 @@ async fn main(args: Args) -> anyhow::Result<()> {
             .await?;
     loop {
         let (
-            _pool_command_sender,
+            _,
             mut consensus_event_receiver,
-            _consensus_command_sender,
-            _network_command_sender,
             bootstrap_manager,
             consensus_manager,
             execution_manager,
+            selector_manager,
             pool_manager,
             protocol_manager,
             network_manager,
@@ -480,6 +487,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
                 bootstrap_manager,
                 consensus_manager,
                 execution_manager,
+                selector_manager,
                 pool_manager,
                 protocol_manager,
                 network_manager,
