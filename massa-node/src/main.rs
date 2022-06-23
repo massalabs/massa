@@ -188,6 +188,7 @@ async fn launch() -> (
         execution_config,
         final_state.clone(),
         shared_storage.clone(),
+        None,
     );
 
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
