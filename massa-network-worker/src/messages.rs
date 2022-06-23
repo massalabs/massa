@@ -3,7 +3,7 @@
 use massa_models::{
     array_from_slice,
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
-    operation::{OperationIds, Operations},
+    operation::{OperationPrefixIds, Operations},
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
     Endorsement, EndorsementId, IpAddrDeserializer, IpAddrSerializer, ModelsError,
@@ -50,9 +50,9 @@ pub enum Message {
     /// Block not found
     BlockNotFound(BlockId),
     /// Batch of operation ids
-    OperationsAnnouncement(OperationIds),
+    OperationsAnnouncement(OperationPrefixIds),
     /// Someone ask for operations.
-    AskForOperations(OperationIds),
+    AskForOperations(OperationPrefixIds),
     /// A list of operations
     Operations(Operations),
     /// Endorsements
@@ -322,14 +322,16 @@ impl DeserializeCompact for Message {
                 Message::Operations(operations)
             }
             MessageTypeId::AskForOperations => {
-                let (operation_ids, delta) = OperationIds::from_bytes_compact(&buffer[cursor..])?;
+                let (operation_prefix_ids, delta) =
+                    OperationPrefixIds::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                Message::AskForOperations(operation_ids)
+                Message::AskForOperations(operation_prefix_ids)
             }
             MessageTypeId::OperationsAnnouncement => {
-                let (operation_ids, delta) = OperationIds::from_bytes_compact(&buffer[cursor..])?;
+                let (operation_prefix_ids, delta) =
+                    OperationPrefixIds::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                Message::OperationsAnnouncement(operation_ids)
+                Message::OperationsAnnouncement(operation_prefix_ids)
             }
             MessageTypeId::Endorsements => {
                 // length

@@ -14,6 +14,7 @@ use crate::{
 };
 use massa_hash::Hash;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
+use nom::AsBytes;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -61,6 +62,36 @@ impl std::fmt::Debug for OperationId {
             )
         } else {
             write!(f, "{}", self.0.to_bs58_check())
+        }
+    }
+}
+
+impl std::fmt::Display for OperationPrefixId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if cfg!(feature = "hash-prefix") {
+            write!(
+                f,
+                "{}-{}",
+                OPERATION_ID_STRING_PREFIX,
+                bs58::encode(self.0.as_bytes()).into_string()
+            )
+        } else {
+            write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
+        }
+    }
+}
+
+impl std::fmt::Debug for OperationPrefixId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if cfg!(feature = "hash-prefix") {
+            write!(
+                f,
+                "{}-{}",
+                OPERATION_ID_STRING_PREFIX,
+                bs58::encode(self.0.as_bytes()).into_string()
+            )
+        } else {
+            write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
         }
     }
 }
