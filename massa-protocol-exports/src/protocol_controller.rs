@@ -7,10 +7,10 @@ use massa_models::{
     node::NodeId,
     operation::OperationIds,
     prehash::{Map, Set},
-    Slot,
+    Slot, WrappedBlock,
 };
 use massa_models::{
-    Block, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
+    BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;
@@ -19,16 +19,13 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::debug;
 
 /// Possible types of events that can happen.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize)]
 pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
-        /// corresponding Id.
-        block_id: BlockId,
         /// corresponding block
-        block: Block,
-        /// The serialized form of the block
-        serialized: Vec<u8>,
+        block: WrappedBlock,
         /// the slot
         slot: Slot,
         /// operations in the block by (index, validity end period)

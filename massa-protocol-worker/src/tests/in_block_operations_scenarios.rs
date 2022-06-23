@@ -2,8 +2,11 @@
 
 use super::tools::protocol_test;
 use massa_hash::Hash;
-use massa_models::wrapped::Wrapped;
-use massa_models::{get_serialization_context, Address, Amount, Block, BlockHeader, Slot};
+use massa_models::wrapped::WrappedContent;
+use massa_models::{
+    get_serialization_context, Address, Amount, Block, BlockHeader, BlockHeaderSerializer,
+    BlockSerializer, Slot,
+};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{
     create_and_connect_nodes, create_block_with_operations, create_operation_with_expire_period,
@@ -115,26 +118,33 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             // block with wrong merkle root
             {
                 let op = create_operation_with_expire_period(&private_key, 5);
-
+                let public_key = derive_public_key(&creator_node.private_key);
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
-                    let (_, header) = Wrapped::new_wrapped(
+                    let header = BlockHeader::new_wrapped(
                         BlockHeader {
-                            creator: derive_public_key(&creator_node.private_key),
                             slot: slot_a,
                             parents: Vec::new(),
                             operation_merkle_root,
                             endorsements: Vec::new(),
                         },
+                        BlockHeaderSerializer::new(),
                         &creator_node.private_key,
+                        &public_key,
                     )
                     .unwrap();
 
-                    Block {
-                        header,
-                        operations: vec![op.clone()],
-                    }
+                    Block::new_wrapped(
+                        Block {
+                            header,
+                            operations: vec![op.clone()],
+                        },
+                        BlockSerializer::new(),
+                        &creator_node.private_key,
+                        &public_key,
+                    )
+                    .unwrap()
                 };
 
                 send_and_propagate_block(

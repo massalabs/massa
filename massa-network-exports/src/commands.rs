@@ -226,6 +226,7 @@ pub enum NetworkCommand {
 }
 
 /// network event
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum NetworkEvent {
     /// new connection from node

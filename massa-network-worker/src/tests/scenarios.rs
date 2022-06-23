@@ -14,13 +14,14 @@ use crate::{
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
-use massa_models::DeserializeCompact;
+use massa_models::wrapped::WrappedContent;
 use massa_models::SerializeCompact;
 use massa_models::{
     node::NodeId,
     wrapped::{Signable, Wrapped},
 };
 use massa_models::{BlockId, Endorsement, Slot, WrappedOperation};
+use massa_models::{DeserializeCompact, EndorsementSerializer};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
@@ -143,7 +144,7 @@ async fn test_node_worker_operations_message() {
     let serialized = transaction
         .to_bytes_compact()
         .expect("Failed to serialize operation.");
-    storage.store_operation(ref_id, transaction.clone(), serialized);
+    storage.store_operation(transaction.clone());
 
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
@@ -1109,7 +1110,7 @@ async fn test_operation_messages() {
             let serialized = transaction2
                 .to_bytes_compact()
                 .expect("Failed to serialize operation.");
-            storage.store_operation(ref_id2, transaction2, serialized);
+            storage.store_operation(transaction2);
 
             // reply with another transaction
             network_command_sender
@@ -1209,15 +1210,18 @@ async fn test_endorsements_messages() {
             let sender_public_key = massa_signature::derive_public_key(&sender_priv);
 
             let content = Endorsement {
-                sender_public_key,
                 slot: Slot::new(10, 1),
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Wrapped::new_wrapped(content.clone(), &sender_priv)
-                .unwrap()
-                .1;
-            let ref_id = endorsement.content.compute_id().unwrap();
+            let endorsement = Endorsement::new_wrapped(
+                content.clone(),
+                EndorsementSerializer::new(),
+                &sender_priv,
+                &sender_public_key,
+            )
+            .unwrap();
+            let ref_id = endorsement.id;
             conn1_w
                 .send(
                     &Message::Endorsements(vec![endorsement])
@@ -1250,15 +1254,18 @@ async fn test_endorsements_messages() {
             let sender_public_key = massa_signature::derive_public_key(&sender_priv);
 
             let content = Endorsement {
-                sender_public_key,
                 slot: Slot::new(11, 1),
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Wrapped::new_wrapped(content.clone(), &sender_priv)
-                .unwrap()
-                .1;
-            let ref_id = endorsement.content.compute_id().unwrap();
+            let endorsement = Endorsement::new_wrapped(
+                content.clone(),
+                EndorsementSerializer::new(),
+                &sender_priv,
+                &public_key,
+            )
+            .unwrap();
+            let ref_id = endorsement.id;
 
             // reply with another endorsement
             network_command_sender
@@ -1274,7 +1281,7 @@ async fn test_endorsements_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Endorsements(endorsements) = evt {
                             assert_eq!(endorsements.len(), 1);
-                            let res_id = endorsements[0].content.compute_id().unwrap();
+                            let res_id = endorsements[0].id;
                             assert_eq!(ref_id, res_id);
                             break;
                         }

@@ -133,14 +133,9 @@ impl ProtocolWorker {
     /// - Update the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
-    pub(crate) async fn on_operations_received(
-        &mut self,
-        node_id: NodeId,
-        operations: Operations,
-        serialized: Vec<Vec<u8>>,
-    ) {
+    pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
         if self
-            .note_operations_from_node(operations, &node_id, true, Some(serialized))
+            .note_operations_from_node(operations, &node_id, true)
             .await
             .is_err()
         {

@@ -151,8 +151,8 @@ pub fn create_block_with_endorsements(
             endorsements,
         },
         BlockHeaderSerializer::new(),
-        &private_key,
-        &public_key,
+        private_key,
+        public_key,
     )
     .unwrap();
 
@@ -188,7 +188,7 @@ pub async fn send_and_propagate_block(
     })
     .await
     {
-        Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => Some(block_id),
+        Some(ProtocolEvent::ReceivedBlock { block, .. }) => Some(block.id),
         None => None,
         _ => panic!("Unexpected or no protocol event."),
     };

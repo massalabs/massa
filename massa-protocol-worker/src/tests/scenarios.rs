@@ -4,7 +4,6 @@
 
 use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
-use massa_models::wrapped::Signable;
 use massa_models::BlockId;
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
@@ -43,7 +42,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 
             // 3. Send header to protocol.
             network_controller
-                .send_header(creator_node.id, block.header.clone())
+                .send_header(creator_node.id, block.content.header.clone())
                 .await;
 
             // Check protocol sends header to consensus.
@@ -62,7 +61,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
             };
 
             // 4. Check that protocol sent the right header to consensus.
-            let expected_hash = block.header.content.compute_id().unwrap();
+            let expected_hash = block.id;
             assert_eq!(expected_hash, received_hash);
 
             // 5. Ask for block.
@@ -134,7 +133,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             // 2. Create a block coming from creator_node.
             let block = create_block(&creator_node.private_key, &creator_node.id.0);
 
-            let expected_hash = block.header.content.compute_id().unwrap();
+            let expected_hash = block.id;
 
             // 3. Simulate two nodes asking for a block.
             for node in nodes.iter().take(2) {
@@ -245,7 +244,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 
             // 3. Send header to protocol.
             network_controller
-                .send_header(creator_node.id, ref_block.header.clone())
+                .send_header(creator_node.id, ref_block.content.header.clone())
                 .await;
 
             // node[1] asks for that block
@@ -283,16 +282,18 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 
             // 5. Propagate header.
             let op_ids = ref_block
+                .content
                 .operations
                 .iter()
-                .map(|op| op.content.compute_id().unwrap())
+                .map(|op| op.id)
                 .collect();
             let endo_ids = ref_block
+                .content
                 .header
                 .content
                 .endorsements
                 .iter()
-                .map(|endo| endo.content.compute_id().unwrap())
+                .map(|endo| endo.id)
                 .collect();
             protocol_command_sender
                 .integrated_block(ref_hash, op_ids, endo_ids)
@@ -366,11 +367,11 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
             // 1. Create a block coming from one node.
             let block = create_block(&creator_node.private_key, &creator_node.id.0);
 
-            let expected_hash = block.header.content.compute_id().unwrap();
+            let expected_hash = block.id;
 
             // 3. Send block to protocol.
             network_controller
-                .send_block(creator_node.id, block.clone(), Default::default())
+                .send_block(creator_node.id, block.clone())
                 .await;
 
             // Check protocol sends block to consensus.
@@ -384,7 +385,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
             )
             .await
             {
-                Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block_id,
+                Some(ProtocolEvent::ReceivedBlock { block, .. }) => block.id,
                 _ => panic!("Unexpected or no protocol event."),
             };
             assert_eq!(expected_hash, block_id);
@@ -420,7 +421,7 @@ async fn test_protocol_block_not_found() {
             // 1. Create a block coming from one node.
             let block = create_block(&creator_node.private_key, &creator_node.id.0);
 
-            let expected_hash = block.header.content.compute_id().unwrap();
+            let expected_hash = block.id;
 
             // 3. Ask block to protocol.
             network_controller

@@ -4,14 +4,13 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::SerializeCompact;
+use massa_models::WrappedBlock;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
     operation::{OperationIds, Operations},
     prehash::{BuildMap, Map, Set},
-    wrapped::Signable,
-    Address, Block, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
+    BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -816,13 +815,7 @@ impl ProtocolWorker {
         }
 
         // compute ID
-        let block_id = match header.content.compute_id() {
-            Ok(id) => id,
-            Err(err) => {
-                massa_trace!("protocol.protocol_worker.check_header.err_id", { "header": header, "err": format!("{}", err)});
-                return Ok(None);
-            }
-        };
+        let block_id = header.id;
 
         // check if this header was already verified
         let now = Instant::now();
@@ -878,7 +871,7 @@ impl ProtocolWorker {
         }
 
         // check header signature
-        if let Err(err) = header.verify_signature(&header.content.creator) {
+        if let Err(err) = header.verify_signature(&header.creator_public_key) {
             massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{}", err)});
             return Ok(None);
         };
@@ -973,7 +966,7 @@ impl ProtocolWorker {
     /// - Check root hash.
     async fn note_block_from_node(
         &mut self,
-        block: &Block,
+        block: &WrappedBlock,
         source_node_id: &NodeId,
     ) -> Result<
         Option<(
@@ -987,10 +980,10 @@ impl ProtocolWorker {
 
         let (header, operations, operation_merkle_root, slot) = {
             (
-                block.header.clone(),
-                block.operations.clone(),
-                block.header.content.operation_merkle_root,
-                block.header.content.slot,
+                block.content.header.clone(),
+                block.content.operations.clone(),
+                block.content.header.content.operation_merkle_root,
+                block.content.header.content.slot,
             )
         };
 
@@ -1002,13 +995,10 @@ impl ProtocolWorker {
                 Err(err) => return Err(err),
             };
 
-        let serialization_context =
-            massa_models::with_serialization_context(|context| context.clone());
-
         // Perform general checks on the operations, note them into caches and send them to pool
         // but do not propagate as they are already propagating within a block
         let (seen_ops, received_operations_ids, has_duplicate_operations, total_gas) = self
-            .note_operations_from_node(operations.clone(), source_node_id, false, None)
+            .note_operations_from_node(operations.clone(), source_node_id, false)
             .await?;
         if total_gas > self.max_block_gas {
             // Gas usage over limit => block invalid
@@ -1026,7 +1016,6 @@ impl ProtocolWorker {
         for op in operations.iter() {
             // check validity period
             if !(op
-                .content
                 .get_validity_range(self.operation_validity_periods)
                 .contains(&slot.period))
             {
@@ -1035,9 +1024,8 @@ impl ProtocolWorker {
                 return Ok(None);
             }
 
-            // check address and thread
-            let addr = Address::from_public_key(&op.content.sender_public_key);
-            if addr.get_thread(serialization_context.thread_count) != slot.thread {
+            // check thread
+            if op.thread != slot.thread {
                 massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_thread",
                     { "node": source_node_id,"block_id":block_id, "op": op});
                 return Ok(None);
@@ -1086,7 +1074,6 @@ impl ProtocolWorker {
         operations: Operations,
         source_node_id: &NodeId,
         propagate: bool,
-        serialized: Option<Vec<Vec<u8>>>,
     ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, bool, u64), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let mut total_gas = 0u64;
@@ -1096,7 +1083,7 @@ impl ProtocolWorker {
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
         for (idx, operation) in operations.into_iter().enumerate() {
-            let operation_id = operation.content.compute_id()?;
+            let operation_id = operation.id;
             seen_ops.push(operation_id);
 
             // Note: we always want to update the node's view of known operations,
@@ -1110,20 +1097,14 @@ impl ProtocolWorker {
             }
 
             // Accumulate gas
-            total_gas = total_gas.saturating_add(operation.content.get_gas_usage());
+            total_gas = total_gas.saturating_add(operation.get_gas_usage());
 
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(operation_id) {
                 // check signature
-                operation.verify_signature(&operation.content.sender_public_key)?;
+                operation.verify_signature(&operation.creator_public_key)?;
 
-                let serialized = if let Some(serialized_ops) = serialized.as_ref() {
-                    // TODO: remove clone #2669.
-                    serialized_ops[idx].clone()
-                } else {
-                    operation.to_bytes_compact()?
-                };
-                new_operations.insert(operation_id, (operation, serialized));
+                new_operations.insert(operation_id, operation);
             };
         }
 
@@ -1172,7 +1153,7 @@ impl ProtocolWorker {
         let mut new_endorsements = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut endorsement_ids = Map::default();
         for endorsement in endorsements.into_iter() {
-            let endorsement_id = endorsement.content.compute_id()?;
+            let endorsement_id = endorsement.id;
             if endorsement_ids
                 .insert(endorsement_id, endorsement.content.index)
                 .is_some()
@@ -1181,7 +1162,7 @@ impl ProtocolWorker {
             }
             // check endorsement signature if not already checked
             if self.checked_endorsements.insert(endorsement_id) {
-                endorsement.verify_signature(&endorsement.content.sender_public_key)?;
+                endorsement.verify_signature(&endorsement.creator_public_key)?;
                 new_endorsements.insert(endorsement_id, endorsement);
             }
         }
@@ -1244,21 +1225,18 @@ impl ProtocolWorker {
             NetworkEvent::ReceivedBlock {
                 node: from_node_id,
                 block,
-                serialized,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
                 if let Some((block_id, operation_set, endorsement_ids)) =
                     self.note_block_from_node(&block, &from_node_id).await?
                 {
-                    let slot = block.header.content.slot;
+                    let slot = block.content.header.content.slot;
 
                     let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
                     set.insert(block_id);
                     self.stop_asking_blocks(set)?;
                     self.send_protocol_event(ProtocolEvent::ReceivedBlock {
-                        block_id,
                         block,
-                        serialized,
                         slot,
                         operation_set,
                         endorsement_ids,
@@ -1325,14 +1303,9 @@ impl ProtocolWorker {
                 }
                 self.update_ask_block(block_ask_timer).await?;
             }
-            NetworkEvent::ReceivedOperations {
-                node,
-                operations,
-                serialized,
-            } => {
+            NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
-                self.on_operations_received(node, operations, serialized)
-                    .await;
+                self.on_operations_received(node, operations).await;
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
