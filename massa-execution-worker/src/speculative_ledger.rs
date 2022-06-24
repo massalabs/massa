@@ -38,7 +38,7 @@ impl SpeculativeLedger {
     ///
     /// # Arguments
     /// * `final_state`: thread-safe shared access to the final state (for reading only)
-    /// * `previous_changes`: accumulation of changes that previously happened to the ledger since finality
+    /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
