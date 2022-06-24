@@ -7,9 +7,9 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
-use crate::active_history::ActiveHistory;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
+use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
 use massa_final_state::{FinalState, StateChanges};
@@ -19,6 +19,7 @@ use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     Address, Amount, BlockId, OperationId, Slot,
 };
+use massa_pos_exports::SelectorController;
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -61,6 +62,10 @@ pub(crate) struct ExecutionContext {
     /// speculative asynchronous pool state,
     /// as seen after everything that happened so far in the context
     speculative_async_pool: SpeculativeAsyncPool,
+
+    /// speculative roll state,
+    /// as seen after everything that happened so far in the context
+    speculative_roll_state: SpeculativeRollState,
 
     /// max gas for this execution
     pub max_gas: u64,
@@ -113,10 +118,12 @@ impl ExecutionContext {
     pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        selector: Box<dyn SelectorController>,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history.clone()),
-            speculative_async_pool: SpeculativeAsyncPool::new(final_state, active_history),
+            speculative_async_pool: SpeculativeAsyncPool::new(final_state, active_history.clone()),
+            speculative_roll_state: SpeculativeRollState::new(selector, active_history),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
@@ -177,6 +184,7 @@ impl ExecutionContext {
         call_stack: Vec<ExecutionStackElement>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        selector: Box<dyn SelectorController>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -201,7 +209,7 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, active_history)
+            ..ExecutionContext::new(final_state, active_history, selector)
         }
     }
 
@@ -240,6 +248,7 @@ impl ExecutionContext {
         opt_block_id: Option<BlockId>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        selector: Box<dyn SelectorController>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -261,7 +270,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, active_history)
+            ..ExecutionContext::new(final_state, active_history, selector)
         }
     }
 
@@ -536,6 +545,7 @@ impl ExecutionContext {
         let state_changes = StateChanges {
             ledger_changes: self.speculative_ledger.take(),
             async_pool_changes: self.speculative_async_pool.take(),
+            roll_state_changes: self.speculative_roll_state.take(),
         };
         ExecutionOutput {
             slot: self.slot,
