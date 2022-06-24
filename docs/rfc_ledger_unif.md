@@ -63,7 +63,7 @@ struct ProductionStats {
 }
 ```
 
-The `cycle_history` contains consecutive cycle stats, keeping the oldest one still needed in the `back()`, and the highest one needed (typically future cycles for deferred credits) in the `front()`.
+The `cycle_history` contains consecutive cycle stats, keeping the oldest one still needed in the `back()`, and the highest one needed in the `front()`.
 
 ### PoS changes
 
@@ -99,16 +99,16 @@ struct PoSChanges {
     * remove entries for which Amount = 0
 * if slot S was the last of cycle C:
   * set complete=true for cycle C in the history
-  * compute the seed hash and notifies the `PoSDrawer` for cycle C+3
+  * compute the seed hash and notifies the `Selector` for cycle C+3
 
-### PoSDrawer
+### Selector
 
-The `PoSDrawer` system is shared through an RwLock to many modules.
+The `Selector` system is shared through an RwLock to many modules.
 
 It efficiently draws PoS selections in separate threads to not block the execution thread that feeds it with seed hashes and roll distributions.
 
 It stores the draws once they are available.
-If a module asks PosDrawer for a draw that was discarded (too old) or not computed yet, it returns the corresponding error.
+If a module asks Selector for a draw that was discarded (too old) or not computed yet, it returns the corresponding error.
 
 This module computes draws in a multithreaded way using Xoshiro256++ jumps https://docs.rs/rand_xoshiro/latest/rand_xoshiro/struct.Xoshiro256PlusPlus.html#method.jump
 
@@ -152,9 +152,9 @@ Speculative execution of a slot S of cycle C:
       * speculatively slash roll_price coins from deferred_credits going from the lowest to the highest slot until the full remaining penalty amount is slashed. This prevents an attacker from launching a roll sell, then attacking, then being reimbursed.
 * speculatively credit coins from all deferred credits targeting the end of slot S
 * if S was the last slot of cycle C:
-  * if the speculative production stats of an address are not satisfactory:
+  * if the speculative production stats of an address are not satisfactory (> 70% miss):
     * speculatively remove all rolls of the address in new_pos_changes
-    * schedule a (partial ?) coin reimbursement for the end of the last slot of cycle C + 3
+    * schedule a full coin reimbursement for the end of the last slot of cycle C + 3
 
 
  When a speculatively executed slot S finalizes (SCE finality), apply the PoSChanges from its ExecutionResult to the PoS final state.
