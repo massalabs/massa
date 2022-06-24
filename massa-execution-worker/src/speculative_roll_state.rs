@@ -15,8 +15,6 @@ pub(crate) struct SpeculativeRollState {
     /// History of the outputs of recently executed slots.
     /// Slots should be consecutive, newest at the back.
     active_history: Arc<RwLock<ActiveHistory>>,
-    /// Id of the current block if there is one
-    block_id: Option<BlockId>,
     /// List of changes to the state after settling roll sell/buy
     added_changes: PoSChanges,
 }
@@ -29,13 +27,11 @@ impl SpeculativeRollState {
     /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
         selector: Box<dyn SelectorController>,
-        block_id: Option<BlockId>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         SpeculativeRollState {
             selector,
             active_history,
-            block_id,
             added_changes: Default::default(),
         }
     }
@@ -54,5 +50,24 @@ impl SpeculativeRollState {
     /// Resets the `SpeculativeRollState` to a snapshot (see `get_snapshot` method)
     pub fn reset_to_snapshot(&mut self, snapshot: PoSChanges) {
         self.added_changes = snapshot;
+    }
+
+    /// Settle a slot.
+    ///
+    /// Compute the changes to be made on the roll state at the given slot.
+    pub fn process_block(&mut self, block_id: Option<BlockId>) {
+        // tmp dummy implementation
+        match block_id {
+            Some(_id) => self
+                .added_changes
+                .production_stats
+                .block_success_count
+                .saturating_add(1),
+            None => self
+                .added_changes
+                .production_stats
+                .block_failure_count
+                .saturating_add(1),
+        };
     }
 }

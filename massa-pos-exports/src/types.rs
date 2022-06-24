@@ -30,7 +30,7 @@ pub struct CycleInfo {
 }
 
 /// Block production statistic
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct ProductionStats {
     /// Number of successfully created blocks
     pub block_success_count: u64,
@@ -39,7 +39,7 @@ pub struct ProductionStats {
 }
 
 /// Recap of all PoS changes
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct PoSChanges {
     /// extra block seed bits added
     pub seed_bits: BitVec<Lsb0, u8>,

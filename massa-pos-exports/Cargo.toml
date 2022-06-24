@@ -18,7 +18,6 @@ thiserror = "1.0"
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
-massa_final_state = { path = "../massa-final-state" }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
