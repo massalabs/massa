@@ -547,6 +547,9 @@ impl ExecutionContext {
             self.cancel_async_message(&msg);
         }
 
+        // settle roll state
+        self.speculative_roll_state.settle_slot(self.slot);
+
         // generate the execution output
         let state_changes = StateChanges {
             ledger_changes: self.speculative_ledger.take(),
