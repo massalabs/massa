@@ -78,6 +78,7 @@ mod interface_impl;
 mod request_queue;
 mod speculative_async_pool;
 mod speculative_ledger;
+mod speculative_roll_state;
 mod worker;
 
 pub use worker::start_execution_worker;
