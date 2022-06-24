@@ -19,7 +19,7 @@ use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     Address, Amount, BlockId, OperationId, Slot,
 };
-use massa_pos_exports::SelectorController;
+use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -34,6 +34,9 @@ pub(crate) struct ExecutionContextSnapshot {
 
     /// speculative asynchronous pool messages emitted so far in the context
     pub async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
+
+    /// speculative roll state changes caused so far in the context
+    pub roll_state_changes: PoSChanges,
 
     /// counter of newly created addresses so far at this slot during this execution
     pub created_addr_index: u64,
@@ -145,6 +148,7 @@ impl ExecutionContext {
         ExecutionContextSnapshot {
             ledger_changes: self.speculative_ledger.get_snapshot(),
             async_pool_changes: self.speculative_async_pool.get_snapshot(),
+            roll_state_changes: self.speculative_roll_state.get_snapshot(),
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
             stack: self.stack.clone(),
@@ -160,6 +164,8 @@ impl ExecutionContext {
             .reset_to_snapshot(snapshot.ledger_changes);
         self.speculative_async_pool
             .reset_to_snapshot(snapshot.async_pool_changes);
+        self.speculative_roll_state
+            .reset_to_snapshot(snapshot.roll_state_changes);
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.stack = snapshot.stack;
