@@ -333,6 +333,7 @@ impl ConsensusWorker {
 
         // check if there are any final blocks not produced by us
         // if none => we are probably desync
+        #[cfg(not(feature = "sandbox"))]
         if now
             > max(self.cfg.genesis_timestamp, self.launch_time)
                 .saturating_add(self.stats_desync_detection_timespan)
