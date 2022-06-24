@@ -63,7 +63,6 @@ pub(crate) struct ExecutionState {
     /// Shared storage across all modules
     storage: Storage,
     /// PoS selector
-    #[allow(dead_code)]
     selector: Box<dyn SelectorController>,
 }
 
@@ -94,6 +93,7 @@ impl ExecutionState {
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             final_state.clone(),
             active_history.clone(),
+            selector.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -628,6 +628,7 @@ impl ExecutionState {
             opt_block_id,
             self.final_state.clone(),
             self.active_history.clone(),
+            self.selector.clone(),
         );
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
@@ -700,6 +701,7 @@ impl ExecutionState {
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
+            self.selector.clone(),
         );
 
         // run the intepreter according to the target type

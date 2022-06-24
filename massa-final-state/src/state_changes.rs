@@ -6,6 +6,7 @@ use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
 use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+use massa_pos_exports::PoSChanges;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{
     error::{context, ContextError, ParseError},
@@ -14,12 +15,14 @@ use nom::{
 };
 
 /// represents changes that can be applied to the execution state
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone)]
 pub struct StateChanges {
     /// ledger changes
     pub ledger_changes: LedgerChanges,
     /// asynchronous pool changes
     pub async_pool_changes: AsyncPoolChanges,
+    /// roll state changes
+    pub roll_state_changes: PoSChanges,
 }
 
 /// Basic `StateChanges` serializer.
@@ -180,6 +183,8 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
         .map(|(ledger_changes, async_pool_changes)| StateChanges {
             ledger_changes,
             async_pool_changes,
+            // IMPORTANT NOTE: change this
+            ..Default::default()
         })
         .parse(buffer)
     }
