@@ -69,15 +69,19 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
             // Check that the operations come with their serialized representations.
             assert_eq!(
                 expected_operation_id_1,
-                received_operations.get(&expected_operation_id_1).unwrap()
-                .verify_integrity()
-                .unwrap()
+                received_operations
+                    .get(&expected_operation_id_1)
+                    .unwrap()
+                    .verify_integrity()
+                    .unwrap()
             );
             assert_eq!(
                 expected_operation_id_2,
-                received_operations.get(&expected_operation_id_2).unwrap()
-                .verify_integrity()
-                .unwrap()
+                received_operations
+                    .get(&expected_operation_id_2)
+                    .unwrap()
+                    .verify_integrity()
+                    .unwrap()
             );
 
             (
@@ -762,9 +766,11 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                     assert_eq!(operations.len(), 1);
                     assert_eq!(
                         expected_id,
-                        operations.get(&expected_id).unwrap()
-                        .verify_integrity()
-                        .unwrap()
+                        operations
+                            .get(&expected_id)
+                            .unwrap()
+                            .verify_integrity()
+                            .unwrap()
                     );
                 }
                 Some(_) => panic!("Unexpected protocol pool event."),
