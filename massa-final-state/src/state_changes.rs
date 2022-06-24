@@ -183,7 +183,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
         .map(|(ledger_changes, async_pool_changes)| StateChanges {
             ledger_changes,
             async_pool_changes,
-            // IMPORTANT NOTE: change this
+            // IMPORTANT NOTE: do not forget to update the serializer
             ..Default::default()
         })
         .parse(buffer)
