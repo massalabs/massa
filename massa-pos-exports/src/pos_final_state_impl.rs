@@ -20,5 +20,5 @@ impl PoSFinalState {
     /// if slot S was the last of cycle C:
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
-    pub fn settle_slot(&mut self, slot: Slot, changes: &PoSChanges) {}
+    pub fn settle_slot(&mut self, _slot: Slot, _changes: &PoSChanges) {}
 }
