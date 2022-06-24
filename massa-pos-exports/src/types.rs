@@ -36,11 +36,13 @@ pub struct CycleInfo {
     pub production_stats: Map<Address, ProductionStats>,
 }
 
+#[derive(Default, Clone)]
 pub struct ProductionStats {
     pub block_success_count: u64,
     pub block_failure_count: u64,
 }
 
+#[derive(Default, Clone)]
 pub struct PoSChanges {
     /// extra block seed bits added
     pub seed_bits: BitVec<Lsb0, u8>,
