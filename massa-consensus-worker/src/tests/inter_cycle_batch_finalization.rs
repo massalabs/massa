@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 use massa_models::{ledger_models::LedgerData, Address, Amount, BlockId, Slot};
-use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_signature::{derive_public_key, PrivateKey};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::{collections::HashSet, str::FromStr};
@@ -46,7 +46,8 @@ use std::{collections::HashSet, str::FromStr};
 #[serial]
 async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
-    let staking_key = generate_random_private_key();
+    let staking_key =
+        PrivateKey::from_str("2ubR6ErNAxMM8Q5ZEosmgMX5kEJFkKk2vKgdWWGscGRE8UfTB6").unwrap();
     let creator_public_key = derive_public_key(&staking_key);
     let creator_addr = Address::from_public_key(&creator_public_key);
     let roll_price = Amount::from_str("42").unwrap();

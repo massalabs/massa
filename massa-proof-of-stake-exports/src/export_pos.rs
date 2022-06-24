@@ -43,10 +43,7 @@ impl ExportProofOfStakeSerializer {
     /// Creates a `ExportProofOfStakeSerializer`
     pub fn new() -> Self {
         Self {
-            u32_serializer: U32VarIntSerializer::new(
-                Included(0),
-                Included(MAX_BOOTSTRAP_POS_CYCLES),
-            ),
+            u32_serializer: U32VarIntSerializer::new(),
             cycle_state_serializer: ThreadCycleStateSerializer::new(),
         }
     }

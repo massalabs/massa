@@ -158,11 +158,11 @@ async fn test_execution_check() {
                 private_key_1,
                 public_key_1,
                 5,
-                5,
-                Default::default(),
-                1,
                 2,
-                1,
+                Default::default(),
+                0,
+                2,
+                0,
             );
             let (block_a, _) = create_block_with_operations(
                 &cfg,
@@ -171,6 +171,7 @@ async fn test_execution_check() {
                 private_key_1,
                 vec![operation_1.clone()],
             );
+            println!("{:?}", block_a);
             propagate_block(&mut protocol_controller, block_a, true, 150).await;
 
             // assert the `coins` argument as been deducted from the balance of address 1.

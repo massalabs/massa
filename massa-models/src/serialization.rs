@@ -356,10 +356,16 @@ pub struct VecU8Serializer {
 
 impl VecU8Serializer {
     /// Creates a new `VecU8Serializer`
-    pub fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
+    pub fn new() -> Self {
         Self {
-            len_serializer: U64VarIntSerializer::new(min_length, max_length),
+            len_serializer: U64VarIntSerializer::new(),
         }
+    }
+}
+
+impl Default for VecU8Serializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -371,7 +377,7 @@ impl Serializer<Vec<u8>> for VecU8Serializer {
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut buffer = Vec::new();
-    /// let serializer = VecU8Serializer::new(Included(0), Included(1000000));
+    /// let serializer = VecU8Serializer::new();
     /// serializer.serialize(&vec, &mut buffer).unwrap();
     /// ```
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
@@ -406,7 +412,7 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut serialized = Vec::new();
-    /// let serializer = VecU8Serializer::new(Included(0), Included(1000000));
+    /// let serializer = VecU8Serializer::new();
     /// let deserializer = VecU8Deserializer::new(Included(0), Included(1000000));
     /// serializer.serialize(&vec, &mut serialized).unwrap();
     /// let (rest, vec_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
@@ -529,7 +535,7 @@ mod tests {
     #[serial]
     fn vec_u8() {
         let vec: Vec<u8> = vec![9, 8, 7];
-        let vec_u8_serializer = VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX));
+        let vec_u8_serializer = VecU8Serializer::new();
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let mut serialized = Vec::new();
         vec_u8_serializer.serialize(&vec, &mut serialized).unwrap();
@@ -546,7 +552,7 @@ mod tests {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 10;
         let mut serialized = Vec::new();
-        U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+        U64VarIntSerializer::new()
             .serialize(&len, &mut serialized)
             .unwrap();
         serialized.extend(vec);
@@ -562,7 +568,7 @@ mod tests {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 1;
         let mut serialized = Vec::new();
-        U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+        U64VarIntSerializer::new()
             .serialize(&len, &mut serialized)
             .unwrap();
         serialized.extend(vec);

@@ -2,7 +2,7 @@
 
 use massa_models::{
     array_from_slice,
-    constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
+    constants::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_COUNT, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
     operation::{
         OperationIds, OperationIdsSerializer, Operations, OperationsDeserializer,
         OperationsSerializer,
@@ -293,7 +293,7 @@ impl DeserializeCompact for Message {
                 // operations
                 let mut endorsements = Vec::with_capacity(length as usize);
                 let endorsement_deserializer =
-                    WrappedDeserializer::new(EndorsementDeserializer::new());
+                    WrappedDeserializer::new(EndorsementDeserializer::new(ENDORSEMENT_COUNT));
                 for _ in 0..length {
                     let (rest, endorsement) =
                         endorsement_deserializer.deserialize(&buffer[cursor..])?;

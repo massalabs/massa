@@ -14,10 +14,7 @@ use massa_serialization::{
 };
 use nom::error::{context, ContextError, ParseError};
 use serde::{Deserialize, Serialize};
-use std::ops::{
-    Bound::{self, Included},
-    RangeBounds,
-};
+use std::ops::{Bound, RangeBounds};
 use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
 
@@ -33,21 +30,20 @@ pub struct Slot {
 /// Basic serializer for `Slot`
 pub struct SlotSerializer {
     u64_serializer: U64VarIntSerializer,
-    range_period: (Bound<u64>, Bound<u64>),
-    range_thread: (Bound<u8>, Bound<u8>),
 }
 
 impl SlotSerializer {
     /// Creates a `SlotSerializer`
-    pub fn new(
-        range_period: (Bound<u64>, Bound<u64>),
-        range_thread: (Bound<u8>, Bound<u8>),
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
-            range_period,
-            range_thread,
+            u64_serializer: U64VarIntSerializer::new(),
         }
+    }
+}
+
+impl Default for SlotSerializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -59,24 +55,11 @@ impl Serializer<Slot> for SlotSerializer {
     ///
     /// let slot: Slot = Slot::new(1, 3);
     /// let mut serialized = Vec::new();
-    /// let serializer = SlotSerializer::new((Included(u64::MIN), Included(u64::MAX)), (Included(u8::MIN), Included(u8::MAX)));
+    /// let serializer = SlotSerializer::new();
     /// serializer.serialize(&slot, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Slot, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        if !self.range_period.contains(&value.period) {
-            return Err(SerializeError::NumberTooBig(format!(
-                "Period must be in range {:#?} but his value is {:#?}",
-                self.range_period, value.period
-            )));
-        }
-        if !self.range_thread.contains(&value.thread) {
-            return Err(SerializeError::NumberTooBig(format!(
-                "Thread must be in range {:#?} but his value is {:#?}",
-                self.range_thread, value.thread
-            )));
-        }
         self.u64_serializer.serialize(&value.period, buffer)?;
-        println!("added thread: {}", value.thread);
         buffer.push(value.thread);
         Ok(())
     }
@@ -109,7 +92,7 @@ impl Deserializer<Slot> for SlotDeserializer {
     ///
     /// let slot: Slot = Slot::new(1, 3);
     /// let mut serialized = Vec::new();
-    /// let serializer = SlotSerializer::new((Included(u64::MIN), Included(u64::MAX)), (Included(u8::MIN), Included(u8::MAX)));
+    /// let serializer = SlotSerializer::new();
     /// let deserializer = SlotDeserializer::new((Included(u64::MIN), Included(u64::MAX)), (Included(u8::MIN), Included(u8::MAX.into())));
     /// serializer.serialize(&slot, &mut serialized).unwrap();
     /// let (rest, slot_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();

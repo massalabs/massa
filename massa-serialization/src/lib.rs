@@ -186,27 +186,26 @@ macro_rules! gen_varint {
             #[doc = " Serializer for "]
             #[doc = $d]
             #[doc = " in a varint form."]
-            pub struct $s {
-                range: (Bound<$type>, Bound<$type>),
-            }
+            pub struct $s;
 
             impl $s {
                 #[doc = "Create a basic serializer for "]
                 #[doc = $d]
                 #[doc = " in a varint form."]
                 #[allow(dead_code)]
-                pub fn new(min: Bound<$type>, max: Bound<$type>) -> Self {
-                    Self {
-                        range: (min, max)
-                    }
+                pub fn new() -> Self {
+                    Self
+                }
+            }
+
+            impl Default for $s {
+                fn default() -> $s {
+                    $s::new()
                 }
             }
 
             impl Serializer<$type> for $s {
                 fn serialize(&self, value: &$type, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-                    if !self.range.contains(value) {
-                        return Err(SerializeError::NumberTooBig(format!("Value {:#?} is not in range {:#?}", value, self.range)));
-                    }
                     buffer.extend_from_slice($type(*value, &mut $bs()));
                     Ok(())
                 }

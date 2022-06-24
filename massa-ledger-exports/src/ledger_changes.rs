@@ -44,11 +44,8 @@ impl DatastoreUpdateSerializer {
     /// Creates a new `DatastoreUpdateSerializer`
     pub fn new() -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
-            value_serializer: SetOrDeleteSerializer::new(VecU8Serializer::new(
-                Included(u64::MIN),
-                Included(u64::MAX),
-            )),
+            u64_serializer: U64VarIntSerializer::new(),
+            value_serializer: SetOrDeleteSerializer::new(VecU8Serializer::new()),
         }
     }
 }
@@ -130,14 +127,8 @@ impl LedgerEntryUpdateSerializer {
     /// Creates a new `LedgerEntryUpdateSerializer`
     pub fn new() -> Self {
         Self {
-            parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new(
-                Included(u64::MIN),
-                Included(u64::MAX),
-            )),
-            bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new(
-                Included(u64::MIN),
-                Included(u64::MAX),
-            )),
+            parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new()),
+            bytecode_serializer: SetOrKeepSerializer::new(VecU8Serializer::new()),
             datastore_serializer: DatastoreUpdateSerializer::new(),
         }
     }
@@ -299,7 +290,7 @@ impl LedgerChangesSerializer {
     /// Creates a new `LedgerChangesSerializer`
     pub fn new() -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::new(Included(0), Included(1000000)),
+            u64_serializer: U64VarIntSerializer::new(),
             entry_serializer: SetUpdateOrDeleteSerializer::new(
                 LedgerEntrySerializer::new(),
                 LedgerEntryUpdateSerializer::new(),

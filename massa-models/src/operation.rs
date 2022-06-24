@@ -168,8 +168,8 @@ impl OperationSerializer {
     /// Creates a new `OperationSerializer`
     pub fn new() -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
-            amount_serializer: AmountSerializer::new(Included(0), Included(u64::MAX)),
+            u64_serializer: U64VarIntSerializer::new(),
+            amount_serializer: AmountSerializer::new(),
             op_type_serializer: OperationTypeSerializer::new(),
         }
     }
@@ -230,7 +230,9 @@ impl Deserializer<Operation> for OperationDeserializer {
                     self.u64_deserializer.deserialize(input)
                 }),
                 context("Failed op deserialization", |input| {
-                    self.op_type_deserializer.deserialize(input)
+                    let (rest, op) = self.op_type_deserializer.deserialize(input)?;
+                    println!("{:?}", op);
+                    Ok((rest, op))
                 }),
             )),
         )
@@ -361,18 +363,12 @@ impl OperationTypeSerializer {
     /// Creates a new `OperationTypeSerializer`
     pub fn new() -> Self {
         Self {
-            u32_serializer: U32VarIntSerializer::new(Included(0), Included(u32::MAX)),
-            u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
-            vec_u8_serializer: VecU8Serializer::new(Included(0), Included(u64::MAX)),
-            amount_serializer: AmountSerializer::new(Included(0), Included(u64::MAX)),
-            function_name_serializer: StringSerializer::new(U16VarIntSerializer::new(
-                Included(0),
-                Included(u16::MAX),
-            )),
-            parameter_serializer: StringSerializer::new(U16VarIntSerializer::new(
-                Included(0),
-                Included(u16::MAX),
-            )),
+            u32_serializer: U32VarIntSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(),
+            amount_serializer: AmountSerializer::new(),
+            function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
+            parameter_serializer: StringSerializer::new(U16VarIntSerializer::new()),
         }
     }
 }
@@ -694,10 +690,7 @@ impl OperationIdsSerializer {
     /// Creates a new `OperationIdsSerializer`
     pub fn new() -> Self {
         Self {
-            u32_serializer: U32VarIntSerializer::new(
-                Included(0),
-                Included(MAX_OPERATIONS_PER_MESSAGE),
-            ),
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }
@@ -780,10 +773,7 @@ impl OperationsSerializer {
     /// Creates a new `OperationsSerializer`
     pub fn new() -> Self {
         Self {
-            u32_serializer: U32VarIntSerializer::new(
-                Included(0),
-                Included(MAX_OPERATIONS_PER_MESSAGE),
-            ),
+            u32_serializer: U32VarIntSerializer::new(),
             signed_op_serializer: WrappedSerializer::new(),
         }
     }

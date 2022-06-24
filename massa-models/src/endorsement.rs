@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::ENDORSEMENT_ID_SIZE_BYTES;
-use crate::node_configuration::{ENDORSEMENT_COUNT, THREAD_COUNT};
+use crate::node_configuration::THREAD_COUNT;
 use crate::prehash::PreHashed;
 use crate::wrapped::{Id, Wrapped, WrappedContent};
 use crate::{BlockId, ModelsError, Slot};
@@ -137,16 +137,9 @@ pub struct EndorsementSerializer {
 impl EndorsementSerializer {
     /// Creates a new `EndorsementSerializer`
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         EndorsementSerializer {
-            slot_serializer: SlotSerializer::new(
-                (Included(1), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
-            ),
-            u32_serializer: U32VarIntSerializer::new(Included(0), Excluded(ENDORSEMENT_COUNT)),
+            slot_serializer: SlotSerializer::new(),
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }
@@ -175,7 +168,7 @@ pub struct EndorsementDeserializer {
 
 impl EndorsementDeserializer {
     /// Creates a new `EndorsementDeserializer`
-    pub fn new() -> Self {
+    pub fn new(endorsement_count: u32) -> Self {
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]
@@ -185,15 +178,9 @@ impl EndorsementDeserializer {
                 (Included(1), Included(u64::MAX)),
                 (Included(0), Included(thread_count)),
             ),
-            u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(ENDORSEMENT_COUNT)),
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(endorsement_count)),
             hash_deserializer: HashDeserializer::new(),
         }
-    }
-}
-
-impl Default for EndorsementDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -258,7 +245,7 @@ mod tests {
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
         let (_, res_endorsement): (&[u8], WrappedEndorsement) =
-            WrappedDeserializer::new(EndorsementDeserializer::new())
+            WrappedDeserializer::new(EndorsementDeserializer::new(1))
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
         assert_eq!(

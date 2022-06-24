@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::BLOCK_ID_SIZE_BYTES;
+use crate::node_configuration::default::ENDORSEMENT_COUNT;
 use crate::node_configuration::{MAX_BLOCK_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT};
 use crate::operation::OperationDeserializer;
 use crate::prehash::{Map, PreHashed, Set};
@@ -141,6 +142,9 @@ impl WrappedContent for Block {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
         let creator_address = Address::from_public_key(public_key);
+        println!("id header {:?}", content.header.id);
+        println!("block id {:?}", U::new(content.header.id.hash()).hash());
+        println!("block id2 {:?}", U::new(content.header.id.hash()).hash());
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]
@@ -205,10 +209,7 @@ impl BlockSerializer {
         BlockSerializer {
             header_serializer: WrappedSerializer::new(),
             operation_serializer: WrappedSerializer::new(),
-            u32_serializer: U32VarIntSerializer::new(
-                Included(0),
-                Included(MAX_OPERATIONS_PER_BLOCK),
-            ),
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }
@@ -423,17 +424,10 @@ pub struct BlockHeaderSerializer {
 impl BlockHeaderSerializer {
     /// Creates a new `BlockHeaderSerializer`
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
-            slot_serializer: SlotSerializer::new(
-                (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
-            ),
+            slot_serializer: SlotSerializer::new(),
             endorsement_serializer: WrappedSerializer::new(),
-            u32_serializer: U32VarIntSerializer::new(Included(0), Included(u32::MAX)),
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }
@@ -493,7 +487,9 @@ impl BlockHeaderDeserializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Included(thread_count)),
             ),
-            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new()),
+            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
+                ENDORSEMENT_COUNT,
+            )),
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             hash_deserializer: HashDeserializer::new(),
         }

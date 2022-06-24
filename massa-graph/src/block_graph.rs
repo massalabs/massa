@@ -1663,6 +1663,7 @@ impl BlockGraph {
                     ))
                 })?;
                 let stored_block = block.read();
+                println!("AURELIEN: {:?}", stored_block);
                 let (_block_id, slot, operation_set, endorsement_ids) =
                     if let Some(BlockStatus::Incoming(HeaderOrBlock::Block(
                         block_id,
@@ -2403,6 +2404,7 @@ impl BlockGraph {
                     return Ok(BlockCheckOutcome::WaitForDependencies(deps))
                 }
             };
+        println!("AURELIEN: block ledger changes: {:?}", block_ledger_changes);
         deps.extend(operations_deps);
 
         massa_trace!("consensus.block_graph.check_block.ok", {
@@ -2436,8 +2438,6 @@ impl BlockGraph {
         // check that ops are not reused in previous blocks. Note that in-block reuse was checked in protocol.
         let mut dependencies: Set<BlockId> = Set::<BlockId>::default();
         for operation in block_to_check.content.operations.iter() {
-            // get thread
-
             let op_start_validity_period = *operation
                 .get_validity_range(self.cfg.operation_validity_periods)
                 .start();
@@ -2503,6 +2503,8 @@ impl BlockGraph {
             }
         };
 
+        println!("AURELIEN: block state accumulator1: {:?}", state_accu);
+
         // all operations
         // (including step 6 in consensus/pos.md)
         for operation in block_to_check.content.operations.iter() {
@@ -2527,6 +2529,7 @@ impl BlockGraph {
                 }
             };
         }
+        println!("AURELIEN: block state accumulator2: {:?}", state_accu);
 
         Ok(BlockOperationsCheckOutcome::Proceed {
             dependencies,
