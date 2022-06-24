@@ -1979,7 +1979,12 @@ dependencies = [
  "massa_hash",
  "massa_ledger_exports",
  "massa_models",
+ "massa_serialization",
+ "massa_signature",
  "massa_time",
+ "nom 7.1.1",
+ "serde 1.0.136",
+ "serde_json",
  "thiserror",
 ]
 
@@ -1988,13 +1993,18 @@ name = "massa_pos_worker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitvec",
  "massa_final_state",
+ "massa_hash",
  "massa_models",
  "massa_pos_exports",
+ "massa_signature",
  "massa_time",
  "parking_lot 0.12.0",
  "rand 0.8.5",
  "rand_xoshiro",
+ "serde 1.0.136",
+ "serde_json",
  "tracing",
 ]
 
