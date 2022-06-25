@@ -142,9 +142,7 @@ impl WrappedContent for Block {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
         let creator_address = Address::from_public_key(public_key);
-        println!("id header {:?}", content.header.id);
-        println!("block id {:?}", U::new(content.header.id.hash()).hash());
-        println!("block id2 {:?}", U::new(content.header.id.hash()).hash());
+
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]

@@ -4,14 +4,14 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::WrappedBlock;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
     operation::{OperationIds, Operations},
     prehash::{BuildMap, Map, Set},
-    BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
+    BlockHeaderSerializer, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
 };
+use massa_models::{EndorsementSerializer, OperationSerializer, WrappedBlock};
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
@@ -800,7 +800,6 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
-
         massa_trace!("protocol.protocol_worker.check_header.start", {
             "header": header
         });
@@ -871,7 +870,9 @@ impl ProtocolWorker {
         }
 
         // check header signature
-        if let Err(err) = header.verify_signature(&header.creator_public_key) {
+        if let Err(err) =
+            header.verify_signature(BlockHeaderSerializer::new(), &header.creator_public_key)
+        {
             massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{}", err)});
             return Ok(None);
         };
@@ -1102,7 +1103,8 @@ impl ProtocolWorker {
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(operation_id) {
                 // check signature
-                operation.verify_signature(&operation.creator_public_key)?;
+                operation
+                    .verify_signature(OperationSerializer::new(), &operation.creator_public_key)?;
 
                 new_operations.insert(operation_id, operation);
             };
@@ -1162,7 +1164,10 @@ impl ProtocolWorker {
             }
             // check endorsement signature if not already checked
             if self.checked_endorsements.insert(endorsement_id) {
-                endorsement.verify_signature(&endorsement.creator_public_key)?;
+                endorsement.verify_signature(
+                    EndorsementSerializer::new(),
+                    &endorsement.creator_public_key,
+                )?;
                 new_endorsements.insert(endorsement_id, endorsement);
             }
         }

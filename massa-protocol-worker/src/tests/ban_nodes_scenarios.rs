@@ -6,6 +6,7 @@ use massa_models::{BlockId, Slot};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
+use massa_signature::{derive_public_key, generate_random_private_key};
 use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;
@@ -251,7 +252,10 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             assert_eq!(expected_hash, received_hash);
 
             // 4. Get the node banned.
-            let mut block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            // New private key/public key to avoid getting same block id
+            let pv_key = generate_random_private_key();
+            let pb_key = derive_public_key(&pv_key);
+            let mut block = tools::create_block(&pv_key, &pb_key);
             block.content.header.content.slot = Slot::new(1, 1);
             network_controller
                 .send_header(creator_node.id, block.content.header)

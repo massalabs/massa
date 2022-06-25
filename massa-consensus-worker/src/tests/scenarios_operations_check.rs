@@ -140,6 +140,7 @@ async fn test_execution_check() {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
         operation_validity_periods: 10,
+        genesis_key: private_key_1,
         genesis_timestamp: MassaTime::now().unwrap().saturating_sub(10000.into()),
         ..ConsensusConfig::default_with_staking_keys_and_ledger(&staking_keys, &ledger)
     };
@@ -158,11 +159,11 @@ async fn test_execution_check() {
                 private_key_1,
                 public_key_1,
                 5,
-                2,
+                5,
                 Default::default(),
-                0,
+                1,
                 2,
-                0,
+                1,
             );
             let (block_a, _) = create_block_with_operations(
                 &cfg,
@@ -171,7 +172,6 @@ async fn test_execution_check() {
                 private_key_1,
                 vec![operation_1.clone()],
             );
-            println!("{:?}", block_a);
             propagate_block(&mut protocol_controller, block_a, true, 150).await;
 
             // assert the `coins` argument as been deducted from the balance of address 1.

@@ -231,7 +231,6 @@ impl Deserializer<Operation> for OperationDeserializer {
                 }),
                 context("Failed op deserialization", |input| {
                     let (rest, op) = self.op_type_deserializer.deserialize(input)?;
-                    println!("{:?}", op);
                     Ok((rest, op))
                 }),
             )),
@@ -598,7 +597,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
 impl WrappedOperation {
     /// Verifies the signature and integrity of the operation and computes operation ID
     pub fn verify_integrity(&self) -> Result<OperationId, ModelsError> {
-        self.verify_signature(&self.creator_public_key)?;
+        self.verify_signature(OperationSerializer::new(), &self.creator_public_key)?;
         Ok(self.id)
     }
 }

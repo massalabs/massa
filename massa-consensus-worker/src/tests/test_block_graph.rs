@@ -609,11 +609,10 @@ fn test_bootsrapable_graph_serialize_compact() {
 
     //let storage: Storage = Default::default();
 
-    let (block, active_block) = get_export_active_test_block();
+    let (_, active_block) = get_export_active_test_block();
 
     //storage.store_block(block.header.content.compute_id().expect("Fail to calculate block id."), block, block.to_bytes_compact().expect("Fail to serialize block"));
 
-    println!("{:?}", block);
     let b1_id = get_dummy_block_id("active11");
     let graph = BootstrapableGraph {
         /// Map of active blocks, were blocks are in their exported version.

@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
 use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
@@ -12,8 +13,6 @@ use nom::{
     IResult,
 };
 use serde::{Deserialize, Serialize};
-
-use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
 
 /// Wrapped structure T where U is the associated id
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,12 +161,18 @@ where
     U: Id,
 {
     /// check if self has been signed by public key
-    pub fn verify_signature(&self, public_key: &PublicKey) -> Result<(), ModelsError> {
-        Ok(verify_signature(
-            &self.id.hash(),
-            &self.signature,
-            public_key,
-        )?)
+    pub fn verify_signature<SC: Serializer<T>>(
+        &self,
+        content_serializer: SC,
+        public_key: &PublicKey,
+    ) -> Result<(), ModelsError> {
+        let mut content_serialized = Vec::new();
+        content_serializer.serialize(&self.content, &mut content_serialized)?;
+        let mut hash_data = Vec::new();
+        hash_data.extend(self.creator_public_key.to_bytes());
+        hash_data.extend(content_serialized.clone());
+        let hash = Hash::compute_from(&hash_data);
+        Ok(verify_signature(&hash, &self.signature, public_key)?)
     }
 }
 
@@ -257,7 +262,7 @@ where
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = WrappedSerializer::new().serialize(&wrapped, &mut serialized_data).unwrap();
-    /// let deserializer = WrappedDeserializer::new(EndorsementDeserializer::new());
+    /// let deserializer = WrappedDeserializer::new(EndorsementDeserializer::new(1));
     /// let (rest, deserialized): (&[u8], Wrapped<Endorsement, BlockId>) = deserializer.deserialize::<DeserializeError>(&serialized_data).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(wrapped.id, deserialized.id);

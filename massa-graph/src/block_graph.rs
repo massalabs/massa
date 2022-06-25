@@ -917,7 +917,6 @@ impl BlockGraph {
     ) -> Result<BlockStateAccumulator> {
         let block_thread = header.content.slot.thread;
         let block_cycle = header.content.slot.get_cycle(self.cfg.periods_per_cycle);
-
         // get same thread parent cycle
         let same_thread_parent = &self
             .get_active_block(&header.content.parents[block_thread as usize])
@@ -1663,7 +1662,6 @@ impl BlockGraph {
                     ))
                 })?;
                 let stored_block = block.read();
-                println!("AURELIEN: {:?}", stored_block);
                 let (_block_id, slot, operation_set, endorsement_ids) =
                     if let Some(BlockStatus::Incoming(HeaderOrBlock::Block(
                         block_id,
@@ -2404,7 +2402,6 @@ impl BlockGraph {
                     return Ok(BlockCheckOutcome::WaitForDependencies(deps))
                 }
             };
-        println!("AURELIEN: block ledger changes: {:?}", block_ledger_changes);
         deps.extend(operations_deps);
 
         massa_trace!("consensus.block_graph.check_block.ok", {
@@ -2503,8 +2500,6 @@ impl BlockGraph {
             }
         };
 
-        println!("AURELIEN: block state accumulator1: {:?}", state_accu);
-
         // all operations
         // (including step 6 in consensus/pos.md)
         for operation in block_to_check.content.operations.iter() {
@@ -2529,7 +2524,6 @@ impl BlockGraph {
                 }
             };
         }
-        println!("AURELIEN: block state accumulator2: {:?}", state_accu);
 
         Ok(BlockOperationsCheckOutcome::Proceed {
             dependencies,

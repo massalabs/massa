@@ -379,7 +379,7 @@ pub async fn assert_banned_nodes(
     loop {
         tokio::select! {
             msg = network_controller
-                   .wait_command(1000.into(), |cmd| match cmd {
+                   .wait_command(2000.into(), |cmd| match cmd {
                        NetworkCommand::NodeBanByIds(node) => Some(node),
                        _ => None,
                    })
