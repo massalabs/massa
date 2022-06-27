@@ -94,6 +94,7 @@ async fn stream_final_state(
                     });
                 }
                 BootstrapServerMessage::FinalStateFinished => {
+                    info!("State bootstrap complete");
                     *next_bootstrap_message = Some(BootstrapClientMessage::AskBootstrapPeers);
                     return Ok(());
                 }
@@ -296,7 +297,7 @@ async fn bootstrap_from_server(
             }
         };
     }
-    info!("Successful state bootstrap");
+    info!("Successful bootstrap");
     Ok(())
 }
 
