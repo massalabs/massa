@@ -788,20 +788,6 @@
 <span id="782">782</span>
 <span id="783">783</span>
 <span id="784">784</span>
-<span id="785">785</span>
-<span id="786">786</span>
-<span id="787">787</span>
-<span id="788">788</span>
-<span id="789">789</span>
-<span id="790">790</span>
-<span id="791">791</span>
-<span id="792">792</span>
-<span id="793">793</span>
-<span id="794">794</span>
-<span id="795">795</span>
-<span id="796">796</span>
-<span id="797">797</span>
-<span id="798">798</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.</span>
@@ -824,8 +810,7 @@
 <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api::EventFilter</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models::signed::Signable</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">SignedOperation</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">WrappedOperation</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Amount</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">massa_sc_runtime::Interface</span>;
 <span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
@@ -1045,7 +1030,7 @@
     <span class="doccomment">/// * `block_creator_addr`: address of the block creator</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute_operation</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">SignedOperation</span>,
+        <span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">WrappedOperation</span>,
         <span class="ident">block_creator_addr</span>: <span class="ident">Address</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
         <span class="comment">// prefilter only SC operations</span>
@@ -1055,31 +1040,19 @@
             <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(()),
         };
 
-        <span class="comment">// get the operation&#39;s sender address</span>
-        <span class="kw">let</span> <span class="ident">sender_addr</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">sender_public_key</span>);
-
-        <span class="comment">// get operation ID</span>
-        <span class="comment">// TODO have operation_id contained in the Operation object in the future to avoid recomputation</span>
-        <span class="comment">// https://github.com/massalabs/massa/issues/1121</span>
-        <span class="comment">// https://github.com/massalabs/massa/issues/2264</span>
-        <span class="kw">let</span> <span class="ident">operation_id</span> <span class="op">=</span> <span class="ident">operation</span>
-            .<span class="ident">content</span>
-            .<span class="ident">compute_id</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;could not compute operation ID&quot;</span>);
-
         <span class="comment">// call the execution process specific to the operation type</span>
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">op</span> {
             <span class="ident">OperationType::ExecuteSC</span> { .. } =&gt; <span class="self">self</span>.<span class="ident">execute_executesc_op</span>(
                 <span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">op</span>,
                 <span class="ident">block_creator_addr</span>,
-                <span class="ident">operation_id</span>,
-                <span class="ident">sender_addr</span>,
+                <span class="ident">operation</span>.<span class="ident">id</span>,
+                <span class="ident">operation</span>.<span class="ident">creator_address</span>,
             ),
             <span class="ident">OperationType::CallSC</span> { .. } =&gt; <span class="self">self</span>.<span class="ident">execute_callsc_op</span>(
                 <span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">op</span>,
                 <span class="ident">block_creator_addr</span>,
-                <span class="ident">operation_id</span>,
-                <span class="ident">sender_addr</span>,
+                <span class="ident">operation</span>.<span class="ident">id</span>,
+                <span class="ident">operation</span>.<span class="ident">creator_address</span>,
             ),
             <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>), <span class="comment">// checked at the beginning of the function</span>
         }
@@ -1089,7 +1062,7 @@
     <span class="doccomment">/// Will panic if called with another operation type</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `operation`: the `SignedOperation` to process, must be an `ExecuteSC`</span>
+    <span class="doccomment">/// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`</span>
     <span class="doccomment">/// * `block_creator_addr`: address of the block creator</span>
     <span class="doccomment">/// * `operation_id`: ID of the operation</span>
     <span class="doccomment">/// * `sender_addr`: address of the sender</span>
@@ -1184,7 +1157,7 @@
     <span class="doccomment">/// Will panic if called with another operation type</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * `operation`: the `SignedOperation` to process, must be an `CallSC`</span>
+    <span class="doccomment">/// * `operation`: the `WrappedOperation` to process, must be an `CallSC`</span>
     <span class="doccomment">/// * `block_creator_addr`: address of the block creator</span>
     <span class="doccomment">/// * `operation_id`: ID of the operation</span>
     <span class="doccomment">/// * `sender_addr`: address of the sender</span>
@@ -1453,11 +1426,10 @@
             <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">read</span>();
             <span class="comment">// Try executing the operations of this block in the order in which they appear in the block.</span>
             <span class="comment">// Errors are logged but do not interrupt the execution of the slot.</span>
-            <span class="kw">for</span> (<span class="ident">op_idx</span>, <span class="ident">operation</span>) <span class="kw">in</span> <span class="ident">stored_block</span>.<span class="ident">block</span>.<span class="ident">operations</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">execute_operation</span>(
-                    <span class="ident">operation</span>,
-                    <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">stored_block</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">creator</span>),
-                ) {
+            <span class="kw">for</span> (<span class="ident">op_idx</span>, <span class="ident">operation</span>) <span class="kw">in</span> <span class="ident">stored_block</span>.<span class="ident">content</span>.<span class="ident">operations</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span>
+                    <span class="self">self</span>.<span class="ident">execute_operation</span>(<span class="ident">operation</span>, <span class="ident">stored_block</span>.<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">creator_address</span>)
+                {
                     <span class="macro">debug!</span>(
                         <span class="string">&quot;failed executing operation index {} in block {}: {}&quot;</span>,
                         <span class="ident">op_idx</span>, <span class="ident">block_id</span>, <span class="ident">err</span>

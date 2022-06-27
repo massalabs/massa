@@ -506,16 +506,16 @@
 
 <span class="kw">impl</span> <span class="ident">MassaTimeSerializer</span> {
     <span class="doccomment">/// Creates a `MassaTimeSerializer`</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Arguments:</span>
-    <span class="doccomment">/// * range: minimum value for the time to serialize</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">range</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>)) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(
-                <span class="ident">range</span>.<span class="number">0</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">time</span><span class="op">|</span> <span class="ident">time</span>.<span class="ident">to_millis</span>()),
-                <span class="ident">range</span>.<span class="number">1</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">time</span><span class="op">|</span> <span class="ident">time</span>.<span class="ident">to_millis</span>()),
-            ),
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
         }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">MassaTimeSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
     }
 }
 
@@ -527,7 +527,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// let time: MassaTime = 30.into();</span>
     <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));</span>
+    <span class="doccomment">/// let serializer = MassaTimeSerializer::new();</span>
     <span class="doccomment">/// serializer.serialize(&amp;time, &amp;mut serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">serialize</span>(
@@ -567,7 +567,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// let time: MassaTime = 30.into();</span>
     <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));</span>
+    <span class="doccomment">/// let serializer = MassaTimeSerializer::new();</span>
     <span class="doccomment">/// let deserializer = MassaTimeDeserializer::new((Included(0.into()), Included(u64::MAX.into())));</span>
     <span class="doccomment">/// serializer.serialize(&amp;time, &amp;mut serialized).unwrap();</span>
     <span class="doccomment">/// let (rest, time_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>

@@ -79,6 +79,14 @@
 <span id="73">73</span>
 <span id="74">74</span>
 <span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! All the structures that are used everywhere</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
@@ -88,18 +96,26 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">address</span>::{<span class="ident">Address</span>, <span class="ident">AddressDeserializer</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">amount</span>::{<span class="ident">Amount</span>, <span class="ident">AmountDeserializer</span>, <span class="ident">AmountSerializer</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">block</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">SignedHeader</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">block</span>::{
+    <span class="ident">Block</span>, <span class="ident">BlockDeserializer</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderDeserializer</span>, <span class="ident">BlockHeaderSerializer</span>, <span class="ident">BlockId</span>,
+    <span class="ident">BlockSerializer</span>, <span class="ident">WrappedBlock</span>, <span class="ident">WrappedHeader</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">composite</span>::{
     <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultBlockStatus</span>, <span class="ident">OperationSearchResultStatus</span>,
     <span class="ident">StakersCycleProductionStats</span>,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">endorsement</span>::{<span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">endorsement</span>::{
+    <span class="ident">Endorsement</span>, <span class="ident">EndorsementDeserializer</span>, <span class="ident">EndorsementId</span>, <span class="ident">EndorsementSerializer</span>, <span class="ident">WrappedEndorsement</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::ModelsError</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">operation</span>::{<span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">SignedOperation</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">operation</span>::{
+    <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationIdsDeserializer</span>, <span class="ident">OperationSerializer</span>, <span class="ident">OperationType</span>,
+    <span class="ident">WrappedOperation</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">serialization</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">u8_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeMinBEInt</span>, <span class="ident">DeserializeVarInt</span>,
     <span class="ident">IpAddrDeserializer</span>, <span class="ident">IpAddrSerializer</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeMinBEInt</span>, <span class="ident">SerializeVarInt</span>,
-    <span class="ident">VecU8Deserializer</span>, <span class="ident">VecU8Serializer</span>,
+    <span class="ident">StringDeserializer</span>, <span class="ident">StringSerializer</span>, <span class="ident">VecU8Deserializer</span>, <span class="ident">VecU8Serializer</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">serialization_context</span>::{
     <span class="ident">get_serialization_context</span>, <span class="ident">init_serialization_context</span>, <span class="ident">with_serialization_context</span>,
@@ -140,8 +156,6 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">rolls</span>;
 <span class="kw">mod</span> <span class="ident">serialization</span>;
 <span class="kw">mod</span> <span class="ident">serialization_context</span>;
-<span class="doccomment">/// trait for signed structure</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">signed</span>;
 <span class="doccomment">/// slots</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">slot</span>;
 <span class="doccomment">/// various statistics</span>
@@ -149,6 +163,8 @@
 <span class="doccomment">/// management of the relation between time and slots</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">timeslots</span>;
 <span class="kw">mod</span> <span class="ident">version</span>;
+<span class="doccomment">/// trait for signed structure</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">wrapped</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">node_configuration::CompactConfig</span>;
 <span class="doccomment">/// Expose constants</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">constants</span> {

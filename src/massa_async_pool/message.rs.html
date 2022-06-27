@@ -481,20 +481,6 @@
 <span id="475">475</span>
 <span id="476">476</span>
 <span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the structure representing an asynchronous message</span>
@@ -528,17 +514,10 @@
 
 <span class="kw">impl</span> <span class="ident">AsyncMessageIdSerializer</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="self">Self</span> {
-            <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(
-                (<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">thread_count</span>)),
-            ),
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+            <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer::new</span>(),
+            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(),
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
         }
     }
 }
@@ -725,18 +704,11 @@
 
 <span class="kw">impl</span> <span class="ident">AsyncMessageSerializer</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="self">Self</span> {
-            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">thread_count</span>)),
-            ),
-            <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(),
+            <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer::new</span>(),
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
+            <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer::new</span>(),
         }
     }
 }

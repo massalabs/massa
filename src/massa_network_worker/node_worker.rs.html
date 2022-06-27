@@ -497,39 +497,24 @@
 <span id="491">491</span>
 <span id="492">492</span>
 <span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">binders</span>::{<span class="ident">ReadBinder</span>, <span class="ident">WriteBinder</span>},
-    <span class="ident">messages</span>::{<span class="ident">Message</span>, <span class="ident">MessageTypeId</span>, <span class="ident">SerializedForm</span>},
+    <span class="ident">messages</span>::{<span class="ident">Message</span>, <span class="ident">MessageTypeId</span>},
 };
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants</span>::{<span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>, <span class="ident">MAX_ENDORSEMENTS_PER_MESSAGE</span>, <span class="ident">NODE_SEND_CHANNEL_SIZE</span>},
     <span class="ident">node::NodeId</span>,
-    <span class="ident">signed::Signable</span>,
+    <span class="ident">wrapped</span>::{<span class="ident">Id</span>, <span class="ident">WrappedSerializer</span>},
 };
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>};
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
     <span class="ident">ConnectionClosureReason</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkSettings</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_serialization::Serializer</span>;
 <span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">tokio</span>::{
     <span class="ident">sync::mpsc</span>,
@@ -675,7 +660,7 @@
                                     .<span class="ident">retrieve_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>)
                                     .<span class="ident">ok_or</span>(<span class="ident">NetworkError::MissingBlock</span>)<span class="question-mark">?</span>;
                                 <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">read</span>();
-                                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">stored_block</span>.<span class="ident">serialized</span>);
+                                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">stored_block</span>.<span class="ident">serialized_data</span>);
                                 <span class="ident">res</span>
                             }
                             <span class="ident">ToSend::Header</span>(<span class="ident">block_id</span>) =&gt; {
@@ -687,16 +672,8 @@
                                 <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">storage</span>
                                     .<span class="ident">retrieve_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>)
                                     .<span class="ident">ok_or</span>(<span class="ident">NetworkError::MissingBlock</span>)<span class="question-mark">?</span>;
-                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">write</span>();
-                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">serialized</span>) <span class="op">=</span> <span class="ident">stored_block</span>.<span class="ident">serialized_header</span>.<span class="ident">as_ref</span>() {
-                                    <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">serialized</span>);
-                                } <span class="kw">else</span> {
-                                    <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span>
-                                        <span class="ident">stored_block</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>;
-                                    <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">serialized</span>);
-                                    <span class="ident">stored_block</span>.<span class="ident">serialized_header</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">serialized</span>);
-                                }
-
+                                <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">read</span>();
+                                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">stored_block</span>.<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">serialized_data</span>);
                                 <span class="ident">res</span>
                             }
                             <span class="ident">ToSend::Operations</span>(<span class="ident">operation_ids</span>) =&gt; {
@@ -706,21 +683,20 @@
                                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::Operations</span>).<span class="ident">to_varint_bytes</span>());
                                 <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> (<span class="ident">operation_ids</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_varint_bytes</span>();
                                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">len</span>);
+                                <span class="kw">let</span> <span class="ident">wrapped_operation_serializer</span> <span class="op">=</span> <span class="ident">WrappedSerializer::new</span>();
 
-                                <span class="ident">storage</span>.<span class="ident">with_serialized_operations</span>(
-                                    <span class="kw-2">&amp;</span><span class="ident">operation_ids</span>,
-                                    <span class="op">|</span><span class="ident">operations</span><span class="op">|</span> {
-                                        <span class="kw">for</span> <span class="ident">operation</span> <span class="kw">in</span> <span class="ident">operations</span> {
-                                            <span class="kw">match</span> <span class="ident">operation</span> {
-                                                <span class="prelude-val">Some</span>(<span class="ident">operation</span>) =&gt; {
-                                                    <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">*</span><span class="ident">operation</span>);
-                                                }
-                                                <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::MissingOperation</span>),
+                                <span class="ident">storage</span>.<span class="ident">with_operations</span>(<span class="kw-2">&amp;</span><span class="ident">operation_ids</span>, <span class="op">|</span><span class="ident">operations</span><span class="op">|</span> {
+                                    <span class="kw">for</span> <span class="ident">operation</span> <span class="kw">in</span> <span class="ident">operations</span> {
+                                        <span class="kw">match</span> <span class="ident">operation</span> {
+                                            <span class="prelude-val">Some</span>(<span class="ident">operation</span>) =&gt; {
+                                                <span class="ident">wrapped_operation_serializer</span>
+                                                    .<span class="ident">serialize</span>(<span class="kw-2">*</span><span class="ident">operation</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
                                             }
+                                            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::MissingOperation</span>),
                                         }
-                                        <span class="prelude-val">Ok</span>(())
-                                    },
-                                )<span class="question-mark">?</span>;
+                                    }
+                                    <span class="prelude-val">Ok</span>(())
+                                })<span class="question-mark">?</span>;
 
                                 <span class="ident">res</span>
                             }
@@ -803,25 +779,21 @@
 
                 <span class="comment">// incoming socket data</span>
                 <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">socket_reader</span>.<span class="ident">next</span>() =&gt; <span class="kw">match</span> <span class="ident">res</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((<span class="ident">index</span>, <span class="ident">msg</span>, <span class="ident">serialized</span>))) =&gt; {
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((<span class="ident">index</span>, <span class="ident">msg</span>))) =&gt; {
                         <span class="macro">massa_trace!</span>(
                             <span class="string">&quot;node_worker.run_loop. receive self.socket_reader.next()&quot;</span>, {<span class="string">&quot;index&quot;</span>: <span class="ident">index</span>});
                         <span class="kw">match</span> <span class="ident">msg</span> {
                             <span class="ident">Message::Block</span>(<span class="ident">block</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(
                                     <span class="string">&quot;node_worker.run_loop. receive Message::Block&quot;</span>,
-                                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>}
+                                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">block</span>.<span class="ident">id</span>.<span class="ident">hash</span>(), <span class="string">&quot;block&quot;</span>: <span class="ident">block</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>}
                                 );
-                                <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">serialized</span> {
-                                    <span class="prelude-val">Some</span>(<span class="ident">SerializedForm::Block</span>(<span class="ident">serialized</span>)) =&gt; <span class="ident">serialized</span>,
-                                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Blocks should come with their serialized form.&quot;</span>)
-                                };
-                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedBlock</span>(<span class="ident">block</span>, <span class="ident">serialized</span>))).<span class="kw">await</span>;
+                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedBlock</span>(<span class="ident">block</span>))).<span class="kw">await</span>;
                             },
                             <span class="ident">Message::BlockHeader</span>(<span class="ident">header</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(
                                     <span class="string">&quot;node_worker.run_loop. receive Message::BlockHeader&quot;</span>,
-                                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>}
+                                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">header</span>.<span class="ident">id</span>.<span class="ident">hash</span>(), <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>}
                                 );
                                 <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedBlockHeader</span>(<span class="ident">header</span>))).<span class="kw">await</span>;
                             },
@@ -846,11 +818,7 @@
                                     {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span>}
                                 );
                                 <span class="comment">//massa_trace!(&quot;node_worker.run_loop. receive Message::Operations&quot;, {&quot;node&quot;: self.node_id, &quot;operations&quot;: operations});</span>
-                                <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">serialized</span> {
-                                    <span class="prelude-val">Some</span>(<span class="ident">SerializedForm::Operations</span>(<span class="ident">serialized</span>)) =&gt; <span class="ident">serialized</span>,
-                                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Operations should come with their serialized form.&quot;</span>)
-                                };
-                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedOperations</span>(<span class="ident">operations</span>, <span class="ident">serialized</span>))).<span class="kw">await</span>;
+                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedOperations</span>(<span class="ident">operations</span>))).<span class="kw">await</span>;
                             }
                             <span class="ident">Message::AskForOperations</span>(<span class="ident">operation_ids</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(

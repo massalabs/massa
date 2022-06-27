@@ -383,64 +383,21 @@
 <span id="377">377</span>
 <span id="378">378</span>
 <span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
-<span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
-<span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
-<span id="397">397</span>
-<span id="398">398</span>
-<span id="399">399</span>
-<span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
-<span id="404">404</span>
-<span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-<span id="413">413</span>
-<span id="414">414</span>
-<span id="415">415</span>
-<span id="416">416</span>
-<span id="417">417</span>
-<span id="418">418</span>
-<span id="419">419</span>
-<span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
-<span id="425">425</span>
-<span id="426">426</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">array_from_slice</span>,
     <span class="ident">constants</span>::{<span class="ident">BLOCK_ID_SIZE_BYTES</span>, <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>},
-    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
-    <span class="ident">signed::Signed</span>,
-    <span class="ident">with_serialization_context</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>,
-    <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">IpAddrDeserializer</span>, <span class="ident">IpAddrSerializer</span>, <span class="ident">ModelsError</span>,
-    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>, <span class="ident">Version</span>,
-    <span class="ident">VersionDeserializer</span>, <span class="ident">VersionSerializer</span>,
+    <span class="ident">operation</span>::{
+        <span class="ident">OperationIds</span>, <span class="ident">OperationIdsSerializer</span>, <span class="ident">Operations</span>, <span class="ident">OperationsDeserializer</span>,
+        <span class="ident">OperationsSerializer</span>,
+    },
+    <span class="ident">with_serialization_context</span>,
+    <span class="ident">wrapped</span>::{<span class="ident">WrappedDeserializer</span>, <span class="ident">WrappedSerializer</span>},
+    <span class="ident">BlockDeserializer</span>, <span class="ident">BlockHeaderDeserializer</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>,
+    <span class="ident">EndorsementDeserializer</span>, <span class="ident">IpAddrDeserializer</span>, <span class="ident">IpAddrSerializer</span>, <span class="ident">ModelsError</span>,
+    <span class="ident">OperationIdsDeserializer</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Version</span>, <span class="ident">VersionDeserializer</span>,
+    <span class="ident">VersionSerializer</span>, <span class="ident">WrappedBlock</span>, <span class="ident">WrappedEndorsement</span>, <span class="ident">WrappedHeader</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">DeserializeError</span>, <span class="ident">Deserializer</span>, <span class="ident">Serializer</span>};
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>, <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>, <span class="ident">SIGNATURE_SIZE_BYTES</span>};
@@ -449,6 +406,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryInto</span>, <span class="ident">net::IpAddr</span>};
 
 <span class="doccomment">/// All messages that can be sent or received.</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Message</span> {
     <span class="doccomment">/// Initiates handshake.</span>
@@ -467,9 +425,9 @@
         <span class="ident">signature</span>: <span class="ident">Signature</span>,
     },
     <span class="doccomment">/// Whole block structure.</span>
-    <span class="ident">Block</span>(<span class="ident">Block</span>),
+    <span class="ident">Block</span>(<span class="ident">WrappedBlock</span>),
     <span class="doccomment">/// Block header</span>
-    <span class="ident">BlockHeader</span>(<span class="ident">SignedHeader</span>),
+    <span class="ident">BlockHeader</span>(<span class="ident">WrappedHeader</span>),
     <span class="doccomment">/// Message asking the peer for a block.</span>
     <span class="ident">AskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Message asking the peer for its advertisable peers list.</span>
@@ -488,67 +446,7 @@
     <span class="doccomment">/// A list of operations</span>
     <span class="ident">Operations</span>(<span class="ident">Operations</span>),
     <span class="doccomment">/// Endorsements</span>
-    <span class="ident">Endorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
-}
-
-<span class="doccomment">/// The serialized form of an object, as received from the network.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SerializedForm</span> {
-    <span class="doccomment">/// A serialized block.</span>
-    <span class="ident">Block</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// A serialized list of operations.</span>
-    <span class="ident">Operations</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-}
-
-<span class="doccomment">/// Deserialize, and return, a message,</span>
-<span class="doccomment">/// while retaining the serialized format of the object(s) contained in it.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_message_with_optional_serialized_object</span>(
-    <span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Message</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SerializedForm</span><span class="op">&gt;</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
-
-    <span class="kw">let</span> (<span class="ident">type_id_raw</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-    <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-
-    <span class="kw">let</span> <span class="ident">type_id</span>: <span class="ident">MessageTypeId</span> <span class="op">=</span> <span class="ident">type_id_raw</span>
-        .<span class="ident">try_into</span>()
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ModelsError::DeserializeError</span>(<span class="string">&quot;invalid message type ID&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
-
-    <span class="kw">match</span> <span class="ident">type_id</span> {
-        <span class="comment">// Deserialize the block, while retaining its serialized format.</span>
-        <span class="ident">MessageTypeId::Block</span> =&gt; {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-            <span class="ident">serialized</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..]);
-            <span class="kw">let</span> (<span class="ident">block</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">Block::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>((
-                <span class="ident">Message::Block</span>(<span class="ident">block</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">SerializedForm::Block</span>(<span class="ident">serialized</span>)),
-            ))
-        }
-        <span class="comment">// Deserialize a list of operations, while retaining their serialized format.</span>
-        <span class="ident">MessageTypeId::Operations</span> =&gt; {
-            <span class="kw">let</span> <span class="ident">max_operations_per_message</span> <span class="op">=</span>
-                <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_operations_per_message</span>);
-            <span class="kw">let</span> (<span class="ident">length</span>, <span class="ident">delta</span>) <span class="op">=</span>
-                <span class="ident">u32::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..], <span class="ident">max_operations_per_message</span>)<span class="question-mark">?</span>;
-            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ops</span>: <span class="ident">Operations</span> <span class="op">=</span> <span class="ident">Operations::with_capacity</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>);
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>);
-            <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized_op</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-                <span class="kw">let</span> (<span class="ident">operation</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">SignedOperation::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">serialized_op</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..<span class="ident">delta</span> <span class="op">+</span> <span class="ident">cursor</span>]);
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-                <span class="ident">ops</span>.<span class="ident">push</span>(<span class="ident">operation</span>);
-                <span class="ident">serialized</span>.<span class="ident">push</span>(<span class="ident">serialized_op</span>);
-            }
-            <span class="prelude-val">Ok</span>((
-                <span class="ident">Message::Operations</span>(<span class="ident">ops</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">SerializedForm::Operations</span>(<span class="ident">serialized</span>)),
-            ))
-        }
-        <span class="kw">_</span> =&gt; <span class="ident">Message::from_bytes_compact</span>(<span class="ident">buffer</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">result</span><span class="op">|</span> (<span class="ident">result</span>.<span class="number">0</span>, <span class="prelude-val">None</span>)),
-    }
+    <span class="ident">Endorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">IntoPrimitive</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">TryFromPrimitive</span>)]</span>
@@ -591,11 +489,11 @@
             }
             <span class="ident">Message::Block</span>(<span class="ident">block</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::Block</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+                <span class="ident">WrappedSerializer::new</span>().<span class="ident">serialize</span>(<span class="ident">block</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
             }
             <span class="ident">Message::BlockHeader</span>(<span class="ident">header</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::BlockHeader</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">header</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+                <span class="ident">WrappedSerializer::new</span>().<span class="ident">serialize</span>(<span class="ident">header</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
             }
             <span class="ident">Message::AskForBlocks</span>(<span class="ident">list</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::AskForBlocks</span>).<span class="ident">to_varint_bytes</span>());
@@ -626,21 +524,22 @@
             }
             <span class="ident">Message::AskForOperations</span>(<span class="ident">operation_ids</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::AskForOperations</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">operation_ids</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+                <span class="ident">OperationIdsSerializer::new</span>().<span class="ident">serialize</span>(<span class="ident">operation_ids</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
             }
             <span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">operation_ids</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::OperationsAnnouncement</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">operation_ids</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+                <span class="ident">OperationIdsSerializer::new</span>().<span class="ident">serialize</span>(<span class="ident">operation_ids</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
             }
             <span class="ident">Message::Operations</span>(<span class="ident">operations</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::Operations</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">operations</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+                <span class="ident">OperationsSerializer::new</span>().<span class="ident">serialize</span>(<span class="ident">operations</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
             }
             <span class="ident">Message::Endorsements</span>(<span class="ident">endorsements</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::Endorsements</span>).<span class="ident">to_varint_bytes</span>());
                 <span class="ident">res</span>.<span class="ident">extend</span>((<span class="ident">endorsements</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_varint_bytes</span>());
+                <span class="kw">let</span> <span class="ident">endorsement_serializer</span> <span class="op">=</span> <span class="ident">WrappedSerializer::new</span>();
                 <span class="kw">for</span> <span class="ident">endorsement</span> <span class="kw">in</span> <span class="ident">endorsements</span>.<span class="ident">iter</span>() {
-                    <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">endorsement</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+                    <span class="ident">endorsement_serializer</span>.<span class="ident">serialize</span>(<span class="ident">endorsement</span>, <span class="kw-2">&amp;mut</span> <span class="ident">res</span>)<span class="question-mark">?</span>;
                 }
             }
         }
@@ -698,14 +597,17 @@
                 <span class="ident">Message::HandshakeReply</span> { <span class="ident">signature</span> }
             }
             <span class="ident">MessageTypeId::Block</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">block</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">Block::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">block</span>): (<span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">WrappedBlock</span>) <span class="op">=</span>
+                    <span class="ident">WrappedDeserializer::new</span>(<span class="ident">BlockDeserializer::new</span>())
+                        .<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
                 <span class="ident">Message::Block</span>(<span class="ident">block</span>)
             }
             <span class="ident">MessageTypeId::BlockHeader</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">header</span>, <span class="ident">delta</span>) <span class="op">=</span>
-                    <span class="ident">Signed</span>::<span class="op">&lt;</span><span class="ident">BlockHeader</span>, <span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">header</span>): (<span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">WrappedHeader</span>) <span class="op">=</span>
+                    <span class="ident">WrappedDeserializer::new</span>(<span class="ident">BlockHeaderDeserializer::new</span>())
+                        .<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
                 <span class="ident">Message::BlockHeader</span>(<span class="ident">header</span>)
             }
             <span class="ident">MessageTypeId::AskForBlocks</span> =&gt; {
@@ -749,18 +651,21 @@
                 <span class="ident">Message::BlockNotFound</span>(<span class="ident">b_id</span>)
             }
             <span class="ident">MessageTypeId::Operations</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">operations</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">Operations::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">operations</span>) <span class="op">=</span>
+                    <span class="ident">OperationsDeserializer::new</span>().<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
                 <span class="ident">Message::Operations</span>(<span class="ident">operations</span>)
             }
             <span class="ident">MessageTypeId::AskForOperations</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">operation_ids</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">OperationIds::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">operation_ids</span>) <span class="op">=</span>
+                    <span class="ident">OperationIdsDeserializer::new</span>().<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
                 <span class="ident">Message::AskForOperations</span>(<span class="ident">operation_ids</span>)
             }
             <span class="ident">MessageTypeId::OperationsAnnouncement</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">operation_ids</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">OperationIds::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">operation_ids</span>) <span class="op">=</span>
+                    <span class="ident">OperationIdsDeserializer::new</span>().<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
                 <span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">operation_ids</span>)
             }
             <span class="ident">MessageTypeId::Endorsements</span> =&gt; {
@@ -772,12 +677,13 @@
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
                 <span class="comment">// operations</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">endorsements</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>);
+                <span class="kw">let</span> <span class="ident">endorsement_deserializer</span> <span class="op">=</span> <span class="ident">WrappedDeserializer::new</span>(
+                    <span class="ident">EndorsementDeserializer::new</span>(<span class="ident">max_endorsements_per_message</span>),
+                );
                 <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
-                    <span class="kw">let</span> (<span class="ident">endorsement</span>, <span class="ident">delta</span>) <span class="op">=</span>
-                        <span class="ident">Signed</span>::<span class="op">&lt;</span><span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="ident">::from_bytes_compact</span>(
-                            <span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..],
-                        )<span class="question-mark">?</span>;
-                    <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">endorsement</span>) <span class="op">=</span>
+                        <span class="ident">endorsement_deserializer</span>.<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+                    <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buffer</span>[<span class="ident">cursor</span>..].<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>();
                     <span class="ident">endorsements</span>.<span class="ident">push</span>(<span class="ident">endorsement</span>);
                 }
                 <span class="ident">Message::Endorsements</span>(<span class="ident">endorsements</span>)

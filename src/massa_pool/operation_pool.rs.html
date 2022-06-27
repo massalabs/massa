@@ -401,25 +401,13 @@
 <span id="395">395</span>
 <span id="396">396</span>
 <span id="397">397</span>
-<span id="398">398</span>
-<span id="399">399</span>
-<span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
-<span id="404">404</span>
-<span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">settings::PoolConfig</span>, <span class="ident">PoolError</span>};
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultStatus</span>, <span class="ident">SignedOperation</span>, <span class="ident">Slot</span>,
+    <span class="ident">Address</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultStatus</span>, <span class="ident">Slot</span>,
+    <span class="ident">WrappedOperation</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
@@ -468,26 +456,18 @@
 }
 
 <span class="kw">impl</span> <span class="ident">OperationMetadata</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">SignedOperation</span>,
-        <span class="ident">byte_count</span>: <span class="ident">u64</span>,
-        <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-        <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">WrappedOperation</span>, <span class="ident">byte_count</span>: <span class="ident">u64</span>, <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
         <span class="comment">// Fee density</span>
         <span class="comment">// add inclusion fee and gas fees</span>
         <span class="kw">let</span> <span class="ident">total_return</span> <span class="op">=</span> <span class="ident">operation</span>
             .<span class="ident">content</span>
             .<span class="ident">fee</span>
-            .<span class="ident">saturating_add</span>(<span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">get_gas_coins</span>());
+            .<span class="ident">saturating_add</span>(<span class="ident">operation</span>.<span class="ident">get_gas_coins</span>());
         <span class="comment">// return ratio with size</span>
         <span class="kw">let</span> <span class="ident">fee_density</span> <span class="op">=</span> <span class="ident">Ratio::new</span>(<span class="ident">total_return</span>.<span class="ident">to_raw</span>(), <span class="ident">byte_count</span>);
-        <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span>
-            <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">sender_public_key</span>).<span class="ident">get_thread</span>(<span class="ident">thread_count</span>);
-        <span class="kw">let</span> <span class="ident">ledger_involved_addresses</span> <span class="op">=</span> <span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">get_ledger_involved_addresses</span>();
-        <span class="kw">let</span> <span class="ident">validity_range</span> <span class="op">=</span> <span class="ident">operation</span>
-            .<span class="ident">content</span>
-            .<span class="ident">get_validity_range</span>(<span class="ident">operation_validity_periods</span>);
+        <span class="kw">let</span> <span class="ident">thread</span> <span class="op">=</span> <span class="ident">operation</span>.<span class="ident">thread</span>;
+        <span class="kw">let</span> <span class="ident">ledger_involved_addresses</span> <span class="op">=</span> <span class="ident">operation</span>.<span class="ident">get_ledger_involved_addresses</span>();
+        <span class="kw">let</span> <span class="ident">validity_range</span> <span class="op">=</span> <span class="ident">operation</span>.<span class="ident">get_validity_range</span>(<span class="ident">operation_validity_periods</span>);
         <span class="ident">OperationMetadata</span> {
             <span class="ident">byte_count</span>,
             <span class="ident">thread</span>,
@@ -536,10 +516,10 @@
     <span class="doccomment">/// Returns newly added.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_operations</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">SignedOperation</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+        <span class="kw-2">mut</span> <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">removed</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="kw">for</span> (<span class="ident">op_id</span>, (<span class="ident">op</span>, <span class="ident">serialized</span>)) <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">iter</span>() {
+        <span class="kw">for</span> (<span class="ident">op_id</span>, <span class="ident">op</span>) <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">iter</span>() {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;pool add_operations op&quot;</span>, { <span class="string">&quot;op_id&quot;</span>: <span class="ident">op_id</span> });
 
             <span class="comment">// Already present</span>
@@ -557,17 +537,11 @@
             }
 
             <span class="comment">// wrap</span>
-            <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>;
             <span class="kw">let</span> <span class="ident">operation_validity_periods</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">operation_validity_periods</span>;
             <span class="kw">let</span> (<span class="ident">wrapped_op</span>, <span class="ident">validity_start_period</span>) <span class="op">=</span> {
-                <span class="kw">let</span> <span class="ident">byte_count</span> <span class="op">=</span> <span class="ident">serialized</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
-                <span class="kw">let</span> <span class="ident">wrapped</span> <span class="op">=</span> <span class="ident">OperationMetadata::new</span>(
-                    <span class="ident">op</span>,
-                    <span class="ident">byte_count</span>,
-                    <span class="ident">thread_count</span>,
-                    <span class="ident">operation_validity_periods</span>,
-                );
-                <span class="kw">let</span> <span class="ident">validity_range</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">get_validity_range</span>(<span class="ident">operation_validity_periods</span>);
+                <span class="kw">let</span> <span class="ident">byte_count</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">serialized_data</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
+                <span class="kw">let</span> <span class="ident">wrapped</span> <span class="op">=</span> <span class="ident">OperationMetadata::new</span>(<span class="ident">op</span>, <span class="ident">byte_count</span>, <span class="ident">operation_validity_periods</span>);
+                <span class="kw">let</span> <span class="ident">validity_range</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">get_validity_range</span>(<span class="ident">operation_validity_periods</span>);
                 <span class="kw">let</span> <span class="ident">validity_start_period</span> <span class="op">=</span> <span class="ident">validity_range</span>.<span class="ident">start</span>();
                 (<span class="ident">wrapped</span>, <span class="kw-2">*</span><span class="ident">validity_start_period</span>)
             };
@@ -645,8 +619,8 @@
             .<span class="ident">collect</span>();
 
         <span class="comment">// Add newly added to shared storage.</span>
-        <span class="kw">for</span> (<span class="ident">op_id</span>, (<span class="ident">op</span>, <span class="ident">serialized</span>)) <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">into_iter</span>() {
-            <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">store_operation</span>(<span class="ident">op_id</span>, <span class="ident">op</span>, <span class="ident">serialized</span>);
+        <span class="kw">for</span> (<span class="kw">_</span>, <span class="ident">op</span>) <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">into_iter</span>() {
+            <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">store_operation</span>(<span class="ident">op</span>);
         }
 
         <span class="prelude-val">Ok</span>(<span class="ident">newly_added_ids</span>)
@@ -737,7 +711,7 @@
         <span class="ident">exclude</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
         <span class="ident">batch_size</span>: <span class="ident">usize</span>,
         <span class="ident">max_size</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">OperationId</span>, <span class="ident">SignedOperation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">WrappedOperation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">ops_by_thread_and_interest</span>[<span class="ident">block_slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
             .<span class="ident">iter</span>()
             .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">_rentability</span>, <span class="ident">id</span>)<span class="op">|</span> {
@@ -759,7 +733,7 @@
                     <span class="kw">let</span> <span class="ident">stored_operation</span> <span class="op">=</span> <span class="self">self</span>
                         .<span class="ident">storage</span>
                         .<span class="ident">retrieve_operation</span>(<span class="ident">id</span>)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((<span class="kw-2">*</span><span class="ident">id</span>, <span class="ident">stored_operation</span>.<span class="ident">operation</span>, <span class="ident">w_op</span>.<span class="ident">byte_count</span>)))
+                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((<span class="ident">stored_operation</span>, <span class="ident">w_op</span>.<span class="ident">byte_count</span>)))
                 } <span class="kw">else</span> {
                     <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="ident">PoolError::ContainerInconsistency</span>(
                         <span class="macro">format!</span>(<span class="string">&quot;operation pool get_ops inconsistency: op_id={} is in ops_by_thread_and_interest but not in ops&quot;</span>, <span class="ident">id</span>)
@@ -773,13 +747,13 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">operation_ids</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span> {
         <span class="ident">operation_ids</span>
             .<span class="ident">iter</span>()
             .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">op_id</span><span class="op">|</span> {
                 <span class="self">self</span>.<span class="ident">storage</span>
                     .<span class="ident">retrieve_operation</span>(<span class="ident">op_id</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">stored</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">op_id</span>, <span class="ident">stored</span>.<span class="ident">operation</span>))
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">stored</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">op_id</span>, <span class="ident">stored</span>))
             })
             .<span class="ident">collect</span>()
     }
@@ -810,7 +784,7 @@
                             (
                                 <span class="kw-2">*</span><span class="ident">op_id</span>,
                                 <span class="ident">OperationSearchResult</span> {
-                                    <span class="ident">op</span>: <span class="ident">op</span>.<span class="ident">operation</span>,
+                                    <span class="ident">op</span>,
                                     <span class="ident">in_pool</span>: <span class="bool-val">true</span>,
                                     <span class="ident">in_blocks</span>: <span class="ident">Map::default</span>(),
                                     <span class="ident">status</span>: <span class="ident">OperationSearchResultStatus::Pending</span>,

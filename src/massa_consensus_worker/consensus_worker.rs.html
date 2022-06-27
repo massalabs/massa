@@ -1435,6 +1435,29 @@
 <span id="1429">1429</span>
 <span id="1430">1430</span>
 <span id="1431">1431</span>
+<span id="1432">1432</span>
+<span id="1433">1433</span>
+<span id="1434">1434</span>
+<span id="1435">1435</span>
+<span id="1436">1436</span>
+<span id="1437">1437</span>
+<span id="1438">1438</span>
+<span id="1439">1439</span>
+<span id="1440">1440</span>
+<span id="1441">1441</span>
+<span id="1442">1442</span>
+<span id="1443">1443</span>
+<span id="1444">1444</span>
+<span id="1445">1445</span>
+<span id="1446">1446</span>
+<span id="1447">1447</span>
+<span id="1448">1448</span>
+<span id="1449">1449</span>
+<span id="1450">1450</span>
+<span id="1451">1451</span>
+<span id="1452">1452</span>
+<span id="1453">1453</span>
+<span id="1454">1454</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_cipher::encrypt</span>;
 <span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{
@@ -1446,17 +1469,26 @@
 };
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">BlockGraph</span>, <span class="ident">BlockGraphExport</span>};
 <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="ident">massa_models::timeslots</span>::{<span class="ident">get_block_slot_timestamp</span>, <span class="ident">get_latest_block_slot_at_timestamp</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressCycleProductionStats</span>, <span class="ident">stats::ConsensusStats</span>, <span class="ident">OperationId</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressState</span>, <span class="ident">signed::Signed</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{
+    <span class="ident">address</span>::{<span class="ident">AddressCycleProductionStats</span>, <span class="ident">AddressState</span>},
+    <span class="ident">stats::ConsensusStats</span>,
+    <span class="ident">OperationId</span>, <span class="ident">WrappedBlock</span>,
+};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">api</span>::{<span class="ident">LedgerInfo</span>, <span class="ident">RollsInfo</span>},
-    <span class="ident">SignedEndorsement</span>,
+    <span class="ident">WrappedEndorsement</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">ledger_models::LedgerData</span>, <span class="ident">SignedOperation</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">ledger_models::LedgerData</span>, <span class="ident">WrappedOperation</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">SerializeCompact</span>, <span class="ident">Slot</span>,
+    <span class="ident">prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>},
+    <span class="ident">EndorsementSerializer</span>,
+};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{
+    <span class="ident">timeslots</span>::{<span class="ident">get_block_slot_timestamp</span>, <span class="ident">get_latest_block_slot_at_timestamp</span>},
+    <span class="ident">wrapped</span>::{<span class="ident">Id</span>, <span class="ident">WrappedContent</span>},
+};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{
+    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderSerializer</span>, <span class="ident">BlockId</span>, <span class="ident">BlockSerializer</span>, <span class="ident">Endorsement</span>, <span class="ident">Slot</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports</span>::{<span class="ident">error::ProofOfStakeError</span>, <span class="ident">ExportProofOfStake</span>, <span class="ident">ProofOfStake</span>};
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolEventReceiver</span>};
@@ -1892,7 +1924,7 @@
                 .<span class="ident">get_endorsements</span>(<span class="ident">thread_parent_slot</span>, <span class="ident">thread_parent</span>, <span class="ident">endorsement_draws</span>)
                 .<span class="kw">await</span><span class="question-mark">?</span>
                 .<span class="ident">into_iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">e</span>)<span class="op">|</span> ((<span class="ident">id</span>, <span class="ident">e</span>.<span class="ident">content</span>.<span class="ident">index</span>), <span class="ident">e</span>))
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> ((<span class="ident">e</span>.<span class="ident">id</span>, <span class="ident">e</span>.<span class="ident">content</span>.<span class="ident">index</span>), <span class="ident">e</span>))
                 .<span class="ident">unzip</span>()
         } <span class="kw">else</span> {
             (<span class="ident">Map::default</span>(), <span class="ident">Vec::new</span>())
@@ -1903,38 +1935,42 @@
         });
 
         <span class="comment">// create empty block</span>
-        <span class="kw">let</span> (<span class="ident">_block_id</span>, <span class="ident">header</span>) <span class="op">=</span> <span class="ident">Signed::new_signed</span>(
+        <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">BlockHeader::new_wrapped</span>(
             <span class="ident">BlockHeader</span> {
-                <span class="ident">creator</span>: <span class="kw-2">*</span><span class="ident">creator_public_key</span>,
                 <span class="ident">slot</span>: <span class="ident">cur_slot</span>,
                 <span class="ident">parents</span>: <span class="ident">parents</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">b</span>, <span class="ident">_p</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">b</span>).<span class="ident">collect</span>(),
                 <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">Vec::new</span>()[..]),
                 <span class="ident">endorsements</span>: <span class="ident">endorsements</span>.<span class="ident">clone</span>(),
             },
+            <span class="ident">BlockHeaderSerializer::new</span>(),
             <span class="ident">creator_private_key</span>,
+            <span class="ident">creator_public_key</span>,
         )<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span> {
-            <span class="ident">header</span>,
-            <span class="ident">operations</span>: <span class="ident">Vec::new</span>(),
-        };
-
-        <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">block</span>: <span class="ident">WrappedBlock</span> <span class="op">=</span> <span class="ident">Block::new_wrapped</span>(
+            <span class="ident">Block</span> {
+                <span class="ident">header</span>,
+                <span class="ident">operations</span>: <span class="ident">Vec::new</span>(),
+            },
+            <span class="ident">BlockSerializer::new</span>(),
+            <span class="ident">creator_private_key</span>,
+            <span class="ident">creator_public_key</span>,
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// initialize remaining block space and remaining operation count</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_block_space</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_block_size</span> <span class="kw">as</span> <span class="ident">u64</span>)
-            .<span class="ident">checked_sub</span>(<span class="ident">serialized_block</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>)
+            .<span class="ident">checked_sub</span>(<span class="ident">block</span>.<span class="ident">serialized_data</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="ident">ConsensusError::BlockCreationError</span>(<span class="macro">format!</span>(
                     <span class="string">&quot;consensus config max_block_size ({}) is smaller than an empty block ({})&quot;</span>,
                     <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_block_size</span>,
-                    <span class="ident">serialized_block</span>.<span class="ident">len</span>()
+                    <span class="ident">block</span>.<span class="ident">serialized_data</span>.<span class="ident">len</span>()
                 ))
             })<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_operation_count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_block</span> <span class="kw">as</span> <span class="ident">usize</span>;
 
         <span class="comment">// exclude operations that were used in block ancestry</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">exclude_operations</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ancestor_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">parents</span>[<span class="ident">cur_slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ancestor_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">parents</span>[<span class="ident">cur_slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>];
         <span class="kw">let</span> <span class="ident">stop_period</span> <span class="op">=</span> <span class="ident">cur_slot</span>
             .<span class="ident">period</span>
             .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">operation_validity_periods</span>);
@@ -1961,11 +1997,11 @@
         <span class="comment">// init block state accumulator</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state_accu</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">block_db</span>
-            .<span class="ident">block_state_accumulator_init</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">header</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pos</span>)<span class="question-mark">?</span>;
+            .<span class="ident">block_state_accumulator_init</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">content</span>.<span class="ident">header</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pos</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// gather operations</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedOperation</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operation_set</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>(); <span class="comment">// (index, validity end period)</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">finished</span> <span class="op">=</span> <span class="ident">remaining_block_space</span> <span class="op">==</span> <span class="number">0</span>
             <span class="op">|</span><span class="op">|</span> <span class="ident">remaining_operation_count</span> <span class="op">==</span> <span class="number">0</span>
@@ -1992,9 +2028,9 @@
             <span class="ident">finished</span> <span class="op">=</span> <span class="ident">operation_batch</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">operation_batch_size</span>
                 <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_fill_attempts</span> <span class="op">==</span> <span class="ident">attempts</span>;
 
-            <span class="kw">for</span> (<span class="ident">op_id</span>, <span class="ident">op</span>, <span class="ident">op_size</span>) <span class="kw">in</span> <span class="ident">operation_batch</span>.<span class="ident">into_iter</span>() {
+            <span class="kw">for</span> (<span class="ident">op</span>, <span class="ident">op_size</span>) <span class="kw">in</span> <span class="ident">operation_batch</span>.<span class="ident">into_iter</span>() {
                 <span class="comment">// exclude operation from future batches</span>
-                <span class="ident">exclude_operations</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>);
+                <span class="ident">exclude_operations</span>.<span class="ident">insert</span>(<span class="ident">op</span>.<span class="ident">id</span>);
 
                 <span class="comment">// check that the operation fits in size</span>
                 <span class="kw">if</span> <span class="ident">op_size</span> <span class="op">&gt;</span> <span class="ident">remaining_block_space</span> {
@@ -2002,7 +2038,7 @@
                 }
 
                 <span class="comment">// check that we have block gas left</span>
-                <span class="kw">let</span> <span class="ident">op_gas</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">get_gas_usage</span>();
+                <span class="kw">let</span> <span class="ident">op_gas</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">get_gas_usage</span>();
                 <span class="kw">if</span> <span class="ident">total_gas</span>.<span class="ident">saturating_add</span>(<span class="ident">op_gas</span>) <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_gas_per_block</span> {
                     <span class="comment">// no more gas left: do not include</span>
                     <span class="kw">continue</span>;
@@ -2012,19 +2048,25 @@
                 <span class="comment">// on failure, the block state is not modified</span>
                 <span class="kw">if</span> <span class="self">self</span>
                     .<span class="ident">block_db</span>
-                    .<span class="ident">block_state_try_apply_op</span>(<span class="kw-2">&amp;mut</span> <span class="ident">state_accu</span>, <span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">header</span>, <span class="kw-2">&amp;</span><span class="ident">op</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pos</span>)
+                    .<span class="ident">block_state_try_apply_op</span>(
+                        <span class="kw-2">&amp;mut</span> <span class="ident">state_accu</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">content</span>.<span class="ident">header</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">op</span>,
+                        <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pos</span>,
+                    )
                     .<span class="ident">is_err</span>()
                 {
                     <span class="kw">continue</span>;
                 };
 
                 <span class="comment">// add operation</span>
-                <span class="ident">operation_set</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>, (<span class="ident">operation_set</span>.<span class="ident">len</span>(), <span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">expire_period</span>));
+                <span class="kw">let</span> <span class="ident">op_hash</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">id</span>.<span class="ident">hash</span>().<span class="ident">into_bytes</span>();
+                <span class="ident">operation_set</span>.<span class="ident">insert</span>(<span class="ident">op</span>.<span class="ident">id</span>, (<span class="ident">operation_set</span>.<span class="ident">len</span>(), <span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">expire_period</span>));
                 <span class="ident">operations</span>.<span class="ident">push</span>(<span class="ident">op</span>);
                 <span class="ident">remaining_block_space</span> <span class="op">-</span><span class="op">=</span> <span class="ident">op_size</span>;
                 <span class="ident">remaining_operation_count</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
                 <span class="ident">total_gas</span> <span class="op">+</span><span class="op">=</span> <span class="ident">op_gas</span>;
-                <span class="ident">total_hash</span>.<span class="ident">extend</span>(<span class="ident">op_id</span>.<span class="ident">to_bytes</span>());
+                <span class="ident">total_hash</span>.<span class="ident">extend</span>(<span class="ident">op_hash</span>);
 
                 <span class="comment">// check if the block still has some space</span>
                 <span class="kw">if</span> <span class="ident">remaining_block_space</span> <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">remaining_operation_count</span> <span class="op">==</span> <span class="number">0</span> {
@@ -2035,26 +2077,29 @@
         }
 
         <span class="comment">// compile resulting block</span>
-        <span class="kw">let</span> (<span class="ident">block_id</span>, <span class="ident">header</span>) <span class="op">=</span> <span class="ident">Signed::new_signed</span>(
+        <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">BlockHeader::new_wrapped</span>(
             <span class="ident">BlockHeader</span> {
-                <span class="ident">creator</span>: <span class="kw-2">*</span><span class="ident">creator_public_key</span>,
                 <span class="ident">slot</span>: <span class="ident">cur_slot</span>,
                 <span class="ident">parents</span>: <span class="ident">parents</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">b</span>, <span class="ident">_p</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">b</span>).<span class="ident">collect</span>(),
                 <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">total_hash</span>),
                 <span class="ident">endorsements</span>,
             },
+            <span class="ident">BlockHeaderSerializer::new</span>(),
             <span class="ident">creator_private_key</span>,
+            <span class="ident">creator_public_key</span>,
         )<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span> { <span class="ident">header</span>, <span class="ident">operations</span> };
-        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>;
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new_wrapped</span>(
+            <span class="ident">Block</span> { <span class="ident">header</span>, <span class="ident">operations</span> },
+            <span class="ident">BlockSerializer::new</span>(),
+            <span class="ident">creator_private_key</span>,
+            <span class="ident">creator_public_key</span>,
+        )<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>;
         <span class="macro">massa_trace!</span>(<span class="string">&quot;create block&quot;</span>, { <span class="string">&quot;block&quot;</span>: <span class="ident">block</span> });
-
-        <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>;
 
         <span class="comment">// Add to shared storage</span>
-        <span class="self">self</span>.<span class="ident">block_db</span>
-            .<span class="ident">storage</span>
-            .<span class="ident">store_block</span>(<span class="ident">block_id</span>, <span class="ident">block</span>, <span class="ident">serialized_block</span>);
+        <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">storage</span>.<span class="ident">store_block</span>(<span class="ident">block</span>);
 
         <span class="macro">info!</span>(
             <span class="string">&quot;Staked block {} with address {}, at cycle {}, period {}, thread {}&quot;</span>,
@@ -2549,22 +2594,19 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">process_protocol_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">event</span>: <span class="ident">ProtocolEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">event</span> {
             <span class="ident">ProtocolEvent::ReceivedBlock</span> {
-                <span class="ident">block_id</span>,
                 <span class="ident">block</span>,
-                <span class="ident">serialized</span>,
                 <span class="ident">slot</span>,
                 <span class="ident">operation_set</span>,
                 <span class="ident">endorsement_ids</span>,
             } =&gt; {
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;consensus.consensus_worker.process_protocol_event.received_block&quot;</span>,
-                    { <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span> }
+                    { <span class="string">&quot;block_id&quot;</span>: <span class="ident">block</span>.<span class="ident">id</span>.<span class="ident">hash</span>() }
                 );
+                <span class="kw">let</span> <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>;
 
                 <span class="comment">// Store block in shared storage.</span>
-                <span class="self">self</span>.<span class="ident">block_db</span>
-                    .<span class="ident">storage</span>
-                    .<span class="ident">store_block</span>(<span class="ident">block_id</span>, <span class="ident">block</span>, <span class="ident">serialized</span>);
+                <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">storage</span>.<span class="ident">store_block</span>(<span class="ident">block</span>);
 
                 <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">incoming_block</span>(
                     <span class="ident">block_id</span>,
@@ -2808,14 +2850,14 @@
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">pub_k</span>, <span class="ident">priv_k</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">staking_keys</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>) {
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.slot_tick.endorsement_creator_addr&quot;</span>,
                             { <span class="string">&quot;index&quot;</span>: <span class="ident">endorsement_index</span>, <span class="string">&quot;addr&quot;</span>: <span class="ident">addr</span>, <span class="string">&quot;pubkey&quot;</span>: <span class="ident">pub_k</span>, <span class="string">&quot;unlocked&quot;</span>: <span class="bool-val">true</span> });
-                        <span class="kw">let</span> (<span class="ident">endorsement_id</span>, <span class="ident">endorsement</span>) <span class="op">=</span> <span class="ident">create_endorsement</span>(
+                        <span class="kw">let</span> <span class="ident">endorsement</span> <span class="op">=</span> <span class="ident">create_endorsement</span>(
                             <span class="ident">block_slot</span>,
                             <span class="kw-2">*</span><span class="ident">pub_k</span>,
                             <span class="ident">priv_k</span>,
                             <span class="ident">endorsement_index</span> <span class="kw">as</span> <span class="ident">u32</span>,
                             <span class="ident">block_id</span>,
                         )<span class="question-mark">?</span>;
-                        <span class="ident">endorsements</span>.<span class="ident">insert</span>(<span class="ident">endorsement_id</span>, <span class="ident">endorsement</span>);
+                        <span class="ident">endorsements</span>.<span class="ident">insert</span>(<span class="ident">endorsement</span>.<span class="ident">id</span>, <span class="ident">endorsement</span>);
                         <span class="self">self</span>.<span class="ident">endorsed_slots</span>.<span class="ident">insert</span>(<span class="ident">block_slot</span>);
                     } <span class="kw">else</span> {
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.slot_tick.endorsement_creator_addr&quot;</span>,
@@ -2856,15 +2898,19 @@
     <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>,
     <span class="ident">index</span>: <span class="ident">u32</span>,
     <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span>)<span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">content</span> <span class="op">=</span> <span class="ident">Endorsement</span> {
-        <span class="ident">sender_public_key</span>,
         <span class="ident">slot</span>,
         <span class="ident">index</span>,
         <span class="ident">endorsed_block</span>,
     };
-    <span class="kw">let</span> (<span class="ident">e_id</span>, <span class="ident">endorsement</span>) <span class="op">=</span> <span class="ident">Signed::new_signed</span>(<span class="ident">content</span>, <span class="ident">private_key</span>)<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>((<span class="ident">e_id</span>, <span class="ident">endorsement</span>))
+    <span class="kw">let</span> <span class="ident">endorsement</span> <span class="op">=</span> <span class="ident">Endorsement::new_wrapped</span>(
+        <span class="ident">content</span>,
+        <span class="ident">EndorsementSerializer::new</span>(),
+        <span class="ident">private_key</span>,
+        <span class="kw-2">&amp;</span><span class="ident">sender_public_key</span>,
+    )<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(<span class="ident">endorsement</span>)
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (c80c4b8fd 2022-06-26)" ></div>

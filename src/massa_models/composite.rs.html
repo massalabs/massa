@@ -90,7 +90,7 @@
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::Map</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">SignedOperation</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">WrappedOperation</span>};
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
@@ -125,7 +125,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OperationSearchResult</span> {
     <span class="doccomment">/// the operation</span>
-    <span class="kw">pub</span> <span class="ident">op</span>: <span class="ident">SignedOperation</span>,
+    <span class="kw">pub</span> <span class="ident">op</span>: <span class="ident">WrappedOperation</span>,
     <span class="doccomment">/// true if in pool</span>
     <span class="kw">pub</span> <span class="ident">in_pool</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// maps block id to index on the operation in the block and if it&#39;s final</span>

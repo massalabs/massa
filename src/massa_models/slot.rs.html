@@ -336,22 +336,6 @@
 <span id="330">330</span>
 <span id="331">331</span>
 <span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -368,10 +352,7 @@
 };
 <span class="kw">use</span> <span class="ident">nom::error</span>::{<span class="ident">context</span>, <span class="ident">ContextError</span>, <span class="ident">ParseError</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::ops</span>::{
-    <span class="ident">Bound</span>::{<span class="self">self</span>, <span class="ident">Included</span>},
-    <span class="ident">RangeBounds</span>,
-};
+<span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Bound</span>, <span class="ident">RangeBounds</span>};
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cmp::Ordering</span>, <span class="ident">convert::TryInto</span>};
 
@@ -387,21 +368,20 @@
 <span class="doccomment">/// Basic serializer for `Slot`</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SlotSerializer</span> {
     <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer</span>,
-    <span class="ident">range_period</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
-    <span class="ident">range_thread</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">SlotSerializer</span> {
     <span class="doccomment">/// Creates a `SlotSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">range_period</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
-        <span class="ident">range_thread</span>: (<span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    ) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">range_period</span>,
-            <span class="ident">range_thread</span>,
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
         }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">SlotSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
     }
 }
 
@@ -413,22 +393,10 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// let slot: Slot = Slot::new(1, 3);</span>
     <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = SlotSerializer::new((Included(u64::MIN), Included(u64::MAX)), (Included(u8::MIN), Included(u8::MAX)));</span>
+    <span class="doccomment">/// let serializer = SlotSerializer::new();</span>
     <span class="doccomment">/// serializer.serialize(&amp;slot, &amp;mut serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Slot</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">range_period</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">period</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(
-                <span class="string">&quot;Period must be in range {:#?} but his value is {:#?}&quot;</span>,
-                <span class="self">self</span>.<span class="ident">range_period</span>, <span class="ident">value</span>.<span class="ident">period</span>
-            )));
-        }
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">range_thread</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">thread</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SerializeError::NumberTooBig</span>(<span class="macro">format!</span>(
-                <span class="string">&quot;Thread must be in range {:#?} but his value is {:#?}&quot;</span>,
-                <span class="self">self</span>.<span class="ident">range_thread</span>, <span class="ident">value</span>.<span class="ident">thread</span>
-            )));
-        }
         <span class="self">self</span>.<span class="ident">u64_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">period</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="ident">buffer</span>.<span class="ident">push</span>(<span class="ident">value</span>.<span class="ident">thread</span>);
         <span class="prelude-val">Ok</span>(())
@@ -462,7 +430,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// let slot: Slot = Slot::new(1, 3);</span>
     <span class="doccomment">/// let mut serialized = Vec::new();</span>
-    <span class="doccomment">/// let serializer = SlotSerializer::new((Included(u64::MIN), Included(u64::MAX)), (Included(u8::MIN), Included(u8::MAX)));</span>
+    <span class="doccomment">/// let serializer = SlotSerializer::new();</span>
     <span class="doccomment">/// let deserializer = SlotDeserializer::new((Included(u64::MIN), Included(u64::MAX)), (Included(u8::MIN), Included(u8::MAX.into())));</span>
     <span class="doccomment">/// serializer.serialize(&amp;slot, &amp;mut serialized).unwrap();</span>
     <span class="doccomment">/// let (rest, slot_deser) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>

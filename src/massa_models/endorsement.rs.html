@@ -253,20 +253,34 @@
 <span id="247">247</span>
 <span id="248">248</span>
 <span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">BLOCK_ID_SIZE_BYTES</span>, <span class="ident">ENDORSEMENT_ID_SIZE_BYTES</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::ENDORSEMENT_ID_SIZE_BYTES</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node_configuration::THREAD_COUNT</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::PreHashed</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::signed</span>::{<span class="ident">Id</span>, <span class="ident">Signable</span>, <span class="ident">Signed</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">serialization</span>::{
-        <span class="ident">array_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
-    },
-    <span class="ident">with_serialization_context</span>, <span class="ident">BlockId</span>, <span class="ident">ModelsError</span>, <span class="ident">Slot</span>,
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wrapped</span>::{<span class="ident">Id</span>, <span class="ident">Wrapped</span>, <span class="ident">WrappedContent</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">BlockId</span>, <span class="ident">ModelsError</span>, <span class="ident">Slot</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">SlotDeserializer</span>, <span class="ident">SlotSerializer</span>};
+<span class="kw">use</span> <span class="ident">massa_hash</span>::{<span class="ident">Hash</span>, <span class="ident">HashDeserializer</span>};
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
+    <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="ident">U32VarIntSerializer</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>};
+<span class="kw">use</span> <span class="ident">nom::error::context</span>;
+<span class="kw">use</span> <span class="ident">nom::sequence::tuple</span>;
+<span class="kw">use</span> <span class="ident">nom::Parser</span>;
+<span class="kw">use</span> <span class="ident">nom</span>::{
+    <span class="ident">error</span>::{<span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
+    <span class="ident">IResult</span>,
+};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std::ops::Bound</span>::{<span class="ident">Excluded</span>, <span class="ident">Included</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fmt::Display</span>, <span class="ident">str::FromStr</span>};
 
 <span class="kw">const</span> <span class="ident">ENDORSEMENT_ID_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;END&quot;</span>;
@@ -280,6 +294,10 @@
 <span class="kw">impl</span> <span class="ident">Id</span> <span class="kw">for</span> <span class="ident">EndorsementId</span> {
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">hash</span>: <span class="ident">Hash</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">EndorsementId</span>(<span class="ident">hash</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Hash</span> {
+        <span class="self">self</span>.<span class="number">0</span>
     }
 }
 
@@ -352,11 +370,6 @@
             <span class="self">self</span>.<span class="ident">endorsed_block</span>, <span class="self">self</span>.<span class="ident">slot</span>
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Index: {}&quot;</span>, <span class="self">self</span>.<span class="ident">index</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
-            <span class="string">&quot;Endorsement creator public key: {}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">sender_public_key</span>
-        )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -364,8 +377,6 @@
 <span class="doccomment">/// an endorsement, as sent in the network</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Endorsement</span> {
-    <span class="doccomment">/// Public key of the endorser.</span>
-    <span class="kw">pub</span> <span class="ident">sender_public_key</span>: <span class="ident">PublicKey</span>,
     <span class="doccomment">/// slot of endorsed block</span>
     <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
     <span class="doccomment">/// endorsement index inside the block</span>
@@ -374,128 +385,131 @@
     <span class="kw">pub</span> <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">Signable</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Endorsement</span> {}
+<span class="doccomment">/// Wrapped endorsement</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">WrappedEndorsement</span> <span class="op">=</span> <span class="ident">Wrapped</span><span class="op">&lt;</span><span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span><span class="op">&gt;</span>;
 
-<span class="doccomment">/// Signed endorsement</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">SignedEndorsement</span> <span class="op">=</span> <span class="ident">Signed</span><span class="op">&lt;</span><span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span><span class="op">&gt;</span>;
+<span class="kw">impl</span> <span class="ident">WrappedContent</span> <span class="kw">for</span> <span class="ident">Endorsement</span> {}
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Validity of the slot.</span>
-<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">Endorsement</span> {
-    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+<span class="doccomment">/// Serializer for `Endorsement`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndorsementSerializer</span> {
+    <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer</span>,
+    <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer</span>,
+}
 
-        <span class="comment">// Sender public key</span>
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">sender_public_key</span>.<span class="ident">to_bytes</span>());
-
-        <span class="comment">// Slot</span>
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">slot</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
-
-        <span class="comment">// endorsement index inside the block</span>
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">index</span>.<span class="ident">to_varint_bytes</span>());
-
-        <span class="comment">// id of endorsed block</span>
-        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">endorsed_block</span>.<span class="ident">to_bytes</span>());
-
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+<span class="kw">impl</span> <span class="ident">EndorsementSerializer</span> {
+    <span class="doccomment">/// Creates a new `EndorsementSerializer`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident">EndorsementSerializer</span> {
+            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(),
+            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
+        }
     }
 }
 
-<span class="doccomment">/// Checks performed:</span>
-<span class="doccomment">/// - Validity of the sender public key.</span>
-<span class="doccomment">/// - Validity of the slot.</span>
-<span class="doccomment">/// - Validity of the endorsement index.</span>
-<span class="doccomment">/// - Validity of the endorsed block id.</span>
-<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">Endorsement</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">max_block_endorsements</span> <span class="op">=</span>
-            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">endorsement_count</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">EndorsementSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
+    }
+}
 
-        <span class="comment">// sender public key</span>
-        <span class="kw">let</span> <span class="ident">sender_public_key</span> <span class="op">=</span> <span class="ident">PublicKey::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>;
+<span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">EndorsementSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Endorsement</span>, <span class="ident">buffer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">SerializeError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">slot_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">slot</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">u32_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>.<span class="ident">index</span>, <span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="ident">buffer</span>.<span class="ident">extend</span>(<span class="ident">value</span>.<span class="ident">endorsed_block</span>.<span class="number">0</span>.<span class="ident">to_bytes</span>());
+        <span class="prelude-val">Ok</span>(())
+    }
+}
 
-        <span class="comment">// slot</span>
-        <span class="kw">let</span> (<span class="ident">slot</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">Slot::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">slot</span>.<span class="ident">period</span> <span class="op">==</span> <span class="number">0</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(
-                <span class="string">&quot;the target period of an endorsement cannot be 0&quot;</span>.<span class="ident">into</span>(),
-            ));
+<span class="doccomment">/// Deserializer for `Endorsement`</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndorsementDeserializer</span> {
+    <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer</span>,
+    <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer</span>,
+    <span class="ident">hash_deserializer</span>: <span class="ident">HashDeserializer</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">EndorsementDeserializer</span> {
+    <span class="doccomment">/// Creates a new `EndorsementDeserializer`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">endorsement_count</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
+        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
+        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
+        <span class="ident">EndorsementDeserializer</span> {
+            <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer::new</span>(
+                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Excluded</span>(<span class="ident">thread_count</span>)),
+            ),
+            <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Excluded</span>(<span class="ident">endorsement_count</span>)),
+            <span class="ident">hash_deserializer</span>: <span class="ident">HashDeserializer::new</span>(),
         }
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+    }
+}
 
-        <span class="comment">// endorsement index inside the block</span>
-        <span class="kw">let</span> (<span class="ident">index</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes_bounded</span>(
-            <span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..],
-            <span class="ident">max_block_endorsements</span>.<span class="ident">saturating_sub</span>(<span class="number">1</span>),
-        )<span class="question-mark">?</span>;
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-
-        <span class="comment">// id of endorsed block</span>
-        <span class="kw">let</span> <span class="ident">endorsed_block</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>);
-        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
-
-        <span class="prelude-val">Ok</span>((
-            <span class="ident">Endorsement</span> {
-                <span class="ident">sender_public_key</span>,
-                <span class="ident">slot</span>,
-                <span class="ident">index</span>,
-                <span class="ident">endorsed_block</span>,
-            },
-            <span class="ident">cursor</span>,
-        ))
+<span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">EndorsementDeserializer</span> {
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">IResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>], <span class="ident">Endorsement</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+        <span class="ident">context</span>(
+            <span class="string">&quot;Failed endorsement deserialization&quot;</span>,
+            <span class="ident">tuple</span>((
+                <span class="ident">context</span>(<span class="string">&quot;Failed slot deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">slot_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+                <span class="ident">context</span>(<span class="string">&quot;Failed index deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">u32_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+                <span class="ident">context</span>(<span class="string">&quot;Failed endorsed_block deserialization&quot;</span>, <span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">hash_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">input</span>)
+                }),
+            )),
+        )
+        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">slot</span>, <span class="ident">index</span>, <span class="ident">hash_block_id</span>)<span class="op">|</span> <span class="ident">Endorsement</span> {
+            <span class="ident">slot</span>,
+            <span class="ident">index</span>,
+            <span class="ident">endorsed_block</span>: <span class="ident">BlockId::new</span>(<span class="ident">hash_block_id</span>),
+        })
+        .<span class="ident">parse</span>(<span class="ident">buffer</span>)
     }
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::signed::Signed</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wrapped</span>::{<span class="ident">WrappedDeserializer</span>, <span class="ident">WrappedSerializer</span>};
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">massa_serialization::DeserializeError</span>;
     <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>};
     <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_endorsement_serialization</span>() {
-        <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::SerializationContext</span> {
-            <span class="ident">max_block_size</span>: <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>,
-            <span class="ident">max_operations_per_block</span>: <span class="number">1024</span>,
-            <span class="ident">thread_count</span>: <span class="number">3</span>,
-            <span class="ident">max_advertise_length</span>: <span class="number">128</span>,
-            <span class="ident">max_message_size</span>: <span class="number">3</span> <span class="op">*</span> <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>,
-            <span class="ident">max_bootstrap_blocks</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_cliques</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_deps</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_children</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_pos_cycles</span>: <span class="number">1000</span>,
-            <span class="ident">max_bootstrap_pos_entries</span>: <span class="number">1000</span>,
-            <span class="ident">max_ask_blocks_per_message</span>: <span class="number">10</span>,
-            <span class="ident">max_operations_per_message</span>: <span class="number">1024</span>,
-            <span class="ident">max_endorsements_per_message</span>: <span class="number">1024</span>,
-            <span class="ident">max_bootstrap_message_size</span>: <span class="number">100000000</span>,
-            <span class="ident">endorsement_count</span>: <span class="number">8</span>,
-        };
-        <span class="ident"><span class="kw">crate</span>::init_serialization_context</span>(<span class="ident">ctx</span>);
-
         <span class="kw">let</span> <span class="ident">sender_priv</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">sender_public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">sender_priv</span>);
-
+        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">sender_priv</span>);
         <span class="kw">let</span> <span class="ident">content</span> <span class="op">=</span> <span class="ident">Endorsement</span> {
-            <span class="ident">sender_public_key</span>,
             <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">10</span>, <span class="number">1</span>),
             <span class="ident">index</span>: <span class="number">0</span>,
             <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;blk&quot;</span>.<span class="ident">as_bytes</span>())),
         };
-        <span class="kw">let</span> <span class="ident">endorsement</span> <span class="op">=</span> <span class="ident">Signed::new_signed</span>(<span class="ident">content</span>.<span class="ident">clone</span>(), <span class="kw-2">&amp;</span><span class="ident">sender_priv</span>).<span class="ident">unwrap</span>().<span class="number">1</span>;
+        <span class="kw">let</span> <span class="ident">endorsement</span>: <span class="ident">WrappedEndorsement</span> <span class="op">=</span> <span class="ident">Endorsement::new_wrapped</span>(
+            <span class="ident">content</span>.<span class="ident">clone</span>(),
+            <span class="ident">EndorsementSerializer::new</span>(),
+            <span class="kw-2">&amp;</span><span class="ident">sender_priv</span>,
+            <span class="kw-2">&amp;</span><span class="ident">public_key</span>,
+        )
+        .<span class="ident">unwrap</span>();
 
-        <span class="kw">let</span> <span class="ident">ser_content</span> <span class="op">=</span> <span class="ident">content</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> (<span class="ident">res_content</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">Endorsement::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">ser_content</span>).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">res_content</span>), <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">content</span>));
-        <span class="kw">let</span> <span class="ident">ser_endorsement</span> <span class="op">=</span> <span class="ident">endorsement</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> (<span class="ident">res_endorsement</span>, <span class="kw">_</span>) <span class="op">=</span>
-            <span class="ident">Signed</span>::<span class="op">&lt;</span><span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="ident">::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">ser_endorsement</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ser_endorsement</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let</span> <span class="ident">serializer</span> <span class="op">=</span> <span class="ident">WrappedSerializer::new</span>();
+        <span class="ident">serializer</span>
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">endorsement</span>, <span class="kw-2">&amp;mut</span> <span class="ident">ser_endorsement</span>)
+            .<span class="ident">unwrap</span>();
+        <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">res_endorsement</span>): (<span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">WrappedEndorsement</span>) <span class="op">=</span>
+            <span class="ident">WrappedDeserializer::new</span>(<span class="ident">EndorsementDeserializer::new</span>(<span class="number">1</span>))
+                .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">ser_endorsement</span>)
+                .<span class="ident">unwrap</span>();
         <span class="macro">assert_eq!</span>(
             <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">res_endorsement</span>),
             <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">endorsement</span>)

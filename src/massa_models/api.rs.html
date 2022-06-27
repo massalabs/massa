@@ -534,8 +534,8 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::Set</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::stats</span>::{<span class="ident">ConsensusStats</span>, <span class="ident">NetworkStats</span>, <span class="ident">PoolStats</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::SignedEndorsement</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::SignedOperation</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::WrappedEndorsement</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::WrappedOperation</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">CompactConfig</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
 };
@@ -629,7 +629,7 @@
     <span class="doccomment">/// true if the operation is final (for example in a final block)</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// the operation itself</span>
-    <span class="kw">pub</span> <span class="ident">operation</span>: <span class="ident">SignedOperation</span>,
+    <span class="kw">pub</span> <span class="ident">operation</span>: <span class="ident">WrappedOperation</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">OperationInfo</span> {
@@ -870,7 +870,7 @@
     <span class="doccomment">/// true included in a final block</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// The full endorsement</span>
-    <span class="kw">pub</span> <span class="ident">endorsement</span>: <span class="ident">SignedEndorsement</span>,
+    <span class="kw">pub</span> <span class="ident">endorsement</span>: <span class="ident">WrappedEndorsement</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">EndorsementInfo</span> {

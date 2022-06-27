@@ -301,8 +301,6 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by</span>
 <span class="doccomment">//! `massa-network` that allow external communication with other nodes.</span>
 <span class="doccomment">//!</span>
@@ -380,7 +378,7 @@
     <span class="ident">node::NodeId</span>,
     <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
     <span class="ident">stats::NetworkStats</span>,
-    <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>,
+    <span class="ident">BlockId</span>, <span class="ident">WrappedBlock</span>, <span class="ident">WrappedEndorsement</span>, <span class="ident">WrappedHeader</span>,
 };
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">net::IpAddr</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync::oneshot</span>;
@@ -407,12 +405,13 @@
     <span class="doccomment">/// Ask for a set of operations</span>
     <span class="ident">AskForOperations</span>(<span class="ident">OperationIds</span>),
     <span class="doccomment">/// Endorsements</span>
-    <span class="ident">SendEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
+    <span class="ident">SendEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
 }
 
 <span class="doccomment">/// Event types that node worker can emit</span>
 <span class="doccomment">/// Append on receive something from inside and outside.</span>
 <span class="doccomment">/// Outside initialization with `Received` prefix.</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NodeEventType</span> {
     <span class="doccomment">/// Node we are connected to asked for advertised peers</span>
@@ -420,21 +419,21 @@
     <span class="doccomment">/// Node we are connected to sent peer list</span>
     <span class="ident">ReceivedPeerList</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Node we are connected to sent block</span>
-    <span class="ident">ReceivedBlock</span>(<span class="ident">Block</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
+    <span class="ident">ReceivedBlock</span>(<span class="ident">WrappedBlock</span>),
     <span class="doccomment">/// Node we are connected to sent block header</span>
-    <span class="ident">ReceivedBlockHeader</span>(<span class="ident">SignedHeader</span>),
+    <span class="ident">ReceivedBlockHeader</span>(<span class="ident">WrappedHeader</span>),
     <span class="doccomment">/// Node we are connected to asks for a block.</span>
     <span class="ident">ReceivedAskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Didn&#39;t found given block,</span>
     <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
     <span class="doccomment">/// Received full operations.</span>
-    <span class="ident">ReceivedOperations</span>(<span class="ident">Operations</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>),
+    <span class="ident">ReceivedOperations</span>(<span class="ident">Operations</span>),
     <span class="doccomment">/// Received an operation id batch announcing new operations</span>
     <span class="ident">ReceivedOperationAnnouncements</span>(<span class="ident">OperationIds</span>),
     <span class="doccomment">/// Receive a list of wanted operations</span>
     <span class="ident">ReceivedAskForOperations</span>(<span class="ident">OperationIds</span>),
     <span class="doccomment">/// Receive a set of endorsement</span>
-    <span class="ident">ReceivedEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
+    <span class="ident">ReceivedEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
 }
 
 <span class="doccomment">/// Events node worker can emit.</span>
@@ -488,7 +487,7 @@
         <span class="doccomment">/// to node id</span>
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
         <span class="doccomment">/// endorsements</span>
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// sign message with our node private key (associated to node id)</span>
     <span class="doccomment">/// != staking key</span>
@@ -531,6 +530,7 @@
 }
 
 <span class="doccomment">/// network event</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkEvent</span> {
     <span class="doccomment">/// new connection from node</span>
@@ -542,16 +542,14 @@
         <span class="doccomment">/// from node id</span>
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
         <span class="doccomment">/// block</span>
-        <span class="ident">block</span>: <span class="ident">Block</span>,
-        <span class="doccomment">/// serialized block</span>
-        <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+        <span class="ident">block</span>: <span class="ident">WrappedBlock</span>,
     },
     <span class="doccomment">/// A block header was received</span>
     <span class="ident">ReceivedBlockHeader</span> {
         <span class="doccomment">/// from node id</span>
         <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>,
         <span class="doccomment">/// header</span>
-        <span class="ident">header</span>: <span class="ident">SignedHeader</span>,
+        <span class="ident">header</span>: <span class="ident">WrappedHeader</span>,
     },
     <span class="doccomment">/// Someone ask for block with given header hash.</span>
     <span class="ident">AskedForBlocks</span> {
@@ -573,8 +571,6 @@
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
         <span class="doccomment">/// operations</span>
         <span class="ident">operations</span>: <span class="ident">Operations</span>,
-        <span class="doccomment">/// serialized operations.</span>
-        <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// Receive a list of `OperationId`</span>
     <span class="ident">ReceivedOperationAnnouncements</span> {
@@ -595,7 +591,7 @@
         <span class="doccomment">/// node id</span>
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
         <span class="doccomment">/// Endorsements</span>
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
     },
 }
 

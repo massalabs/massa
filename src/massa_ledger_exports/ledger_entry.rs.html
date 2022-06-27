@@ -450,8 +450,8 @@
     <span class="doccomment">/// Creates a new `DatastoreSerializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">value_serializer</span>: <span class="ident">VecU8Serializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
+            <span class="ident">value_serializer</span>: <span class="ident">VecU8Serializer::new</span>(),
         }
     }
 }
@@ -528,8 +528,8 @@
     <span class="doccomment">/// Creates a new `LedgerEntrySerializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+            <span class="ident">vec_u8_serializer</span>: <span class="ident">VecU8Serializer::new</span>(),
+            <span class="ident">amount_serializer</span>: <span class="ident">AmountSerializer::new</span>(),
             <span class="ident">datastore_serializer</span>: <span class="ident">DatastoreSerializer::new</span>(),
         }
     }

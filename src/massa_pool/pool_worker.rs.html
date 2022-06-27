@@ -368,15 +368,6 @@
 <span id="362">362</span>
 <span id="363">363</span>
 <span id="364">364</span>
-<span id="365">365</span>
-<span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
-<span id="373">373</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::error::PoolError</span>;
@@ -384,10 +375,9 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">endorsement_pool::EndorsementPool</span>, <span class="ident">settings::PoolConfig</span>};
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models::stats::PoolStats</span>;
-<span class="kw">use</span> <span class="ident">massa_models::SerializeCompact</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">SignedEndorsement</span>,
-    <span class="ident">SignedOperation</span>, <span class="ident">Slot</span>,
+    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">Slot</span>, <span class="ident">WrappedEndorsement</span>,
+    <span class="ident">WrappedOperation</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolPoolEventReceiver</span>};
 <span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
@@ -398,7 +388,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PoolCommand</span> {
     <span class="doccomment">/// Add operations to the pool</span>
-    <span class="ident">AddOperations</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>),
+    <span class="ident">AddOperations</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span>),
     <span class="doccomment">/// current slot update</span>
     <span class="ident">UpdateCurrentSlot</span>(<span class="ident">Slot</span>),
     <span class="doccomment">/// Latest final periods update</span>
@@ -414,14 +404,14 @@
         <span class="doccomment">/// max size of an operation in bytes</span>
         <span class="ident">max_size</span>: <span class="ident">u64</span>,
         <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">OperationId</span>, <span class="ident">SignedOperation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">WrappedOperation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// get operations by id</span>
     <span class="ident">GetOperations</span> {
         <span class="doccomment">/// ids</span>
         <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
         <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// Get operations by involved address</span>
     <span class="ident">GetRecentOperations</span> {
@@ -442,10 +432,10 @@
         <span class="doccomment">/// expected creators</span>
         <span class="ident">creators</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
         <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// add endorsements to pool</span>
-    <span class="ident">AddEndorsements</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
+    <span class="ident">AddEndorsements</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
     <span class="doccomment">/// get pool stats</span>
     <span class="ident">GetStats</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">PoolStats</span><span class="op">&gt;</span>),
     <span class="doccomment">/// get endorsements by address</span>
@@ -453,14 +443,14 @@
         <span class="doccomment">/// address</span>
         <span class="ident">address</span>: <span class="ident">Address</span>,
         <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// get endorsements by id</span>
     <span class="ident">GetEndorsementsById</span> {
         <span class="doccomment">/// ids</span>
         <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
         <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
 }
 
@@ -565,14 +555,6 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">process_pool_command</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cmd</span>: <span class="ident">PoolCommand</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">cmd</span> {
             <span class="ident">PoolCommand::AddOperations</span>(<span class="ident">operations</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">operations</span> <span class="op">=</span> <span class="ident">operations</span>
-                    .<span class="ident">into_iter</span>()
-                    .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">op</span>)<span class="op">|</span> {
-                        <span class="ident">op</span>.<span class="ident">to_bytes_compact</span>()
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">serialized</span><span class="op">|</span> (<span class="ident">id</span>, (<span class="ident">op</span>, <span class="ident">serialized</span>)))
-                            .<span class="ident">ok</span>()
-                    })
-                    .<span class="ident">collect</span>();
                 <span class="kw">let</span> <span class="ident">newly_added</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">process_operations</span>(<span class="ident">operations</span>)<span class="question-mark">?</span>;
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">newly_added</span>.<span class="ident">is_empty</span>() {
                     <span class="self">self</span>.<span class="ident">protocol_command_sender</span>

@@ -292,6 +292,8 @@
 <span id="286">286</span>
 <span id="287">287</span>
 <span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::PeerTypeConnectionConfig</span>;
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
 <span class="kw">use</span> <span class="ident">enum_map::Enum</span>;
@@ -337,15 +339,17 @@
 
 <span class="kw">impl</span> <span class="ident">BootstrapPeersSerializer</span> {
     <span class="doccomment">/// Creates a new `BootstrapPeersSerializer`</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Arguments:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// * max_peers: maximum peers that can be serialized</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">max_peers</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">max_peers</span>)),
+            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
             <span class="ident">ip_addr_serializer</span>: <span class="ident">IpAddrSerializer::new</span>(),
         }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BootstrapPeersSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
     }
 }
 
@@ -360,7 +364,7 @@
     <span class="doccomment">/// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));</span>
     <span class="doccomment">/// let mut serialized = Vec::new();</span>
     <span class="doccomment">/// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);</span>
-    <span class="doccomment">/// let peers_serializer = BootstrapPeersSerializer::new(1000);</span>
+    <span class="doccomment">/// let peers_serializer = BootstrapPeersSerializer::new();</span>
     <span class="doccomment">/// peers_serializer.serialize(&amp;peers, &amp;mut serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">serialize</span>(
@@ -413,7 +417,7 @@
     <span class="doccomment">/// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));</span>
     <span class="doccomment">/// let mut serialized = Vec::new();</span>
     <span class="doccomment">/// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);</span>
-    <span class="doccomment">/// let peers_serializer = BootstrapPeersSerializer::new(1000);</span>
+    <span class="doccomment">/// let peers_serializer = BootstrapPeersSerializer::new();</span>
     <span class="doccomment">/// let peers_deserializer = BootstrapPeersDeserializer::new(1000);</span>
     <span class="doccomment">/// peers_serializer.serialize(&amp;peers, &amp;mut serialized).unwrap();</span>
     <span class="doccomment">/// let (rest, peers_deser) = peers_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>

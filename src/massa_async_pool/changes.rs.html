@@ -276,7 +276,7 @@
 <span class="kw">impl</span> <span class="ident">AsyncPoolChangesSerializer</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="ident">u64::MIN</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
             <span class="ident">id_serializer</span>: <span class="ident">AsyncMessageIdSerializer::new</span>(),
             <span class="ident">message_serializer</span>: <span class="ident">AsyncMessageSerializer::new</span>(),
         }

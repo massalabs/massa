@@ -269,16 +269,6 @@
 <span id="263">263</span>
 <span id="264">264</span>
 <span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">bitvec</span>::{<span class="ident">order::Lsb0</span>, <span class="ident">prelude::BitVec</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants</span>::{<span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>, <span class="ident">THREAD_COUNT</span>},
@@ -334,20 +324,10 @@
 <span class="kw">impl</span> <span class="ident">ThreadCycleStateSerializer</span> {
     <span class="doccomment">/// Creates a new `ThreadCycleStateSerializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="ident">ThreadCycleStateSerializer</span> {
-            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(
-                <span class="ident">Included</span>(<span class="number">0</span>),
-                <span class="ident">Included</span>(<span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>),
-            ),
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">thread_count</span>)),
-            ),
+            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
+            <span class="ident">slot_serializer</span>: <span class="ident">SlotSerializer::new</span>(),
             <span class="ident">roll_update_serializer</span>: <span class="ident">RollUpdateSerializer::new</span>(),
         }
     }

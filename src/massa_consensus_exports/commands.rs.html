@@ -136,7 +136,7 @@
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressState</span>, <span class="ident">api::EndorsementInfo</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">clique::Clique</span>, <span class="ident">stats::ConsensusStats</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">Slot</span>, <span class="ident">StakersCycleProductionStats</span>,
+    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">Slot</span>, <span class="ident">StakersCycleProductionStats</span>, <span class="ident">WrappedEndorsement</span>,
 };
 
 <span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ExportProofOfStake</span>;
@@ -236,7 +236,7 @@
         <span class="doccomment">/// wanted address</span>
         <span class="ident">address</span>: <span class="ident">Address</span>,
         <span class="doccomment">/// response channel</span>
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// get endorsements by id</span>
     <span class="ident">GetEndorsementsById</span> {

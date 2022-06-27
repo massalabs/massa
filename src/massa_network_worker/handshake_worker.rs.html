@@ -313,7 +313,7 @@
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeTimeout</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">None</span>))) =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeInterruption</span>, <span class="string">&quot;init&quot;</span>.<span class="ident">into</span>()),
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>, <span class="kw">_</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
                 <span class="ident">Message::HandshakeInitiation</span> {
                     <span class="ident">public_key</span>: <span class="ident">pk</span>,
                     <span class="ident">random_bytes</span>: <span class="ident">rb</span>,
@@ -358,7 +358,7 @@
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeTimeout</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">None</span>))) =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeInterruption</span>, <span class="string">&quot;repl&quot;</span>.<span class="ident">into</span>()),
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>, <span class="kw">_</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
                 <span class="ident">Message::HandshakeReply</span> { <span class="ident">signature</span>: <span class="ident">sig</span> } =&gt; <span class="ident">sig</span>,
                 <span class="kw">_</span> =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeWrongMessage</span>),
             },

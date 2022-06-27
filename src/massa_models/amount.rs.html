@@ -304,6 +304,12 @@
 <span id="298">298</span>
 <span id="299">299</span>
 <span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::AMOUNT_DECIMAL_FACTOR</span>;
@@ -502,10 +508,16 @@
 
 <span class="kw">impl</span> <span class="ident">AmountSerializer</span> {
     <span class="doccomment">/// Create a new `AmountSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">min_amount</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">max_amount</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(<span class="ident">min_amount</span>, <span class="ident">max_amount</span>),
+            <span class="ident">u64_serializer</span>: <span class="ident">U64VarIntSerializer::new</span>(),
         }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">AmountSerializer</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>()
     }
 }
 
@@ -517,7 +529,7 @@
     <span class="doccomment">/// use std::ops::Bound::Included;</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();</span>
-    <span class="doccomment">/// let serializer = AmountSerializer::new(Included(0), Included(u64::MAX));</span>
+    <span class="doccomment">/// let serializer = AmountSerializer::new();</span>
     <span class="doccomment">/// let mut serialized = vec![];</span>
     <span class="doccomment">/// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
@@ -548,7 +560,7 @@
     <span class="doccomment">/// use std::ops::Bound::Included;</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();</span>
-    <span class="doccomment">/// let serializer = AmountSerializer::new(Included(0), Included(u64::MAX));</span>
+    <span class="doccomment">/// let serializer = AmountSerializer::new();</span>
     <span class="doccomment">/// let deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));</span>
     <span class="doccomment">/// let mut serialized = vec![];</span>
     <span class="doccomment">/// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();</span>

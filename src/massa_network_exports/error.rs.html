@@ -117,11 +117,15 @@
 <span id="111">111</span>
 <span id="112">112</span>
 <span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">peers::PeerType</span>, <span class="ident">ConnectionId</span>};
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
 <span class="kw">use</span> <span class="ident">massa_models::ModelsError</span>;
+<span class="kw">use</span> <span class="ident">massa_serialization::SerializeError</span>;
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
@@ -169,6 +173,8 @@
     <span class="ident">MissingOperation</span>,
     <span class="doccomment">/// models error: {0}</span>
     <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
+    <span class="doccomment">/// serialize error: {0}</span>
+    <span class="ident">SerializeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SerializeError</span>),
     <span class="doccomment">/// container inconsistency error: {0}</span>
     <span class="ident">ContainerInconsistencyError</span>(<span class="ident">String</span>),
 }

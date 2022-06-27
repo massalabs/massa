@@ -320,7 +320,7 @@
     <span class="doccomment">/// Creates a `VersionSerializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="number">1000</span>)),
+            <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
         }
     }
 }

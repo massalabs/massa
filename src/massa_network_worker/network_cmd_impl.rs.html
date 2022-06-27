@@ -496,7 +496,7 @@
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">composite::PubkeySig</span>, <span class="ident">node::NodeId</span>, <span class="ident">operation::OperationIds</span>, <span class="ident">stats::NetworkStats</span>, <span class="ident">BlockId</span>,
-    <span class="ident">SignedEndorsement</span>,
+    <span class="ident">WrappedEndorsement</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
     <span class="ident">BootstrapPeers</span>, <span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">NodeCommand</span>, <span class="ident">Peer</span>, <span class="ident">Peers</span>,
@@ -733,7 +733,7 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_endorsements_cmd</span>(
     <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
     <span class="ident">node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
+    <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
 ) {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendEndorsements&quot;</span>,
