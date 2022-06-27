@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use massa_models::{BlockId, Slot};
+use massa_models::Slot;
 use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
 
@@ -52,26 +52,30 @@ impl SpeculativeRollState {
         self.added_changes = snapshot;
     }
 
-    /// Settle a slot.
+    /// Process a slot.
     ///
-    /// Compute the changes to be made on the roll state at the given slot.
-    pub fn process_block(&mut self, block_id: Option<BlockId>) {
-        // note: tmp dummy implementation
+    /// Compute all the changes that must be separated from the settle.
+    pub fn process_slot(&mut self, slot: Slot, contains_block: bool) {
         // note: will be used only on real execution
-        match block_id {
-            Some(_id) => self
+        if contains_block {
+            self.added_changes.production_stats.block_success_count = self
                 .added_changes
                 .production_stats
                 .block_success_count
-                .saturating_add(1),
-            None => self
+                .saturating_add(1);
+            self.added_changes.seed_bits.push(slot.get_first_bit());
+        } else {
+            self.added_changes.production_stats.block_success_count = self
                 .added_changes
                 .production_stats
                 .block_failure_count
-                .saturating_add(1),
-        };
+                .saturating_add(1);
+        }
     }
 
+    /// Settle a slot.
+    ///
+    /// Compute the changes to be made on the roll state at the given slot.
     pub fn settle_slot(&mut self, _slot: Slot) {
         // note: will be used on every kind of execution
     }
