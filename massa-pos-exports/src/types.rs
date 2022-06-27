@@ -38,18 +38,28 @@ pub struct ProductionStats {
     pub block_failure_count: u64,
 }
 
+/// Address infos PoS
+#[derive(Default, Debug, Clone)]
+pub struct PoSAddressInfo {
+    /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
+    /// ordered structure to ensure slot iteration order is deterministic
+    pub deferred_credits: BTreeMap<Slot, Amount>,
+
+    /// updated production statistics
+    pub production_stats: ProductionStats,
+
+    /// new rolls counts
+    pub roll_changes: u64,
+}
+
 /// Recap of all PoS changes
 #[derive(Default, Debug, Clone)]
 pub struct PoSChanges {
     /// extra block seed bits added
     pub seed_bits: BitVec<Lsb0, u8>,
-    /// new roll counts for addresses (can be 0 to remove the address from the registry)
-    pub roll_changes: Map<Address, u64>,
-    /// updated production statistics
-    pub production_stats: ProductionStats,
-    /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
-    /// ordered structure to ensure slot iteration order is deterministic
-    pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
+
+    /// addresses info
+    pub addresses_info: Map<Address, PoSAddressInfo>,
 }
 
 /// Selections of endorsements and producer

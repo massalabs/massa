@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use massa_models::Slot;
-use massa_pos_exports::{PoSChanges, SelectorController};
+use massa_models::{Address, Slot};
+use massa_pos_exports::{PoSAddressInfo, PoSChanges, SelectorController};
 use parking_lot::RwLock;
 
 use crate::active_history::ActiveHistory;
@@ -57,21 +57,22 @@ impl SpeculativeRollState {
     ///
     /// Compute all the changes that must be separated from the settle.
     #[allow(dead_code)]
-    pub fn process_slot(&mut self, slot: Slot, contains_block: bool) {
+    pub fn process_slot(&mut self, creator: &Address, slot: &Slot, contains_block: bool) {
         // note: will be used only on real execution
-        if contains_block {
-            self.added_changes.production_stats.block_success_count = self
-                .added_changes
-                .production_stats
-                .block_success_count
-                .saturating_add(1);
-            self.added_changes.seed_bits.push(slot.get_first_bit());
-        } else {
-            self.added_changes.production_stats.block_success_count = self
-                .added_changes
-                .production_stats
-                .block_failure_count
-                .saturating_add(1);
+        if let Some(PoSAddressInfo {
+            deferred_credits,
+            production_stats,
+            roll_changes,
+        }) = self.added_changes.addresses_info.get_mut(creator)
+        {
+            if contains_block {
+                production_stats.block_success_count =
+                    production_stats.block_success_count.saturating_add(1);
+                self.added_changes.seed_bits.push(slot.get_first_bit());
+            } else {
+                production_stats.block_failure_count =
+                    production_stats.block_failure_count.saturating_add(1);
+            }
         }
     }
 
