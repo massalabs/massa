@@ -322,6 +322,8 @@ pub enum BootstrapClientMessage {
     },
     /// Bootstrap error
     BootstrapError { error: String },
+    /// Bootstrap succeed
+    BootstrapSuccess,
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -331,6 +333,7 @@ enum MessageClientTypeId {
     AskConsensusState = 1u32,
     AskFinalStatePart = 2u32,
     BootstrapError = 3u32,
+    BootstrapSuccess = 4u32,
 }
 
 /// Serializer for `BootstrapClientMessage`
@@ -399,6 +402,10 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     buffer,
                 )?;
                 buffer.extend(error.as_bytes())
+            }
+            BootstrapClientMessage::BootstrapSuccess => {
+                self.u32_serializer
+                    .serialize(&u32::from(MessageClientTypeId::BootstrapSuccess), buffer)?;
             }
         }
         Ok(())
@@ -490,6 +497,9 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             error: String::from_utf8_lossy(error).into_owned(),
                         })
                         .parse(input)
+                }
+                MessageClientTypeId::BootstrapSuccess => {
+                    Ok((input, BootstrapClientMessage::BootstrapSuccess))
                 }
             }
         })
