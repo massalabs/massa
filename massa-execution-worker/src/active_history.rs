@@ -114,26 +114,27 @@ impl ActiveHistory {
         &self,
         slot: &Slot,
         addr: &Address,
-    ) -> Option<BTreeMap<Slot, Amount>> {
-        // note: not sure about this behaviour but if we have go through the whole history
-        // it won't be a lazy search anymore, see next function
+    ) -> BTreeMap<Slot, Amount> {
         if let Some(info) = self
             .0
             .back()
             .map(|v| v.state_changes.roll_state_changes.addresses_info.get(addr))
             .flatten()
         {
-            // Some(info.deferred_credits);
-            return None;
+            return info
+                .deferred_credits
+                .range(slot..)
+                .map(|(slot, amount)| (*slot, *amount))
+                .collect();
         }
-        None
+        BTreeMap::new()
     }
 
     /// TODO
     #[allow(dead_code)]
     pub fn fetch_all_defered_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
         let mut credits = Map::default();
-        // note: this is not a lazy query but is there really an alternative?...
+        // note: this is not a lazy query but is there really an alternative?
         for output in self.0.iter().rev() {
             for info in output
                 .state_changes
