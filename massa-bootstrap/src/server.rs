@@ -432,11 +432,9 @@ async fn manage_bootstrap(
     loop {
         match tokio::time::timeout(bootstrap_settings.read_timeout.into(), server.next()).await {
             Err(_) => return Ok(()),
-            Ok(Err(e)) => {
-                match e {
-                    BootstrapError::IoError(_) => return Ok(()),
-                    _ => return Err(e)
-                }
+            Ok(Err(e)) => match e {
+                BootstrapError::IoError(_) => return Ok(()),
+                _ => return Err(e),
             },
             Ok(Ok(msg)) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
