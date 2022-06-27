@@ -3,12 +3,12 @@
 use crate::constants::BLOCK_ID_SIZE_BYTES;
 use crate::node_configuration::default::ENDORSEMENT_COUNT;
 use crate::node_configuration::{MAX_BLOCK_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT};
-use crate::operation::OperationDeserializer;
+use crate::operation::{OperationDeserializer, OperationIds, OperationIdsSerializer};
 use crate::prehash::{Map, PreHashed, Set};
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
     Address, Endorsement, EndorsementDeserializer, EndorsementId, ModelsError, Operation,
-    OperationId, Slot, SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation,
+    OperationId, Slot, SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation, OperationIdsDeserializer,
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
@@ -126,7 +126,7 @@ pub struct Block {
     /// signed header
     pub header: WrappedHeader,
     /// operations
-    pub operations: Vec<WrappedOperation>,
+    pub operations: OperationIds,
 }
 
 /// Wrapped Block
@@ -197,8 +197,8 @@ impl WrappedContent for Block {
 /// Serializer for `Block`
 pub struct BlockSerializer {
     header_serializer: WrappedSerializer,
-    operation_serializer: WrappedSerializer,
     u32_serializer: U32VarIntSerializer,
+    op_ids_serializer: OperationIdsSerializer
 }
 
 impl BlockSerializer {
@@ -206,8 +206,8 @@ impl BlockSerializer {
     pub fn new() -> Self {
         BlockSerializer {
             header_serializer: WrappedSerializer::new(),
-            operation_serializer: WrappedSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
+            op_ids_serializer: OperationIdsSerializer::new()
         }
     }
 }
@@ -227,9 +227,7 @@ impl Serializer<Block> for BlockSerializer {
             })?,
             buffer,
         )?;
-        for operation in value.operations.iter() {
-            self.operation_serializer.serialize(operation, buffer)?;
-        }
+        self.op_ids_serializer.serialize(&value.operations, buffer)?;
         Ok(())
     }
 }
@@ -237,7 +235,7 @@ impl Serializer<Block> for BlockSerializer {
 /// Deserializer for `Block`
 pub struct BlockDeserializer {
     header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
-    operation_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
+    op_ids_deserializer: OperationIdsDeserializer,
     u32_deserializer: U32VarIntDeserializer,
 }
 
@@ -246,7 +244,7 @@ impl BlockDeserializer {
     pub fn new() -> Self {
         BlockDeserializer {
             header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
-            operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
+            op_ids_deserializer: OperationIdsDeserializer::new(),
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(MAX_OPERATIONS_PER_BLOCK),
@@ -272,21 +270,9 @@ impl Deserializer<Block> for BlockDeserializer {
                 context("Failed header deserialization", |input| {
                     self.header_deserializer.deserialize(input)
                 }),
-                length_count(
-                    context("Failed length operation deserialization", |input| {
-                        self.u32_deserializer.deserialize(input)
-                    }),
-                    context("Failed operation deserialization", |input| {
-                        let (rest, operation) = self.operation_deserializer.deserialize(input)?;
-                        if buffer.len() - rest.len() > MAX_BLOCK_SIZE as usize {
-                            return Err(nom::Err::Error(ParseError::from_error_kind(
-                                input,
-                                nom::error::ErrorKind::TooLarge,
-                            )));
-                        }
-                        Ok((rest, operation))
-                    }),
-                ),
+                context("Failed operations deserialization", |input| {
+                    self.op_ids_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(|(header, operations)| Block { header, operations })
