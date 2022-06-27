@@ -609,7 +609,7 @@ mod test {
         // create block header
         let orig_header = BlockHeader::new_wrapped(
             BlockHeader {
-                slot: Slot::new(1, 2),
+                slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![
