@@ -3,7 +3,7 @@ use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
-use massa_models::{Address, Amount};
+use massa_models::{Address, Amount, Slot};
 use std::collections::VecDeque;
 
 #[derive(Default)]
@@ -89,5 +89,25 @@ impl ActiveHistory {
             }
         }
         HistorySearchResult::NoInfo
+    }
+
+    /// TODO
+    pub fn fetch_roll_count(&self, addr: &Address) {
+
+    }
+
+    /// TODO
+    pub fn fetch_deferred_credits_after(&self, addr: &Address, slot: Slot) {
+
+    }
+
+    /// TODO
+    pub fn fetch_all_defered_credits_at(&self, slot: Slot) {
+
+    }
+
+    /// TODO
+    pub fn fetch_production_stats(&self) {
+
     }
 }
