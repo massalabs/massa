@@ -60,9 +60,7 @@ impl SpeculativeRollState {
     pub fn process_slot(&mut self, creator: &Address, slot: &Slot, contains_block: bool) {
         // note: will be used only on real execution
         if let Some(PoSAddressInfo {
-            deferred_credits,
-            production_stats,
-            roll_changes,
+            production_stats, ..
         }) = self.added_changes.addresses_info.get_mut(creator)
         {
             if contains_block {
