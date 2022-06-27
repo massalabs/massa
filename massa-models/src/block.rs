@@ -28,7 +28,7 @@ use nom::{
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
 
 const BLOCK_ID_STRING_PREFIX: &str = "BLO";
@@ -483,7 +483,7 @@ impl BlockHeaderDeserializer {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
                 ENDORSEMENT_COUNT,
