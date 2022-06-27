@@ -30,7 +30,7 @@ pub struct CycleInfo {
 }
 
 /// Block production statistic
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct ProductionStats {
     /// Number of successfully created blocks
     pub block_success_count: u64,
