@@ -84,7 +84,6 @@ async fn stream_final_state(
                     } = &next_bootstrap_message
                     {
                         debug!("Received ledger batch from {:#?} to {:#?}, an async pool batch from {:#?} to {:#?} a batch of ledger changes of size {:#?} and a batch of async pool changes of size {:#?}. for slot: {:#?}", old_key.clone().map(|key| get_address_from_key(&key)), last_key.clone().map(|key| get_address_from_key(&key)), old_message_id, last_last_async_id, final_state_changes.ledger_changes.0.len(), final_state_changes.async_pool_changes.0.len(), slot);
-                        println!("Received ledger batch from {:#?} to {:#?}, an async pool batch from {:#?} to {:#?} a batch of ledger changes of size {:#?} and a batch of async pool changes of size {:#?}. for slot: {:#?}", old_key.clone().map(|key| get_address_from_key(&key)), last_key.clone().map(|key| get_address_from_key(&key)), old_message_id, last_last_async_id, final_state_changes.ledger_changes.0.len(), final_state_changes.async_pool_changes.0.len(), slot);
                     }
                     // Set new message in case of disconnection
                     *next_bootstrap_message = BootstrapClientMessage::AskFinalStatePart {
@@ -303,7 +302,7 @@ async fn bootstrap_from_server(
                 break;
             }
             BootstrapClientMessage::BootstrapError { error: _ } => {
-                panic!("Should never happens")
+                panic!("The next message to send shouldn't be BootstrapError");
             }
         };
     }
