@@ -860,19 +860,6 @@ impl Deserializer<Signature> for SignatureDeserializer {
     }
 }
 
-/// Derives a PublicKey from a PrivateKey.
-///
-/// # Example
-/// ```
-/// # use massa_signature::{derive_public_key, generate_random_private_key};
-/// # use serde::{Deserialize, Serialize};
-/// let private_key = generate_random_private_key();
-/// let public_key = derive_public_key(&private_key);
-/// ```
-pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
-    PublicKey(private_key.0.public_key())
-}
-
 /// Returns the Signature produced by signing
 /// data bytes with a PrivateKey.
 ///
