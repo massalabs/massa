@@ -114,8 +114,7 @@ impl ActiveHistory {
         &self,
         slot: &Slot,
         addr: &Address,
-    ) -> BTreeMap<Slot, Amount> {
-        let mut addr_credits = BTreeMap::new();
+    ) -> Option<BTreeMap<Slot, Amount>> {
         // note: not sure about this behaviour but if we have go through the whole history
         // it won't be a lazy search anymore, see next function
         if let Some(info) = self
@@ -124,35 +123,42 @@ impl ActiveHistory {
             .map(|v| v.state_changes.roll_state_changes.addresses_info.get(addr))
             .flatten()
         {
-            addr_credits.extend(info.deferred_credits);
+            // Some(info.deferred_credits);
+            return None;
         }
-        addr_credits
+        None
     }
 
     /// TODO
     #[allow(dead_code)]
-    pub fn fetch_all_defered_credits_at(&self, slot: Slot) -> Map<Address, Amount> {
-        let mut list = Map::default();
+    pub fn fetch_all_defered_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
+        let mut credits = Map::default();
         // note: this is not a lazy query but is there really an alternative?...
         for output in self.0.iter().rev() {
-            for credits in output
+            for info in output
                 .state_changes
                 .roll_state_changes
-                .deferred_credits
-                .get(&slot)
+                .addresses_info
+                .iter()
             {
-                list.extend(credits);
+                if let Some(amount) = info.1.deferred_credits.get(slot) {
+                    credits.insert(*info.0, *amount);
+                }
             }
         }
-        list
+        credits
     }
 
     /// TODO
     #[allow(dead_code)]
-    pub fn fetch_production_stats(&self) -> Option<ProductionStats> {
-        // note: current state of production stats feels a bit off
-        if let Some(output) = self.0.back() {
-            return Some(output.state_changes.roll_state_changes.production_stats);
+    pub fn fetch_production_stats(&self, addr: &Address) -> Option<ProductionStats> {
+        if let Some(info) = self
+            .0
+            .back()
+            .map(|v| v.state_changes.roll_state_changes.addresses_info.get(addr))
+            .flatten()
+        {
+            Some(info.production_stats);
         }
         None
     }
