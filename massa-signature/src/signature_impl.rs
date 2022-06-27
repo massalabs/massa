@@ -20,6 +20,22 @@ const PRIVATE_KEY_STRING_PREFIX: &str = "PRI";
 const PUBLIC_KEY_STRING_PREFIX: &str = "PUB";
 const SIGNATURE_STRING_PREFIX: &str = "SIG";
 
+/// `KeyPair` is used for signature and decrypting
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct KeyPair {
+    /// Private key used for signing, wallet dump/load etc...
+    pub private_key: PrivateKey,
+    /// Public key used for verifications
+    pub public_key: PublicKey
+}
+
+impl KeyPair {
+    /// Create a KeyPair from a private key
+    pub fn from_private_key(private_key: PrivateKey) -> KeyPair {
+        KeyPair { private_key: private_key, public_key: PublicKey(private_key.0.public_key()) }
+    }
+}
+
 /// `PrivateKey` used to sign messages.
 /// Schnorr signatures require a [KeyPair](secp256k1::KeyPair) to be signed.
 /// The KeyPair is generated when deserializing a private key.
@@ -870,9 +886,9 @@ pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
 /// let data = Hash::compute_from("Hello World!".as_bytes());
 /// let signature = sign(&data, &private_key).unwrap();
 /// ```
-pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaSignatureError> {
+pub fn sign(hash: &Hash, keypair: &KeyPair) -> Result<Signature, MassaSignatureError> {
     let message = Message::from_slice(hash.to_bytes())?;
-    Ok(Signature(SECP256K1.sign_schnorr(&message, &private_key.0)))
+    Ok(Signature(SECP256K1.sign_schnorr(&message, &keypair.private_key.0)))
 }
 
 /// Checks if the `Signature` associated with data bytes
@@ -899,13 +915,17 @@ pub fn verify_signature(
 }
 
 /// Generate a random private key from a RNG.
-pub fn generate_random_private_key() -> PrivateKey {
+pub fn generate_random_keypair() -> KeyPair {
     use secp256k1::rand::rngs::OsRng;
     let mut rng = OsRng::new().expect("OsRng");
-    PrivateKey(secp256k1::KeyPair::from_secret_key(
+    let keypair = secp256k1::KeyPair::from_secret_key(
         SECP256K1,
         secp256k1::SecretKey::new(&mut rng),
-    ))
+    );
+    KeyPair {
+        private_key: PrivateKey(keypair),
+        public_key: PublicKey(keypair.public_key())
+    }
 }
 
 #[cfg(test)]
@@ -917,30 +937,30 @@ mod tests {
     #[test]
     #[serial]
     fn test_example() {
-        let private_key = generate_random_private_key();
-        let public_key = derive_public_key(&private_key);
+        let keypair = generate_random_keypair();
+        let public_key = keypair.public_key;
         let message = "Hello World!".as_bytes();
         let hash = Hash::compute_from(message);
-        let signature = sign(&hash, &private_key).unwrap();
+        let signature = sign(&hash, &keypair).unwrap();
         assert!(verify_signature(&hash, &signature, &public_key).is_ok())
     }
 
     #[test]
     #[serial]
     fn test_serde_private_key() {
-        let private_key = generate_random_private_key();
+        let keypair = generate_random_keypair();
         let serialized =
-            serde_json::to_string(&private_key).expect("could not serialize private key");
+            serde_json::to_string(&keypair.private_key).expect("could not serialize private key");
         let deserialized =
             serde_json::from_str(&serialized).expect("could not deserialize private key");
-        assert_eq!(private_key, deserialized);
+        assert_eq!(keypair.private_key, deserialized);
     }
 
     #[test]
     #[serial]
     fn test_serde_public_key() {
-        let private_key = generate_random_private_key();
-        let public_key = derive_public_key(&private_key);
+        let keypair = generate_random_keypair();
+        let public_key = keypair.public_key;
         let serialized =
             serde_json::to_string(&public_key).expect("Could not serialize public key");
         let deserialized =
@@ -951,7 +971,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_serde_signature() {
-        let private_key = generate_random_private_key();
+        let private_key = generate_random_keypair();
         let message = "Hello World!".as_bytes();
         let hash = Hash::compute_from(message);
         let signature = sign(&hash, &private_key).unwrap();

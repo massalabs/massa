@@ -4,8 +4,8 @@ use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
 use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
-    sign, verify_signature, PrivateKey, PublicKey, PublicKeyDeserializer, Signature,
-    SignatureDeserializer,
+    sign, verify_signature, PublicKey, PublicKeyDeserializer, Signature,
+    SignatureDeserializer, KeyPair,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -54,23 +54,22 @@ where
     fn new_wrapped<SC: Serializer<Self>, U: Id>(
         content: Self,
         content_serializer: SC,
-        private_key: &PrivateKey,
-        public_key: &PublicKey,
+        keypair: &KeyPair
     ) -> Result<Wrapped<Self, U>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
         let mut hash_data = Vec::new();
-        hash_data.extend(public_key.to_bytes());
+        hash_data.extend(keypair.public_key.to_bytes());
         hash_data.extend(content_serialized.clone());
         let hash = Hash::compute_from(&hash_data);
-        let creator_address = Address::from_public_key(public_key);
+        let creator_address = Address::from_public_key(&keypair.public_key);
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]
         let thread_count = THREAD_COUNT;
         Ok(Wrapped {
-            signature: sign(&hash, private_key)?,
-            creator_public_key: *public_key,
+            signature: sign(&hash, keypair)?,
+            creator_public_key: keypair.public_key,
             creator_address,
             thread: creator_address.get_thread(thread_count),
             content,
