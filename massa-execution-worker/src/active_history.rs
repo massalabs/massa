@@ -96,13 +96,13 @@ impl ActiveHistory {
     #[allow(dead_code)]
     pub fn fetch_roll_count(&self, addr: &Address) -> Option<u64> {
         for output in self.0.iter().rev() {
-            if let Some(roll_count) = output
+            if let Some(info) = output
                 .state_changes
                 .roll_state_changes
-                .roll_changes
+                .addresses_info
                 .get(addr)
             {
-                return Some(*roll_count);
+                return Some(info.roll_changes);
             }
         }
         None
@@ -115,22 +115,18 @@ impl ActiveHistory {
         slot: &Slot,
         addr: &Address,
     ) -> BTreeMap<Slot, Amount> {
-        let mut single_credits = BTreeMap::new();
+        let mut addr_credits = BTreeMap::new();
         // note: not sure about this behaviour but if we have go through the whole history
         // it won't be a lazy search anymore, see next function
-        if let Some(output) = self.0.back() {
-            for credits in output
-                .state_changes
-                .roll_state_changes
-                .deferred_credits
-                .range(slot..)
-            {
-                if let Some(amount) = credits.1.get(addr) {
-                    single_credits.insert(*credits.0, *amount);
-                }
-            }
+        if let Some(info) = self
+            .0
+            .back()
+            .map(|v| v.state_changes.roll_state_changes.addresses_info.get(addr))
+            .flatten()
+        {
+            addr_credits.extend(info.deferred_credits);
         }
-        single_credits
+        addr_credits
     }
 
     /// TODO
