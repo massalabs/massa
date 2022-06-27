@@ -3,8 +3,9 @@ use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
-use massa_models::{Address, Amount, Slot};
-use std::collections::VecDeque;
+use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_pos_exports::ProductionStats;
+use std::collections::{BTreeMap, VecDeque};
 
 #[derive(Default)]
 /// History of the outputs of recently executed slots.
@@ -92,22 +93,71 @@ impl ActiveHistory {
     }
 
     /// TODO
-    pub fn fetch_roll_count(&self, addr: &Address) {
-
+    #[allow(dead_code)]
+    pub fn fetch_roll_count(&self, addr: &Address) -> Option<u64> {
+        for output in self.0.iter().rev() {
+            if let Some(roll_count) = output
+                .state_changes
+                .roll_state_changes
+                .roll_changes
+                .get(addr)
+            {
+                return Some(*roll_count);
+            }
+        }
+        None
     }
 
     /// TODO
-    pub fn fetch_deferred_credits_after(&self, addr: &Address, slot: Slot) {
-
+    #[allow(dead_code)]
+    pub fn fetch_deferred_credits_for(
+        &self,
+        slot: &Slot,
+        addr: &Address,
+    ) -> BTreeMap<Slot, Amount> {
+        let mut single_credits = BTreeMap::new();
+        // note: not sure about this behaviour but if we have go through the whole history
+        // it won't be a lazy search anymore, see next function
+        if let Some(output) = self.0.back() {
+            for credits in output
+                .state_changes
+                .roll_state_changes
+                .deferred_credits
+                .range(slot..)
+            {
+                if let Some(amount) = credits.1.get(addr) {
+                    single_credits.insert(*credits.0, *amount);
+                }
+            }
+        }
+        single_credits
     }
 
     /// TODO
-    pub fn fetch_all_defered_credits_at(&self, slot: Slot) {
-
+    #[allow(dead_code)]
+    pub fn fetch_all_defered_credits_at(&self, slot: Slot) -> Map<Address, Amount> {
+        let mut list = Map::default();
+        // note: this is not a lazy query but is there really an alternative?...
+        for output in self.0.iter().rev() {
+            for credits in output
+                .state_changes
+                .roll_state_changes
+                .deferred_credits
+                .get(&slot)
+            {
+                list.extend(credits);
+            }
+        }
+        list
     }
 
     /// TODO
-    pub fn fetch_production_stats(&self) {
-
+    #[allow(dead_code)]
+    pub fn fetch_production_stats(&self) -> Option<ProductionStats> {
+        // note: current state of production stats feels a bit off
+        if let Some(output) = self.0.back() {
+            return Some(output.state_changes.roll_state_changes.production_stats);
+        }
+        None
     }
 }

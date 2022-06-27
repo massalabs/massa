@@ -36,7 +36,7 @@ pub struct CycleInfo {
     pub production_stats: Map<Address, ProductionStats>,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct ProductionStats {
     pub block_success_count: u64,
     pub block_failure_count: u64,
