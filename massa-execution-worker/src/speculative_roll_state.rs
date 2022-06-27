@@ -9,6 +9,7 @@ use parking_lot::RwLock;
 use crate::active_history::ActiveHistory;
 
 /// Speculative state of the rolls
+#[allow(dead_code)]
 pub(crate) struct SpeculativeRollState {
     /// Selector used to feed_cycle and get_selection
     selector: Box<dyn SelectorController>,
@@ -55,6 +56,7 @@ impl SpeculativeRollState {
     /// Process a slot.
     ///
     /// Compute all the changes that must be separated from the settle.
+    #[allow(dead_code)]
     pub fn process_slot(&mut self, slot: Slot, contains_block: bool) {
         // note: will be used only on real execution
         if contains_block {
