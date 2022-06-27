@@ -7,18 +7,26 @@ extern crate lazy_static;
 
 pub use address::{Address, AddressDeserializer};
 pub use amount::{Amount, AmountDeserializer, AmountSerializer};
-pub use block::{Block, BlockHeader, BlockId, SignedHeader};
+pub use block::{
+    Block, BlockDeserializer, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer, BlockId,
+    BlockSerializer, WrappedBlock, WrappedHeader,
+};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
 };
-pub use endorsement::{Endorsement, EndorsementId, SignedEndorsement};
+pub use endorsement::{
+    Endorsement, EndorsementDeserializer, EndorsementId, EndorsementSerializer, WrappedEndorsement,
+};
 pub use error::ModelsError;
-pub use operation::{Operation, OperationId, OperationType, SignedOperation};
+pub use operation::{
+    Operation, OperationId, OperationIdsDeserializer, OperationSerializer, OperationType,
+    WrappedOperation,
+};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
     IpAddrDeserializer, IpAddrSerializer, SerializeCompact, SerializeMinBEInt, SerializeVarInt,
-    VecU8Deserializer, VecU8Serializer,
+    StringDeserializer, StringSerializer, VecU8Deserializer, VecU8Serializer,
 };
 pub use serialization_context::{
     get_serialization_context, init_serialization_context, with_serialization_context,
@@ -59,8 +67,6 @@ pub mod prehash;
 pub mod rolls;
 mod serialization;
 mod serialization_context;
-/// trait for signed structure
-pub mod signed;
 /// slots
 pub mod slot;
 /// various statistics
@@ -68,6 +74,8 @@ pub mod stats;
 /// management of the relation between time and slots
 pub mod timeslots;
 mod version;
+/// trait for signed structure
+pub mod wrapped;
 pub use node_configuration::CompactConfig;
 /// Expose constants
 pub mod constants {

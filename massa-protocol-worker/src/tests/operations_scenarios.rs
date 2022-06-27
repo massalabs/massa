@@ -3,10 +3,9 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test;
-use massa_models::DeserializeCompact;
-use massa_models::{self, Address, Amount, SignedOperation, Slot};
+use massa_models::prehash::Map;
+use massa_models::{self, Address, Amount, Slot};
 use massa_models::{operation::OperationIds, prehash::Set};
-use massa_models::{prehash::Map, signed::Signable};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
@@ -70,23 +69,19 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
             // Check that the operations come with their serialized representations.
             assert_eq!(
                 expected_operation_id_1,
-                SignedOperation::from_bytes_compact(
-                    &received_operations.get(&expected_operation_id_1).unwrap().1
-                )
-                .unwrap()
-                .0
-                .verify_integrity()
-                .unwrap()
+                received_operations
+                    .get(&expected_operation_id_1)
+                    .unwrap()
+                    .verify_integrity()
+                    .unwrap()
             );
             assert_eq!(
                 expected_operation_id_2,
-                SignedOperation::from_bytes_compact(
-                    &received_operations.get(&expected_operation_id_2).unwrap().1
-                )
-                .unwrap()
-                .0
-                .verify_integrity()
-                .unwrap()
+                received_operations
+                    .get(&expected_operation_id_2)
+                    .unwrap()
+                    .verify_integrity()
+                    .unwrap()
             );
 
             (
@@ -332,7 +327,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let thread = address.get_thread(serialization_context.thread_count);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
-            let operation_id = operation.content.compute_id().unwrap();
+            let operation_id = operation.id;
 
             let block = tools::create_block_with_operations(
                 &nodes[0].private_key,
@@ -340,7 +335,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 Slot::new(1, thread),
                 vec![operation.clone()],
             );
-            let block_id = block.header.content.compute_id().unwrap();
+            let block_id = block.id;
 
             network_controller
                 .send_ask_for_block(nodes[0].id, vec![block_id])
@@ -376,14 +371,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             {
                 Some(NetworkCommand::SendBlock { node, block_id }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(
-                        block
-                            .header
-                            .content
-                            .compute_id()
-                            .expect("Fail to get block id"),
-                        block_id
-                    );
+                    assert_eq!(block.id, block_id);
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
@@ -447,7 +435,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let thread = address.get_thread(serialization_context.thread_count);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
-            let operation_id = operation.content.compute_id().unwrap();
+            let operation_id = operation.id;
 
             let block = tools::create_block_with_operations(
                 &nodes[0].private_key,
@@ -455,7 +443,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 Slot::new(1, thread),
                 vec![operation.clone()],
             );
-            let expected_block_id = block.header.content.compute_id().unwrap();
+            let expected_block_id = block.id;
 
             network_controller
                 .send_ask_for_block(nodes[0].id, vec![expected_block_id])
@@ -556,7 +544,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let thread = address.get_thread(serialization_context.thread_count);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
-            let operation_id = operation.content.compute_id().unwrap();
+            let operation_id = operation.id;
 
             let block = tools::create_block_with_operations(
                 &nodes[0].private_key,
@@ -567,13 +555,13 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             // Node 2 sends block, resulting in operations and endorsements noted in block info.
             network_controller
-                .send_block(nodes[1].id, block.clone(), Default::default())
+                .send_block(nodes[1].id, block.clone())
                 .await;
 
             // Node 1 sends header, resulting in protocol using the block info to determine
             // the node knows about the operations contained in the block.
             network_controller
-                .send_header(nodes[0].id, block.header.clone())
+                .send_header(nodes[0].id, block.content.header.clone())
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -647,7 +635,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
 
             let operation_2 = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
-            let operation_id_2 = operation_2.content.compute_id().unwrap();
+            let operation_id_2 = operation_2.id;
 
             let mut block = tools::create_block_with_operations(
                 &nodes[0].private_key,
@@ -657,22 +645,22 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             );
 
             // Change the root operation hash
-            block.operations = vec![operation_2.clone()];
+            block.content.operations = vec![operation_2.clone()];
 
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.
             network_controller
-                .send_block(nodes[1].id, block.clone(), Default::default())
+                .send_block(nodes[1].id, block.clone())
                 .await;
 
             // Node 3 sends block, resulting in operations and endorsements noted in block info.
             network_controller
-                .send_block(nodes[2].id, block.clone(), Default::default())
+                .send_block(nodes[2].id, block.clone())
                 .await;
 
             // Node 1 sends header, but the block is empty.
             network_controller
-                .send_header(nodes[0].id, block.header.clone())
+                .send_header(nodes[0].id, block.content.header.clone())
                 .await;
 
             // Wait for the event to be sure that the node is connected.
@@ -754,9 +742,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             );
 
             // 4. Send block to protocol.
-            network_controller
-                .send_block(creator_node.id, block, Default::default())
-                .await;
+            network_controller.send_block(creator_node.id, block).await;
 
             // 5. Check that the operation included in the block is not propagated.
             match tools::wait_protocol_pool_event(
@@ -780,13 +766,11 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                     assert_eq!(operations.len(), 1);
                     assert_eq!(
                         expected_id,
-                        SignedOperation::from_bytes_compact(
-                            &operations.get(&expected_id).unwrap().1
-                        )
-                        .unwrap()
-                        .0
-                        .verify_integrity()
-                        .unwrap()
+                        operations
+                            .get(&expected_id)
+                            .unwrap()
+                            .verify_integrity()
+                            .unwrap()
                     );
                 }
                 Some(_) => panic!("Unexpected protocol pool event."),

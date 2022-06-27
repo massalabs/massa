@@ -72,7 +72,7 @@ impl VersionSerializer {
     /// Creates a `VersionSerializer`
     pub fn new() -> Self {
         Self {
-            u32_serializer: U32VarIntSerializer::new(Included(0), Included(1000)),
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }

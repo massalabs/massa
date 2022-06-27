@@ -1,8 +1,8 @@
 use massa_models::{
     prehash::{Map, Set},
-    signed::Signed,
-    Address, Amount, Operation, OperationId, OperationType, SerializeCompact, SignedOperation,
-    Slot,
+    wrapped::WrappedContent,
+    Address, Amount, Operation, OperationId, OperationSerializer, OperationType, Slot,
+    WrappedOperation,
 };
 use massa_signature::{derive_public_key, generate_random_private_key};
 use serial_test::serial;
@@ -12,7 +12,7 @@ use crate::operation_pool::OperationPool;
 
 use super::settings::POOL_CONFIG;
 
-fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
+fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
     let sender_priv = generate_random_private_key();
     let sender_pub = derive_public_key(&sender_priv);
 
@@ -26,13 +26,15 @@ fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
     let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
-        sender_public_key: sender_pub,
         expire_period,
     };
-    (
-        Signed::new_signed(content, &sender_priv).unwrap().1,
-        Address::from_public_key(&sender_pub).get_thread(2),
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &sender_priv,
+        &sender_pub,
     )
+    .unwrap()
 }
 
 #[test]
@@ -46,11 +48,11 @@ fn test_pool() {
         let fee = 40 + i;
         let expire_period: u64 = 40 + i;
         let start_period = expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
-        let (op, thread) = get_transaction(expire_period, fee);
+        let op = get_transaction(expire_period, fee);
         let id = op.verify_integrity().unwrap();
 
         let mut ops = Map::default();
-        ops.insert(id, (op.clone(), op.to_bytes_compact().unwrap()));
+        ops.insert(id, op.clone());
 
         let newly_added = pool.process_operations(ops.clone()).unwrap();
         assert_eq!(newly_added, ops.keys().copied().collect());
@@ -59,7 +61,7 @@ fn test_pool() {
         let newly_added = pool.process_operations(ops).unwrap();
         assert_eq!(newly_added, Set::<OperationId>::default());
 
-        thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
+        thread_tx_lists[op.thread as usize].push((op, start_period..=expire_period));
     }
 
     // sort from bigger fee to smaller and truncate
@@ -78,12 +80,12 @@ fn test_pool() {
                 .unwrap();
             assert!(res
                 .iter()
-                .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
+                .map(|(op, _)| (op.id, op.serialized_data.clone()))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
-                    .filter(|(_, _, r)| r.contains(&target_slot.period))
+                    .filter(|(_, r)| r.contains(&target_slot.period))
                     .take(max_count)
-                    .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
+                    .map(|(op, _)| (op.id, op.serialized_data.clone()))));
         }
     }
 
@@ -93,7 +95,7 @@ fn test_pool() {
     pool.update_latest_final_periods(vec![final_period; POOL_CONFIG.thread_count as usize])
         .unwrap();
     for lst in thread_tx_lists.iter_mut() {
-        lst.retain(|(_, op, _)| op.content.expire_period > final_period);
+        lst.retain(|(op, _)| op.content.expire_period > final_period);
     }
 
     // checks ops are the expected ones for thread 0 and 1 and various periods
@@ -106,12 +108,12 @@ fn test_pool() {
                 .unwrap();
             assert!(res
                 .iter()
-                .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
+                .map(|(op, _)| (op.id, op.serialized_data.clone()))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
-                    .filter(|(_, _, r)| r.contains(&target_slot.period))
+                    .filter(|(_, r)| r.contains(&target_slot.period))
                     .take(max_count)
-                    .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
+                    .map(|(op, _)| (op.id, op.serialized_data.clone()))));
         }
     }
 
@@ -120,15 +122,15 @@ fn test_pool() {
         pool.update_current_slot(Slot::new(10, 0));
         let fee = 1000;
         let expire_period: u64 = 300;
-        let (op, thread) = get_transaction(expire_period, fee);
+        let op = get_transaction(expire_period, fee);
         let id = op.verify_integrity().unwrap();
         let mut ops = Map::default();
-        ops.insert(id, (op.clone(), op.to_bytes_compact().unwrap()));
+        ops.insert(id, op.clone());
         let newly_added = pool.process_operations(ops).unwrap();
         assert_eq!(newly_added, Set::<OperationId>::default());
         let res = pool
             .get_operation_batch(
-                Slot::new(expire_period - 1, thread),
+                Slot::new(expire_period - 1, op.thread),
                 Set::<OperationId>::default(),
                 10,
                 10000,

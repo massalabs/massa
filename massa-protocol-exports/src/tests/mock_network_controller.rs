@@ -1,12 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::SerializeCompact;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
     operation::{OperationIds, Operations},
+    WrappedBlock,
 };
-use massa_models::{Block, BlockId, SignedEndorsement, SignedHeader};
+use massa_models::{BlockId, WrappedEndorsement, WrappedHeader};
 use massa_network_exports::{
     NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
@@ -71,7 +71,7 @@ impl MockNetworkController {
 
     /// send header
     /// todo inconsistency with names
-    pub async fn send_header(&mut self, source_node_id: NodeId, header: SignedHeader) {
+    pub async fn send_header(&mut self, source_node_id: NodeId, header: WrappedHeader) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlockHeader {
                 source_node_id,
@@ -83,12 +83,11 @@ impl MockNetworkController {
 
     /// send block
     /// todo inconsistency with names
-    pub async fn send_block(&mut self, source_node_id: NodeId, block: Block, serialized: Vec<u8>) {
+    pub async fn send_block(&mut self, source_node_id: NodeId, block: WrappedBlock) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlock {
                 node: source_node_id,
                 block,
-                serialized,
             })
             .await
             .expect("Couldn't send block to protocol.");
@@ -97,15 +96,10 @@ impl MockNetworkController {
     /// send operations
     /// todo inconsistency with names
     pub async fn send_operations(&mut self, source_node_id: NodeId, operations: Operations) {
-        let serialized = operations
-            .iter()
-            .map(|op| op.to_bytes_compact().unwrap())
-            .collect();
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
                 node: source_node_id,
                 operations,
-                serialized,
             })
             .await
             .expect("Couldn't send operations to protocol.");
@@ -148,7 +142,7 @@ impl MockNetworkController {
     pub async fn send_endorsements(
         &mut self,
         source_node_id: NodeId,
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedEndorsements {

@@ -5,8 +5,8 @@ use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
 use crate::prehash::Set;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
-use crate::SignedEndorsement;
-use crate::SignedOperation;
+use crate::WrappedEndorsement;
+use crate::WrappedOperation;
 use crate::{
     Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
@@ -100,7 +100,7 @@ pub struct OperationInfo {
     /// true if the operation is final (for example in a final block)
     pub is_final: bool,
     /// the operation itself
-    pub operation: SignedOperation,
+    pub operation: WrappedOperation,
 }
 
 impl OperationInfo {
@@ -341,7 +341,7 @@ pub struct EndorsementInfo {
     /// true included in a final block
     pub is_final: bool,
     /// The full endorsement
-    pub endorsement: SignedEndorsement,
+    pub endorsement: WrappedEndorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {

@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 use massa_models::{ledger_models::LedgerData, Address, Amount, BlockId, Slot};
-use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_signature::{derive_public_key, PrivateKey};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::{collections::HashSet, str::FromStr};
@@ -46,7 +46,8 @@ use std::{collections::HashSet, str::FromStr};
 #[serial]
 async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
-    let staking_key = generate_random_private_key();
+    let staking_key =
+        PrivateKey::from_str("2ubR6ErNAxMM8Q5ZEosmgMX5kEJFkKk2vKgdWWGscGRE8UfTB6").unwrap();
     let creator_public_key = derive_public_key(&staking_key);
     let creator_addr = Address::from_public_key(&creator_public_key);
     let roll_price = Amount::from_str("42").unwrap();
@@ -91,43 +92,58 @@ async fn test_inter_cycle_batch_finalization() {
 
             // create B1 but DO NOT SEND IT
             tokio::time::sleep(t0.to_duration()).await;
-            let (b1_id, b1_block, _) =
+            let (b1_block, _) =
                 create_block(&cfg, Slot::new(1, 0), genesis_blocks.clone(), staking_key);
 
             // create and send B2
             tokio::time::sleep(t0.to_duration()).await;
-            let (b2_id, b2_block, _) = create_block_with_operations_and_endorsements(
+            let (b2_block, _) = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(2, 0),
-                &vec![b1_id],
+                &vec![b1_block.id],
                 staking_key,
                 vec![],
-                vec![create_endorsement(staking_key, Slot::new(1, 0), b1_id, 0)],
+                vec![create_endorsement(
+                    staking_key,
+                    Slot::new(1, 0),
+                    b1_block.id,
+                    0,
+                )],
             );
             protocol_controller.receive_block(b2_block.clone()).await;
 
             // create and send B3
             tokio::time::sleep(t0.to_duration()).await;
-            let (b3_id, b3_block, _) = create_block_with_operations_and_endorsements(
+            let (b3_block, _) = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(3, 0),
-                &vec![b2_id],
+                &vec![b2_block.id],
                 staking_key,
                 vec![],
-                vec![create_endorsement(staking_key, Slot::new(2, 0), b2_id, 0)],
+                vec![create_endorsement(
+                    staking_key,
+                    Slot::new(2, 0),
+                    b2_block.id,
+                    0,
+                )],
             );
             protocol_controller.receive_block(b3_block.clone()).await;
 
             // create and send B4
             tokio::time::sleep(t0.to_duration()).await;
             let roll_sell = create_roll_sell(staking_key, 1, 4, 0);
-            let (b4_id, b4_block, _) = create_block_with_operations_and_endorsements(
+            let (b4_block, _) = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(4, 0),
-                &vec![b3_id],
+                &vec![b3_block.id],
                 staking_key,
                 vec![roll_sell],
-                vec![create_endorsement(staking_key, Slot::new(3, 0), b3_id, 0)],
+                vec![create_endorsement(
+                    staking_key,
+                    Slot::new(3, 0),
+                    b3_block.id,
+                    0,
+                )],
             );
             protocol_controller.receive_block(b4_block.clone()).await;
 
@@ -139,7 +155,9 @@ async fn test_inter_cycle_batch_finalization() {
 
             // wait for the propagation of B1, B2, B3 and B4 (unordered)
             let mut to_propagate: HashSet<_> =
-                vec![b1_id, b2_id, b3_id, b4_id].into_iter().collect();
+                vec![b1_block.id, b2_block.id, b3_block.id, b4_block.id]
+                    .into_iter()
+                    .collect();
             for _ in 0u8..4 {
                 to_propagate.remove(
                     &validate_propagate_block_in_list(

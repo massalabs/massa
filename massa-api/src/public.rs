@@ -14,7 +14,7 @@ use massa_models::api::{
     DatastoreEntryInput, DatastoreEntryOutput, ReadOnlyBytecodeExecution, ReadOnlyCall,
 };
 use massa_models::execution::ReadOnlyResult;
-use massa_models::{Amount, SignedOperation};
+use massa_models::{Amount, WrappedOperation};
 
 use massa_models::{
     api::{
@@ -484,7 +484,7 @@ impl Endpoints for API<Public> {
                     is_stale: false,
                     is_in_blockclique: blockclique.block_ids.contains(&id),
                     slot: exported_block.header.content.slot,
-                    creator: Address::from_public_key(&exported_block.header.content.creator),
+                    creator: exported_block.header.creator_address,
                     parents: exported_block.header.content.parents,
                 });
             }
@@ -496,7 +496,7 @@ impl Endpoints for API<Public> {
                         is_stale: true,
                         is_in_blockclique: false,
                         slot: header.content.slot,
-                        creator: Address::from_public_key(&header.content.creator),
+                        creator: header.creator_address,
                         parents: header.content.parents,
                     });
                 }
@@ -685,7 +685,7 @@ impl Endpoints for API<Public> {
 
     fn send_operations(
         &self,
-        ops: Vec<SignedOperation>,
+        ops: Vec<WrappedOperation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let api_cfg = self.0.api_settings;

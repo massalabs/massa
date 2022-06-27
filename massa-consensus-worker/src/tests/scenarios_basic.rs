@@ -35,14 +35,14 @@ async fn test_old_stale_not_propagated_and_discarded() {
             block_factory.creator_priv_key = staking_keys[0];
             block_factory.slot = Slot::new(1, 0);
 
-            let (hash_1, _) = block_factory.create_and_receive_block(true).await;
+            let block_1 = block_factory.create_and_receive_block(true).await;
 
             block_factory.slot = Slot::new(1, 1);
             block_factory.create_and_receive_block(true).await;
 
             block_factory.slot = Slot::new(1, 0);
-            block_factory.best_parents = vec![hash_1, parents[0]];
-            let (hash_3, _) = block_factory.create_and_receive_block(false).await;
+            block_factory.best_parents = vec![block_1.id, parents[0]];
+            let block_3 = block_factory.create_and_receive_block(false).await;
 
             // Old stale block was discarded.
             let status = consensus_command_sender
@@ -50,7 +50,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
                 .await
                 .expect("could not get block graph status");
             assert_eq!(status.discarded_blocks.len(), 1);
-            assert!(status.discarded_blocks.get(&hash_3).is_some());
+            assert!(status.discarded_blocks.get(&block_3.id).is_some());
             (
                 block_factory.take_protocol_controller(),
                 consensus_command_sender,
@@ -87,7 +87,7 @@ async fn test_block_not_processed_multiple_times() {
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
             block_factory.creator_priv_key = staking_keys[0];
             block_factory.slot = Slot::new(1, 0);
-            let (_, block_1) = block_factory.create_and_receive_block(true).await;
+            let block_1 = block_factory.create_and_receive_block(true).await;
 
             // Send it again, it should not be propagated.
             block_factory.receieve_block(false, block_1.clone()).await;
@@ -138,10 +138,10 @@ async fn test_queuing() {
             block_factory.creator_priv_key = staking_keys[0];
             block_factory.slot = Slot::new(3, 0);
 
-            let (hash_1, _) = block_factory.create_and_receive_block(false).await;
+            let block_1 = block_factory.create_and_receive_block(false).await;
 
             block_factory.slot = Slot::new(4, 0);
-            block_factory.best_parents = vec![hash_1, parents[1]];
+            block_factory.best_parents = vec![block_1.id, parents[1]];
 
             block_factory.create_and_receive_block(false).await;
 
@@ -187,12 +187,12 @@ async fn test_double_staking_does_not_propagate() {
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
             block_factory.creator_priv_key = staking_keys[0];
             block_factory.slot = Slot::new(1, 0);
-            let (_, mut block_1) = block_factory.create_and_receive_block(true).await;
+            let mut block_1 = block_factory.create_and_receive_block(true).await;
 
             // Same creator, same slot, different block
-            block_1.header.content.operation_merkle_root =
+            block_1.content.header.content.operation_merkle_root =
                 Hash::compute_from("hello world".as_bytes());
-            let block = block_factory.sign_header(block_1.header.content);
+            let block = block_factory.sign_header(block_1.content.header.content);
 
             // Note: currently does propagate, see #190.
             block_factory.receieve_block(true, block).await;

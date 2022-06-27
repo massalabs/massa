@@ -10,9 +10,10 @@ use massa_cipher::{decrypt, encrypt};
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
+use massa_models::operation::OperationSerializer;
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signed;
-use massa_models::{Operation, SignedOperation};
+use massa_models::wrapped::WrappedContent;
+use massa_models::{Operation, WrappedOperation};
 use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -145,13 +146,17 @@ impl Wallet {
     /// Signs an operation with the private key corresponding to the given address
     pub fn create_operation(
         &self,
+        public_key: &PublicKey,
         content: Operation,
         address: Address,
-    ) -> Result<SignedOperation, WalletError> {
+    ) -> Result<WrappedOperation, WalletError> {
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;
-        Ok(Signed::new_signed(content, sender_priv).unwrap().1)
+        Ok(
+            Operation::new_wrapped(content, OperationSerializer::new(), sender_priv, public_key)
+                .unwrap(),
+        )
     }
 }
 

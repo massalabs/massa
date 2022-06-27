@@ -341,7 +341,7 @@ impl LedgerDB {
         &self,
         last_key: &Option<Vec<u8>>,
     ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
-        let ser = VecU8Serializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
+        let ser = VecU8Serializer::new();
         let key_serializer = KeySerializer::new();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let mut part = Vec::new();

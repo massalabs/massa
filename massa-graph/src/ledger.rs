@@ -1,4 +1,4 @@
-use massa_models::Operation;
+use massa_models::WrappedOperation;
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
 use massa_models::prehash::Set;
@@ -61,7 +61,7 @@ pub trait OperationLedgerInterface {
     ) -> Result<LedgerChanges>;
 }
 
-impl OperationLedgerInterface for Operation {
+impl OperationLedgerInterface for WrappedOperation {
     fn get_ledger_changes(
         &self,
         creator: Address,
@@ -73,11 +73,10 @@ impl OperationLedgerInterface for Operation {
         let mut res = LedgerChanges::default();
 
         // sender fee
-        let sender_address = Address::from_public_key(&self.sender_public_key);
         res.apply(
-            &sender_address,
+            &self.creator_address,
             &LedgerChange {
-                balance_delta: self.fee,
+                balance_delta: self.content.fee,
                 balance_increment: false,
             },
         )?;
@@ -87,18 +86,18 @@ impl OperationLedgerInterface for Operation {
             creator,
             endorsers,
             parent_creator,
-            self.fee,
+            self.content.fee,
             endorsement_count,
         )?;
 
         // operation type specific
-        match &self.op {
+        match &self.content.op {
             massa_models::OperationType::Transaction {
                 recipient_address,
                 amount,
             } => {
                 res.apply(
-                    &sender_address,
+                    &self.creator_address,
                     &LedgerChange {
                         balance_delta: (*amount),
                         balance_increment: false,
@@ -114,7 +113,7 @@ impl OperationLedgerInterface for Operation {
             }
             massa_models::OperationType::RollBuy { roll_count } => {
                 res.apply(
-                    &sender_address,
+                    &self.creator_address,
                     &LedgerChange {
                         balance_delta: roll_price
                             .checked_mul_u64(*roll_count)
@@ -132,7 +131,7 @@ impl OperationLedgerInterface for Operation {
                 ..
             } => {
                 res.apply(
-                    &sender_address,
+                    &self.creator_address,
                     &LedgerChange {
                         balance_delta: gas_price
                             .checked_mul_u64(*max_gas)
@@ -150,7 +149,7 @@ impl OperationLedgerInterface for Operation {
                 ..
             } => {
                 res.apply(
-                    &sender_address,
+                    &self.creator_address,
                     &LedgerChange {
                         balance_delta: gas_price
                             .checked_mul_u64(*max_gas)

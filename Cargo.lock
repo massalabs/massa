@@ -2056,6 +2056,8 @@ dependencies = [
  "bs58",
  "displaydoc",
  "massa_hash",
+ "massa_serialization",
+ "nom 7.1.1",
  "secp256k1",
  "serde 1.0.136",
  "serde_json",

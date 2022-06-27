@@ -120,18 +120,18 @@ async fn test_thread_incompatibility() {
             let mut parents = vec![status.best_parents[0].0, hash_2];
             let mut current_period = 8;
             for _ in 0..30 {
-                let (hash, b, _) = create_block(
+                let (b, _) = create_block(
                     &cfg,
                     Slot::new(current_period, 0),
                     parents.clone(),
                     staking_keys[0],
                 );
                 current_period += 1;
-                parents[0] = hash;
-                protocol_controller.receive_block(b).await;
+                parents[0] = b.id;
+                protocol_controller.receive_block(b.clone()).await;
 
                 // Note: higher timeout required.
-                validate_propagate_block_in_list(&mut protocol_controller, &vec![hash], 5000).await;
+                validate_propagate_block_in_list(&mut protocol_controller, &vec![b.id], 5000).await;
             }
 
             let status = consensus_command_sender

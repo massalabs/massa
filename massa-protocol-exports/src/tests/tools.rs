@@ -7,12 +7,15 @@ use crate::{
 };
 use massa_hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::signed::{Signable, Signed};
-use massa_models::SerializeCompact;
+use massa_models::operation::OperationSerializer;
+use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, BlockSerializer, Slot, WrappedBlock,
+    WrappedEndorsement, WrappedOperation,
 };
-use massa_models::{Endorsement, Operation, OperationType};
+use massa_models::{
+    BlockHeaderSerializer, Endorsement, EndorsementSerializer, Operation, OperationType,
+};
 use massa_network_exports::NetworkCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
@@ -54,10 +57,9 @@ pub async fn create_and_connect_nodes(
 /// Creates a block for use in protocol,
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
-pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
-    let (_, header) = Signed::new_signed(
+pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> WrappedBlock {
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: *public_key,
             slot: Slot::new(1, 0),
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -66,14 +68,22 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
         },
+        BlockHeaderSerializer::new(),
         private_key,
+        public_key,
     )
     .unwrap();
 
-    Block {
-        header,
-        operations: Vec::new(),
-    }
+    Block::new_wrapped(
+        Block {
+            header,
+            operations: Vec::new(),
+        },
+        BlockSerializer::new(),
+        private_key,
+        public_key,
+    )
+    .unwrap()
 }
 
 /// create a block with no endorsement
@@ -86,16 +96,15 @@ pub fn create_block_with_operations(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    operations: Vec<SignedOperation>,
-) -> Block {
+    operations: Vec<WrappedOperation>,
+) -> WrappedBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.content.compute_id().unwrap().to_bytes().to_vec()].concat()
+            [acc, v.id.to_bytes().to_vec()].concat()
         })[..],
     );
-    let (_, header) = Signed::new_signed(
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: *public_key,
             slot,
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -104,11 +113,19 @@ pub fn create_block_with_operations(
             operation_merkle_root,
             endorsements: Vec::new(),
         },
+        BlockHeaderSerializer::new(),
         private_key,
+        public_key,
     )
     .unwrap();
 
-    Block { header, operations }
+    Block::new_wrapped(
+        Block { header, operations },
+        BlockSerializer::new(),
+        private_key,
+        public_key,
+    )
+    .unwrap()
 }
 
 /// create a block with no operation
@@ -121,11 +138,10 @@ pub fn create_block_with_endorsements(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    endorsements: Vec<SignedEndorsement>,
-) -> Block {
-    let (_, header) = Signed::new_signed(
+    endorsements: Vec<WrappedEndorsement>,
+) -> WrappedBlock {
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: *public_key,
             slot,
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -134,31 +150,36 @@ pub fn create_block_with_endorsements(
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements,
         },
+        BlockHeaderSerializer::new(),
         private_key,
+        public_key,
     )
     .unwrap();
 
-    Block {
-        header,
-        operations: Default::default(),
-    }
+    Block::new_wrapped(
+        Block {
+            header,
+            operations: Default::default(),
+        },
+        BlockSerializer::new(),
+        private_key,
+        public_key,
+    )
+    .unwrap()
 }
 
 /// send a block and assert it has been propagate (or not)
 pub async fn send_and_propagate_block(
     network_controller: &mut MockNetworkController,
-    block: Block,
+    block: WrappedBlock,
     valid: bool,
     source_node_id: NodeId,
     protocol_event_receiver: &mut ProtocolEventReceiver,
 ) {
-    let expected_hash = block.header.content.compute_id().unwrap();
-    let serialized = block.to_bytes_compact().unwrap();
+    let expected_hash = block.id;
 
     // Send block to protocol.
-    network_controller
-        .send_block(source_node_id, block, serialized)
-        .await;
+    network_controller.send_block(source_node_id, block).await;
 
     // Check protocol sends block to consensus.
     let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {
@@ -167,7 +188,7 @@ pub async fn send_and_propagate_block(
     })
     .await
     {
-        Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => Some(block_id),
+        Some(ProtocolEvent::ReceivedBlock { block, .. }) => Some(block.id),
         None => None,
         _ => panic!("Unexpected or no protocol event."),
     };
@@ -180,24 +201,29 @@ pub async fn send_and_propagate_block(
 
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
-pub fn create_endorsement() -> SignedEndorsement {
+pub fn create_endorsement() -> WrappedEndorsement {
     let sender_priv = generate_random_private_key();
     let sender_public_key = derive_public_key(&sender_priv);
 
     let content = Endorsement {
-        sender_public_key,
         slot: Slot::new(10, 1),
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Signed::new_signed(content, &sender_priv).unwrap().1
+    Endorsement::new_wrapped(
+        content,
+        EndorsementSerializer::new(),
+        &sender_priv,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
 pub fn create_operation_with_expire_period(
     sender_priv: &PrivateKey,
     expire_period: u64,
-) -> SignedOperation {
+) -> WrappedOperation {
     let sender_pub = derive_public_key(sender_priv);
 
     let recv_priv = generate_random_private_key();
@@ -210,10 +236,15 @@ pub fn create_operation_with_expire_period(
     let content = Operation {
         fee: Amount::default(),
         op,
-        sender_public_key: sender_pub,
         expire_period,
     };
-    Signed::new_signed(content, sender_priv).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        sender_priv,
+        &sender_pub,
+    )
+    .unwrap()
 }
 
 lazy_static::lazy_static! {
@@ -348,7 +379,7 @@ pub async fn assert_banned_nodes(
     loop {
         tokio::select! {
             msg = network_controller
-                   .wait_command(1000.into(), |cmd| match cmd {
+                   .wait_command(2000.into(), |cmd| match cmd {
                        NetworkCommand::NodeBanByIds(node) => Some(node),
                        _ => None,
                    })

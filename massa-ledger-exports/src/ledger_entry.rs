@@ -47,8 +47,8 @@ impl DatastoreSerializer {
     /// Creates a new `DatastoreSerializer`
     pub fn new() -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
-            value_serializer: VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX)),
+            u64_serializer: U64VarIntSerializer::new(),
+            value_serializer: VecU8Serializer::new(),
         }
     }
 }
@@ -125,8 +125,8 @@ impl LedgerEntrySerializer {
     /// Creates a new `LedgerEntrySerializer`
     pub fn new() -> Self {
         Self {
-            vec_u8_serializer: VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX)),
-            amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            vec_u8_serializer: VecU8Serializer::new(),
+            amount_serializer: AmountSerializer::new(),
             datastore_serializer: DatastoreSerializer::new(),
         }
     }

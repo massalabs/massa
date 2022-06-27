@@ -26,7 +26,7 @@ async fn test_parent_in_the_future() {
                 .genesis_blocks;
 
             // Parent, in the future.
-            let (hasht0s1, _, _) = create_block(
+            let (t0s1, _) = create_block(
                 &cfg,
                 Slot::new(4, 0),
                 genesis_hashes.clone(),
@@ -37,7 +37,7 @@ async fn test_parent_in_the_future() {
                 &mut protocol_controller,
                 &cfg,
                 Slot::new(5, 0),
-                vec![hasht0s1],
+                vec![t0s1.id],
                 false,
                 false,
                 staking_keys[0],
