@@ -57,7 +57,7 @@ impl SpeculativeRollState {
     ///
     /// Compute all the changes that must be separated from the settle.
     #[allow(dead_code)]
-    pub fn process_slot(&mut self, creator: &Address, slot: &Slot, contains_block: bool) {
+    pub fn update_production_stats(&mut self, creator: &Address, slot: &Slot, contains_block: bool) {
         // note: will be used only on real execution
         if let Some(PoSAddressInfo {
             production_stats, ..
