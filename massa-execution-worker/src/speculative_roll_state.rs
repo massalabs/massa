@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use massa_execution_exports::ExecutionError;
 use massa_models::{Address, Slot};
 use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
@@ -59,7 +60,22 @@ impl SpeculativeRollState {
             .added_changes
             .roll_changes
             .entry(buyer_addr.to_owned())
-            .or_default() = roll_count;
+            .or_insert(
+                self.active_history
+                    .read()
+                    .fetch_roll_count(buyer_addr)
+                    .unwrap_or_default(),
+            ) = roll_count;
+    }
+
+    /// TODO
+    #[allow(dead_code)]
+    pub fn sell_rolls(
+        &self,
+        _seller_addr: Address,
+        _roll_count: u64,
+    ) -> Result<(), ExecutionError> {
+        Ok(())
     }
 
     /// Process a slot.
