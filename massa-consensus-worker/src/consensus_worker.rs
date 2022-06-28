@@ -489,7 +489,7 @@ impl ConsensusWorker {
         let block: WrappedBlock = Block::new_wrapped(
             Block {
                 header,
-                operations: Vec::new(),
+                operations: Default::default(),
             },
             BlockSerializer::new(),
             creator_private_key,
@@ -602,7 +602,7 @@ impl ConsensusWorker {
                 // add operation
                 let op_hash = op.id.hash().into_bytes();
                 operation_set.insert(op.id, (operation_set.len(), op.content.expire_period));
-                operations.push(op);
+                operations.push(op.clone());
                 remaining_block_space -= op_size;
                 remaining_operation_count -= 1;
                 total_gas += op_gas;
@@ -613,6 +613,7 @@ impl ConsensusWorker {
                     finished = true;
                     break;
                 }
+                self.block_db.storage.store_operation(op);
             }
         }
 
@@ -628,8 +629,12 @@ impl ConsensusWorker {
             creator_private_key,
             creator_public_key,
         )?;
+
         let block = Block::new_wrapped(
-            Block { header, operations },
+            Block {
+                header,
+                operations: operations.iter().map(|op| op.id).collect(),
+            },
             BlockSerializer::new(),
             creator_private_key,
             creator_public_key,
