@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use massa_execution_exports::ExecutionError;
 use massa_models::{Address, Slot};
 use massa_pos_exports::{PoSAddressInfo, PoSChanges, SelectorController};
 use parking_lot::RwLock;
@@ -53,11 +54,25 @@ impl SpeculativeRollState {
         self.added_changes = snapshot;
     }
 
+    /// Try to buy rolls in the context of this speculative execution
+    pub fn try_buy_rolls(&self, buyer_addr: &Address) -> Result<(), ExecutionError> {
+        let balance = self
+            .active_history
+            .read()
+            .fetch_active_history_balance(buyer_addr);
+        Ok(())
+    }
+
     /// Process a slot.
     ///
     /// Compute all the changes that must be separated from the settle.
     #[allow(dead_code)]
-    pub fn update_production_stats(&mut self, creator: &Address, slot: &Slot, contains_block: bool) {
+    pub fn update_production_stats(
+        &mut self,
+        creator: &Address,
+        slot: &Slot,
+        contains_block: bool,
+    ) {
         // note: will be used only on real execution
         if let Some(PoSAddressInfo {
             production_stats, ..
