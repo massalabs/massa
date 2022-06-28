@@ -431,7 +431,7 @@ pub fn create_genesis_block(
         Block::new_wrapped(
             Block {
                 header,
-                operations: Vec::new(),
+                operations: Default::default(),
             },
             BlockSerializer::new(),
             &private_key,
@@ -511,7 +511,9 @@ impl BlockGraph {
                         storage.store_block(block);
                         Ok((
                             b_id,
-                            BlockStatus::Active(Box::new(exported_active_block.try_into()?)),
+                            BlockStatus::Active(Box::new(
+                                exported_active_block.to_active_block(storage.clone())?,
+                            )),
                         ))
                     })
                     .collect::<Result<_>>()?,
@@ -1206,19 +1208,21 @@ impl BlockGraph {
         'outer: for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(b_id) {
                 if let Some(ops) = active_block.addresses_to_operations.get(address) {
-                    let stored_block = self.storage.retrieve_block(b_id).ok_or_else(|| {
-                        GraphError::MissingBlock(format!(
-                            "missing block in get_operations_involving_address: {}",
-                            b_id
-                        ))
-                    })?;
-                    let stored_block = stored_block.read();
-                    for op in ops.iter() {
-                        let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
-                            GraphError::ContainerInconsistency(format!("op {} should be here", op))
+                    for op_id in ops.iter() {
+                        let (idx, _) = active_block.operation_set.get(op_id).ok_or_else(|| {
+                            GraphError::ContainerInconsistency(format!(
+                                "op {} should be here",
+                                op_id
+                            ))
                         })?;
+                        let operation = self.storage.retrieve_operation(op_id).ok_or(
+                            GraphError::MissingOperation(format!(
+                                "The operation {} is not in the storage.",
+                                op_id
+                            )),
+                        )?;
                         let search = OperationSearchResult {
-                            op: stored_block.content.operations[*idx].clone(),
+                            op: operation,
                             in_pool: false,
                             in_blocks: vec![(*b_id, (*idx, active_block.is_final))]
                                 .into_iter()
@@ -1227,10 +1231,10 @@ impl BlockGraph {
                                 OperationSearchResultBlockStatus::Active,
                             ),
                         };
-                        if let Some(old_search) = res.get_mut(op) {
+                        if let Some(old_search) = res.get_mut(op_id) {
                             old_search.extend(&search);
                         } else {
-                            res.insert(*op, search);
+                            res.insert(*op_id, search);
                         }
                         if res.len() >= self.cfg.max_item_return_count {
                             break 'outer;
@@ -1289,8 +1293,14 @@ impl BlockGraph {
 
         // For each operation id we are searching for.
         for op_id in operation_ids.into_iter() {
-            // The operation corresponding to the id, initially none.
-            let mut operation = None;
+            // The operation is fetched from the storage.
+            let operation =
+                self.storage
+                    .retrieve_operation(&op_id)
+                    .ok_or(GraphError::MissingOperation(format!(
+                        "The operation {} is not in the storage.",
+                        op_id
+                    )))?;
 
             // The active blocks in which the operation is found.
             let mut in_blocks: Map<BlockId, (usize, bool)> = Default::default();
@@ -1299,37 +1309,20 @@ impl BlockGraph {
                 if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
                     // If the operation is found in the active block.
                     if let Some((idx, _)) = active_block.operation_set.get(&op_id) {
-                        // If this is the first time we encounter the operation as present in an active block.
-                        if operation.is_none() {
-                            let stored_block =
-                                self.storage.retrieve_block(block_id).ok_or_else(|| {
-                                    GraphError::MissingBlock(format!(
-                                        "missing block in get_operations: {}",
-                                        block_id
-                                    ))
-                                })?;
-                            let stored_block = stored_block.read();
-
-                            // Clone the operation.
-                            operation = Some(stored_block.content.operations[*idx].clone());
-                        }
                         in_blocks.insert(*block_id, (*idx, active_block.is_final));
                     }
                 }
             }
 
-            // If we found the operation in at least one active block.
-            if let Some(op) = operation {
-                let result = OperationSearchResult {
-                    op,
-                    in_pool: false,
-                    in_blocks,
-                    status: OperationSearchResultStatus::InBlock(
-                        OperationSearchResultBlockStatus::Active,
-                    ),
-                };
-                res.insert(op_id, result);
-            }
+            let result = OperationSearchResult {
+                op: operation,
+                in_pool: false,
+                in_blocks,
+                status: OperationSearchResultStatus::InBlock(
+                    OperationSearchResultBlockStatus::Active,
+                ),
+            };
+            res.insert(op_id, result);
         }
         Ok(res)
     }
@@ -1693,7 +1686,23 @@ impl BlockGraph {
                             "block_id": block_id
                         });
                         (
-                            stored_block.involved_addresses(&operation_set)?,
+                            stored_block.involved_addresses(
+                                &operation_set
+                                    .iter()
+                                    .map(|(&op_id, _)| {
+                                        let operation = self
+                                            .storage
+                                            .retrieve_operation(&op_id)
+                                            .ok_or_else(|| {
+                                                GraphError::MissingOperation(format!(
+                                        "missing operation in processing incoming block: {}",
+                                        op_id
+                                    ))
+                                            })?;
+                                        Ok((op_id, operation))
+                                    })
+                                    .collect::<Result<Map<OperationId, WrappedOperation>>>()?,
+                            )?,
                             stored_block.addresses_to_endorsements()?,
                             stored_block.content.header.creator_public_key,
                             slot,
@@ -2434,7 +2443,14 @@ impl BlockGraph {
     ) -> Result<BlockOperationsCheckOutcome> {
         // check that ops are not reused in previous blocks. Note that in-block reuse was checked in protocol.
         let mut dependencies: Set<BlockId> = Set::<BlockId>::default();
-        for operation in block_to_check.content.operations.iter() {
+        for op_id in block_to_check.content.operations.iter() {
+            let operation =
+                self.storage
+                    .retrieve_operation(op_id)
+                    .ok_or(GraphError::MissingOperation(format!(
+                        "The operation {} isn't found in the storage.",
+                        op_id
+                    )))?;
             let op_start_validity_period = *operation
                 .get_validity_range(self.cfg.operation_validity_periods)
                 .start();
@@ -2502,11 +2518,18 @@ impl BlockGraph {
 
         // all operations
         // (including step 6 in consensus/pos.md)
-        for operation in block_to_check.content.operations.iter() {
+        for op_id in block_to_check.content.operations.iter() {
+            let operation =
+                self.storage
+                    .retrieve_operation(op_id)
+                    .ok_or(GraphError::MissingOperation(format!(
+                        "The operation {} isn't found in the storage.",
+                        op_id
+                    )))?;
             match self.block_state_try_apply_op(
                 &mut state_accu,
                 &block_to_check.content.header,
-                operation,
+                &operation,
                 pos,
             ) {
                 Ok(_) => (),

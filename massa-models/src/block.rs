@@ -2,13 +2,14 @@
 
 use crate::constants::BLOCK_ID_SIZE_BYTES;
 use crate::node_configuration::default::ENDORSEMENT_COUNT;
-use crate::node_configuration::{MAX_BLOCK_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT};
-use crate::operation::{OperationDeserializer, OperationIds, OperationIdsSerializer};
+use crate::node_configuration::THREAD_COUNT;
+use crate::operation::{OperationIds, OperationIdsSerializer};
 use crate::prehash::{Map, PreHashed, Set};
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
-    Address, Endorsement, EndorsementDeserializer, EndorsementId, ModelsError, Operation,
-    OperationId, Slot, SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation, OperationIdsDeserializer,
+    Address, Endorsement, EndorsementDeserializer, EndorsementId, ModelsError, OperationId,
+    OperationIdsDeserializer, Slot, SlotDeserializer, SlotSerializer, WrappedEndorsement,
+    WrappedOperation,
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
@@ -197,8 +198,7 @@ impl WrappedContent for Block {
 /// Serializer for `Block`
 pub struct BlockSerializer {
     header_serializer: WrappedSerializer,
-    u32_serializer: U32VarIntSerializer,
-    op_ids_serializer: OperationIdsSerializer
+    op_ids_serializer: OperationIdsSerializer,
 }
 
 impl BlockSerializer {
@@ -206,8 +206,7 @@ impl BlockSerializer {
     pub fn new() -> Self {
         BlockSerializer {
             header_serializer: WrappedSerializer::new(),
-            u32_serializer: U32VarIntSerializer::new(),
-            op_ids_serializer: OperationIdsSerializer::new()
+            op_ids_serializer: OperationIdsSerializer::new(),
         }
     }
 }
@@ -221,13 +220,8 @@ impl Default for BlockSerializer {
 impl Serializer<Block> for BlockSerializer {
     fn serialize(&self, value: &Block, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.header_serializer.serialize(&value.header, buffer)?;
-        self.u32_serializer.serialize(
-            &value.operations.len().try_into().map_err(|err| {
-                SerializeError::NumberTooBig(format!("too many operations: {}", err))
-            })?,
-            buffer,
-        )?;
-        self.op_ids_serializer.serialize(&value.operations, buffer)?;
+        self.op_ids_serializer
+            .serialize(&value.operations, buffer)?;
         Ok(())
     }
 }
@@ -236,7 +230,6 @@ impl Serializer<Block> for BlockSerializer {
 pub struct BlockDeserializer {
     header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
     op_ids_deserializer: OperationIdsDeserializer,
-    u32_deserializer: U32VarIntDeserializer,
 }
 
 impl BlockDeserializer {
@@ -245,10 +238,6 @@ impl BlockDeserializer {
         BlockDeserializer {
             header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
             op_ids_deserializer: OperationIdsDeserializer::new(),
-            u32_deserializer: U32VarIntDeserializer::new(
-                Included(0),
-                Included(MAX_OPERATIONS_PER_BLOCK),
-            ),
         }
     }
 }
@@ -289,30 +278,19 @@ impl WrappedBlock {
     /// true if given operation is included in the block
     /// may fail if computing an id of an operation in the block
     pub fn contains_operation(&self, op: WrappedOperation) -> Result<bool, ModelsError> {
-        let op_id = op.id;
-        Ok(self.content.operations.iter().any(|o| op_id == o.id))
-    }
-
-    /// Retrieve roll involving addresses
-    pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
-        let mut roll_involved_addrs = Set::<Address>::default();
-        for op in self.content.operations.iter() {
-            roll_involved_addrs.extend(op.get_roll_involved_addresses()?);
-        }
-        Ok(roll_involved_addrs)
+        Ok(self.content.operations.contains(&op.id))
     }
 
     /// retrieves a mapping of addresses to the list of operation IDs they are involved with in terms of ledger
     pub fn involved_addresses(
         &self,
-        operation_set: &Map<OperationId, (usize, u64)>,
+        operation_set: &Map<OperationId, WrappedOperation>,
     ) -> Result<Map<Address, Set<OperationId>>, ModelsError> {
         let mut addresses_to_operations: Map<Address, Set<OperationId>> =
             Map::<Address, Set<OperationId>>::default();
         operation_set
             .iter()
-            .try_for_each::<_, Result<(), ModelsError>>(|(op_id, (op_idx, _op_expiry))| {
-                let op = &self.content.operations[*op_idx];
+            .try_for_each::<_, Result<(), ModelsError>>(|(op_id, op)| {
                 let addrs = op.get_ledger_involved_addresses();
                 for ad in addrs.into_iter() {
                     if let Some(entry) = addresses_to_operations.get_mut(&ad) {
@@ -632,7 +610,7 @@ mod test {
         // create block
         let orig_block = Block {
             header: orig_header,
-            operations: vec![],
+            operations: Default::default(),
         };
 
         // serialize block

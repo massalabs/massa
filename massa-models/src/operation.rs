@@ -658,23 +658,6 @@ impl WrappedOperation {
         }
         res
     }
-
-    /// get the addresses that are involved in this operation from a rolls point of view
-    pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
-        let mut res = Set::<Address>::default();
-        match self.content.op {
-            OperationType::Transaction { .. } => {}
-            OperationType::RollBuy { .. } => {
-                res.insert(Address::from_public_key(&self.creator_public_key));
-            }
-            OperationType::RollSell { .. } => {
-                res.insert(Address::from_public_key(&self.creator_public_key));
-            }
-            OperationType::ExecuteSC { .. } => {}
-            OperationType::CallSC { .. } => {}
-        }
-        Ok(res)
-    }
 }
 
 /// Set of operation ids

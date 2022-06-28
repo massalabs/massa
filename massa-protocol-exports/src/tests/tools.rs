@@ -18,6 +18,7 @@ use massa_models::{
 };
 use massa_network_exports::NetworkCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::collections::HashMap;
 use tokio::time::sleep;
@@ -77,7 +78,7 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Wrapped
     Block::new_wrapped(
         Block {
             header,
-            operations: Vec::new(),
+            operations: Default::default(),
         },
         BlockSerializer::new(),
         private_key,
@@ -97,6 +98,7 @@ pub fn create_block_with_operations(
     public_key: &PublicKey,
     slot: Slot,
     operations: Vec<WrappedOperation>,
+    storage: Storage,
 ) -> WrappedBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
@@ -119,8 +121,19 @@ pub fn create_block_with_operations(
     )
     .unwrap();
 
+    let op_ids = operations
+        .into_iter()
+        .map(|op| {
+            let op_id = op.id;
+            storage.store_operation(op);
+            op_id
+        })
+        .collect();
     Block::new_wrapped(
-        Block { header, operations },
+        Block {
+            header,
+            operations: op_ids,
+        },
         BlockSerializer::new(),
         private_key,
         public_key,
