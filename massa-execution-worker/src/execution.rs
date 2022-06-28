@@ -250,11 +250,10 @@ impl ExecutionState {
         operation: &SignedOperation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
-        // prefilter only SC operations
+        // filter transactions operations
         match &operation.content.op {
-            OperationType::ExecuteSC { .. } => {}
-            OperationType::CallSC { .. } => {}
-            _ => return Ok(()),
+            OperationType::Transaction { .. } => return Ok(()),
+            _ => (),
         };
 
         // get the operation's sender address
@@ -283,8 +282,45 @@ impl ExecutionState {
                 operation_id,
                 sender_addr,
             ),
+            OperationType::RollBuy { .. } => self.execute_roll_buy_op(
+                &operation.content.op,
+                block_creator_addr,
+                operation_id,
+                sender_addr,
+            ),
             _ => panic!("unexpected operation type"), // checked at the beginning of the function
         }
+    }
+
+    /// Execute an operation of type `RollBuy`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `SignedOperation` to process, must be an `RollBuy`
+    /// * `block_creator_addr`: address of the block creator
+    /// * `operation_id`: ID of the operation
+    /// * `sender_addr`: address of the sender
+    pub fn execute_roll_buy_op(
+        &self,
+        operation: &OperationType,
+        block_creator_addr: Address,
+        operation_id: OperationId,
+        sender_addr: Address,
+    ) -> Result<(), ExecutionError> {
+        // process roll buy operations only
+        let roll_count = match operation {
+            OperationType::RollBuy { roll_count } => roll_count,
+            _ => panic!("unexpected operation type"),
+        };
+
+        // prepare execution context
+        let context_snapshot;
+        {
+            let mut context = context_guard!(self);
+            context_snapshot = context.get_snapshot();
+            // do stuff here
+        }
+        Ok(())
     }
 
     /// Execute an operation of type `ExecuteSC`
