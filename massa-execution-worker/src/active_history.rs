@@ -96,7 +96,6 @@ impl ActiveHistory {
     ///
     /// # Arguments
     /// * `addr`: address to fetch the rolls from
-    #[allow(dead_code)]
     pub fn fetch_roll_count(&self, addr: &Address) -> Option<u64> {
         self.0.iter().rev().find_map(|output| {
             output
