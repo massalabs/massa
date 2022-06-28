@@ -3,7 +3,7 @@ use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
-use massa_models::{amount, prehash::Map, Address, Amount, Slot};
+use massa_models::{prehash::Map, Address, Amount, Slot};
 use massa_pos_exports::ProductionStats;
 use std::collections::{BTreeMap, VecDeque};
 
@@ -92,79 +92,81 @@ impl ActiveHistory {
         HistorySearchResult::NoInfo
     }
 
-    /// TODO
+    /// Starting from the newest element in history, return the first existing roll change of `addr`.
+    ///
+    /// # Arguments
+    /// * `addr`: address to fetch the rolls from
     #[allow(dead_code)]
     pub fn fetch_roll_count(&self, addr: &Address) -> Option<u64> {
-        for output in self.0.iter().rev() {
-            if let Some(rolls) = output
+        self.0.iter().rev().find_map(|output| {
+            output
                 .state_changes
                 .roll_state_changes
                 .roll_changes
                 .get(addr)
-            {
-                return Some(*rolls);
-            }
-        }
-        None
+                .cloned()
+        })
     }
 
-    /// TODO
+    /// Traverse the whole history and return every deferred credit of `addr` _after_ `slot` (included).
+    ///
+    /// # Arguments
+    /// * `slot`: slot _after_ which we fetch the credits
+    /// * `addr`: address to fetch the credits from
     #[allow(dead_code)]
-    pub fn fetch_deferred_credits_for(
+    pub fn fetch_deferred_credits_after(
         &self,
         slot: &Slot,
         addr: &Address,
     ) -> BTreeMap<Slot, Amount> {
-        let mut list: BTreeMap<Slot, Amount> = BTreeMap::new();
-        for output in self.0.iter().rev() {
-            for amount in output
-                .state_changes
-                .roll_state_changes
-                .deferred_credits
-                .range(slot..)
-                .map(|v| v.1.get(addr))
-                .flatten()
-            {
-                // does this actually work?
-                list.insert(*slot, *amount);
-            }
-        }
-        list
+        self.0
+            .iter()
+            .flat_map(|output| {
+                output
+                    .state_changes
+                    .roll_state_changes
+                    .deferred_credits
+                    .range(slot..)
+                    .filter_map(|(&slot, credits)| credits.get(addr).map(|&amount| (slot, amount)))
+            })
+            .collect()
     }
 
-    /// TODO
+    /// Traverse the whole history and return every deferred credit _at_ `slot`
+    ///
+    /// # Arguments
+    /// * `slot`: slot _at_ which we fetch the credits
     #[allow(dead_code)]
     pub fn fetch_all_defered_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
-        let mut list = Map::default();
-        for output in self.0.iter().rev() {
-            if let Some(credits) = output
-                .state_changes
-                .roll_state_changes
-                .deferred_credits
-                .get(slot)
-            {
-                list.extend(credits);
-            }
-        }
-        list
+        self.0
+            .iter()
+            .filter_map(|output| {
+                output
+                    .state_changes
+                    .roll_state_changes
+                    .deferred_credits
+                    .get(slot)
+                    .cloned()
+            })
+            .flatten()
+            .collect()
     }
 
-    /// TODO
+    /// Retrieve the production stats of `addr` as they are in the last element of the history.
+    ///
+    /// # Arguments
+    /// * `addr`:  address to fetch the production stats from
     #[allow(dead_code)]
     pub fn fetch_production_stats(&self, addr: &Address) -> Option<ProductionStats> {
-        if let Some(stats) = self
-            .0
+        self.0
             .back()
             .map(|v| {
                 v.state_changes
                     .roll_state_changes
                     .production_stats
                     .get(addr)
+                    .cloned()
             })
             .flatten()
-        {
-            Some(stats);
-        }
-        None
     }
 }

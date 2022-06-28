@@ -1,8 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::{ops::Add, sync::Arc};
+use std::sync::Arc;
 
-use massa_execution_exports::ExecutionError;
 use massa_models::{Address, Slot};
 use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
