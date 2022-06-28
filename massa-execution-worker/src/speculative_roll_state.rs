@@ -54,7 +54,13 @@ impl SpeculativeRollState {
     }
 
     /// Try to buy rolls in the context of this speculative execution
-    pub fn add_rolls(&self, buyer_addr: &Address, roll_count: u64) {}
+    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+        *self
+            .added_changes
+            .roll_changes
+            .entry(buyer_addr.to_owned())
+            .or_default() = roll_count;
+    }
 
     /// Process a slot.
     ///
