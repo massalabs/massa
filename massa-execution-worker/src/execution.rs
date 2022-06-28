@@ -250,7 +250,7 @@ impl ExecutionState {
         operation: &SignedOperation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
-        // filter transactions operations
+        // filter out only transactions operations
         match &operation.content.op {
             OperationType::Transaction { .. } => return Ok(()),
             _ => (),
