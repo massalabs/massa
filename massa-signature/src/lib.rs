@@ -8,7 +8,6 @@ mod signature_impl;
 
 pub use error::MassaSignatureError;
 pub use signature_impl::{
-    generate_random_keypair, sign, verify_signature, KeyPair, PrivateKey, PublicKey,
-    PublicKeyDeserializer, Signature, SignatureDeserializer, PRIVATE_KEY_SIZE_BYTES,
-    PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
+    KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
+    KEYPAIR_SIZE_BYTES, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
 };

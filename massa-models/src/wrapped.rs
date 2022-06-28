@@ -4,8 +4,8 @@ use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
 use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
-    sign, verify_signature, PublicKey, PublicKeyDeserializer, Signature,
-    SignatureDeserializer, KeyPair,
+    sign, verify_signature, KeyPair, PublicKey, PublicKeyDeserializer, Signature,
+    SignatureDeserializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -54,7 +54,7 @@ where
     fn new_wrapped<SC: Serializer<Self>, U: Id>(
         content: Self,
         content_serializer: SC,
-        keypair: &KeyPair
+        keypair: &KeyPair,
     ) -> Result<Wrapped<Self, U>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
