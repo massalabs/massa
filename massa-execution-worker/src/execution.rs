@@ -268,7 +268,7 @@ impl ExecutionState {
             .compute_id()
             .expect("could not compute operation ID");
 
-        // credit the fee
+        // transfer the fee from sender to block creator
         {
             let mut context = context_guard!(self);
             context.transfer_parallel_coins(
@@ -295,9 +295,32 @@ impl ExecutionState {
             OperationType::RollBuy { .. } => {
                 self.execute_roll_buy_op(&operation.content.op, operation_id, sender_addr)
             }
-            OperationType::RollSell { .. } => Ok(()), // TODO: implement execute_roll_sell_op
+            OperationType::RollSell { .. } => {
+                self.execute_roll_sell_op(&operation.content.op, operation_id, sender_addr)
+            }
             _ => panic!("unexpected operation type"), // checked at the beginning of the function
         }
+    }
+
+    /// Execute an operation of type `RollSell`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `SignedOperation` to process, must be an `RollSell`
+    /// * `operation_id`: ID of the operation
+    /// * `sender_addr`: address of the sender
+    pub fn execute_roll_sell_op(
+        &self,
+        operation: &OperationType,
+        _operation_id: OperationId,
+        _buyer_addr: Address,
+    ) -> Result<(), ExecutionError> {
+        // process roll buy operations only
+        let _roll_count = match operation {
+            OperationType::RollSell { roll_count } => roll_count,
+            _ => panic!("unexpected operation type"),
+        };
+        Ok(())
     }
 
     /// Execute an operation of type `RollBuy`
@@ -305,7 +328,6 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `operation`: the `SignedOperation` to process, must be an `RollBuy`
-    /// * `block_creator_addr`: address of the block creator
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
     pub fn execute_roll_buy_op(
