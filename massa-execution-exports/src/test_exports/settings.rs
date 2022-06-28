@@ -16,6 +16,7 @@ impl Default for ExecutionConfig {
             max_final_events: MAX_FINAL_EVENTS,
             max_async_gas: MAX_ASYNC_GAS,
             thread_count: THREAD_COUNT,
+            roll_price: ROLL_PRICE,
             cursor_delay: CURSOR_DELAY,
             clock_compensation: Default::default(),
             // reset genesis timestamp because we are in test mode that can take a while to process

@@ -175,6 +175,8 @@ pub struct ConsensusConfig {
     /// initial seed
     pub initial_draw_seed: String,
     /// Price of a roll inside the network
+    ///
+    /// TODO: remove when ledger unif is done
     pub roll_price: Amount,
     /// stats time span
     pub stats_timespan: MassaTime,
