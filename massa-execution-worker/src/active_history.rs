@@ -3,7 +3,7 @@ use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_models::{amount, prehash::Map, Address, Amount, Slot};
 use massa_pos_exports::ProductionStats;
 use std::collections::{BTreeMap, VecDeque};
 
@@ -115,39 +115,38 @@ impl ActiveHistory {
         slot: &Slot,
         addr: &Address,
     ) -> BTreeMap<Slot, Amount> {
-        let mut credits: BTreeMap<Slot, Amount> = BTreeMap::new();
-        for cr in self
-            .0
-            .iter()
-            .map(|v| {
-                v.state_changes
-                    .roll_state_changes
-                    .deferred_credits
-                    .range(slot..)
-            })
-            .flatten()
-        {
-            // UPDATE HERE
-            // credits.insert();
+        let mut list: BTreeMap<Slot, Amount> = BTreeMap::new();
+        for output in self.0.iter().rev() {
+            for amount in output
+                .state_changes
+                .roll_state_changes
+                .deferred_credits
+                .range(slot..)
+                .map(|v| v.1.get(addr))
+                .flatten()
+            {
+                // does this actually work?
+                list.insert(*slot, *amount);
+            }
         }
-        credits
+        list
     }
 
     /// TODO
     #[allow(dead_code)]
     pub fn fetch_all_defered_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
-        let mut credits = Map::default();
+        let mut list = Map::default();
         for output in self.0.iter().rev() {
-            if let Some(cr) = output
+            if let Some(credits) = output
                 .state_changes
                 .roll_state_changes
                 .deferred_credits
                 .get(slot)
             {
-                credits.extend(cr);
+                list.extend(credits);
             }
         }
-        credits
+        list
     }
 
     /// TODO
