@@ -10,7 +10,7 @@
 
 use std::collections::VecDeque;
 
-use crate::{checked_operations::Contains, protocol_worker::ProtocolWorker};
+use crate::protocol_worker::ProtocolWorker;
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,

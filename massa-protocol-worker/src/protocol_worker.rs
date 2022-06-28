@@ -529,7 +529,7 @@ impl ProtocolWorker {
                         self.network_command_sender
                             .send_operations_batch(
                                 *node,
-                                new_ops.iter().map(|id| id.split().0).collect(),
+                                new_ops.iter().map(|id| id.into_prefix()).collect(),
                             )
                             .await?;
                     }

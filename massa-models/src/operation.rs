@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
-use crate::error::ModelsResult;
 use crate::node_configuration::OPERATION_ID_PREFIX_SIZE_BYTES;
 use crate::prehash::{BuildMap, PreHashed, Set};
 use crate::signed::{Id, Signable, Signed};
@@ -19,7 +18,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
-use std::mem::transmute_copy;
+use std::mem::transmute;
 use std::{ops::RangeInclusive, str::FromStr};
 
 const OPERATION_ID_STRING_PREFIX: &str = "OPE";
@@ -30,11 +29,7 @@ pub struct OperationId(Hash);
 
 /// Left part of the operation id hash stored in a vector of size [OPERATION_ID_PREFIX_SIZE_BYTES]
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct OperationPrefixId(Vec<u8>);
-
-/// Right part of the operation id hash, contains the remains of `OperationId - OperationPrefixId`
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct OperationSuffixId(Vec<u8>);
+pub struct OperationPrefixId([u8; OPERATION_ID_PREFIX_SIZE_BYTES]);
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -119,7 +114,7 @@ impl FromStr for OperationId {
 }
 
 // note: would be probably unused after the merge of
-//       prefix & suffix
+//       prefix
 impl PreHashed for OperationId {}
 impl Id for OperationId {
     fn new(hash: Hash) -> Self {
@@ -130,27 +125,20 @@ impl Id for OperationId {
 impl PreHashed for OperationPrefixId {}
 impl Id for OperationPrefixId {
     fn new(hash: Hash) -> Self {
-        OperationPrefixId(hash.to_bytes().to_vec())
+        OperationId(hash).into_prefix()
     }
 }
 
 impl From<&[u8; OPERATION_ID_PREFIX_SIZE_BYTES]> for OperationPrefixId {
     /// get prefix of the operation id of size [OPERATION_ID_PREFIX_SIZE_BIT]
     fn from(bytes: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]) -> Self {
-        Self(bytes.to_vec())
+        Self(*bytes)
     }
 }
 
 impl From<&OperationPrefixId> for Vec<u8> {
     fn from(prefix: &OperationPrefixId) -> Self {
-        prefix.0.clone()
-    }
-}
-
-impl From<OperationId> for OperationPrefixId {
-    /// get prefix of the operation id of size [OPERATION_ID_PREFIX_SIZE_BIT]
-    fn from(operation_id: OperationId) -> Self {
-        Self(operation_id.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES].to_vec())
+        prefix.0.to_vec()
     }
 }
 
@@ -177,38 +165,26 @@ impl OperationId {
         ))
     }
 
-    /// Split into a tuple of [OperationPrefixId] and [OperationSuffixId]
-    pub fn split(&self) -> (OperationPrefixId, OperationSuffixId) {
-        (
-            OperationPrefixId(self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES].to_vec()),
-            OperationSuffixId(self.0.to_bytes()[OPERATION_ID_PREFIX_SIZE_BYTES..].to_vec()),
-        )
+    /// convert the [OperationId] into a [OperationPrefixId]
+    pub fn into_prefix(self) -> OperationPrefixId {
+        let bytes = self.0.into_bytes();
+        let data: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES] = unsafe {
+            transmute::<&[u8; OPERATION_ID_SIZE_BYTES], &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]>(
+                &bytes,
+            )
+        };
+        OperationPrefixId(*data)
     }
 
-    /// Split into a tuple of [OperationPrefixId] and [OperationSuffixId]
-    pub fn into_split(self) -> (OperationPrefixId, OperationSuffixId) {
-        self.split()
-    }
-}
-
-impl OperationPrefixId {
-    /// Retreive an [OperationId] joining the prefix object to his
-    /// corresponding suffix.
-    pub fn join(&self, suffix: &OperationSuffixId) -> ModelsResult<OperationId> {
-        if self.0.len() + suffix.0.len() != OPERATION_ID_SIZE_BYTES {
-            println!(
-                "{}:{}",
-                self.0.len() + suffix.0.len(),
-                OPERATION_ID_SIZE_BYTES
-            );
-            return Err(ModelsError::OperationPrefixJoinError);
-        }
-        let mut id = self.0.clone();
-        id.extend(&suffix.0);
-        // the following code is safe because we correctly check the size in the if
-        // guard and return early an error if the transmutation would fail.
-        let data: &[u8; OPERATION_ID_SIZE_BYTES] = unsafe { transmute_copy(&id) };
-        Ok(OperationId::from_bytes(data))
+    /// get a prefix from the [OperationId] by copying it
+    pub fn prefix(&self) -> OperationPrefixId {
+        let bytes = self.0.to_bytes();
+        let data: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES] = unsafe {
+            transmute::<&[u8; OPERATION_ID_SIZE_BYTES], &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]>(
+                &bytes,
+            )
+        };
+        OperationPrefixId(*data)
     }
 }
 
@@ -1002,40 +978,5 @@ mod tests {
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.content.get_validity_range(10), 40..=50);
-    }
-
-    #[test]
-    #[serial]
-    fn test_prefix_join() {
-        let sender_priv = generate_random_private_key();
-        let sender_pub = derive_public_key(&sender_priv);
-
-        let recv_priv = generate_random_private_key();
-        let recv_pub = derive_public_key(&recv_priv);
-
-        let op = OperationType::Transaction {
-            recipient_address: Address::from_public_key(&recv_pub),
-            amount: Amount::default(),
-        };
-        let ser_type = op.to_bytes_compact().unwrap();
-        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
-        assert_eq!(format!("{}", res_type), format!("{}", op));
-
-        let content = Operation {
-            fee: Amount::from_str("20").unwrap(),
-            sender_public_key: sender_pub,
-            op,
-            expire_period: 50,
-        };
-
-        let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
-        assert_eq!(format!("{}", res_content), format!("{}", content));
-
-        let id = Signed::new_signed(content, &sender_priv).unwrap().0;
-        let (prefix, suffix) = id.split();
-        let joined = prefix.join(&suffix).expect("error on join operation id");
-
-        assert_eq!(id.0, joined.0);
     }
 }

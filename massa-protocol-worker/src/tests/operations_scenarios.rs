@@ -178,7 +178,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
                 {
                     Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                         assert_eq!(batch.len(), 1);
-                        assert!(batch.contains(&expected_operation_id.split().0));
+                        assert!(batch.contains(&expected_operation_id.prefix()));
                         assert_eq!(nodes[1].id, to_node);
                         break;
                     }
@@ -260,7 +260,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 {
                     Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                         assert_eq!(batch.len(), 1);
-                        assert!(batch.contains(&expected_operation_id.split().0));
+                        assert!(batch.contains(&expected_operation_id.prefix()));
                         assert_eq!(new_nodes[0].id, to_node);
                         break;
                     }
@@ -669,7 +669,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             {
                 Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                     assert_eq!(batch.len(), 1);
-                    assert!(batch.contains(&operation_id_2.split().0));
+                    assert!(batch.contains(&operation_id_2.prefix()));
                     assert_eq!(nodes[0].id, to_node);
                 }
                 None => panic!("Operation not propagated."),
@@ -798,7 +798,7 @@ async fn test_protocol_ask_operations_on_batch_received() {
             {
                 Some(NetworkCommand::AskForOperations { to_node, wishlist }) => {
                     assert_eq!(wishlist.len(), 1);
-                    assert!(wishlist.contains(&expected_operation_id.split().0));
+                    assert!(wishlist.contains(&expected_operation_id.prefix()));
                     assert_eq!(to_node, creator_node.id);
                 }
                 _ => panic!("Unexpected or no network command."),
