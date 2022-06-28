@@ -534,7 +534,7 @@ impl ExecutionContext {
     }
 
     /// Add a certain number of rolls to the buyer address.
-    /// Preliminary checks must be performed _before_ calling this function.
+    /// Validity checks must be performed _outside_ of this function.
     ///
     /// # Arguments
     /// * `buyer_addr`: address that will receive the rolls

@@ -268,6 +268,16 @@ impl ExecutionState {
             .compute_id()
             .expect("could not compute operation ID");
 
+        // credit the fee
+        {
+            let mut context = context_guard!(self);
+            context.transfer_parallel_coins(
+                Some(sender_addr),
+                Some(block_creator_addr),
+                operation.content.fee,
+            )?;
+        }
+
         // call the execution process specific to the operation type
         match &operation.content.op {
             OperationType::ExecuteSC { .. } => self.execute_executesc_op(
@@ -282,13 +292,10 @@ impl ExecutionState {
                 operation_id,
                 sender_addr,
             ),
-            OperationType::RollBuy { .. } => self.execute_roll_buy_op(
-                &operation.content.op,
-                block_creator_addr,
-                operation_id,
-                sender_addr,
-            ),
-            OperationType::RollSell { .. } => Ok(()), // note: implement execute_roll_sell_op
+            OperationType::RollBuy { .. } => {
+                self.execute_roll_buy_op(&operation.content.op, operation_id, sender_addr)
+            }
+            OperationType::RollSell { .. } => Ok(()), // TODO: implement execute_roll_sell_op
             _ => panic!("unexpected operation type"), // checked at the beginning of the function
         }
     }
@@ -304,7 +311,6 @@ impl ExecutionState {
     pub fn execute_roll_buy_op(
         &self,
         operation: &OperationType,
-        block_creator_addr: Address,
         operation_id: OperationId,
         buyer_addr: Address,
     ) -> Result<(), ExecutionError> {
@@ -314,19 +320,28 @@ impl ExecutionState {
             _ => panic!("unexpected operation type"),
         };
 
-        // prepare execution context
-        let context_snapshot;
+        // acquire write access to the context
+        let mut context = context_guard!(self);
+
+        // save a snapshot of the context state to restore it if the op fails to execute
+        let context_snapshot = context.get_snapshot();
+
+        // set the context origin operation id
+        context.origin_operation_id = Some(operation_id);
+
+        // add rolls to the buyer withing the context
+        context.add_rolls(&buyer_addr, roll_count.to_owned());
+
+        // burn `roll_price` * `roll_count` sequential coins from the buyer
+        if let Err(err) =
+            // NOTE: this should transfer sequential coins
+            // TODO: implement sequential coins transfer
+            context.transfer_parallel_coins(Some(buyer_addr), None, self.config.roll_price)
         {
-            let mut context = context_guard!(self);
-            context_snapshot = context.get_snapshot();
-            context.add_rolls(&buyer_addr, *roll_count);
-            if let Err(err) =
-                context.transfer_parallel_coins(Some(buyer_addr), None, self.config.roll_price)
-            {
-                context.reset_to_snapshot(context_snapshot);
-                debug!("{} failed to buy {} rolls: {}", buyer_addr, roll_count, err);
-            }
-            context.origin_operation_id = Some(operation_id);
+            // cancel the effects of the execution by resetting the context to the previously saved snapshot
+            context.origin_operation_id = None;
+            context.reset_to_snapshot(context_snapshot);
+            debug!("{} failed to buy {} rolls: {}", buyer_addr, roll_count, err);
         }
         Ok(())
     }
