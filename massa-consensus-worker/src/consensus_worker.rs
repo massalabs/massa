@@ -542,7 +542,7 @@ impl ConsensusWorker {
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<WrappedOperation> = Vec::new();
-        let mut operation_set: Map<OperationId, (usize, u64)> = Map::default(); // (index, validity end period)
+        let mut operation_set: Map<OperationId, usize> = Map::default(); // (index, validity end period)
         let mut finished = remaining_block_space == 0
             || remaining_operation_count == 0
             || self.cfg.max_operations_fill_attempts == 0;
@@ -601,7 +601,7 @@ impl ConsensusWorker {
 
                 // add operation
                 let op_hash = op.id.hash().into_bytes();
-                operation_set.insert(op.id, (operation_set.len(), op.content.expire_period));
+                operation_set.insert(op.id, operation_set.len());
                 operations.push(op.clone());
                 remaining_block_space -= op_size;
                 remaining_operation_count -= 1;
@@ -1299,7 +1299,11 @@ impl ConsensusWorker {
                     a_block
                         .operation_set
                         .iter()
-                        .map(|(id, (_, exp))| (*id, (*exp, a_block.slot.thread))),
+                        .map(|(id, _)| {
+                            // TODO: Discuss this get
+                            let op = self.block_db.storage.retrieve_operation(id).unwrap();
+                            (*id, (op.content.expire_period, a_block.slot.thread))
+                        }),
                 );
                 // List final block
                 new_final_blocks.insert(b_id, a_block);

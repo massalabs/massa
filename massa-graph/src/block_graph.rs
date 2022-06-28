@@ -50,7 +50,7 @@ enum HeaderOrBlock {
     Block(
         BlockId,
         Slot,
-        Map<OperationId, (usize, u64)>,
+        Map<OperationId, usize>,
         Map<EndorsementId, u32>,
     ),
 }
@@ -1209,7 +1209,7 @@ impl BlockGraph {
             if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(b_id) {
                 if let Some(ops) = active_block.addresses_to_operations.get(address) {
                     for op_id in ops.iter() {
-                        let (idx, _) = active_block.operation_set.get(op_id).ok_or_else(|| {
+                        let idx = active_block.operation_set.get(op_id).ok_or_else(|| {
                             GraphError::ContainerInconsistency(format!(
                                 "op {} should be here",
                                 op_id
@@ -1308,7 +1308,7 @@ impl BlockGraph {
             for block_id in self.active_index.iter() {
                 if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
                     // If the operation is found in the active block.
-                    if let Some((idx, _)) = active_block.operation_set.get(&op_id) {
+                    if let Some(idx) = active_block.operation_set.get(&op_id) {
                         in_blocks.insert(*block_id, (*idx, active_block.is_final));
                     }
                 }
@@ -1413,7 +1413,7 @@ impl BlockGraph {
         &mut self,
         block_id: BlockId,
         slot: Slot,
-        operation_set: Map<OperationId, (usize, u64)>,
+        operation_set: Map<OperationId, usize>,
         endorsement_ids: Map<EndorsementId, u32>,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
@@ -2359,7 +2359,7 @@ impl BlockGraph {
     fn check_block(
         &self,
         block: &WrappedBlock,
-        operation_set: &Map<OperationId, (usize, u64)>,
+        operation_set: &Map<OperationId, usize>,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<BlockCheckOutcome> {
@@ -2438,7 +2438,7 @@ impl BlockGraph {
     fn check_operations(
         &self,
         block_to_check: &WrappedBlock,
-        operation_set: &Map<OperationId, (usize, u64)>,
+        operation_set: &Map<OperationId, usize>,
         pos: &mut ProofOfStake,
     ) -> Result<BlockOperationsCheckOutcome> {
         // check that ops are not reused in previous blocks. Note that in-block reuse was checked in protocol.
@@ -2726,7 +2726,7 @@ impl BlockGraph {
         incomp: Set<BlockId>,
         inherited_incomp_count: usize,
         block_ledger_changes: LedgerChanges,
-        operation_set: Map<OperationId, (usize, u64)>,
+        operation_set: Map<OperationId, usize>,
         endorsement_ids: Map<EndorsementId, u32>,
         addresses_to_operations: Map<Address, Set<OperationId>>,
         addresses_to_endorsements: Map<Address, Set<EndorsementId>>,

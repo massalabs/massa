@@ -29,7 +29,7 @@ pub enum ProtocolEvent {
         /// the slot
         slot: Slot,
         /// operations in the block by (index, validity end period)
-        operation_set: Map<OperationId, (usize, u64)>,
+        operation_set: Map<OperationId, usize>,
         /// endorsements in the block with index
         endorsement_ids: Map<EndorsementId, u32>,
     },

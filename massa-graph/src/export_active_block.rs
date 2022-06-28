@@ -108,7 +108,7 @@ impl ExportActiveBlock {
             block_ledger_changes: self.block_ledger_changes.clone(),
             operation_set: operation_set
                 .into_iter()
-                .map(|(id, (idx, op))| (id, (idx, op.content.expire_period)))
+                .map(|(id, (idx, _))| (id, idx))
                 .collect(),
             endorsement_ids,
             addresses_to_operations,
