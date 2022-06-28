@@ -115,26 +115,22 @@ impl ActiveHistory {
         slot: &Slot,
         addr: &Address,
     ) -> BTreeMap<Slot, Amount> {
-        if let Some(info) = self
+        let mut credits: BTreeMap<Slot, Amount> = BTreeMap::new();
+        for info in self
             .0
-            .back()
+            .iter()
             .map(|v| v.state_changes.roll_state_changes.addresses_info.get(addr))
             .flatten()
         {
-            return info
-                .deferred_credits
-                .range(slot..)
-                .map(|(slot, amount)| (*slot, *amount))
-                .collect();
+            credits.extend(info.deferred_credits.range(slot..));
         }
-        BTreeMap::new()
+        credits
     }
 
     /// TODO
     #[allow(dead_code)]
     pub fn fetch_all_defered_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
         let mut credits = Map::default();
-        // note: this is not a lazy query but is there really an alternative?
         for output in self.0.iter().rev() {
             for info in output
                 .state_changes
