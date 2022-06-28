@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::sync::Arc;
+use std::{ops::Add, sync::Arc};
 
 use massa_execution_exports::ExecutionError;
 use massa_models::{Address, Slot};
@@ -55,13 +55,7 @@ impl SpeculativeRollState {
     }
 
     /// Try to buy rolls in the context of this speculative execution
-    pub fn try_buy_rolls(&self, buyer_addr: &Address) -> Result<(), ExecutionError> {
-        let balance = self
-            .active_history
-            .read()
-            .fetch_active_history_balance(buyer_addr);
-        Ok(())
-    }
+    pub fn add_rolls(&self, buyer_addr: &Address, roll_count: u64) {}
 
     /// Process a slot.
     ///

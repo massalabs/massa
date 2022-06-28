@@ -288,6 +288,7 @@ impl ExecutionState {
                 operation_id,
                 sender_addr,
             ),
+            OperationType::RollSell { .. } => Ok(()), // note: implement execute_roll_sell_op
             _ => panic!("unexpected operation type"), // checked at the beginning of the function
         }
     }
@@ -305,7 +306,7 @@ impl ExecutionState {
         operation: &OperationType,
         block_creator_addr: Address,
         operation_id: OperationId,
-        sender_addr: Address,
+        buyer_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process roll buy operations only
         let roll_count = match operation {
@@ -318,7 +319,14 @@ impl ExecutionState {
         {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
-            // do stuff here
+            context.add_rolls(&buyer_addr, *roll_count);
+            if let Err(err) =
+                context.transfer_parallel_coins(Some(buyer_addr), None, self.config.roll_price)
+            {
+                context.reset_to_snapshot(context_snapshot);
+                debug!("{} failed to buy {} rolls: {}", buyer_addr, roll_count, err);
+            }
+            context.origin_operation_id = Some(operation_id);
         }
         Ok(())
     }
