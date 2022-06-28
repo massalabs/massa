@@ -533,6 +533,17 @@ impl ExecutionContext {
         }
     }
 
+    /// Add a certain number of rolls to the buyer address.
+    /// Preliminary checks must be performed _before_ calling this function.
+    ///
+    /// # Arguments
+    /// * `buyer_addr`: address that will receive the rolls
+    /// * `roll_count`: number of rolls it will receive
+    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+        self.speculative_roll_state
+            .add_rolls(buyer_addr, roll_count);
+    }
+
     /// Finishes a slot and generates the execution output.
     /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
     /// Moves the output of the execution out of the context,
