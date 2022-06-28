@@ -28,7 +28,7 @@ use nom::{
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
 
 const BLOCK_ID_STRING_PREFIX: &str = "BLO";
@@ -469,7 +469,7 @@ impl BlockHeaderDeserializer {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
                 ENDORSEMENT_COUNT,
@@ -595,7 +595,7 @@ mod test {
         // create block header
         let orig_header = BlockHeader::new_wrapped(
             BlockHeader {
-                slot: Slot::new(1, 2),
+                slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![

@@ -175,8 +175,8 @@ impl EndorsementDeserializer {
         let thread_count = THREAD_COUNT;
         EndorsementDeserializer {
             slot_deserializer: SlotDeserializer::new(
-                (Included(1), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Excluded(thread_count)),
             ),
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(endorsement_count)),
             hash_deserializer: HashDeserializer::new(),

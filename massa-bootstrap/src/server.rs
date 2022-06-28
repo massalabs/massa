@@ -486,6 +486,7 @@ async fn manage_bootstrap(
                         Ok(Ok(_)) => Ok(()),
                     }?;
                 }
+                BootstrapClientMessage::BootstrapSuccess => return Ok(()),
                 BootstrapClientMessage::BootstrapError { error } => {
                     return Err(BootstrapError::ReceivedError(error));
                 }
