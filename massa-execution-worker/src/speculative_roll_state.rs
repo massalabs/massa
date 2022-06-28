@@ -4,7 +4,7 @@ use std::{ops::Add, sync::Arc};
 
 use massa_execution_exports::ExecutionError;
 use massa_models::{Address, Slot};
-use massa_pos_exports::{PoSAddressInfo, PoSChanges, SelectorController};
+use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
 
 use crate::active_history::ActiveHistory;
@@ -68,10 +68,7 @@ impl SpeculativeRollState {
         contains_block: bool,
     ) {
         // note: will be used only on real execution
-        if let Some(PoSAddressInfo {
-            production_stats, ..
-        }) = self.added_changes.addresses_info.get_mut(creator)
-        {
+        if let Some(production_stats) = self.added_changes.production_stats.get_mut(creator) {
             if contains_block {
                 production_stats.block_success_count =
                     production_stats.block_success_count.saturating_add(1);

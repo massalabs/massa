@@ -96,13 +96,13 @@ impl ActiveHistory {
     #[allow(dead_code)]
     pub fn fetch_roll_count(&self, addr: &Address) -> Option<u64> {
         for output in self.0.iter().rev() {
-            if let Some(info) = output
+            if let Some(rolls) = output
                 .state_changes
                 .roll_state_changes
-                .addresses_info
+                .roll_changes
                 .get(addr)
             {
-                return Some(info.roll_changes);
+                return Some(*rolls);
             }
         }
         None
@@ -116,13 +116,19 @@ impl ActiveHistory {
         addr: &Address,
     ) -> BTreeMap<Slot, Amount> {
         let mut credits: BTreeMap<Slot, Amount> = BTreeMap::new();
-        for info in self
+        for cr in self
             .0
             .iter()
-            .map(|v| v.state_changes.roll_state_changes.addresses_info.get(addr))
+            .map(|v| {
+                v.state_changes
+                    .roll_state_changes
+                    .deferred_credits
+                    .range(slot..)
+            })
             .flatten()
         {
-            credits.extend(info.deferred_credits.range(slot..));
+            // UPDATE HERE
+            // credits.insert();
         }
         credits
     }
@@ -132,15 +138,13 @@ impl ActiveHistory {
     pub fn fetch_all_defered_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
         let mut credits = Map::default();
         for output in self.0.iter().rev() {
-            for info in output
+            if let Some(cr) = output
                 .state_changes
                 .roll_state_changes
-                .addresses_info
-                .iter()
+                .deferred_credits
+                .get(slot)
             {
-                if let Some(amount) = info.1.deferred_credits.get(slot) {
-                    credits.insert(*info.0, *amount);
-                }
+                credits.extend(cr);
             }
         }
         credits
@@ -149,13 +153,18 @@ impl ActiveHistory {
     /// TODO
     #[allow(dead_code)]
     pub fn fetch_production_stats(&self, addr: &Address) -> Option<ProductionStats> {
-        if let Some(info) = self
+        if let Some(stats) = self
             .0
             .back()
-            .map(|v| v.state_changes.roll_state_changes.addresses_info.get(addr))
+            .map(|v| {
+                v.state_changes
+                    .roll_state_changes
+                    .production_stats
+                    .get(addr)
+            })
             .flatten()
         {
-            Some(info.production_stats);
+            Some(stats);
         }
         None
     }
