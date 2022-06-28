@@ -76,7 +76,7 @@ struct PoSChanges {
   roll_changes: Map<Address, u64>
 
   /// updated production statistics
-  production_stats: ProductionStats
+  production_stats: Map<Address, ProductionStats>
 
   /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
   /// ordered structure to ensure slot iteration order is deterministic
