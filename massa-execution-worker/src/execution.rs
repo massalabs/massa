@@ -356,8 +356,8 @@ impl ExecutionState {
 
         // burn `roll_price` * `roll_count` sequential coins from the buyer
         if let Err(err) =
+            // TODO: implement sequential coins transfer (impl should not be too different from parallel transfer)
             // NOTE: this should transfer sequential coins
-            // TODO: implement sequential coins transfer
             context.transfer_parallel_coins(Some(buyer_addr), None, self.config.roll_price)
         {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
