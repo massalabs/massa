@@ -175,7 +175,7 @@ pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 /// operation id size
 pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 /// operation id prefix size
-pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 20;
+pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 /// slot as a key size
 pub const SLOT_KEY_SIZE: usize = 9;
 
