@@ -352,12 +352,6 @@ impl PoolWorker {
                     self.endorsement_pool.add_endorsements(endorsements)?;
                 }
             }
-            ProtocolPoolEvent::GetOperations((node_id, operation_ids)) => {
-                let results = self.operation_pool.find_operations(operation_ids);
-                self.protocol_command_sender
-                    .send_get_operations_results(node_id, results)
-                    .await?;
-            }
         }
         Ok(())
     }
