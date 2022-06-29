@@ -1102,12 +1102,20 @@
 <span id="1096">1096</span>
 <span id="1097">1097</span>
 <span id="1098">1098</span>
+<span id="1099">1099</span>
+<span id="1100">1100</span>
+<span id="1101">1101</span>
+<span id="1102">1102</span>
+<span id="1103">1103</span>
+<span id="1104">1104</span>
+<span id="1105">1105</span>
+<span id="1106">1106</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
 <span class="kw">use</span> <span class="ident">anyhow</span>::{<span class="ident">anyhow</span>, <span class="ident">bail</span>, <span class="prelude-ty">Result</span>};
 <span class="kw">use</span> <span class="ident">console::style</span>;
-<span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">CompactAddressInfo</span>, <span class="ident">EventFilter</span>};
+<span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">CompactAddressInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">OperationInput</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>};
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
@@ -2165,7 +2173,15 @@
         <span class="ident">addr</span>,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">public</span>.<span class="ident">send_operations</span>(<span class="macro">vec!</span>[<span class="ident">op</span>]).<span class="kw">await</span> {
+    <span class="kw">match</span> <span class="ident">client</span>
+        .<span class="ident">public</span>
+        .<span class="ident">send_operations</span>(<span class="macro">vec!</span>[<span class="ident">OperationInput</span> {
+            <span class="ident">creator_public_key</span>: <span class="ident">op</span>.<span class="ident">creator_public_key</span>,
+            <span class="ident">serialized_content</span>: <span class="ident">bs58::encode</span>(<span class="ident">op</span>.<span class="ident">serialized_data</span>).<span class="ident">with_check</span>().<span class="ident">into_string</span>(),
+            <span class="ident">signature</span>: <span class="ident">op</span>.<span class="ident">signature</span>,
+        }])
+        .<span class="kw">await</span>
+    {
         <span class="prelude-val">Ok</span>(<span class="ident">operation_ids</span>) =&gt; {
             <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
                 <span class="macro">println!</span>(<span class="string">&quot;Sent operation IDs:&quot;</span>);

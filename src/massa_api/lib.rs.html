@@ -291,8 +291,8 @@
 <span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionController</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">DatastoreEntryInput</span>, <span class="ident">DatastoreEntryOutput</span>,
-    <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">ReadOnlyBytecodeExecution</span>,
-    <span class="ident">ReadOnlyCall</span>, <span class="ident">TimeInterval</span>,
+    <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">OperationInput</span>,
+    <span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>, <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
@@ -301,7 +301,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::operation::OperationId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Set</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Version</span>, <span class="ident">WrappedOperation</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkSettings</span>};
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
@@ -526,7 +526,7 @@
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;send_operations&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">send_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
+        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationInput</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Get events optionally filtered by:</span>

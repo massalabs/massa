@@ -738,6 +738,42 @@
 <span id="732">732</span>
 <span id="733">733</span>
 <span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -751,10 +787,14 @@
 };
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">DiscardReason</span>, <span class="ident">ExportBlockStatus</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
-    <span class="ident">DatastoreEntryInput</span>, <span class="ident">DatastoreEntryOutput</span>, <span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>,
+    <span class="ident">DatastoreEntryInput</span>, <span class="ident">DatastoreEntryOutput</span>, <span class="ident">OperationInput</span>, <span class="ident">ReadOnlyBytecodeExecution</span>,
+    <span class="ident">ReadOnlyCall</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::execution::ReadOnlyResult</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Amount</span>, <span class="ident">WrappedOperation</span>};
+<span class="kw">use</span> <span class="ident">massa_models::operation::OperationDeserializer</span>;
+<span class="kw">use</span> <span class="ident">massa_models::wrapped::WrappedDeserializer</span>;
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Amount</span>, <span class="ident">ModelsError</span>, <span class="ident">WrappedOperation</span>};
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{<span class="ident">DeserializeError</span>, <span class="ident">Deserializer</span>};
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">api</span>::{
@@ -1425,7 +1465,7 @@
 
     <span class="kw">fn</span> <span class="ident">send_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ops</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
+        <span class="ident">ops</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationInput</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cmd_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">pool_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">api_cfg</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">api_settings</span>;
@@ -1433,9 +1473,41 @@
             <span class="kw">if</span> <span class="ident">ops</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span> <span class="op">&gt;</span> <span class="ident">api_cfg</span>.<span class="ident">max_arguments</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApiError::TooManyArguments</span>(<span class="string">&quot;too many arguments&quot;</span>.<span class="ident">into</span>()));
             }
+            <span class="kw">let</span> <span class="ident">operation_deserializer</span> <span class="op">=</span> <span class="ident">WrappedDeserializer::new</span>(<span class="ident">OperationDeserializer::new</span>());
             <span class="kw">let</span> <span class="ident">to_send</span> <span class="op">=</span> <span class="ident">ops</span>
                 .<span class="ident">into_iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> <span class="prelude-val">Ok</span>((<span class="ident">op</span>.<span class="ident">verify_integrity</span>()<span class="question-mark">?</span>, <span class="ident">op</span>)))
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">op_input</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">op_serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+                    <span class="ident">op_serialized</span>.<span class="ident">extend</span>(<span class="ident">op_input</span>.<span class="ident">signature</span>.<span class="ident">to_bytes</span>());
+                    <span class="ident">op_serialized</span>.<span class="ident">extend</span>(<span class="ident">op_input</span>.<span class="ident">creator_public_key</span>.<span class="ident">to_bytes</span>());
+                    <span class="ident">op_serialized</span>.<span class="ident">extend</span>(
+                        <span class="ident">bs58::decode</span>(<span class="ident">op_input</span>.<span class="ident">serialized_content</span>)
+                            .<span class="ident">with_check</span>(<span class="prelude-val">None</span>)
+                            .<span class="ident">into_vec</span>()
+                            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
+                                <span class="ident">ApiError::ModelsError</span>(<span class="ident">ModelsError::CheckedOperationError</span>(<span class="macro">format!</span>(
+                                    <span class="string">&quot;bs58 deserialization of content failed {}&quot;</span>,
+                                    <span class="ident">err</span>
+                                )))
+                            })<span class="question-mark">?</span>,
+                    );
+                    <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">op</span>): (<span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">WrappedOperation</span>) <span class="op">=</span> <span class="ident">operation_deserializer</span>
+                        .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">op_serialized</span>)
+                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
+                            <span class="ident">ApiError::ModelsError</span>(<span class="ident">ModelsError::DeserializeError</span>(<span class="ident">err</span>.<span class="ident">to_string</span>()))
+                        })<span class="question-mark">?</span>;
+                    <span class="kw">if</span> <span class="ident">rest</span>.<span class="ident">is_empty</span>() {
+                        <span class="prelude-val">Ok</span>(<span class="ident">op</span>)
+                    } <span class="kw">else</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">ApiError::ModelsError</span>(<span class="ident">ModelsError::DeserializeError</span>(
+                            <span class="string">&quot;There is data left after operation deserialization&quot;</span>.<span class="ident">to_owned</span>(),
+                        )))
+                    }
+                })
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">op</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">operation</span>) =&gt; <span class="prelude-val">Ok</span>((<span class="ident">operation</span>.<span class="ident">verify_integrity</span>()<span class="question-mark">?</span>, <span class="ident">operation</span>)),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                })
                 .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="kw">_</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">ids</span> <span class="op">=</span> <span class="ident">to_send</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>();
             <span class="ident">cmd_sender</span>.<span class="ident">add_operations</span>(<span class="ident">to_send</span>).<span class="kw">await</span><span class="question-mark">?</span>;
