@@ -54,7 +54,7 @@ impl SpeculativeRollState {
         self.added_changes = snapshot;
     }
 
-    /// Try to buy rolls in the context of this speculative execution
+    /// Add `roll_count` rolls to the given address
     pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
         *self
             .added_changes
@@ -68,14 +68,9 @@ impl SpeculativeRollState {
             ) = roll_count;
     }
 
-    /// TODO
-    #[allow(dead_code)]
-    pub fn try_sell_rolls(
-        &self,
-        _seller_addr: &Address,
-        _roll_count: u64,
-    ) -> Result<(), ExecutionError> {
-        Ok(())
+    /// Remove `roll_count` rolls from the given address
+    pub fn remove_rolls(&self, _seller_addr: &Address, _roll_count: u64) {
+        // do stuff
     }
 
     /// Process a slot.
