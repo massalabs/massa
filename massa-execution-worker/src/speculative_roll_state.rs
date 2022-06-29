@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_models::{Address, Amount, Slot};
 use massa_pos_exports::{PoSChanges, SelectorController};
@@ -76,15 +77,18 @@ impl SpeculativeRollState {
         *count = count.saturating_add(roll_count);
     }
 
-    /// Remove `roll_count` rolls from the given address and program deferred reimbursement
-    pub fn remove_rolls(
+    /// Try to sell `roll_count` rolls from the given
+    pub fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
         slot: Slot,
         roll_price: Amount,
         roll_count: u64,
-    ) {
+    ) -> Result<(), ExecutionError> {
+        // take a read lock on the final state
         let final_lock = self.final_state.read();
+
+        // fetch the roll count from: current changes > active history > final state
         let count = self
             .added_changes
             .roll_changes
@@ -95,7 +99,18 @@ impl SpeculativeRollState {
                     .fetch_roll_count(seller_addr)
                     .unwrap_or_else(|| final_lock.pos_state.get_rolls_for(seller_addr))
             });
+
+        // verify that the seller has enough rolls to sell
+        if *count < roll_count {
+            return Err(ExecutionError::RollsError(
+                "not enough rolls to sell".to_string(),
+            ));
+        }
+
+        // remove the rolls
         *count = count.saturating_sub(roll_count);
+
+        // fetch the deferred credits from: current changes > active history > final state
         let credits = self
             .added_changes
             .deferred_credits
@@ -108,7 +123,11 @@ impl SpeculativeRollState {
                     .chain(final_lock.pos_state.get_deferred_credits_at(&slot))
                     .collect()
             });
+
+        // add deferred reimbursement corresponding to the sold rolls value
         credits.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
+
+        Ok(())
     }
 
     /// Update the production stats.

@@ -321,19 +321,6 @@ impl ExecutionState {
             _ => panic!("unexpected operation type"),
         };
 
-        // verify that the seller has enough rolls
-        // TODO: make an ExecutionState function to fetch rolls in active or final
-        {
-            match self.active_history.read().fetch_roll_count(&seller_addr) {
-                Some(current) if current < *roll_count => {
-                    return Err(ExecutionError::RollsError(
-                        "not enough rolls to sell".to_string(),
-                    ))
-                }
-                _ => (),
-            }
-        }
-
         // acquire write access to the context
         let mut context = context_guard!(self);
 
@@ -344,24 +331,21 @@ impl ExecutionState {
         context.origin_operation_id = Some(operation_id);
 
         // remove the rolls
-        context.remove_rolls(&seller_addr, self.config.roll_price, *roll_count);
+        context.try_sell_rolls(&seller_addr, self.config.roll_price, *roll_count)?;
 
         // credit `roll_price` * `roll_count` sequential coins to the seller
+        let amount = self.config.roll_price.saturating_mul_u64(*roll_count);
         if let Err(err) =
             // TODO: implement sequential coins transfer (impl should not be too different from parallel transfer)
             // TODO: this should transfer sequential coins
-            context.transfer_parallel_coins(
-                None,
-                Some(seller_addr),
-                self.config.roll_price.saturating_mul_u64(*roll_count),
-            )
+            context.transfer_parallel_coins(None, Some(seller_addr), amount)
         {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
             debug!(
-                "{} failed to sell {} rolls: {}",
-                seller_addr, roll_count, err
+                "{} failed to transfer {} after selling {} rolls: {}",
+                seller_addr, amount, roll_count, err
             );
         }
         Ok(())
