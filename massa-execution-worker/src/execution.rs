@@ -321,6 +321,19 @@ impl ExecutionState {
             _ => panic!("unexpected operation type"),
         };
 
+        // verify that the seller has enough rolls
+        // TODO: make an ExecutionState function to fetch rolls in active or final
+        {
+            match self.active_history.read().fetch_roll_count(&seller_addr) {
+                Some(current) if current < *roll_count => {
+                    return Err(ExecutionError::RollsError(
+                        "not enough rolls to sell".to_string(),
+                    ))
+                }
+                _ => (),
+            }
+        }
+
         // acquire write access to the context
         let mut context = context_guard!(self);
 
@@ -330,14 +343,13 @@ impl ExecutionState {
         // set the context origin operation id
         context.origin_operation_id = Some(operation_id);
 
-        // TODO NEXT: perform on error handling
-        let _balance = context.get_parallel_balance(&seller_addr);
-        let _result = context.remove_rolls(&seller_addr, self.config.roll_price, *roll_count);
+        // remove the rolls
+        context.remove_rolls(&seller_addr, self.config.roll_price, *roll_count);
 
         // credit `roll_price` * `roll_count` sequential coins to the seller
         if let Err(err) =
             // TODO: implement sequential coins transfer (impl should not be too different from parallel transfer)
-            // NOTE: this should transfer sequential coins
+            // TODO: this should transfer sequential coins
             context.transfer_parallel_coins(
                 None,
                 Some(seller_addr),
