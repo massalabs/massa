@@ -84,6 +84,7 @@ impl SpeculativeRollState {
         roll_price: Amount,
         roll_count: u64,
     ) {
+        let final_lock = self.final_state.read();
         let count = self
             .added_changes
             .roll_changes
@@ -92,7 +93,7 @@ impl SpeculativeRollState {
                 self.active_history
                     .read()
                     .fetch_roll_count(seller_addr)
-                    .unwrap_or_else(|| self.final_state.read().pos_state.get_rolls_for(seller_addr))
+                    .unwrap_or_else(|| final_lock.pos_state.get_rolls_for(seller_addr))
             });
         *count = count.saturating_sub(roll_count);
         let credits = self
@@ -104,12 +105,7 @@ impl SpeculativeRollState {
                     .read()
                     .fetch_all_deferred_credits_at(&slot)
                     .into_iter()
-                    .chain(
-                        self.final_state
-                            .read()
-                            .pos_state
-                            .get_deferred_credits_at(&slot),
-                    )
+                    .chain(final_lock.pos_state.get_deferred_credits_at(&slot))
                     .collect()
             });
         credits.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
