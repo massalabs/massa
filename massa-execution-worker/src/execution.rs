@@ -331,8 +331,8 @@ impl ExecutionState {
         context.origin_operation_id = Some(operation_id);
 
         // TODO: perform on error handling
-        let balance = context.get_parallel_balance(&seller_addr);
-        let _result = context.remove_rolls(&seller_addr, *roll_count);
+        let _balance = context.get_parallel_balance(&seller_addr);
+        let _result = context.remove_rolls(&seller_addr, self.config.roll_price, *roll_count);
 
         // credit `roll_price` * `roll_count` sequential coins to the seller
         if let Err(err) =

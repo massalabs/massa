@@ -2,8 +2,7 @@
 
 use std::sync::Arc;
 
-use massa_execution_exports::ExecutionError;
-use massa_models::{Address, Slot};
+use massa_models::{prehash::Map, Address, Amount, Slot};
 use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
 
@@ -56,26 +55,44 @@ impl SpeculativeRollState {
 
     /// Add `roll_count` rolls to the given address
     pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+        // NOTE: probably want to move this to context
         *self
             .added_changes
             .roll_changes
-            .entry(buyer_addr.to_owned())
+            .entry(*buyer_addr)
             .or_insert(
                 self.active_history
                     .read()
                     .fetch_roll_count(buyer_addr)
                     .unwrap_or_default(),
-            ) = roll_count;
+            ) += roll_count;
     }
 
-    /// Remove `roll_count` rolls from the given address
-    pub fn remove_rolls(&self, _seller_addr: &Address, _roll_count: u64) {
-        // do stuff
+    /// Remove `roll_count` rolls from the given address and add deferred reimbursement
+    pub fn remove_rolls(
+        &mut self,
+        seller_addr: &Address,
+        slot: Slot,
+        roll_price: Amount,
+        roll_count: u64,
+    ) {
+        // NOTE: probably want to move this to context
+        *self
+            .added_changes
+            .roll_changes
+            .entry(*seller_addr)
+            .or_insert(
+                self.active_history
+                    .read()
+                    .fetch_roll_count(seller_addr)
+                    .unwrap_or_default(),
+            ) -= roll_count;
+        let mut a: Map<Address, Amount> = Map::default();
+        a.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
+        let _b = self.added_changes.deferred_credits.entry(slot).or_insert(a);
     }
 
-    /// Process a slot.
-    ///
-    /// Compute all the changes that must be separated from the settle.
+    /// Update the production stats
     #[allow(dead_code)]
     pub fn update_production_stats(
         &mut self,
@@ -98,7 +115,7 @@ impl SpeculativeRollState {
 
     /// Settle a slot.
     ///
-    /// Compute the changes to be made on the roll state at the given slot.
+    /// Compute the changes to be made on the roll state at the end of a given slot.
     pub fn settle_slot(&mut self, _slot: Slot) {
         // note: will be used on every kind of execution
     }
