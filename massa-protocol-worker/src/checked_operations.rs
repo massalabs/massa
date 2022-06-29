@@ -1,7 +1,5 @@
-use std::collections::hash_map::Entry;
-
 use massa_models::{
-    operation::{OperationId, OperationIds, OperationPrefixId},
+    operation::{OperationId, OperationPrefixId},
     prehash::Map,
 };
 
@@ -10,7 +8,7 @@ use massa_models::{
 /// note: we could think about replace `Vec<OperationId>` with `Vec<OperationSuffixId>`
 ///       if the execution time CPU is equivalent
 #[derive(Default)]
-pub(crate) struct CheckedOperations(Map<OperationPrefixId, OperationIds>);
+pub(crate) struct CheckedOperations(Map<OperationPrefixId, OperationId>);
 
 impl CheckedOperations {
     /// Insert in the adapter an operation `id`.
@@ -20,19 +18,11 @@ impl CheckedOperations {
     /// If the set did have this value present, `false` is returned.
     pub fn insert(&mut self, id: &OperationId) -> bool {
         let prefix = id.prefix();
-        match self.0.entry(prefix) {
-            Entry::Occupied(mut e) => e.get_mut().insert(*id),
-            Entry::Vacant(e) => {
-                let mut ids = OperationIds::default();
-                ids.insert(*id);
-                e.insert(ids);
-                true
-            }
-        }
+        self.0.insert(prefix, *id).is_none()
     }
 
     /// Get a set of [OperationIds] matching with the givec `prefix`.
-    pub fn get(&self, prefix: &OperationPrefixId) -> Option<&OperationIds> {
+    pub fn get(&self, prefix: &OperationPrefixId) -> Option<&OperationId> {
         self.0.get(prefix)
     }
 

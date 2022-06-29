@@ -209,8 +209,8 @@ impl ProtocolWorker {
     ) -> Result<(), ProtocolError> {
         let mut req_operation_ids = OperationIds::default();
         for prefix in op_pre_ids {
-            if let Some(op_ids) = self.checked_operations.get(&prefix) {
-                req_operation_ids.extend(op_ids);
+            if let Some(op_id) = self.checked_operations.get(&prefix) {
+                req_operation_ids.insert(*op_id);
             }
         }
         self.send_protocol_pool_event(ProtocolPoolEvent::GetOperations((
