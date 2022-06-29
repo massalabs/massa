@@ -1,4 +1,4 @@
-use massa_models::{Address, Slot};
+use massa_models::{prehash::Map, Address, Amount, Slot};
 
 use crate::{PoSChanges, PoSFinalState};
 
@@ -23,10 +23,16 @@ impl PoSFinalState {
     pub fn apply_changes(&mut self, _changes: &PoSChanges, _slot: Slot) {}
 
     /// TODO
-    pub fn get_rolls_for(&self, addr: &Address) -> Option<u64> {
+    pub fn get_rolls_for(&self, addr: &Address) -> u64 {
         self.cycle_history
             .back()
             .map(|info| info.roll_counts.get(addr).cloned())
             .flatten()
+            .unwrap_or_default()
+    }
+
+    /// TODO
+    pub fn get_deferred_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
+        self.deferred_credits.get(slot).cloned().unwrap_or_default()
     }
 }
