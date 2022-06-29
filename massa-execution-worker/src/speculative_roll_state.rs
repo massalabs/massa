@@ -67,11 +67,13 @@ impl SpeculativeRollState {
             .added_changes
             .roll_changes
             .entry(*buyer_addr)
-            .or_insert(
-                self.active_history
-                    .read()
-                    .fetch_roll_count(buyer_addr)
-                    .unwrap_or_default(),
+            .or_insert_with(
+                || {
+                    self.active_history
+                        .read()
+                        .fetch_roll_count(buyer_addr)
+                        .unwrap_or_default()
+                },
                 // TODO: add cycle info to FinalState
                 // TODO: chain this with FinalState roll_count
             );
@@ -90,20 +92,28 @@ impl SpeculativeRollState {
             .added_changes
             .roll_changes
             .entry(*seller_addr)
-            .or_insert(
-                self.active_history
-                    .read()
-                    .fetch_roll_count(seller_addr)
-                    .unwrap_or_default(),
+            .or_insert_with(
+                || {
+                    self.active_history
+                        .read()
+                        .fetch_roll_count(seller_addr)
+                        .unwrap_or_default()
+                },
                 // TODO: chain this with FinalState roll_count
             );
         *count = count.saturating_sub(roll_count);
-        let credits = self.added_changes.deferred_credits.entry(slot).or_insert(
-            self.active_history
-                .read()
-                .fetch_all_deferred_credits_at(&slot),
-            // TODO: chain this with FinalState deferred_credits
-        );
+        let credits = self
+            .added_changes
+            .deferred_credits
+            .entry(slot)
+            .or_insert_with(
+                || {
+                    self.active_history
+                        .read()
+                        .fetch_all_deferred_credits_at(&slot)
+                },
+                // TODO: chain this with FinalState deferred_credits
+            );
         credits.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
     }
 
