@@ -2,7 +2,7 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::protocol_test;
+use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::prehash::Map;
 use massa_models::{self, Address, Amount, Slot};
 use massa_models::{operation::OperationIds, prehash::Set};
@@ -847,13 +847,14 @@ async fn test_protocol_ask_operations_on_batch_received() {
 #[serial]
 async fn test_protocol_on_ask_operations() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test(
+    protocol_test_with_storage(
         protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
-                    mut protocol_command_sender,
+                    protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver| {
+                    protocol_pool_event_receiver,
+                    storage| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
@@ -865,12 +866,16 @@ async fn test_protocol_on_ask_operations() {
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            // 4. The network ask for operations
-            let asker_node = nodes.pop().expect("Failed to get the second node info.");
-
+            // 2. Send operation
             network_controller
                 .send_operations(creator_node.id, vec![operation.clone()])
                 .await;
+
+            // Store in shared storage.
+            storage.store_operation(operation.clone());
+
+            // 3. A node asks for the operation.
+            let asker_node = nodes.pop().expect("Failed to get the second node info.");
 
             network_controller
                 .send_ask_for_operation(
@@ -879,32 +884,7 @@ async fn test_protocol_on_ask_operations() {
                 )
                 .await;
 
-            match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::GetOperations { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
-            {
-                None => panic!("Protocol did not send operations to pool."),
-                Some(ProtocolPoolEvent::GetOperations((_, operations_ids))) => {
-                    assert_eq!(operations_ids.len(), 1);
-                    assert!(operations_ids.get(&expected_operation_id).is_some())
-                }
-                Some(_) => panic!("Unexpected protocol pool event."),
-            }
-
-            protocol_command_sender
-                .send_get_operations_results(
-                    asker_node.id,
-                    vec![expected_operation_id].iter().copied().collect(),
-                )
-                .await
-                .unwrap();
-
+            // 4. Assert the operation is sent to the node.
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
                     cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),

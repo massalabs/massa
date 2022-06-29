@@ -19,6 +19,7 @@ use massa_protocol_exports::{
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
+use massa_storage::Storage;
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
 use tokio::{
@@ -46,6 +47,7 @@ pub async fn start_protocol_controller(
     max_block_gas: u64,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
+    storage: Storage,
 ) -> Result<
     (
         ProtocolCommandSender,
@@ -76,6 +78,7 @@ pub async fn start_protocol_controller(
                 controller_command_rx,
                 controller_manager_rx,
             },
+            storage,
         )
         .run_loop()
         .await;
@@ -151,6 +154,8 @@ pub struct ProtocolWorker {
     pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
     pub(crate) op_batch_buffer: OperationBatchBuffer,
+    /// Shared storage.
+    pub(crate) storage: Storage,
 }
 
 /// channels used by the protocol worker
@@ -193,6 +198,7 @@ impl ProtocolWorker {
             controller_command_rx,
             controller_manager_rx,
         }: ProtocolWorkerChannels,
+        storage: Storage,
     ) -> ProtocolWorker {
         ProtocolWorker {
             protocol_settings,
@@ -213,6 +219,7 @@ impl ProtocolWorker {
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 protocol_settings.operation_batch_buffer_capacity,
             ),
+            storage,
         }
     }
 
@@ -559,10 +566,6 @@ impl ProtocolWorker {
                             .await?;
                     }
                 }
-            }
-            ProtocolCommand::GetOperationsResults((node_id, operations)) => {
-                self.on_operation_results_from_pool(node_id, operations)
-                    .await?;
             }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
