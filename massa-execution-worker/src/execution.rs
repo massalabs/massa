@@ -330,7 +330,7 @@ impl ExecutionState {
         // set the context origin operation id
         context.origin_operation_id = Some(operation_id);
 
-        // TODO: perform on error handling
+        // TODO NEXT: perform on error handling
         let _balance = context.get_parallel_balance(&seller_addr);
         let _result = context.remove_rolls(&seller_addr, self.config.roll_price, *roll_count);
 
