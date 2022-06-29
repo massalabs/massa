@@ -8,17 +8,19 @@ use massa_models::{
     Address, Amount, Slot,
 };
 
+#[derive(Default, Debug)]
 pub struct PoSFinalState {
     /// contiguous cycle history. Front = newest.
     pub cycle_history: VecDeque<CycleInfo>,
 
     /// latest final slot
-    pub last_final_slot: Slot,
+    pub last_final_slot: Option<Slot>,
 
     /// coins to be credited at the end of the slot
     pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
 }
 
+#[derive(Default, Debug)]
 pub struct CycleInfo {
     /// cycle number
     pub cycle: u64,

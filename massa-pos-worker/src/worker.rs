@@ -13,6 +13,7 @@ use parking_lot::Condvar;
 use std::sync::Arc;
 
 /// Structure gathering all elements needed by the selector thread
+#[allow(dead_code)]
 pub(crate) struct SelectorThread {
     // A copy of the input data allowing access to incoming requests
     input_data: InputDataPtr,
@@ -32,6 +33,7 @@ impl SelectorThread {
     /// for future cycle.
     /// # Arguments
     /// * `cycle_info`: a cycle info with roll counts, seed, etc...
+    #[allow(dead_code)]
     fn update_cycle(&mut self, _cycle_info: CycleInfo) {}
 }
 
