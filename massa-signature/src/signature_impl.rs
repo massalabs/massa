@@ -854,7 +854,7 @@ impl Deserializer<Signature> for SignatureDeserializer {
 /// let public_key = derive_public_key(&private_key);
 /// ```
 pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
-    PublicKey(private_key.0.public_key())
+    PublicKey(private_key.0.public_key().x_only_public_key().0)
 }
 
 /// Returns the Signature produced by signing
@@ -900,11 +900,9 @@ pub fn verify_signature(
 
 /// Generate a random private key from a RNG.
 pub fn generate_random_private_key() -> PrivateKey {
-    use secp256k1::rand::rngs::OsRng;
-    let mut rng = OsRng::new().expect("OsRng");
     PrivateKey(secp256k1::KeyPair::from_secret_key(
         SECP256K1,
-        secp256k1::SecretKey::new(&mut rng),
+        &secp256k1::SecretKey::new(&mut rand::thread_rng()),
     ))
 }
 

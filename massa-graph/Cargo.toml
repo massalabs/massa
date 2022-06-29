@@ -13,7 +13,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sled = "0.34"
 thiserror = "1.0"
-tokio = { version = "1.15", features = ["full"] }
+tokio = { version = "1.19", features = ["full"] }
 tracing = "0.1"
 # custom modules
 massa_execution_exports = { path = "../massa-execution-exports" }
@@ -27,7 +27,7 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
-serial_test = "0.5"
+serial_test = "0.8"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

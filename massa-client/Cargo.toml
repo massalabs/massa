@@ -11,16 +11,16 @@ atty = "0.2"
 console = "0.15"
 dialoguer = { version = "0.10", features = ["history", "completion"] }
 erased-serde = "0.3"
-glob = "0.3.0"
+glob = "0.3"
 lazy_static = "1.4"
 paw = "1.0"
 rev_lines = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 structopt = { version = "0.3", features = ["paw"] }
-strum = "0.22"
-strum_macros = "0.22"
-tokio = { version = "1.15", features = ["full"] }
+strum = "0.24"
+strum_macros = "0.24"
+tokio = { version = "1.19", features = ["full"] }
 # custom modules
 massa_models = { path = "../massa-models" }
 massa_signature = { path = "../massa-signature" }
@@ -29,10 +29,10 @@ massa_sdk = { path = "../massa-sdk" }
 massa_wallet = { path = "../massa-wallet" }
 
 [target.'cfg(not(windows))'.dependencies]
-tilde-expand = "0.1.1"
+tilde-expand = "0.1"
 
 [dev-dependencies]
-toml_edit = "0.8"
+toml_edit = "0.14"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
