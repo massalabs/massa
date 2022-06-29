@@ -125,8 +125,15 @@ impl ExecutionContext {
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history.clone()),
-            speculative_async_pool: SpeculativeAsyncPool::new(final_state, active_history.clone()),
-            speculative_roll_state: SpeculativeRollState::new(selector, active_history),
+            speculative_async_pool: SpeculativeAsyncPool::new(
+                final_state.clone(),
+                active_history.clone(),
+            ),
+            speculative_roll_state: SpeculativeRollState::new(
+                final_state,
+                active_history.clone(),
+                selector,
+            ),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),

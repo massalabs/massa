@@ -135,8 +135,7 @@ impl ActiveHistory {
     ///
     /// # Arguments
     /// * `slot`: slot _at_ which we fetch the credits
-    #[allow(dead_code)]
-    pub fn fetch_all_defered_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
+    pub fn fetch_all_deferred_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
         self.0
             .iter()
             .filter_map(|output| {
