@@ -1,4 +1,4 @@
-use massa_models::Slot;
+use massa_models::{Address, Slot};
 
 use crate::{PoSChanges, PoSFinalState};
 
@@ -21,4 +21,12 @@ impl PoSFinalState {
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     pub fn apply_changes(&mut self, _changes: &PoSChanges, _slot: Slot) {}
+
+    /// TODO
+    pub fn get_rolls_for(&self, addr: &Address) -> Option<u64> {
+        self.cycle_history
+            .back()
+            .map(|info| info.roll_counts.get(addr).cloned())
+            .flatten()
+    }
 }

@@ -88,6 +88,7 @@ impl SpeculativeRollState {
         roll_price: Amount,
         roll_count: u64,
     ) {
+        // let a = self.final_state.read().pos_state;
         let count = self
             .added_changes
             .roll_changes
