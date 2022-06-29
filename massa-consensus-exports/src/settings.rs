@@ -626,9 +626,7 @@ impl ConsensusConfig {
     /// default consensus configuration
     pub fn default_with_paths() -> Self {
         use crate::tools::*;
-        let staking_keys: Vec<KeyPair> = (0..1)
-            .map(|_| KeyPair::generate())
-            .collect();
+        let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
         let staking_file = generate_staking_keys_file(&staking_keys);
         let rolls_file = generate_default_roll_counts_file(staking_keys);

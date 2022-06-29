@@ -4,8 +4,7 @@ use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
 use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
-    KeyPair, PublicKey, PublicKeyDeserializer, Signature,
-    SignatureDeserializer,
+    KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},

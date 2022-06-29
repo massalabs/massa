@@ -6,7 +6,7 @@ use massa_models::{
     rolls::{RollCounts, RollUpdate, RollUpdates},
     Address,
 };
-use massa_signature::{derive_public_key, PrivateKey, KeyPair};
+use massa_signature::{derive_public_key, KeyPair, PrivateKey};
 use tempfile::NamedTempFile;
 
 /// Password used for encryption in tests

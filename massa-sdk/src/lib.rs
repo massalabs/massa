@@ -98,8 +98,8 @@ impl RpcClient {
 
     /// Add a vector of new keypair for the node to use to stake.
     /// No confirmation to expect.
-    pub async fn add_staking_keypairs(&self, keypair: Vec<KeyPair>) -> RpcResult<()> {
-        self.call_method("add_staking_private_keys", "()", vec![keypair])
+    pub async fn add_staking_secret_keys(&self, keypair: Vec<KeyPair>) -> RpcResult<()> {
+        self.call_method("add_staking_secret_keys", "()", vec![keypair])
             .await
     }
 

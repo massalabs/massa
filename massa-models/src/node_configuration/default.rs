@@ -52,7 +52,7 @@ lazy_static::lazy_static! {
     } else {
         Some(1656626400000.into())
     };
-    /// `PrivateKey` to sign genesis blocks.
+    /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_bs58_check("2Rmcp5w4MjcTQvPJeCV14UQf75XjKwDVJF14F2V1o5Kr3i9LZL")
         .unwrap();
     /// number of cycle misses (strictly) above which stakers are deactivated

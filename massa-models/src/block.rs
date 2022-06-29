@@ -14,7 +14,7 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::{PublicKey, Signature, KeyPair};
+use massa_signature::{KeyPair, PublicKey, Signature};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::error::context;

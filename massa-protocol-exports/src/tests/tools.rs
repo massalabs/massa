@@ -69,7 +69,7 @@ pub fn create_block(keypair: &KeyPair) -> WrappedBlock {
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        keypair
+        keypair,
     )
     .unwrap();
 
@@ -79,7 +79,7 @@ pub fn create_block(keypair: &KeyPair) -> WrappedBlock {
             operations: Vec::new(),
         },
         BlockSerializer::new(),
-        keypair
+        keypair,
     )
     .unwrap()
 }
@@ -110,14 +110,14 @@ pub fn create_block_with_operations(
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        keypair
+        keypair,
     )
     .unwrap();
 
     Block::new_wrapped(
         Block { header, operations },
         BlockSerializer::new(),
-        keypair
+        keypair,
     )
     .unwrap()
 }
@@ -143,7 +143,7 @@ pub fn create_block_with_endorsements(
             endorsements,
         },
         BlockHeaderSerializer::new(),
-        keypair
+        keypair,
     )
     .unwrap();
 
@@ -153,7 +153,7 @@ pub fn create_block_with_endorsements(
             operations: Default::default(),
         },
         BlockSerializer::new(),
-        keypair
+        keypair,
     )
     .unwrap()
 }
@@ -199,12 +199,7 @@ pub fn create_endorsement() -> WrappedEndorsement {
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Endorsement::new_wrapped(
-        content,
-        EndorsementSerializer::new(),
-        &keypair
-    )
-    .unwrap()
+    Endorsement::new_wrapped(content, EndorsementSerializer::new(), &keypair).unwrap()
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
@@ -223,12 +218,7 @@ pub fn create_operation_with_expire_period(
         op,
         expire_period,
     };
-    Operation::new_wrapped(
-        content,
-        OperationSerializer::new(),
-        &keypair
-    )
-    .unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
 }
 
 lazy_static::lazy_static! {

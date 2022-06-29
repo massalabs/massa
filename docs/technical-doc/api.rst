@@ -664,10 +664,10 @@ Sign message with node's key.
 Where public_key is the public key used to sign the input and signature,
 the resulting signature.
 
-`node_add_staking_keys`
+`node_add_staking_secret_keys`
 --------------------------
 
-Add a vec of new keypairs for the node to use to stake.
+Add a vec of new secret keys for the node to use to stake.
 
 -   Parameter:
 
@@ -675,7 +675,7 @@ Add a vec of new keypairs for the node to use to stake.
 
     [String];
 
-The strings must be keypairs.
+The strings must be secret keys.
 
 -   No return.
 

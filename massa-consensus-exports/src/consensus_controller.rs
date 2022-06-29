@@ -338,14 +338,8 @@ impl ConsensusCommandSender {
     }
 
     /// Add some staking keys
-    pub async fn register_staking_keys(
-        &self,
-        keys: Vec<KeyPair>,
-    ) -> Result<(), ConsensusError> {
-        massa_trace!(
-            "consensus.consensus_controller.register_staking_keys",
-            {}
-        );
+    pub async fn register_staking_keys(&self, keys: Vec<KeyPair>) -> Result<(), ConsensusError> {
+        massa_trace!("consensus.consensus_controller.register_staking_keys", {});
         self.0
             .send(ConsensusCommand::RegisterStakingKeys(keys))
             .await

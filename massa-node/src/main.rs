@@ -366,12 +366,7 @@ async fn load_or_create_staking_keys_file(
                 &tokio::fs::read(path).await?,
             )?)?
             .iter()
-            .map(|&key| {
-                Ok((
-                    Address::from_public_key(&key.get_public_key()),
-                    key,
-                ))
-            })
+            .map(|&key| Ok((Address::from_public_key(&key.get_public_key()), key)))
             .collect();
         Ok((password, staking_keys?))
     } else {

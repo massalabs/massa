@@ -421,7 +421,7 @@ pub fn create_genesis_block(
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        &keypair
+        &keypair,
     )?;
 
     Ok((
@@ -432,7 +432,7 @@ pub fn create_genesis_block(
                 operations: Vec::new(),
             },
             BlockSerializer::new(),
-            &keypair
+            &keypair,
         )?,
     ))
 }

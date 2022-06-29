@@ -80,10 +80,10 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Key1 Key2 ..."),
-        message = "add staking keys"
+        props(args = "SecretKey1 SecretKey2 ..."),
+        message = "add staking secret keys"
     )]
-    node_add_staking_keys,
+    node_add_staking_secret_keys,
 
     #[strum(
         ascii_case_insensitive,
@@ -157,16 +157,16 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        message = "generate a key and add it into the wallet"
+        message = "generate a secret key and add it into the wallet"
     )]
-    wallet_generate_key,
+    wallet_generate_secret_key,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Key1 Key2 ..."),
-        message = "add a list of keys to the wallet"
+        props(args = "SecretKey1 SecretKey2 ..."),
+        message = "add a list of secret keys to the wallet"
     )]
-    wallet_add_keys,
+    wallet_add_secret_keys,
 
     #[strum(
         ascii_case_insensitive,
@@ -462,9 +462,9 @@ impl Command {
                 Ok(Box::new(()))
             }
 
-            Command::node_add_staking_keys => {
+            Command::node_add_staking_secret_keys => {
                 let keypairs = parse_vec::<KeyPair>(parameters)?;
-                match client.private.add_staking_keypairs(keypairs).await {
+                match client.private.add_staking_secret_keys(keypairs).await {
                     Ok(()) => {
                         if !json {
                             println!("Keys successfully added!")
@@ -592,19 +592,22 @@ impl Command {
                 }
             }
 
-            Command::wallet_generate_key => {
+            Command::wallet_generate_secret_key => {
                 let key = KeyPair::generate();
                 let ad = wallet.add_keypair(key)?;
                 if json {
                     Ok(Box::new(ad.to_string()))
                 } else {
                     println!("Generated {} address and added it to the wallet", ad);
-                    println!("Type `node_add_staking_keys {}` to start staking with this key.\n",key);
+                    println!(
+                        "Type `node_add_staking_secret_keys {}` to start staking with this key.\n",
+                        key
+                    );
                     Ok(Box::new(()))
                 }
             }
 
-            Command::wallet_add_keys => {
+            Command::wallet_add_secret_keys => {
                 let addresses = parse_vec::<KeyPair>(parameters)?
                     .into_iter()
                     .map(|key| Ok((wallet.add_keypair(key)?, key)))
@@ -614,7 +617,10 @@ impl Command {
                 } else {
                     for (address, key) in addresses.iter() {
                         println!("Derived and added address {} to the wallet.", address);
-                        println!("Type `node_add_staking_keys {}` to start staking with this key.\n", key);
+                        println!(
+                            "Type `node_add_staking_secret_keys {}` to start staking with this key.\n",
+                            key
+                        );
                     }
                 }
                 Ok(Box::new(()))

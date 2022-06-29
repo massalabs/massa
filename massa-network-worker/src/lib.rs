@@ -68,15 +68,12 @@ pub async fn start_network_controller(
     // try to read node keypair from file, otherwise generate it & write to file. Then derive nodeId
     let keypair = if std::path::Path::is_file(&network_settings.keypair_file) {
         // file exists: try to load it
-        let private_key_bs58_check = tokio::fs::read_to_string(&network_settings.keypair_file)
+        let keypair_bs58_check = tokio::fs::read_to_string(&network_settings.keypair_file)
             .await
             .map_err(|err| {
-                std::io::Error::new(
-                    err.kind(),
-                    format!("could not load node key file: {}", err),
-                )
+                std::io::Error::new(err.kind(), format!("could not load node key file: {}", err))
             })?;
-        KeyPair::from_bs58_check(private_key_bs58_check.trim()).map_err(|err| {
+        KeyPair::from_bs58_check(keypair_bs58_check.trim()).map_err(|err| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 format!("node key file corrupted: {}", err),
@@ -85,11 +82,8 @@ pub async fn start_network_controller(
     } else {
         // node file does not exist: generate the key and save it
         let keypair = KeyPair::generate();
-        if let Err(e) = tokio::fs::write(
-            &network_settings.keypair_file,
-            &keypair.to_bs58_check(),
-        )
-        .await
+        if let Err(e) =
+            tokio::fs::write(&network_settings.keypair_file, &keypair.to_bs58_check()).await
         {
             warn!("could not generate node key file: {}", e);
         }

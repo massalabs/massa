@@ -55,7 +55,7 @@ Register your private key so that your node start to stake with it:
 
 .. code-block::
 
-    node_add_staking_keys <your_private_key>
+    node_add_staking_secret_keys <your_secret_key>
 
 Now you should wait some time so that your rolls become active: 3 cycles
 of 128 periods (one period is 32 blocks - 16 sec), so about 1h40

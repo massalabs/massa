@@ -32,7 +32,7 @@ use massa_models::{
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
-use massa_signature::{PublicKey, KeyPair};
+use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
 use std::{cmp::max, collections::HashSet, collections::VecDeque};
 use tokio::{
@@ -446,7 +446,7 @@ impl ConsensusWorker {
         &mut self,
         cur_slot: Slot,
         creator_addr: &Address,
-        creator_keypair: &KeyPair
+        creator_keypair: &KeyPair,
     ) -> Result<()> {
         // get parents
         let parents = self.block_db.get_best_parents();
@@ -481,7 +481,7 @@ impl ConsensusWorker {
                 endorsements: endorsements.clone(),
             },
             BlockHeaderSerializer::new(),
-            creator_keypair
+            creator_keypair,
         )?;
         let block: WrappedBlock = Block::new_wrapped(
             Block {
@@ -489,7 +489,7 @@ impl ConsensusWorker {
                 operations: Vec::new(),
             },
             BlockSerializer::new(),
-            creator_keypair
+            creator_keypair,
         )?;
 
         // initialize remaining block space and remaining operation count
@@ -621,12 +621,12 @@ impl ConsensusWorker {
                 endorsements,
             },
             BlockHeaderSerializer::new(),
-            creator_keypair
+            creator_keypair,
         )?;
         let block = Block::new_wrapped(
             Block { header, operations },
             BlockSerializer::new(),
-            creator_keypair
+            creator_keypair,
         )?;
         let slot = block.content.header.content.slot;
         massa_trace!("create block", { "block": block });
@@ -1430,10 +1430,6 @@ pub fn create_endorsement(
         index,
         endorsed_block,
     };
-    let endorsement = Endorsement::new_wrapped(
-        content,
-        EndorsementSerializer::new(),
-        keypair
-    )?;
+    let endorsement = Endorsement::new_wrapped(content, EndorsementSerializer::new(), keypair)?;
     Ok(endorsement)
 }

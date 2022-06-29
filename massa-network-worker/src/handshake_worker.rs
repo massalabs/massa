@@ -175,9 +175,12 @@ impl HandshakeWorker {
         };
 
         // check their signature
-        other_node_id.0.verify_signature(&self_random_hash, &other_signature).map_err(
-            |_err| NetworkError::HandshakeError(HandshakeErrorType::HandshakeInvalidSignature),
-        )?;
+        other_node_id
+            .0
+            .verify_signature(&self_random_hash, &other_signature)
+            .map_err(|_err| {
+                NetworkError::HandshakeError(HandshakeErrorType::HandshakeInvalidSignature)
+            })?;
 
         Ok((other_node_id, self.reader, self.writer))
     }

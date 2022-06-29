@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use massa_models::Amount;
-use num::rational::Ratio;
 use massa_signature::KeyPair;
+use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
 
 /// Proof of stake configuration

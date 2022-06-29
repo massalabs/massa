@@ -40,9 +40,7 @@ impl Wallet {
             let priv_keys = serde_json::from_slice::<Vec<KeyPair>>(&decrypted_content[..])?;
             let keys: Result<Map<Address, KeyPair>, WalletError> = priv_keys
                 .iter()
-                .map(|&keypair| {
-                    Ok((Address::from_public_key(&keypair.get_public_key()), keypair))
-                })
+                .map(|&keypair| Ok((Address::from_public_key(&keypair.get_public_key()), keypair)))
                 .collect();
             Ok(Wallet {
                 keys: keys?,
@@ -113,7 +111,9 @@ impl Wallet {
 
     /// Finds the public key associated with given address
     pub fn find_associated_public_key(&self, address: Address) -> Option<PublicKey> {
-        self.keys.get(&address).map(|keypair| keypair.get_public_key())
+        self.keys
+            .get(&address)
+            .map(|keypair| keypair.get_public_key())
     }
 
     /// Get all addresses in the wallet
@@ -124,10 +124,7 @@ impl Wallet {
     /// Save the wallet in json format in a file
     /// Only the keypair is dumped
     fn save(&self) -> Result<(), WalletError> {
-        let ser_keys = serde_json::to_string(
-            &self
-                .keys
-        )?;
+        let ser_keys = serde_json::to_string(&self.keys)?;
         let encrypted_content = encrypt(&self.password, ser_keys.as_bytes())?;
         std::fs::write(&self.wallet_path, encrypted_content)?;
         Ok(())
@@ -147,10 +144,7 @@ impl Wallet {
         let sender_keypair = self
             .find_associated_keypair(address)
             .ok_or(WalletError::MissingKeyError(address))?;
-        Ok(
-            Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair)
-                .unwrap(),
-        )
+        Ok(Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap())
     }
 }
 
@@ -158,7 +152,7 @@ impl std::fmt::Display for Wallet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f)?;
         for (addr, keypair) in &self.keys {
-            writeln!(f, "Private key: {}", keypair)?;
+            writeln!(f, "Secret key: {}", keypair)?;
             writeln!(f, "Public key: {}", keypair.get_public_key())?;
             writeln!(f, "Address: {}", addr)?;
         }
