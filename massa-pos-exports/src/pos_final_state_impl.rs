@@ -1,21 +1,8 @@
-use std::collections::{BTreeMap, VecDeque};
-
-use massa_models::Slot;
+use massa_models::{Address, Slot};
 
 use crate::{PoSChanges, PoSFinalState};
 
 impl PoSFinalState {
-    /// Create a PoSFinalState
-    pub fn new() -> Self {
-        PoSFinalState {
-            cycle_history: VecDeque::default(),
-            last_final_slot: Slot {
-                period: 0,
-                thread: 0,
-            },
-            deferred_credits: BTreeMap::default(),
-        }
-    }
     /// Finalizes changes at a slot S (cycle C):
     ///
     /// set self.last_final_slot = C
@@ -34,4 +21,12 @@ impl PoSFinalState {
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     pub fn apply_changes(&mut self, _changes: &PoSChanges, _slot: Slot) {}
+
+    /// TODO
+    pub fn get_rolls_for(&self, addr: &Address) -> Option<u64> {
+        self.cycle_history
+            .back()
+            .map(|info| info.roll_counts.get(addr).cloned())
+            .flatten()
+    }
 }

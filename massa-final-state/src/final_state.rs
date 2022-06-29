@@ -45,7 +45,7 @@ impl FinalState {
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
 
         // create the pos state
-        let pos_state = PoSFinalState::new();
+        let pos_state = PoSFinalState::default();
 
         // generate the final state
         Ok(FinalState {

@@ -6,11 +6,10 @@ use bitvec::prelude::*;
 use massa_models::{prehash::Map, Address, Amount, Slot};
 
 /// Final state of PoS
+#[derive(Default)]
 pub struct PoSFinalState {
     /// contiguous cycle history. Front = newest.
     pub cycle_history: VecDeque<CycleInfo>,
-    /// latest final slot
-    pub last_final_slot: Slot,
     /// coins to be credited at the end of the slot
     pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
 }
