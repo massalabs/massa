@@ -2,56 +2,86 @@
 
 use crate::error::MassaSignatureError;
 use massa_hash::Hash;
-use massa_serialization::Deserializer;
+use massa_serialization::{
+    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use nom::{
     error::{ContextError, ParseError},
     IResult,
 };
 use secp256k1::{schnorr, Message, XOnlyPublicKey, SECP256K1};
+use serde::{
+    de::{MapAccess, SeqAccess, Visitor},
+    ser::SerializeStruct,
+    Deserialize,
+};
+use std::ops::Bound::Included;
 use std::{convert::TryInto, str::FromStr};
 
 /// Size of a public key
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
 /// Size of a keypair
-pub const KEYPAIR_SIZE_BYTES: usize = 32;
+pub const SECRET_KEY_SIZE_BYTES: usize = 32;
 /// Size of a signature
 pub const SIGNATURE_SIZE_BYTES: usize = 64;
-const KEYPAIR_STRING_PREFIX: &str = "KEY";
-const PUBLIC_KEY_STRING_PREFIX: &str = "PUB";
+
 const SIGNATURE_STRING_PREFIX: &str = "SIG";
 
 /// `KeyPair` is used for signature and decrypting
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct KeyPair(secp256k1::KeyPair);
+
+const SECRET_PREFIX: char = 'S';
+const KEYPAIR_VERSION: u64 = 0;
 
 impl std::fmt::Display for KeyPair {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(f, "{}-{}", KEYPAIR_STRING_PREFIX, self.to_bs58_check())
-        } else {
-            write!(f, "{}", self.to_bs58_check())
-        }
+        let u64_serializer = U64VarIntSerializer::new();
+        let mut bytes = Vec::new();
+        u64_serializer
+            .serialize(&KEYPAIR_VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        bytes.extend(self.0.secret_bytes());
+        write!(
+            f,
+            "{}{}",
+            SECRET_PREFIX,
+            bs58::encode(bytes).with_check().into_string()
+        )
+    }
+}
+
+impl std::fmt::Debug for KeyPair {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
 impl FromStr for KeyPair {
     type Err = MassaSignatureError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if cfg!(feature = "hash-prefix") {
-            let v: Vec<_> = s.split('-').collect();
-            if v.len() != 2 {
-                // assume there is no prefix
-                KeyPair::from_bs58_check(s)
-            } else if v[0] != KEYPAIR_STRING_PREFIX {
-                Err(MassaSignatureError::WrongPrefix(
-                    KEYPAIR_STRING_PREFIX.to_string(),
-                    v[0].to_string(),
-                ))
-            } else {
-                KeyPair::from_bs58_check(v[1])
+        let mut chars = s.chars();
+        match chars.next() {
+            Some(prefix) if prefix == SECRET_PREFIX => {
+                let data = chars.collect::<String>();
+                let decoded_bs58_check =
+                    bs58::decode(data)
+                        .with_check(None)
+                        .into_vec()
+                        .map_err(|_| {
+                            MassaSignatureError::ParsingError("Bad secret key bs58".to_owned())
+                        })?;
+                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+                let (rest, _version) = u64_deserializer
+                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+                    .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
+                KeyPair::from_bytes(&rest.try_into().map_err(|_| {
+                    MassaSignatureError::ParsingError("Secret key not long enough".to_string())
+                })?)
             }
-        } else {
-            KeyPair::from_bs58_check(s)
+            _ => Err(MassaSignatureError::ParsingError(
+                "Bad secret prefix".to_owned(),
+            )),
         }
     }
 }
@@ -72,7 +102,7 @@ impl KeyPair {
     pub fn generate() -> KeyPair {
         use secp256k1::rand::rngs::OsRng;
         let mut rng = OsRng::new().expect("OsRng");
-        KeyPair(secp256k1::KeyPair::new(&SECP256K1, &mut rng))
+        KeyPair(secp256k1::KeyPair::new(SECP256K1, &mut rng))
     }
 
     /// Returns the Signature produced by signing
@@ -99,7 +129,7 @@ impl KeyPair {
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> [u8; KEYPAIR_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> [u8; SECRET_KEY_SIZE_BYTES] {
         self.0.secret_bytes()
     }
 
@@ -111,11 +141,11 @@ impl KeyPair {
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.into_bytes();
     /// ```
-    pub fn into_bytes(&self) -> [u8; KEYPAIR_SIZE_BYTES] {
+    pub fn into_bytes(&self) -> [u8; SECRET_KEY_SIZE_BYTES] {
         self.0.secret_bytes()
     }
 
-    /// Convert a byte array of size `KEYPAIR_SIZE_BYTES` to a `KeyPair`
+    /// Convert a byte array of size `SECRET_KEY_SIZE_BYTES` to a `KeyPair`
     ///
     /// # Example
     /// ```
@@ -124,14 +154,11 @@ impl KeyPair {
     /// let bytes = keypair.into_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; KEYPAIR_SIZE_BYTES]) -> Result<Self, MassaSignatureError> {
+    pub fn from_bytes(data: &[u8; SECRET_KEY_SIZE_BYTES]) -> Result<Self, MassaSignatureError> {
         secp256k1::KeyPair::from_seckey_slice(SECP256K1, &data[..])
             .map(Self)
             .map_err(|err| {
-                MassaSignatureError::ParsingError(format!(
-                    "keypair bytes parsing error: {}",
-                    err
-                ))
+                MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
             })
     }
 
@@ -180,7 +207,7 @@ impl KeyPair {
             })
             .and_then(|key| {
                 Ok(KeyPair(
-                    secp256k1::KeyPair::from_seckey_slice(&SECP256K1, key.as_slice()).map_err(
+                    secp256k1::KeyPair::from_seckey_slice(SECP256K1, key.as_slice()).map_err(
                         |err| {
                             MassaSignatureError::ParsingError(format!(
                                 "keypair bs58_check parsing error: {:?}",
@@ -203,18 +230,17 @@ impl ::serde::Serialize for KeyPair {
     ///
     /// Human readable serialization :
     /// ```
-    /// # use massa_signature::generate_random_private_key;
+    /// # use massa_signature::KeyPair;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
+    /// let private_key = KeyPair::generate();
     /// let serialized: String = serde_json::to_string(&private_key).unwrap();
     /// ```
     ///
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        if s.is_human_readable() {
-            s.collect_str(&self.to_bs58_check())
-        } else {
-            s.serialize_bytes(&self.to_bytes())
-        }
+        let mut keypair_serializer = s.serialize_struct("keypair", 2)?;
+        keypair_serializer.serialize_field("secret_key", &self.to_string())?;
+        keypair_serializer.serialize_field("public_key", &self.get_public_key().to_string())?;
+        keypair_serializer.end()
     }
 }
 
@@ -236,92 +262,152 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
     /// ```
     ///
     fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<KeyPair, D::Error> {
-        if d.is_human_readable() {
-            struct Base58CheckVisitor;
+        enum Field {
+            SecretKey,
+            PublicKey,
+        }
 
-            impl<'de> ::serde::de::Visitor<'de> for Base58CheckVisitor {
-                type Value = KeyPair;
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                struct FieldVisitor;
 
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("an ASCII base58check string")
-                }
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
 
-                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    if let Ok(v_str) = std::str::from_utf8(v) {
-                        KeyPair::from_bs58_check(v_str).map_err(E::custom)
-                    } else {
-                        Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
+                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        formatter.write_str("`secret_key` or `public_key`")
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                    where
+                        E: serde::de::Error,
+                    {
+                        match value {
+                            "secret_key" => Ok(Field::SecretKey),
+                            "public_key" => Ok(Field::PublicKey),
+                            _ => Err(serde::de::Error::unknown_field(value, FIELDS)),
+                        }
                     }
                 }
 
-                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    KeyPair::from_bs58_check(v).map_err(E::custom)
-                }
+                deserializer.deserialize_identifier(FieldVisitor)
             }
-            d.deserialize_str(Base58CheckVisitor)
-        } else {
-            struct BytesVisitor;
-
-            impl<'de> ::serde::de::Visitor<'de> for BytesVisitor {
-                type Value = KeyPair;
-
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("a bytestring")
-                }
-
-                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    KeyPair::from_bytes(&v.try_into().map_err(E::custom)?).map_err(E::custom)
-                }
-            }
-
-            d.deserialize_bytes(BytesVisitor)
         }
+
+        struct KeyPairVisitor;
+
+        impl<'de> Visitor<'de> for KeyPairVisitor {
+            type Value = KeyPair;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("{'secret_key': 'xxx', 'public_key': 'xxx'}")
+            }
+
+            fn visit_seq<V>(self, mut seq: V) -> Result<KeyPair, V::Error>
+            where
+                V: SeqAccess<'de>,
+            {
+                let secret = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
+                let _: &str = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
+                KeyPair::from_str(secret).map_err(serde::de::Error::custom)
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<KeyPair, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut secret = None;
+                let mut public = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::SecretKey => {
+                            if secret.is_some() {
+                                return Err(serde::de::Error::duplicate_field("secret"));
+                            }
+                            secret = Some(map.next_value()?);
+                        }
+                        Field::PublicKey => {
+                            if public.is_some() {
+                                return Err(serde::de::Error::duplicate_field("public"));
+                            }
+                            public = Some(map.next_value()?);
+                        }
+                    }
+                }
+                let secret = secret.ok_or_else(|| serde::de::Error::missing_field("secret"))?;
+                let _: &str = public.ok_or_else(|| serde::de::Error::missing_field("public"))?;
+                KeyPair::from_str(secret).map_err(serde::de::Error::custom)
+            }
+        }
+
+        const FIELDS: &[&str] = &["secret_key", "public_key"];
+        d.deserialize_struct("KeyPair", FIELDS, KeyPairVisitor)
     }
 }
 
 /// Public key used to check if a message was encoded
 /// by the corresponding `PublicKey`.
 /// Generated from the `PrivateKey` using `SignatureEngine`
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PublicKey(secp256k1::XOnlyPublicKey);
+
+const PUBLIC_PREFIX: char = 'P';
+
+impl std::fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let u64_serializer = U64VarIntSerializer::new();
+        let mut bytes = Vec::new();
+        u64_serializer
+            .serialize(&KEYPAIR_VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        bytes.extend(self.0.serialize());
+        write!(
+            f,
+            "{}{}",
+            PUBLIC_PREFIX,
+            bs58::encode(bytes).with_check().into_string()
+        )
+    }
+}
+
+impl std::fmt::Debug for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
 
 impl FromStr for PublicKey {
     type Err = MassaSignatureError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if cfg!(feature = "hash-prefix") {
-            let v: Vec<_> = s.split('-').collect();
-            if v.len() != 2 {
-                // assume there is no prefix
-                PublicKey::from_bs58_check(s)
-            } else if v[0] != PUBLIC_KEY_STRING_PREFIX {
-                Err(MassaSignatureError::WrongPrefix(
-                    PUBLIC_KEY_STRING_PREFIX.to_string(),
-                    v[0].to_string(),
-                ))
-            } else {
-                PublicKey::from_bs58_check(v[1])
+        let mut chars = s.chars();
+        match chars.next() {
+            Some(prefix) if prefix == PUBLIC_PREFIX => {
+                let data = chars.collect::<String>();
+                let decoded_bs58_check =
+                    bs58::decode(data)
+                        .with_check(None)
+                        .into_vec()
+                        .map_err(|_| {
+                            MassaSignatureError::ParsingError("Bad public key bs58".to_owned())
+                        })?;
+                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+                let (rest, _version) = u64_deserializer
+                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+                    .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))?;
+                PublicKey::from_bytes(&rest.try_into().map_err(|_| {
+                    MassaSignatureError::ParsingError("Public key not long enough".to_string())
+                })?)
             }
-        } else {
-            PublicKey::from_bs58_check(s)
-        }
-    }
-}
-
-impl std::fmt::Display for PublicKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if cfg!(feature = "hash-prefix") {
-            write!(f, "{}-{}", PUBLIC_KEY_STRING_PREFIX, self.to_bs58_check())
-        } else {
-            write!(f, "{}", self.to_bs58_check())
+            _ => Err(MassaSignatureError::ParsingError(
+                "Bad public key prefix".to_owned(),
+            )),
         }
     }
 }
@@ -910,9 +996,10 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_serde_private_key() {
+    fn test_serde_keypair() {
         let keypair = KeyPair::generate();
         let serialized = serde_json::to_string(&keypair).expect("could not serialize keypair");
+        println!("{}", serialized);
         let deserialized =
             serde_json::from_str(&serialized).expect("could not deserialize keypair");
         assert_eq!(keypair, deserialized);

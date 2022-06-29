@@ -37,13 +37,9 @@ impl Wallet {
         if path.is_file() {
             let content = &std::fs::read(&path)?[..];
             let decrypted_content = decrypt(&password, content)?;
-            let priv_keys = serde_json::from_slice::<Vec<KeyPair>>(&decrypted_content[..])?;
-            let keys: Result<Map<Address, KeyPair>, WalletError> = priv_keys
-                .iter()
-                .map(|&keypair| Ok((Address::from_public_key(&keypair.get_public_key()), keypair)))
-                .collect();
+            let keys = serde_json::from_slice::<Map<Address, KeyPair>>(&decrypted_content[..])?;
             Ok(Wallet {
-                keys: keys?,
+                keys,
                 wallet_path: path,
                 password,
             })
