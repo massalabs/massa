@@ -94,7 +94,9 @@ pub enum ProtocolCommand {
     },
     /// The response to a `[ProtocolEvent::GetBlocks]`.
     GetBlocksResults(BlocksResults),
-    /// Propagate operations ids (send batches)
+    /// Propagate operations (send batches)
+    /// note: OperationIds are replaced with OperationPrefixIds
+    ///       by the controller
     PropagateOperations(OperationIds),
     /// Propagate endorsements
     PropagateEndorsements(Map<EndorsementId, WrappedEndorsement>),
@@ -176,7 +178,9 @@ impl ProtocolCommandSender {
             })
     }
 
-    /// Propagate a batch of operation ids from pool.
+    /// Propagate a batch of operation ids (from pool).
+    ///
+    /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
     pub async fn propagate_operations(
         &mut self,
         operation_ids: OperationIds,

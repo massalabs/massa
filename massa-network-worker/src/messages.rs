@@ -3,16 +3,17 @@
 use massa_models::{
     array_from_slice,
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
+    operation::OperationPrefixIds,
     operation::{
-        OperationIds, OperationIdsSerializer, Operations, OperationsDeserializer,
-        OperationsSerializer,
+        OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, Operations,
+        OperationsDeserializer, OperationsSerializer,
     },
     with_serialization_context,
     wrapped::{WrappedDeserializer, WrappedSerializer},
     BlockDeserializer, BlockHeaderDeserializer, BlockId, DeserializeCompact, DeserializeVarInt,
-    EndorsementDeserializer, IpAddrDeserializer, IpAddrSerializer, ModelsError,
-    OperationIdsDeserializer, SerializeCompact, SerializeVarInt, Version, VersionDeserializer,
-    VersionSerializer, WrappedBlock, WrappedEndorsement, WrappedHeader,
+    EndorsementDeserializer, IpAddrDeserializer, IpAddrSerializer, ModelsError, SerializeCompact,
+    SerializeVarInt, Version, VersionDeserializer, VersionSerializer, WrappedBlock,
+    WrappedEndorsement, WrappedHeader,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
@@ -55,9 +56,9 @@ pub enum Message {
     /// Block not found
     BlockNotFound(BlockId),
     /// Batch of operation ids
-    OperationsAnnouncement(OperationIds),
+    OperationsAnnouncement(OperationPrefixIds),
     /// Someone ask for operations.
-    AskForOperations(OperationIds),
+    AskForOperations(OperationPrefixIds),
     /// A list of operations
     Operations(Operations),
     /// Endorsements
@@ -139,11 +140,11 @@ impl SerializeCompact for Message {
             }
             Message::AskForOperations(operation_ids) => {
                 res.extend(u32::from(MessageTypeId::AskForOperations).to_varint_bytes());
-                OperationIdsSerializer::new().serialize(operation_ids, &mut res)?;
+                OperationPrefixIdsSerializer::new().serialize(operation_ids, &mut res)?;
             }
             Message::OperationsAnnouncement(operation_ids) => {
                 res.extend(u32::from(MessageTypeId::OperationsAnnouncement).to_varint_bytes());
-                OperationIdsSerializer::new().serialize(operation_ids, &mut res)?;
+                OperationPrefixIdsSerializer::new().serialize(operation_ids, &mut res)?;
             }
             Message::Operations(operations) => {
                 res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
@@ -272,16 +273,16 @@ impl DeserializeCompact for Message {
                 Message::Operations(operations)
             }
             MessageTypeId::AskForOperations => {
-                let (rest, operation_ids) =
-                    OperationIdsDeserializer::new().deserialize(&buffer[cursor..])?;
+                let (rest, operation_prefix_ids) =
+                    OperationPrefixIdsDeserializer::new().deserialize(&buffer[cursor..])?;
                 cursor += buffer[cursor..].len() - rest.len();
-                Message::AskForOperations(operation_ids)
+                Message::AskForOperations(operation_prefix_ids)
             }
             MessageTypeId::OperationsAnnouncement => {
-                let (rest, operation_ids) =
-                    OperationIdsDeserializer::new().deserialize(&buffer[cursor..])?;
+                let (rest, operation_prefix_ids) =
+                    OperationPrefixIdsDeserializer::new().deserialize(&buffer[cursor..])?;
                 cursor += buffer[cursor..].len() - rest.len();
-                Message::OperationsAnnouncement(operation_ids)
+                Message::OperationsAnnouncement(operation_prefix_ids)
             }
             MessageTypeId::Endorsements => {
                 // length

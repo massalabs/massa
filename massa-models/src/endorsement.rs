@@ -232,7 +232,7 @@ mod tests {
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
         let endorsement: WrappedEndorsement = Endorsement::new_wrapped(
-            content.clone(),
+            content,
             EndorsementSerializer::new(),
             &sender_priv,
             &public_key,

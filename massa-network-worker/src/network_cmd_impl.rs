@@ -24,8 +24,11 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    composite::PubkeySig, node::NodeId, operation::OperationIds, stats::NetworkStats, BlockId,
-    WrappedEndorsement,
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{OperationIds, OperationPrefixIds},
+    stats::NetworkStats,
+    BlockId, WrappedEndorsement,
 };
 use massa_network_exports::{
     BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
@@ -385,7 +388,7 @@ pub async fn on_send_operations_cmd(
 pub async fn on_send_operation_batches_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
-    batch: OperationIds,
+    batch: OperationPrefixIds,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements",
@@ -416,7 +419,7 @@ pub async fn on_send_operation_batches_cmd(
 pub async fn on_ask_for_operations_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
-    wishlist: OperationIds,
+    wishlist: OperationPrefixIds,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements",

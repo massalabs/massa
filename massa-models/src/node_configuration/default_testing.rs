@@ -125,6 +125,8 @@ pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
 pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
 /// operation id size
 pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+/// operation id prefix size
+pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 /// operation validity periods
 pub const OPERATION_VALIDITY_PERIODS: u64 = 1;
 /// periods per cycle

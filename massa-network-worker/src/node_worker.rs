@@ -321,17 +321,17 @@ impl NodeWorker {
                                 //massa_trace!("node_worker.run_loop. receive Message::Operations", {"node": self.node_id, "operations": operations});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
                             }
-                            Message::AskForOperations(operation_ids) => {
+                            Message::AskForOperations(operation_prefix_ids) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::AskForOperations: ",
-                                    {"node": self.node_id, "operation_ids": operation_ids}
+                                    {"node": self.node_id, "operation_ids": operation_prefix_ids}
                                 );
                                 //massa_trace!("node_worker.run_loop. receive Message::AskForOperations", {"node": self.node_id, "operations": operation_ids});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForOperations(operation_ids))).await;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForOperations(operation_prefix_ids))).await;
                             }
-                            Message::OperationsAnnouncement(operation_ids) => {
-                                massa_trace!("node_worker.run_loop. receive Message::OperationsBatch", {"node": self.node_id, "operation_ids": operation_ids});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperationAnnouncements(operation_ids))).await;
+                            Message::OperationsAnnouncement(operation_prefix_ids) => {
+                                massa_trace!("node_worker.run_loop. receive Message::OperationsBatch", {"node": self.node_id, "operation_prefix_ids": operation_prefix_ids});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperationAnnouncements(operation_prefix_ids))).await;
                             }
                             Message::Endorsements(endorsements) => {
                                 massa_trace!("node_worker.run_loop. receive Message::Endorsement", {"node": self.node_id, "endorsements": endorsements});
@@ -404,9 +404,9 @@ impl NodeWorker {
                                 }
                             }
                         },
-                        Some(NodeCommand::SendOperationAnnouncements(operation_ids)) => {
-                            massa_trace!("node_worker.run_loop. send Message::OperationsAnnouncement", {"node": self.node_id, "operation_ids": operation_ids});
-                            for chunk in operation_ids
+                        Some(NodeCommand::SendOperationAnnouncements(operation_prefix_ids)) => {
+                            massa_trace!("node_worker.run_loop. send Message::OperationsAnnouncement", {"node": self.node_id, "operation_ids": operation_prefix_ids});
+                            for chunk in operation_prefix_ids
                             .into_iter()
                             .chunks(self.cfg.max_operations_per_message as usize)
                             .into_iter()
@@ -416,13 +416,13 @@ impl NodeWorker {
                                 }
                             }
                         }
-                        Some(NodeCommand::AskForOperations(operation_ids)) => {
+                        Some(NodeCommand::AskForOperations(operation_prefix_ids)) => {
                             //massa_trace!("node_worker.run_loop. send Message::AskForOperations", {"node": self.node_id, "operation_ids": operation_ids});
                             massa_trace!(
                                 "node_worker.run_loop. send Message::AskForOperations",
-                                {"node": self.node_id, "operation_ids": operation_ids}
+                                {"node": self.node_id, "operation_ids": operation_prefix_ids}
                             );
-                            for chunk in operation_ids
+                            for chunk in operation_prefix_ids
                             .into_iter()
                             .chunks(self.cfg.max_operations_per_message as usize)
                             .into_iter()
