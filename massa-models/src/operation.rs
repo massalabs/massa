@@ -30,7 +30,6 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
-use std::mem::transmute;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 
 const OPERATION_ID_STRING_PREFIX: &str = "OPE";
@@ -178,24 +177,20 @@ impl OperationId {
 
     /// convert the [OperationId] into a [OperationPrefixId]
     pub fn into_prefix(self) -> OperationPrefixId {
-        let bytes = self.0.into_bytes();
-        let data: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES] = unsafe {
-            transmute::<&[u8; OPERATION_ID_SIZE_BYTES], &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]>(
-                &bytes,
-            )
-        };
-        OperationPrefixId(*data)
+        OperationPrefixId(
+            self.0.into_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
+                .try_into()
+                .expect("failed to truncate prefix from OperationId"),
+        )
     }
 
     /// get a prefix from the [OperationId] by copying it
     pub fn prefix(&self) -> OperationPrefixId {
-        let bytes = self.0.to_bytes();
-        let data: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES] = unsafe {
-            transmute::<&[u8; OPERATION_ID_SIZE_BYTES], &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]>(
-                bytes,
-            )
-        };
-        OperationPrefixId(*data)
+        OperationPrefixId(
+            self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
+                .try_into()
+                .expect("failed to truncate prefix from OperationId"),
+        )
     }
 }
 
