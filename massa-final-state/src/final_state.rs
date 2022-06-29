@@ -9,6 +9,7 @@ use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::Sta
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{constants::THREAD_COUNT, Address, Slot};
+use massa_pos_exports::PoSFinalState;
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool)`
@@ -22,6 +23,8 @@ pub struct FinalState {
     pub ledger: Box<dyn LedgerController>,
     /// asynchronous pool containing messages sorted by priority and their data
     pub async_pool: AsyncPool,
+    /// proof of stake state containing cycle history and deferred credits
+    pub pos_state: PoSFinalState,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     pub(crate) changes_history: VecDeque<(Slot, StateChanges)>,
@@ -42,11 +45,15 @@ impl FinalState {
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
 
+        // create the pos state
+        let pos_state = PoSFinalState::default();
+
         // generate the final state
         Ok(FinalState {
             slot,
             ledger,
             async_pool,
+            pos_state,
             config,
             changes_history: Default::default(), // no changes in history
         })
@@ -74,6 +81,8 @@ impl FinalState {
             .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
+        self.pos_state
+            .apply_changes(&changes.roll_state_changes, self.slot);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
