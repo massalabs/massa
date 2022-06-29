@@ -24,7 +24,7 @@ pub struct OperationInput {
     pub creator_public_key: PublicKey,
     /// The signature of the operation
     pub signature: Signature,
-    /// The serialized version of the content
+    /// The serialized version of the content base58 encoded
     pub serialized_content: String,
 }
 
