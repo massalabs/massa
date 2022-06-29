@@ -275,7 +275,7 @@ struct ExtendedWalletEntry {
 
 impl Display for ExtendedWalletEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Private key: {}", self.keypair)?;
+        writeln!(f, "Secret key: {}", self.keypair)?;
         writeln!(f, "Public key: {}", self.keypair.get_public_key())?;
         writeln!(f, "{}", self.address_info)?;
         writeln!(f, "\n=====\n")?;

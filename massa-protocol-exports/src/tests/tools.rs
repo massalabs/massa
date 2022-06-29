@@ -218,7 +218,7 @@ pub fn create_operation_with_expire_period(
         op,
         expire_period,
     };
-    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 lazy_static::lazy_static! {

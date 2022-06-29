@@ -15,6 +15,7 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
+use std::str::FromStr;
 
 /// node status
 #[derive(Debug, Deserialize, Serialize)]
@@ -321,8 +322,18 @@ impl std::fmt::Display for CompactAddressInfo {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Parallel balance:",)?;
-        writeln!(f, "\tFinal: {:?}", self.final_balance)?;
-        writeln!(f, "\tCandidate: {:?}\n", self.candidate_balance)?;
+        writeln!(
+            f,
+            "\tFinal: {:?}",
+            self.final_balance
+                .unwrap_or(Amount::from_str("0").map_err(|_| std::fmt::Error)?)
+        )?;
+        writeln!(
+            f,
+            "\tCandidate: {:?}\n",
+            self.candidate_balance
+                .unwrap_or(Amount::from_str("0").map_err(|_| std::fmt::Error)?)
+        )?;
         writeln!(f, "Sequential balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         Ok(())

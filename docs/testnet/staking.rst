@@ -45,13 +45,13 @@ with:
 Telling your node to start staking with your rolls
 ==================================================
 
-Get the private key that has rolls in your wallet:
+Get the secret key that has rolls in your wallet:
 
 .. code-block::
 
     wallet_info
 
-Register your private key so that your node start to stake with it:
+Register your secret key so that your node start to stake with it:
 
 .. code-block::
 
