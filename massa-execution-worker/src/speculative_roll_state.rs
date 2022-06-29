@@ -72,12 +72,13 @@ impl SpeculativeRollState {
                     .read()
                     .fetch_roll_count(buyer_addr)
                     .unwrap_or_default(),
-                // NOTE: chain this with FinalState roll_count
+                // TODO: add cycle info to FinalState
+                // TODO: chain this with FinalState roll_count
             );
         *count = count.saturating_add(roll_count);
     }
 
-    /// Remove `roll_count` rolls from the given address and add deferred reimbursement
+    /// Remove `roll_count` rolls from the given address and program deferred reimbursement
     pub fn remove_rolls(
         &mut self,
         seller_addr: &Address,
@@ -85,7 +86,6 @@ impl SpeculativeRollState {
         roll_price: Amount,
         roll_count: u64,
     ) {
-        // NOTE: probably want to move this to context
         let count = self
             .added_changes
             .roll_changes
@@ -95,19 +95,21 @@ impl SpeculativeRollState {
                     .read()
                     .fetch_roll_count(seller_addr)
                     .unwrap_or_default(),
-                // NOTE: chain this with FinalState roll_count
+                // TODO: chain this with FinalState roll_count
             );
         *count = count.saturating_sub(roll_count);
         let credits = self.added_changes.deferred_credits.entry(slot).or_insert(
             self.active_history
                 .read()
                 .fetch_all_deferred_credits_at(&slot),
-            // NOTE: chain this with FinalState credits
+            // TODO: chain this with FinalState deferred_credits
         );
         credits.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
     }
 
-    /// Update the production stats
+    /// Update the production stats.
+    ///
+    /// This should not be used in readonly execution.
     #[allow(dead_code)]
     pub fn update_production_stats(
         &mut self,
@@ -115,7 +117,6 @@ impl SpeculativeRollState {
         slot: &Slot,
         contains_block: bool,
     ) {
-        // note: will be used only on real execution
         if let Some(production_stats) = self.added_changes.production_stats.get_mut(creator) {
             if contains_block {
                 production_stats.block_success_count =
@@ -131,7 +132,5 @@ impl SpeculativeRollState {
     /// Settle a slot.
     ///
     /// Compute the changes to be made on the roll state at the end of a given slot.
-    pub fn settle_slot(&mut self, _slot: Slot) {
-        // note: will be used on every kind of execution
-    }
+    pub fn settle_slot(&mut self, _slot: Slot) {}
 }

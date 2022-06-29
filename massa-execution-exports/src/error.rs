@@ -20,4 +20,7 @@ pub enum ExecutionError {
 
     /// `ModelsError`: {0}
     ModelsError(#[from] massa_models::ModelsError),
+
+    /// `RollsError`: {0} (TODO: improve this error type)
+    RollsError(String),
 }
