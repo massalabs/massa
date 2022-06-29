@@ -128,9 +128,4 @@ impl SpeculativeRollState {
             }
         }
     }
-
-    /// Settle a slot.
-    ///
-    /// Compute the changes to be made on the roll state at the end of a given slot.
-    pub fn settle_slot(&mut self, _slot: Slot) {}
 }
