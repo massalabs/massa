@@ -19,6 +19,7 @@ use crate::DrawCachePtr;
 use crate::InputDataPtr;
 
 /// Structure gathering all elements needed by the selector thread
+#[allow(dead_code)]
 pub(crate) struct SelectorThread {
     // A copy of the input data allowing access to incoming requests
     pub(crate) input_data: InputDataPtr,
