@@ -966,8 +966,6 @@
 <span id="960">960</span>
 <span id="961">961</span>
 <span id="962">962</span>
-<span id="963">963</span>
-<span id="964">964</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::MassaSignatureError</span>;
@@ -1824,7 +1822,7 @@
 <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">derive_public_key</span>(<span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="ident">PublicKey</span> {
-    <span class="ident">PublicKey</span>(<span class="ident">private_key</span>.<span class="number">0</span>.<span class="ident">public_key</span>())
+    <span class="ident">PublicKey</span>(<span class="ident">private_key</span>.<span class="number">0</span>.<span class="ident">public_key</span>().<span class="ident">x_only_public_key</span>().<span class="number">0</span>)
 }
 
 <span class="doccomment">/// Returns the Signature produced by signing</span>
@@ -1870,11 +1868,9 @@
 
 <span class="doccomment">/// Generate a random private key from a RNG.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_random_private_key</span>() -&gt; <span class="ident">PrivateKey</span> {
-    <span class="kw">use</span> <span class="ident">secp256k1::rand::rngs::OsRng</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">OsRng::new</span>().<span class="ident">expect</span>(<span class="string">&quot;OsRng&quot;</span>);
     <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::KeyPair::from_secret_key</span>(
         <span class="ident">SECP256K1</span>,
-        <span class="ident">secp256k1::SecretKey::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>),
+        <span class="kw-2">&amp;</span><span class="ident">secp256k1::SecretKey::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rand::thread_rng</span>()),
     ))
 }
 

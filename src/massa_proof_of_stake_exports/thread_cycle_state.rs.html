@@ -269,7 +269,7 @@
 <span id="263">263</span>
 <span id="264">264</span>
 <span id="265">265</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">bitvec</span>::{<span class="ident">order::Lsb0</span>, <span class="ident">prelude::BitVec</span>};
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">bitvec::prelude::BitVec</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants</span>::{<span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>, <span class="ident">THREAD_COUNT</span>},
     <span class="ident">prehash::Map</span>,
@@ -301,7 +301,7 @@
     <span class="doccomment">/// Cycle roll updates</span>
     <span class="kw">pub</span> <span class="ident">cycle_updates</span>: <span class="ident">RollUpdates</span>,
     <span class="doccomment">/// Used to seed the random selector at each cycle</span>
-    <span class="kw">pub</span> <span class="ident">rng_seed</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">Lsb0</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">rng_seed</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Per-address production statistics `(ok_count, nok_count)`</span>
     <span class="kw">pub</span> <span class="ident">production_stats</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">u64</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
 }
@@ -486,7 +486,7 @@
                             <span class="ident">ErrorKind::Eof</span>,
                         )));
                     }
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng_seed</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">Lsb0</span>, <span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span>
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng_seed</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span>
                         <span class="ident">BitVec::try_from_vec</span>(<span class="ident">rest</span>[..<span class="ident">bits_u8_len</span>].<span class="ident">to_vec</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                             <span class="ident">nom::Err::Error</span>(<span class="ident">ParseError::from_error_kind</span>(<span class="ident">input</span>, <span class="ident">ErrorKind::Eof</span>))
                         })<span class="question-mark">?</span>;
