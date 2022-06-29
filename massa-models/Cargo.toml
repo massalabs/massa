@@ -9,7 +9,7 @@ displaydoc = "0.2"
 integer-encoding = "3.0"
 lazy_static = "1.4"
 num_enum = "0.5"
-rust_decimal = "1.15"
+rust_decimal = "1.25"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 num = { version = "0.4", features = ["serde"] }
@@ -25,7 +25,7 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
-serial_test = "0.5"
+serial_test = "0.8"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

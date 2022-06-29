@@ -14,7 +14,7 @@ jsonrpc-derive = "18.0"
 jsonrpc-http-server = "18.0"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1.15", features = ["full"] }
+tokio = { version = "1.19", features = ["full"] }
 tracing = "0.1"
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }

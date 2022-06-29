@@ -389,7 +389,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             .into_iter()
             .collect(),
         ),
-        rng_seed: bitvec![Lsb0, u8 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+        rng_seed: bitvec![u8, Lsb0 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
         production_stats: vec![
             (get_random_address(), (1, 2)),
             (get_random_address(), (3, 4)),
