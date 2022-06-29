@@ -551,15 +551,19 @@ impl ExecutionContext {
             .add_rolls(buyer_addr, roll_count);
     }
 
-    /// Remove `roll_count` rolls from the seller address.
-    /// Validity checks must be performed _outside_ of this function.
+    /// Try to sell `roll_count` rolls from the seller address.
     ///
     /// # Arguments
-    /// * `seller_addr`: address to remove the rolls from
-    /// * `roll_count`: number of rolls to remove
-    pub fn remove_rolls(&mut self, seller_addr: &Address, roll_price: Amount, roll_count: u64) {
+    /// * `seller_addr`: address to sell the rolls from
+    /// * `roll_count`: number of rolls to sell
+    pub fn try_sell_rolls(
+        &mut self,
+        seller_addr: &Address,
+        roll_price: Amount,
+        roll_count: u64,
+    ) -> Result<(), ExecutionError> {
         self.speculative_roll_state
-            .remove_rolls(seller_addr, self.slot, roll_price, roll_count)
+            .try_sell_rolls(seller_addr, self.slot, roll_price, roll_count)
     }
 
     /// Finishes a slot and generates the execution output.
