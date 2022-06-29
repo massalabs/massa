@@ -3,7 +3,7 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter};
+use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter, OperationInput};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::node::NodeId;
 use massa_models::prehash::Map;
@@ -1061,7 +1061,15 @@ async fn send_operation(
         addr,
     )?;
 
-    match client.public.send_operations(vec![op]).await {
+    match client
+        .public
+        .send_operations(vec![OperationInput {
+            creator_public_key: op.creator_public_key,
+            serialized_content: bs58::encode(op.serialized_data).with_check().into_string(),
+            signature: op.signature,
+        }])
+        .await
+    {
         Ok(operation_ids) => {
             if !json {
                 println!("Sent operation IDs:");
