@@ -22,6 +22,7 @@
 <span id="16">16</span>
 <span id="17">17</span>
 <span id="18">18</span>
+<span id="19">19</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Protocol component</span>
 <span class="doccomment">//! High level management of communications between nodes</span>
@@ -36,6 +37,7 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">protocol_worker</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">worker_operations_impl</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">protocol_worker::start_protocol_controller</span>;
+<span class="kw">mod</span> <span class="ident">checked_operations</span>;
 <span class="kw">mod</span> <span class="ident">node_info</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>

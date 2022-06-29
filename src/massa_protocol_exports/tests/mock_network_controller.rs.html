@@ -298,7 +298,7 @@
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedOperationAnnouncements</span> {
                 <span class="ident">node</span>: <span class="ident">source_node_id</span>,
-                <span class="ident">operation_ids</span>,
+                <span class="ident">operation_prefix_ids</span>: <span class="ident">operation_ids</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">id</span>.<span class="ident">into_prefix</span>()).<span class="ident">collect</span>(),
             })
             .<span class="kw">await</span>
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
@@ -314,7 +314,7 @@
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceiveAskForOperations</span> {
                 <span class="ident">node</span>: <span class="ident">source_node_id</span>,
-                <span class="ident">operation_ids</span>,
+                <span class="ident">operation_prefix_ids</span>: <span class="ident">operation_ids</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">id</span>.<span class="ident">into_prefix</span>()).<span class="ident">collect</span>(),
             })
             .<span class="kw">await</span>
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);

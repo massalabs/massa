@@ -820,17 +820,17 @@
                                 <span class="comment">//massa_trace!(&quot;node_worker.run_loop. receive Message::Operations&quot;, {&quot;node&quot;: self.node_id, &quot;operations&quot;: operations});</span>
                                 <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedOperations</span>(<span class="ident">operations</span>))).<span class="kw">await</span>;
                             }
-                            <span class="ident">Message::AskForOperations</span>(<span class="ident">operation_ids</span>) =&gt; {
+                            <span class="ident">Message::AskForOperations</span>(<span class="ident">operation_prefix_ids</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(
                                     <span class="string">&quot;node_worker.run_loop. receive Message::AskForOperations: &quot;</span>,
-                                    {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_ids</span>}
+                                    {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_prefix_ids</span>}
                                 );
                                 <span class="comment">//massa_trace!(&quot;node_worker.run_loop. receive Message::AskForOperations&quot;, {&quot;node&quot;: self.node_id, &quot;operations&quot;: operation_ids});</span>
-                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedAskForOperations</span>(<span class="ident">operation_ids</span>))).<span class="kw">await</span>;
+                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedAskForOperations</span>(<span class="ident">operation_prefix_ids</span>))).<span class="kw">await</span>;
                             }
-                            <span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">operation_ids</span>) =&gt; {
-                                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::OperationsBatch&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_ids</span>});
-                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedOperationAnnouncements</span>(<span class="ident">operation_ids</span>))).<span class="kw">await</span>;
+                            <span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">operation_prefix_ids</span>) =&gt; {
+                                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::OperationsBatch&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_prefix_ids&quot;</span>: <span class="ident">operation_prefix_ids</span>});
+                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedOperationAnnouncements</span>(<span class="ident">operation_prefix_ids</span>))).<span class="kw">await</span>;
                             }
                             <span class="ident">Message::Endorsements</span>(<span class="ident">endorsements</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::Endorsement&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>});
@@ -903,9 +903,9 @@
                                 }
                             }
                         },
-                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendOperationAnnouncements</span>(<span class="ident">operation_ids</span>)) =&gt; {
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::OperationsAnnouncement&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_ids</span>});
-                            <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="ident">operation_ids</span>
+                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendOperationAnnouncements</span>(<span class="ident">operation_prefix_ids</span>)) =&gt; {
+                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::OperationsAnnouncement&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_prefix_ids</span>});
+                            <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="ident">operation_prefix_ids</span>
                             .<span class="ident">into_iter</span>()
                             .<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>)
                             .<span class="ident">into_iter</span>()
@@ -915,13 +915,13 @@
                                 }
                             }
                         }
-                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::AskForOperations</span>(<span class="ident">operation_ids</span>)) =&gt; {
+                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::AskForOperations</span>(<span class="ident">operation_prefix_ids</span>)) =&gt; {
                             <span class="comment">//massa_trace!(&quot;node_worker.run_loop. send Message::AskForOperations&quot;, {&quot;node&quot;: self.node_id, &quot;operation_ids&quot;: operation_ids});</span>
                             <span class="macro">massa_trace!</span>(
                                 <span class="string">&quot;node_worker.run_loop. send Message::AskForOperations&quot;</span>,
-                                {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_ids</span>}
+                                {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_prefix_ids</span>}
                             );
-                            <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="ident">operation_ids</span>
+                            <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="ident">operation_prefix_ids</span>
                             .<span class="ident">into_iter</span>()
                             .<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>)
                             .<span class="ident">into_iter</span>()

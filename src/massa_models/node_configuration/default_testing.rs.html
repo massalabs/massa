@@ -211,6 +211,8 @@
 <span id="205">205</span>
 <span id="206">206</span>
 <span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES</span>
 <span class="doccomment">//! Same as default constants but in testing mode. You can access to them with</span>
 <span class="doccomment">//! the `testing` feature activated.</span>
@@ -338,6 +340,8 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NODE_SEND_CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1024</span>;
 <span class="doccomment">/// operation id size</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
+<span class="doccomment">/// operation id prefix size</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_ID_PREFIX_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">17</span>;
 <span class="doccomment">/// operation validity periods</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_VALIDITY_PERIODS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
 <span class="doccomment">/// periods per cycle</span>

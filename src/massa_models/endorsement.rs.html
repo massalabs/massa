@@ -494,7 +494,7 @@
             <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;blk&quot;</span>.<span class="ident">as_bytes</span>())),
         };
         <span class="kw">let</span> <span class="ident">endorsement</span>: <span class="ident">WrappedEndorsement</span> <span class="op">=</span> <span class="ident">Endorsement::new_wrapped</span>(
-            <span class="ident">content</span>.<span class="ident">clone</span>(),
+            <span class="ident">content</span>,
             <span class="ident">EndorsementSerializer::new</span>(),
             <span class="kw-2">&amp;</span><span class="ident">sender_priv</span>,
             <span class="kw-2">&amp;</span><span class="ident">public_key</span>,

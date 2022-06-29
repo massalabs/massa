@@ -238,7 +238,7 @@
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">node::NodeId</span>,
-    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
+    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">OperationPrefixIds</span>, <span class="ident">Operations</span>},
     <span class="ident">prehash::BuildMap</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolError</span>;
@@ -248,14 +248,14 @@
 
 <span class="doccomment">/// Structure containing a Batch of `operation_ids` we would like to ask</span>
 <span class="doccomment">/// to a `node_id` now or later. Mainly used in protocol and translated into</span>
-<span class="doccomment">/// simple combination of a `node_id` and `operations_ids`</span>
+<span class="doccomment">/// simple combination of a `node_id` and `operations_prefix_ids`</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OperationBatchItem</span> {
     <span class="doccomment">/// last updated at instant</span>
     <span class="kw">pub</span> <span class="ident">instant</span>: <span class="ident">Instant</span>,
     <span class="doccomment">/// node id</span>
     <span class="kw">pub</span> <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
-    <span class="doccomment">/// operation ids</span>
-    <span class="kw">pub</span> <span class="ident">operations_ids</span>: <span class="ident">OperationIds</span>,
+    <span class="doccomment">/// operation prefix ids</span>
+    <span class="kw">pub</span> <span class="ident">operations_prefix_ids</span>: <span class="ident">OperationPrefixIds</span>,
 }
 
 <span class="doccomment">/// Queue containing every `[OperationsBatchItem]` we want to ask now or later.</span>
@@ -284,13 +284,13 @@
     <span class="doccomment">///```</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_operations_announcements_received</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">op_batch</span>: <span class="ident">OperationIds</span>,
+        <span class="ident">op_batch</span>: <span class="ident">OperationPrefixIds</span>,
         <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ask_set</span> <span class="op">=</span>
-            <span class="ident">OperationIds::with_capacity_and_hasher</span>(<span class="ident">op_batch</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
+            <span class="ident">OperationPrefixIds::with_capacity_and_hasher</span>(<span class="ident">op_batch</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">future_set</span> <span class="op">=</span>
-            <span class="ident">OperationIds::with_capacity_and_hasher</span>(<span class="ident">op_batch</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
+            <span class="ident">OperationPrefixIds::with_capacity_and_hasher</span>(<span class="ident">op_batch</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
         <span class="comment">// exactitude isn&#39;t important, we want to have a now for that function call</span>
         <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">count_reask</span> <span class="op">=</span> <span class="number">0</span>;
@@ -324,7 +324,7 @@
                     <span class="ident">future_set</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>);
                 }
             } <span class="kw">else</span> {
-                <span class="ident">ask_set</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>);
+                <span class="ident">ask_set</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>.<span class="ident">clone</span>());
                 <span class="self">self</span>.<span class="ident">asked_operations</span>.<span class="ident">insert</span>(<span class="ident">op_id</span>, (<span class="ident">now</span>, <span class="macro">vec!</span>[<span class="ident">node_id</span>]));
             }
         } <span class="comment">// EndOf for op_id in op_batch:</span>
@@ -339,7 +339,7 @@
                     .<span class="ident">checked_add</span>(<span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">operation_batch_proc_period</span>.<span class="ident">into</span>())
                     .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>,
                 <span class="ident">node_id</span>,
-                <span class="ident">operations_ids</span>: <span class="ident">future_set</span>,
+                <span class="ident">operations_prefix_ids</span>: <span class="ident">future_set</span>,
             });
         }
         <span class="kw">if</span> <span class="op">!</span><span class="ident">ask_set</span>.<span class="ident">is_empty</span>() {
@@ -397,7 +397,7 @@
         {
             <span class="kw">let</span> <span class="ident">op_batch_item</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">op_batch_buffer</span>.<span class="ident">pop_front</span>().<span class="ident">unwrap</span>();
             <span class="self">self</span>.<span class="ident">on_operations_announcements_received</span>(
-                <span class="ident">op_batch_item</span>.<span class="ident">operations_ids</span>,
+                <span class="ident">op_batch_item</span>.<span class="ident">operations_prefix_ids</span>,
                 <span class="ident">op_batch_item</span>.<span class="ident">node_id</span>,
             )
             .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -416,22 +416,22 @@
     }
 
     <span class="doccomment">/// Process the reception of a batch of asked operations, that means that</span>
-    <span class="doccomment">/// we sent already a batch of ids in the network notifying that we already</span>
+    <span class="doccomment">/// we have already sent a batch of ids in the network, notifying that we already</span>
     <span class="doccomment">/// have those operations. Ask pool for the operations.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// See also `on_operation_results_from_pool`</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_asked_operations_received</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
-        <span class="ident">op_ids</span>: <span class="ident">OperationIds</span>,
+        <span class="ident">op_pre_ids</span>: <span class="ident">OperationPrefixIds</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operation_ids</span> <span class="op">=</span> <span class="ident">OperationIds::default</span>();
-        <span class="kw">for</span> <span class="ident">op_id</span> <span class="kw">in</span> <span class="ident">op_ids</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_operations</span>.<span class="ident">get</span>(<span class="ident">op_id</span>).<span class="ident">is_some</span>() {
-                <span class="ident">operation_ids</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">req_operation_ids</span> <span class="op">=</span> <span class="ident">OperationIds::default</span>();
+        <span class="kw">for</span> <span class="ident">prefix</span> <span class="kw">in</span> <span class="ident">op_pre_ids</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">op_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">checked_operations</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">prefix</span>) {
+                <span class="ident">req_operation_ids</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
             }
         }
-        <span class="kw">let</span> <span class="ident">found</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">find_operations</span>(<span class="ident">operation_ids</span>);
+        <span class="kw">let</span> <span class="ident">found</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">find_operations</span>(<span class="ident">req_operation_ids</span>);
         <span class="kw">if</span> <span class="op">!</span><span class="ident">found</span>.<span class="ident">is_empty</span>() {
             <span class="self">self</span>.<span class="ident">network_command_sender</span>
                 .<span class="ident">send_operations</span>(<span class="ident">node_id</span>, <span class="ident">found</span>)

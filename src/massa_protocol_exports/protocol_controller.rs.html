@@ -306,6 +306,10 @@
 <span id="300">300</span>
 <span id="301">301</span>
 <span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ProtocolError</span>;
@@ -402,7 +406,9 @@
     },
     <span class="doccomment">/// The response to a `[ProtocolEvent::GetBlocks]`.</span>
     <span class="ident">GetBlocksResults</span>(<span class="ident">BlocksResults</span>),
-    <span class="doccomment">/// Propagate operations ids (send batches)</span>
+    <span class="doccomment">/// Propagate operations (send batches)</span>
+    <span class="doccomment">/// note: OperationIds are replaced with OperationPrefixIds</span>
+    <span class="doccomment">///       by the controller</span>
     <span class="ident">PropagateOperations</span>(<span class="ident">OperationIds</span>),
     <span class="doccomment">/// Propagate endorsements</span>
     <span class="ident">PropagateEndorsements</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
@@ -484,7 +490,9 @@
             })
     }
 
-    <span class="doccomment">/// Propagate a batch of operation ids from pool.</span>
+    <span class="doccomment">/// Propagate a batch of operation ids (from pool).</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">propagate_operations</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">operation_ids</span>: <span class="ident">OperationIds</span>,

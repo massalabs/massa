@@ -87,6 +87,7 @@
 <span id="81">81</span>
 <span id="82">82</span>
 <span id="83">83</span>
+<span id="84">84</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! All the structures that are used everywhere</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
@@ -109,8 +110,9 @@
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::ModelsError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">operation</span>::{
-    <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationIdsDeserializer</span>, <span class="ident">OperationSerializer</span>, <span class="ident">OperationType</span>,
-    <span class="ident">WrappedOperation</span>,
+    <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationIdsDeserializer</span>, <span class="ident">OperationPrefixId</span>,
+    <span class="ident">OperationPrefixIdDeserializer</span>, <span class="ident">OperationPrefixIds</span>, <span class="ident">OperationPrefixIdsDeserializer</span>,
+    <span class="ident">OperationPrefixIdsSerializer</span>, <span class="ident">OperationSerializer</span>, <span class="ident">OperationType</span>, <span class="ident">WrappedOperation</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">serialization</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">u8_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeMinBEInt</span>, <span class="ident">DeserializeVarInt</span>,

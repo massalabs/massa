@@ -61,6 +61,8 @@
 <span id="55">55</span>
 <span id="56">56</span>
 <span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
@@ -111,6 +113,8 @@
     <span class="ident">AmountOverflowError</span>,
     <span class="doccomment">/// Wrong prefix for hash: expected {0}, got {1}</span>
     <span class="ident">WrongPrefix</span>(<span class="ident">String</span>, <span class="ident">String</span>),
+    <span class="doccomment">/// Wrong operation id size deduced on join</span>
+    <span class="ident">OperationPrefixJoinError</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">nom::Err</span><span class="op">&lt;</span><span class="ident">nom::error::Error</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ModelsError</span> {

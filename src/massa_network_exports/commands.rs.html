@@ -376,7 +376,7 @@
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">composite::PubkeySig</span>,
     <span class="ident">node::NodeId</span>,
-    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
+    <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">OperationPrefixIds</span>, <span class="ident">Operations</span>},
     <span class="ident">stats::NetworkStats</span>,
     <span class="ident">BlockId</span>, <span class="ident">WrappedBlock</span>, <span class="ident">WrappedEndorsement</span>, <span class="ident">WrappedHeader</span>,
 };
@@ -401,9 +401,9 @@
     <span class="doccomment">/// Send full Operations (send to a node that previously asked for)</span>
     <span class="ident">SendOperations</span>(<span class="ident">OperationIds</span>),
     <span class="doccomment">/// Send a batch of operation ids</span>
-    <span class="ident">SendOperationAnnouncements</span>(<span class="ident">OperationIds</span>),
+    <span class="ident">SendOperationAnnouncements</span>(<span class="ident">OperationPrefixIds</span>),
     <span class="doccomment">/// Ask for a set of operations</span>
-    <span class="ident">AskForOperations</span>(<span class="ident">OperationIds</span>),
+    <span class="ident">AskForOperations</span>(<span class="ident">OperationPrefixIds</span>),
     <span class="doccomment">/// Endorsements</span>
     <span class="ident">SendEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
 }
@@ -429,9 +429,9 @@
     <span class="doccomment">/// Received full operations.</span>
     <span class="ident">ReceivedOperations</span>(<span class="ident">Operations</span>),
     <span class="doccomment">/// Received an operation id batch announcing new operations</span>
-    <span class="ident">ReceivedOperationAnnouncements</span>(<span class="ident">OperationIds</span>),
+    <span class="ident">ReceivedOperationAnnouncements</span>(<span class="ident">OperationPrefixIds</span>),
     <span class="doccomment">/// Receive a list of wanted operations</span>
-    <span class="ident">ReceivedAskForOperations</span>(<span class="ident">OperationIds</span>),
+    <span class="ident">ReceivedAskForOperations</span>(<span class="ident">OperationPrefixIds</span>),
     <span class="doccomment">/// Receive a set of endorsement</span>
     <span class="ident">ReceivedEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>),
 }
@@ -514,14 +514,14 @@
         <span class="doccomment">/// to node id</span>
         <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
         <span class="doccomment">/// batch of operation ids</span>
-        <span class="ident">batch</span>: <span class="ident">OperationIds</span>,
+        <span class="ident">batch</span>: <span class="ident">OperationPrefixIds</span>,
     },
     <span class="doccomment">/// Ask for operation</span>
     <span class="ident">AskForOperations</span> {
         <span class="doccomment">/// to node id</span>
         <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
         <span class="doccomment">/// operation ids in the wish list</span>
-        <span class="ident">wishlist</span>: <span class="ident">OperationIds</span>,
+        <span class="ident">wishlist</span>: <span class="ident">OperationPrefixIds</span>,
     },
     <span class="doccomment">/// Whitelist a list of `IpAddr`</span>
     <span class="ident">Whitelist</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
@@ -576,15 +576,15 @@
     <span class="ident">ReceivedOperationAnnouncements</span> {
         <span class="doccomment">/// from node id</span>
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// operation ids</span>
-        <span class="ident">operation_ids</span>: <span class="ident">OperationIds</span>,
+        <span class="doccomment">/// operation prefix ids</span>
+        <span class="ident">operation_prefix_ids</span>: <span class="ident">OperationPrefixIds</span>,
     },
     <span class="doccomment">/// Receive a list of asked operations from `node`</span>
     <span class="ident">ReceiveAskForOperations</span> {
         <span class="doccomment">/// from node id</span>
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// operation ids</span>
-        <span class="ident">operation_ids</span>: <span class="ident">OperationIds</span>,
+        <span class="doccomment">/// operation prefix ids</span>
+        <span class="ident">operation_prefix_ids</span>: <span class="ident">OperationPrefixIds</span>,
     },
     <span class="doccomment">/// received endorsements from node</span>
     <span class="ident">ReceivedEndorsements</span> {
