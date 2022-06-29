@@ -32,7 +32,7 @@ use massa_models::{
 use massa_proof_of_stake_exports::{
     error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
 };
-use massa_signature::{derive_public_key, PublicKey};
+use massa_signature::PublicKey;
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -412,8 +412,7 @@ pub fn create_genesis_block(
     cfg: &GraphConfig,
     thread_number: u8,
 ) -> Result<(BlockId, WrappedBlock)> {
-    let private_key = cfg.genesis_key;
-    let public_key = derive_public_key(&private_key);
+    let keypair = cfg.genesis_key;
     let header = BlockHeader::new_wrapped(
         BlockHeader {
             slot: Slot::new(0, thread_number),
@@ -422,8 +421,7 @@ pub fn create_genesis_block(
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        &private_key,
-        &public_key,
+        &keypair
     )?;
 
     Ok((
@@ -434,8 +432,7 @@ pub fn create_genesis_block(
                 operations: Vec::new(),
             },
             BlockSerializer::new(),
-            &private_key,
-            &public_key,
+            &keypair
         )?,
     ))
 }

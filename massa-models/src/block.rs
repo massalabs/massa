@@ -14,7 +14,7 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::{PublicKey, Signature};
+use massa_signature::{PublicKey, Signature, KeyPair};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::error::context;
@@ -136,12 +136,12 @@ impl WrappedContent for Block {
     fn new_wrapped<SC: Serializer<Self>, U: Id>(
         content: Self,
         content_serializer: SC,
-        _private_key: &massa_signature::PrivateKey,
-        public_key: &massa_signature::PublicKey,
+        keypair: &KeyPair,
     ) -> Result<Wrapped<Self, U>, ModelsError> {
+        let public_key = keypair.get_public_key();
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
-        let creator_address = Address::from_public_key(public_key);
+        let creator_address = Address::from_public_key(&public_key);
 
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
@@ -149,7 +149,7 @@ impl WrappedContent for Block {
         let thread_count = THREAD_COUNT;
         Ok(Wrapped {
             signature: content.header.signature,
-            creator_public_key: *public_key,
+            creator_public_key: public_key,
             creator_address,
             thread: creator_address.get_thread(thread_count),
             id: U::new(content.header.id.hash()),

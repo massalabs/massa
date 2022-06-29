@@ -252,7 +252,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             assert_eq!(expected_hash, received_hash);
 
             // 4. Get the node banned.
-            // New private key/public key to avoid getting same block id
+            // New keypair to avoid getting same block id
             let pv_key = generate_random_private_key();
             let pb_key = derive_public_key(&pv_key);
             let mut block = tools::create_block(&pv_key, &pb_key);

@@ -12,7 +12,7 @@ use massa_models::{
     Address, Amount, BlockId, EndorsementId, Operation, OperationId, OperationType, Slot,
 };
 use massa_sdk::Client;
-use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_wallet::{Wallet, WalletError};
 use serde::Serialize;
@@ -80,10 +80,10 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PrivateKey1 PrivateKey2 ..."),
-        message = "add staking private keys"
+        props(args = "Key1 Key2 ..."),
+        message = "add staking keys"
     )]
-    node_add_staking_private_keys,
+    node_add_staking_keys,
 
     #[strum(
         ascii_case_insensitive,
@@ -151,22 +151,22 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        message = "show wallet info (private keys, public keys, addresses, balances ...)"
+        message = "show wallet info (keys, addresses, balances ...)"
     )]
     wallet_info,
 
     #[strum(
         ascii_case_insensitive,
-        message = "generate a private key and add it into the wallet"
+        message = "generate a key and add it into the wallet"
     )]
-    wallet_generate_private_key,
+    wallet_generate_key,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PrivateKey1 PrivateKey2 ..."),
-        message = "add a list of private keys to the wallet"
+        props(args = "Key1 Key2 ..."),
+        message = "add a list of keys to the wallet"
     )]
-    wallet_add_private_keys,
+    wallet_add_keys,
 
     #[strum(
         ascii_case_insensitive,
@@ -267,18 +267,16 @@ macro_rules! client_warning {
 /// TODO re-factor me
 #[derive(Debug, Serialize)]
 struct ExtendedWalletEntry {
-    /// the private key
-    pub private_key: PrivateKey,
-    /// corresponding pub key
-    pub public_key: PublicKey,
+    /// the keypair
+    pub keypair: KeyPair,
     /// address and balance information
     pub address_info: CompactAddressInfo,
 }
 
 impl Display for ExtendedWalletEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Private key: {}", self.private_key)?;
-        writeln!(f, "Public key: {}", self.public_key)?;
+        writeln!(f, "Private key: {}", self.keypair)?;
+        writeln!(f, "Public key: {}", self.keypair.get_public_key())?;
         writeln!(f, "{}", self.address_info)?;
         writeln!(f, "\n=====\n")?;
         Ok(())
@@ -297,15 +295,14 @@ impl ExtendedWallet {
             addresses_info
                 .iter()
                 .map(|x| {
-                    let &(public_key, private_key) = wallet
+                    let &keypair = wallet
                         .keys
                         .get(&x.address)
-                        .ok_or_else(|| anyhow!("missing private key"))?;
+                        .ok_or_else(|| anyhow!("missing key"))?;
                     Ok((
                         x.address,
                         ExtendedWalletEntry {
-                            private_key,
-                            public_key,
+                            keypair,
                             address_info: x.compact(),
                         },
                     ))
@@ -465,12 +462,12 @@ impl Command {
                 Ok(Box::new(()))
             }
 
-            Command::node_add_staking_private_keys => {
-                let private_keys = parse_vec::<PrivateKey>(parameters)?;
-                match client.private.add_staking_private_keys(private_keys).await {
+            Command::node_add_staking_keys => {
+                let keypairs = parse_vec::<KeyPair>(parameters)?;
+                match client.private.add_staking_keypairs(keypairs).await {
                     Ok(()) => {
                         if !json {
-                            println!("Private keys successfully added!")
+                            println!("Keys successfully added!")
                         }
                     }
                     Err(e) => rpc_error!(e),
@@ -581,7 +578,7 @@ impl Command {
 
             Command::wallet_info => {
                 if !json {
-                    client_warning!("do not share your private key");
+                    client_warning!("do not share your key");
                 }
                 match client
                     .public
@@ -595,29 +592,29 @@ impl Command {
                 }
             }
 
-            Command::wallet_generate_private_key => {
-                let key = generate_random_private_key();
-                let ad = wallet.add_private_key(key)?;
+            Command::wallet_generate_key => {
+                let key = KeyPair::generate();
+                let ad = wallet.add_keypair(key)?;
                 if json {
                     Ok(Box::new(ad.to_string()))
                 } else {
                     println!("Generated {} address and added it to the wallet", ad);
-                    println!("Type `node_add_staking_private_keys {}` to start staking with this private_key.\n",key);
+                    println!("Type `node_add_staking_keys {}` to start staking with this key.\n",key);
                     Ok(Box::new(()))
                 }
             }
 
-            Command::wallet_add_private_keys => {
-                let addresses = parse_vec::<PrivateKey>(parameters)?
+            Command::wallet_add_keys => {
+                let addresses = parse_vec::<KeyPair>(parameters)?
                     .into_iter()
-                    .map(|key| Ok((wallet.add_private_key(key)?, key)))
-                    .collect::<Result<HashMap<Address, PrivateKey>>>()?;
+                    .map(|key| Ok((wallet.add_keypair(key)?, key)))
+                    .collect::<Result<HashMap<Address, KeyPair>>>()?;
                 if json {
                     return Ok(Box::new(addresses.into_keys().collect::<Vec<Address>>()));
                 } else {
                     for (address, key) in addresses.iter() {
                         println!("Derived and added address {} to the wallet.", address);
-                        println!("Type `node_add_staking_private_keys {}` to start staking with this private_key.\n", key);
+                        println!("Type `node_add_staking_keys {}` to start staking with this key.\n", key);
                     }
                 }
                 Ok(Box::new(()))
@@ -1046,13 +1043,8 @@ async fn send_operation(
     if slot.thread >= addr.get_thread(cfg.thread_count) {
         expire_period += 1;
     };
-    let sender_public_key = match wallet.find_associated_public_key(addr) {
-        Some(pk) => *pk,
-        None => bail!("Missing public key"),
-    };
 
     let op = wallet.create_operation(
-        &sender_public_key,
         Operation {
             fee,
             expire_period,

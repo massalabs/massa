@@ -26,8 +26,8 @@ pub struct NetworkSettings {
     pub initial_peers_file: std::path::PathBuf,
     /// Path to the file containing known peers.
     pub peers_file: std::path::PathBuf,
-    /// Path to the file containing our private key
-    pub private_key_file: std::path::PathBuf,
+    /// Path to the file containing our keypair
+    pub keypair_file: std::path::PathBuf,
     /// Configuration for `PeerType` connections
     pub peer_types_config: EnumMap<PeerType, PeerTypeConnectionConfig>,
     /// Limit on the number of in connections per ip.

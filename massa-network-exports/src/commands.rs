@@ -186,7 +186,7 @@ pub enum NetworkCommand {
         /// endorsements
         endorsements: Vec<WrappedEndorsement>,
     },
-    /// sign message with our node private key (associated to node id)
+    /// sign message with our node keypair (associated to node id)
     /// != staking key
     NodeSignMessage {
         /// arbitrary message

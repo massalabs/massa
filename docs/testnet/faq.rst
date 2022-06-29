@@ -70,7 +70,7 @@ How to restart the Node?
 - Mac Os : ctrl + c for killing the process and
     :code:`cargo run --release > logs.txt 2>&1`
 
-How secure are the private keys?
+How secure are the keypairs ?
 --------------------------------
 
 Please note that the Testnet coins have NO VALUE. That being said, we are working on adding encryption on several levels before the Mainnet.
@@ -78,7 +78,7 @@ Please note that the Testnet coins have NO VALUE. That being said, we are workin
 The staking key file in the node folder and the wallet file in the client folder are currently not encrypted but it will come soon. Also, private API communication between the client and the node is not encrypted for now but it will be implemented before the Mainnet as well.
 
 Note that nodes don't know or trust each other, and they never exchange sensitive information, therefore cryptography is not required at that level.
-A handshake is performed at the connection with another peer. We sign random bytes that the peer sent us with our private key, and same on the other side. And data that is sent after that is signed by its creator, not the node that is sending it to us.
+A handshake is performed at the connection with another peer. We sign random bytes that the peer sent us with our keypair, and same on the other side. And data that is sent after that is signed by its creator, not the node that is sending it to us.
 During the bootstrap, the handshake is asymmetric. We know the public key of the bootstrap node and we expect signed messages from it, but we do not communicate our public key, nor we sign the only message we send (just random bytes).
 
 Balance and wallet
@@ -147,7 +147,7 @@ Diagnostic process:
 
   - if the list is empty or if none of the addresses listed matches addresses that have active rolls in `wallet_info`:
 
-    - call `node_add_staking_private_keys` with the private key matching an address that has non-zero active rolls in `wallet_info`
+    - call `node_add_staking_keys` with the keypair matching an address that has non-zero active rolls in `wallet_info`
 
 - check your address with the online explorer: if there is a mismatch between the number of active rolls displayed in the online interface and what is returned by `wallet_info`, it might be that your node is desynchronized. Try restarting it.
 
@@ -193,11 +193,11 @@ How can I migrate my node from one computer/provider to another and keep my scor
 ------------------------------------------------------------------------------------------------------------------------
 
 If you migrate your node from one computer/provider to another you
-should save the private key associated with the staking address that is
-registered. This private key is located in the `wallet.dat` file located
-in `massa-client` folder. You can also save your node private key
+should save the keypair associated with the staking address that is
+registered. This keypair is located in the `wallet.dat` file located
+in `massa-client` folder. You can also save your node keypair
 `node_privkey.key` located in the `massa-node/config` folder, if you
-don't then don't forget to register your new node private key to the
+don't then don't forget to register your new node keypair to the
 Discord bot.
 
 If your new node has a new IP address then you should not forget to

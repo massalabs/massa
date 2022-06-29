@@ -18,7 +18,7 @@ use massa_models::{
     SerializeMinBEInt,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{sign, PrivateKey};
+use massa_signature::KeyPair;
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -26,7 +26,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     size_field_len: usize,
-    local_privkey: PrivateKey,
+    local_keypair: KeyPair,
     duplex: Resource<Duplex, StandardClock>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
@@ -38,16 +38,16 @@ impl BootstrapServerBinder {
     ///
     /// # Argument
     /// * duplex: duplex stream.
-    /// * local_privkey: local node user private key
+    /// * local_keypair: local node user keypair
     /// * limit: limit max bytes per second (up and down)
-    pub fn new(duplex: Duplex, local_privkey: PrivateKey, limit: f64) -> Self {
+    pub fn new(duplex: Duplex, local_keypair: KeyPair, limit: f64) -> Self {
         let max_bootstrap_message_size =
             with_serialization_context(|context| context.max_bootstrap_message_size);
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
             size_field_len,
-            local_privkey,
+            local_keypair,
             duplex: <Limiter>::new(limit).limit(duplex),
             prev_message: None,
             version_serializer: VersionSerializer::new(),
@@ -101,10 +101,10 @@ impl BootstrapServerBinder {
                     Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_len as usize));
                 signed_data.extend(prev_message.to_bytes());
                 signed_data.extend(&msg_bytes);
-                sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+                self.local_keypair.sign(&Hash::compute_from(&signed_data))?
             } else {
                 // there was no previous message: sign(msg)
-                sign(&Hash::compute_from(&msg_bytes), &self.local_privkey)?
+                self.local_keypair.sign(&Hash::compute_from(&msg_bytes))?
             }
         };
 

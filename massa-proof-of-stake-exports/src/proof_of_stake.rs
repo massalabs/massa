@@ -8,7 +8,6 @@ use massa_models::{
     rolls::{RollCounts, RollUpdates},
     Address, Amount, BlockId, Slot, StakersCycleProductionStats,
 };
-use massa_signature::derive_public_key;
 use num::rational::Ratio;
 use rand::{distributions::Uniform, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -274,7 +273,7 @@ impl ProofOfStake {
         let cycle_last_period = (cycle + 1) * self.cfg.periods_per_cycle - 1;
         if cycle_first_period == 0 {
             // genesis slots: force block creator and endorsement creator address draw
-            let genesis_addr = Address::from_public_key(&derive_public_key(&self.cfg.genesis_key));
+            let genesis_addr = Address::from_public_key(&self.cfg.genesis_key.get_public_key());
             for draw_thread in 0..self.cfg.thread_count {
                 draws.insert(
                     Slot::new(0, draw_thread),

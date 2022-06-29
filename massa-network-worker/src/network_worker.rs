@@ -19,7 +19,7 @@ use massa_network_exports::{
     NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
     WriteHalf,
 };
-use massa_signature::{derive_public_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use std::{
     collections::{hash_map, HashMap, HashSet},
@@ -33,8 +33,8 @@ use tracing::{debug, trace, warn};
 pub struct NetworkWorker {
     /// Network configuration.
     cfg: NetworkSettings,
-    /// Our private key.
-    pub(crate) private_key: PrivateKey,
+    /// Our keypair.
+    pub(crate) keypair: KeyPair,
     /// Our node id.
     pub(crate) self_node_id: NodeId,
     /// Listener part of the establisher.
@@ -90,7 +90,7 @@ impl NetworkWorker {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         cfg: NetworkSettings,
-        private_key: PrivateKey,
+        keypair: KeyPair,
         listener: Listener,
         establisher: Establisher,
         peer_info_db: PeerInfoDatabase,
@@ -102,15 +102,14 @@ impl NetworkWorker {
         storage: Storage,
         version: Version,
     ) -> NetworkWorker {
-        let public_key = derive_public_key(&private_key);
-        let self_node_id = NodeId(public_key);
+        let self_node_id = NodeId(keypair.get_public_key());
 
         let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
         let max_wait_event = cfg.max_send_wait.to_duration();
         NetworkWorker {
             cfg,
             self_node_id,
-            private_key,
+            keypair,
             listener,
             establisher,
             peer_info_db,
@@ -750,7 +749,7 @@ impl NetworkWorker {
             reader,
             writer,
             self.self_node_id,
-            self.private_key,
+            self.keypair,
             self.cfg.connect_timeout,
             self.version,
             connection_id,

@@ -28,7 +28,7 @@ use tokio::{
 use tracing::{debug, error, info, warn};
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
-/// - generate public / private key
+/// - generate keypair
 /// - create `protocol_command/protocol_event` channels
 /// - launch `protocol_controller_fn` in an other task
 ///
@@ -175,7 +175,6 @@ impl ProtocolWorker {
     /// * `protocol_settings`: protocol configuration.
     /// * `operation_validity_periods`: operation validity periods
     /// * `max_block_gas`: max gas per block
-    /// * `self_node_id`: our private key.
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.

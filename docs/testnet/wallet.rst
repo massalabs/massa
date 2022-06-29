@@ -2,7 +2,7 @@
 Creating a Massa wallet
 =======================
 
-A Massa wallet is a file that contains a list of your private keys.
+A Massa wallet is a file that contains a list of your keypairs.
 
 Like other blockchains, Massa uses elliptic curve cryptography for the
 security of your coins (with `secp256k1`).
@@ -36,17 +36,17 @@ It loads the wallet file `wallet.dat`. If it does not exist, it is created.
 If your client is running
 -------------------------
 
-Now you can either generate a new private key (and associated public key/address):
+Now you can either generate a new keypair (and associated address):
 
 .. code-block::
 
-    wallet_generate_private_key
+    wallet_generate_key
 
-<u>**Or, if you already have one from a previous wallet**</u>, you can add manually an existing private key:
+<u>**Or, if you already have one from a previous wallet**</u>, you can add manually an existing keypair:
 
 .. code-block::
 
-    wallet_add_private_keys <your_private_key>
+    wallet_add_keys <your_key>
 
 The list of addresses and keys of your wallet can be accessed with:
 
@@ -63,7 +63,7 @@ create a wallet on the web interface: head to the
 
 Click `Generate private key` then `Add`.
 
-This generates a new random private key from your computer randomness
+This generates a new random keypair from your computer randomness
 which stays on your side, it is never transferred on the network.
 
 Now you can add more addresses or see the list of your addresses with

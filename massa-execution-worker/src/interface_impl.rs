@@ -369,7 +369,7 @@ impl Interface for InterfaceImpl {
             Err(_) => return Ok(false),
         };
         let h = massa_hash::Hash::compute_from(data);
-        Ok(massa_signature::verify_signature(&h, &signature, &public_key).is_ok())
+        Ok(public_key.verify_signature(&h, &signature).is_ok())
     }
 
     /// Transfer parallel coins from the current address (top of the call stack) towards a target address.

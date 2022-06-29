@@ -32,7 +32,7 @@ use massa_models::{
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
-use massa_signature::{derive_public_key, PrivateKey, PublicKey};
+use massa_signature::{PublicKey, KeyPair};
 use massa_time::MassaTime;
 use std::{cmp::max, collections::HashSet, collections::VecDeque};
 use tokio::{
@@ -64,7 +64,7 @@ pub struct ConsensusWorker {
     /// clock compensation
     clock_compensation: i64,
     /// staking keys
-    staking_keys: Map<Address, (PublicKey, PrivateKey)>,
+    staking_keys: Map<Address, KeyPair>,
     /// staking keys password
     password: String,
     /// stats `(block -> tx_count, creator)`
@@ -98,7 +98,7 @@ impl ConsensusWorker {
         block_db: BlockGraph,
         pos: ProofOfStake,
         clock_compensation: i64,
-        staking_keys: Map<Address, (PublicKey, PrivateKey)>,
+        staking_keys: Map<Address, KeyPair>,
         password: String,
     ) -> Result<ConsensusWorker> {
         let now = MassaTime::compensated_now(clock_compensation)?;
@@ -139,8 +139,7 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.new", {});
 
         // add genesis blocks to stats
-        let genesis_public_key = derive_public_key(&cfg.genesis_key);
-        let genesis_addr = Address::from_public_key(&genesis_public_key);
+        let genesis_addr = Address::from_public_key(&cfg.genesis_key.get_public_key());
         let mut final_block_stats = VecDeque::new();
         for thread in 0..cfg.thread_count {
             final_block_stats.push_back((
@@ -177,7 +176,7 @@ impl ConsensusWorker {
         );
 
         Ok(ConsensusWorker {
-            genesis_public_key,
+            genesis_public_key: cfg.genesis_key.get_public_key(),
             block_db,
             pos,
             previous_slot,
@@ -379,9 +378,9 @@ impl ConsensusWorker {
                     Err(err) => return Err(err.into()),
                 };
                 if let Some(addr) = block_draw {
-                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr).cloned() {
-                        massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": pub_k, "unlocked": true });
-                        self.create_block(cur_slot, &addr, &pub_k, &priv_k).await?;
+                    if let Some(key) = self.staking_keys.get(&addr).cloned() {
+                        massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": key.get_public_key(), "unlocked": true });
+                        self.create_block(cur_slot, &addr, &key).await?;
                         if let Some(next_addr_slot) =
                             self.pos.get_next_selected_slot(self.next_slot, addr)
                         {
@@ -447,8 +446,7 @@ impl ConsensusWorker {
         &mut self,
         cur_slot: Slot,
         creator_addr: &Address,
-        creator_public_key: &PublicKey,
-        creator_private_key: &PrivateKey,
+        creator_keypair: &KeyPair
     ) -> Result<()> {
         // get parents
         let parents = self.block_db.get_best_parents();
@@ -483,8 +481,7 @@ impl ConsensusWorker {
                 endorsements: endorsements.clone(),
             },
             BlockHeaderSerializer::new(),
-            creator_private_key,
-            creator_public_key,
+            creator_keypair
         )?;
         let block: WrappedBlock = Block::new_wrapped(
             Block {
@@ -492,8 +489,7 @@ impl ConsensusWorker {
                 operations: Vec::new(),
             },
             BlockSerializer::new(),
-            creator_private_key,
-            creator_public_key,
+            creator_keypair
         )?;
 
         // initialize remaining block space and remaining operation count
@@ -625,14 +621,12 @@ impl ConsensusWorker {
                 endorsements,
             },
             BlockHeaderSerializer::new(),
-            creator_private_key,
-            creator_public_key,
+            creator_keypair
         )?;
         let block = Block::new_wrapped(
             Block { header, operations },
             BlockSerializer::new(),
-            creator_private_key,
-            creator_public_key,
+            creator_keypair
         )?;
         let slot = block.content.header.content.slot;
         massa_trace!("create block", { "block": block });
@@ -891,12 +885,11 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
-            ConsensusCommand::RegisterStakingPrivateKeys(keys) => {
+            ConsensusCommand::RegisterStakingKeys(keys) => {
                 for key in keys.into_iter() {
-                    let public = derive_public_key(&key);
-                    let address = Address::from_public_key(&public);
+                    let address = Address::from_public_key(&key.get_public_key());
                     info!("Staking with address {}", address);
-                    self.staking_keys.insert(address, (public, key));
+                    self.staking_keys.insert(address, key);
                 }
                 self.pos
                     .set_watched_addresses(self.staking_keys.keys().copied().collect());
@@ -977,12 +970,7 @@ impl ConsensusWorker {
 
     /// Save the staking keys to a file
     async fn dump_staking_keys(&self) -> Result<()> {
-        let keys = self
-            .staking_keys
-            .iter()
-            .map(|(_, (_, key))| *key)
-            .collect::<Vec<_>>();
-        let json = serde_json::to_string_pretty(&keys)?;
+        let json = serde_json::to_string_pretty(&self.staking_keys)?;
         let encrypted_data = encrypt(&self.password, json.as_bytes())?;
         tokio::fs::write(self.cfg.staking_keys_path.clone(), encrypted_data).await?;
         Ok(())
@@ -1387,13 +1375,12 @@ impl ConsensusWorker {
                 // actually create endorsements
                 let mut endorsements = Map::default();
                 for (endorsement_index, addr) in endorsement_draws.into_iter().enumerate() {
-                    if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
+                    if let Some(key) = self.staking_keys.get(&addr) {
                         massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
-                            { "index": endorsement_index, "addr": addr, "pubkey": pub_k, "unlocked": true });
+                            { "index": endorsement_index, "addr": addr, "pubkey": key.get_public_key(), "unlocked": true });
                         let endorsement = create_endorsement(
                             block_slot,
-                            *pub_k,
-                            priv_k,
+                            key,
                             endorsement_index as u32,
                             block_id,
                         )?;
@@ -1434,8 +1421,7 @@ impl ConsensusWorker {
 /// should probably be moved to models (or fully deleted)
 pub fn create_endorsement(
     slot: Slot,
-    sender_public_key: PublicKey,
-    private_key: &PrivateKey,
+    keypair: &KeyPair,
     index: u32,
     endorsed_block: BlockId,
 ) -> Result<WrappedEndorsement> {
@@ -1447,8 +1433,7 @@ pub fn create_endorsement(
     let endorsement = Endorsement::new_wrapped(
         content,
         EndorsementSerializer::new(),
-        private_key,
-        &sender_public_key,
+        keypair
     )?;
     Ok(endorsement)
 }

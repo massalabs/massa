@@ -50,7 +50,7 @@ use massa_models::Amount;
 use massa_pool::PoolCommandSender;
 use massa_proof_of_stake_exports::ProofOfStakeConfig;
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
@@ -66,7 +66,7 @@ use crate::{
 /// Assumes `thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0`
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsensusSettings {
-    /// Staking private keys
+    /// Staking keys
     pub staking_keys_path: PathBuf,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
@@ -124,9 +124,9 @@ pub struct ConsensusConfig {
     pub thread_count: u8,
     /// Time between the periods in the same thread.
     pub t0: MassaTime,
-    /// `PrivateKey` to sign genesis blocks.
-    pub genesis_key: PrivateKey,
-    /// Staking private keys
+    /// `KeyPair` to sign genesis blocks.
+    pub genesis_key: KeyPair,
+    /// Staking keys
     pub staking_keys_path: PathBuf,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
@@ -626,8 +626,8 @@ impl ConsensusConfig {
     /// default consensus configuration
     pub fn default_with_paths() -> Self {
         use crate::tools::*;
-        let staking_keys: Vec<PrivateKey> = (0..1)
-            .map(|_| massa_signature::generate_random_private_key())
+        let staking_keys: Vec<KeyPair> = (0..1)
+            .map(|_| KeyPair::generate())
             .collect();
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
         let staking_file = generate_staking_keys_file(&staking_keys);
@@ -662,9 +662,9 @@ impl ConsensusConfig {
         }
     }
 
-    /// Default consensus configuration from staking private keys and ledger
+    /// Default consensus configuration from staking keys and ledger
     pub fn default_with_staking_keys_and_ledger(
-        staking_keys: &[PrivateKey],
+        staking_keys: &[KeyPair],
         ledger: &std::collections::HashMap<
             massa_models::Address,
             massa_models::ledger_models::LedgerData,

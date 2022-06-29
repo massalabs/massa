@@ -20,7 +20,7 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
 use massa_models::{Address, BlockId, EndorsementId, OperationId, WrappedOperation};
 use massa_network_exports::NetworkCommandSender;
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Private> {
@@ -72,9 +72,9 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn add_staking_private_keys(&self, keys: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>> {
+    fn add_staking_keys(&self, keys: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || Ok(cmd_sender.register_staking_private_keys(keys).await?);
+        let closure = async move || Ok(cmd_sender.register_staking_keys(keys).await?);
         Box::pin(closure())
     }
 

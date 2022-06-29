@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use massa_models::Amount;
-use massa_signature::PrivateKey;
 use num::rational::Ratio;
+use massa_signature::KeyPair;
 use serde::{Deserialize, Serialize};
 
 /// Proof of stake configuration
@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 pub struct ProofOfStakeConfig {
     /// Number of threads
     pub thread_count: u8,
-    /// `PrivateKey` to sign genesis blocks.
-    pub genesis_key: PrivateKey,
+    /// `KeyPair` to sign genesis blocks.
+    pub genesis_key: KeyPair,
     /// cycle duration in periods
     pub periods_per_cycle: u64,
     /// PoS look back cycles: when drawing for cycle N, we use the rolls from `cycle N - pos_lookback_cycles - 1`

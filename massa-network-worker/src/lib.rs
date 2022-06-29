@@ -17,7 +17,7 @@ use massa_network_exports::{
     BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkError, NetworkEvent,
     NetworkEventReceiver, NetworkManagementCommand, NetworkManager, NetworkSettings,
 };
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
@@ -51,7 +51,7 @@ pub async fn start_network_controller(
         NetworkCommandSender,
         NetworkEventReceiver,
         NetworkManager,
-        PrivateKey,
+        KeyPair,
         NodeId,
     ),
     NetworkError,
@@ -65,38 +65,37 @@ pub async fn start_network_controller(
         }
     }
 
-    // try to read node private key from file, otherwise generate it & write to file. Then derive nodeId
-    let private_key = if std::path::Path::is_file(&network_settings.private_key_file) {
+    // try to read node keypair from file, otherwise generate it & write to file. Then derive nodeId
+    let keypair = if std::path::Path::is_file(&network_settings.keypair_file) {
         // file exists: try to load it
-        let private_key_bs58_check = tokio::fs::read_to_string(&network_settings.private_key_file)
+        let private_key_bs58_check = tokio::fs::read_to_string(&network_settings.keypair_file)
             .await
             .map_err(|err| {
                 std::io::Error::new(
                     err.kind(),
-                    format!("could not load node private key file: {}", err),
+                    format!("could not load node key file: {}", err),
                 )
             })?;
-        PrivateKey::from_bs58_check(private_key_bs58_check.trim()).map_err(|err| {
+        KeyPair::from_bs58_check(private_key_bs58_check.trim()).map_err(|err| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("node private key file corrupted: {}", err),
+                format!("node key file corrupted: {}", err),
             )
         })?
     } else {
         // node file does not exist: generate the key and save it
-        let priv_key = generate_random_private_key();
+        let keypair = KeyPair::generate();
         if let Err(e) = tokio::fs::write(
-            &network_settings.private_key_file,
-            &priv_key.to_bs58_check(),
+            &network_settings.keypair_file,
+            &keypair.to_bs58_check(),
         )
         .await
         {
-            warn!("could not generate node private key file: {}", e);
+            warn!("could not generate node key file: {}", e);
         }
-        priv_key
+        keypair
     };
-    let public_key = derive_public_key(&private_key);
-    let self_node_id = NodeId(public_key);
+    let self_node_id = NodeId(keypair.get_public_key());
 
     info!("The node_id of this node is: {}", self_node_id);
     massa_trace!("self_node_id", { "node_id": self_node_id });
@@ -121,7 +120,7 @@ pub async fn start_network_controller(
     let join_handle = tokio::spawn(async move {
         let res = NetworkWorker::new(
             cfg_copy,
-            private_key,
+            keypair,
             listener,
             establisher,
             peer_info_db,
@@ -156,7 +155,7 @@ pub async fn start_network_controller(
             join_handle,
             manager_tx,
         },
-        private_key,
+        keypair,
         self_node_id,
     ))
 }

@@ -4,7 +4,7 @@ use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
 use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
-    sign, verify_signature, KeyPair, PublicKey, PublicKeyDeserializer, Signature,
+    KeyPair, PublicKey, PublicKeyDeserializer, Signature,
     SignatureDeserializer,
 };
 use nom::{
@@ -59,17 +59,18 @@ where
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
         let mut hash_data = Vec::new();
-        hash_data.extend(keypair.public_key.to_bytes());
+        let public_key = keypair.get_public_key();
+        hash_data.extend(public_key.to_bytes());
         hash_data.extend(content_serialized.clone());
         let hash = Hash::compute_from(&hash_data);
-        let creator_address = Address::from_public_key(&keypair.public_key);
+        let creator_address = Address::from_public_key(&public_key);
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]
         let thread_count = THREAD_COUNT;
         Ok(Wrapped {
-            signature: sign(&hash, keypair)?,
-            creator_public_key: keypair.public_key,
+            signature: keypair.sign(&hash)?,
+            creator_public_key: public_key,
             creator_address,
             thread: creator_address.get_thread(thread_count),
             content,
@@ -171,7 +172,7 @@ where
         hash_data.extend(self.creator_public_key.to_bytes());
         hash_data.extend(content_serialized.clone());
         let hash = Hash::compute_from(&hash_data);
-        Ok(verify_signature(&hash, &self.signature, public_key)?)
+        Ok(public_key.verify_signature(&hash, &self.signature)?)
     }
 }
 

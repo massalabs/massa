@@ -14,7 +14,7 @@
 //! A parallel file with the same constant definitions exist for the testing case.
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use crate::{Amount, Version};
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
@@ -53,8 +53,7 @@ lazy_static::lazy_static! {
         Some(1656626400000.into())
     };
     /// `PrivateKey` to sign genesis blocks.
-    pub static ref GENESIS_KEY: PrivateKey = "2Rmcp5w4MjcTQvPJeCV14UQf75XjKwDVJF14F2V1o5Kr3i9LZL"
-        .parse()
+    pub static ref GENESIS_KEY: KeyPair = KeyPair::from_bs58_check("2Rmcp5w4MjcTQvPJeCV14UQf75XjKwDVJF14F2V1o5Kr3i9LZL")
         .unwrap();
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);

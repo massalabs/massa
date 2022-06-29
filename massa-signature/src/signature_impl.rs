@@ -129,7 +129,7 @@ impl KeyPair {
             .map(Self)
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!(
-                    "private key bytes parsing error: {}",
+                    "keypair bytes parsing error: {}",
                     err
                 ))
             })
@@ -174,7 +174,7 @@ impl KeyPair {
             .into_vec()
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!(
-                    "private key bs58_check parsing error: {}",
+                    "keypair bs58_check parsing error: {}",
                     err
                 ))
             })
@@ -183,7 +183,7 @@ impl KeyPair {
                     secp256k1::KeyPair::from_seckey_slice(&SECP256K1, key.as_slice()).map_err(
                         |err| {
                             MassaSignatureError::ParsingError(format!(
-                                "private key bs58_check parsing error: {:?}",
+                                "keypair bs58_check parsing error: {:?}",
                                 err
                             ))
                         },
@@ -312,6 +312,16 @@ impl FromStr for PublicKey {
             }
         } else {
             PublicKey::from_bs58_check(s)
+        }
+    }
+}
+
+impl std::fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if cfg!(feature = "hash-prefix") {
+            write!(f, "{}-{}", PUBLIC_KEY_STRING_PREFIX, self.to_bs58_check())
+        } else {
+            write!(f, "{}", self.to_bs58_check())
         }
     }
 }
@@ -902,9 +912,9 @@ mod tests {
     #[serial]
     fn test_serde_private_key() {
         let keypair = KeyPair::generate();
-        let serialized = serde_json::to_string(&keypair).expect("could not serialize private key");
+        let serialized = serde_json::to_string(&keypair).expect("could not serialize keypair");
         let deserialized =
-            serde_json::from_str(&serialized).expect("could not deserialize private key");
+            serde_json::from_str(&serialized).expect("could not deserialize keypair");
         assert_eq!(keypair, deserialized);
     }
 
