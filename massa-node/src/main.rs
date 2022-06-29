@@ -184,7 +184,8 @@ async fn launch(
     .expect("could not start pool controller");
 
     // launch selector worker
-    let (selector_manager, selector_controller) = start_selector_worker(4096);
+    let (selector_manager, selector_controller) =
+        start_selector_worker(4096, SETTINGS.selector.clone());
 
     // launch execution module
     let execution_config = ExecutionConfig {

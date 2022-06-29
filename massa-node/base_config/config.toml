@@ -7,10 +7,10 @@
 [api]
     # max number of future periods considered during requests
     draw_lookahead_period_count = 10
-    # port on which the node API listens for admin and node management requests. Dangerous if publicly exposed.
+    # port on which the node API listens for admin and node management requests. Dangerous if icly exposed.
     bind_private = "127.0.0.1:33034"
-    # port on which the node API listens for public requests. Can be exposed to the Internet.
-    bind_public = "0.0.0.0:33035"
+    # port on which the node API listens for ic requests. Can be exposed to the Internet.
+    bind_ic = "0.0.0.0:33035"
     # max number of arguments per RPC call
     max_arguments = 128
 
@@ -216,3 +216,24 @@
     max_endorsement_count = 10000
     # max number of items returned per query
     max_item_return_count = 100
+
+# IMPORTANT TODO: UPDATE THIS
+[selector]
+    # number of running threads
+    thread_count = 32
+    # number of blocks in a cycle
+    blocks_in_cycle = 4096
+    # number of endorsement
+    endorsement_count = 10
+    # maximum number of computed draws by cycle we keep in cache
+    max_draw_cache = 10
+    # loopback cycles
+    lookback_cycles = 10
+    # number of periods per cycle
+    periods_per_cycle = 10
+    # private key to sign genesis blocks.
+    genesis_key = 10
+    # path to initial rolls
+    initial_rolls_path = 10
+    # initial seed
+    initial_draw_seed = 10

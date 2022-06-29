@@ -1,8 +1,21 @@
+use std::collections::{BTreeMap, VecDeque};
+
 use massa_models::Slot;
 
 use crate::{PoSChanges, PoSFinalState};
 
 impl PoSFinalState {
+    /// Create a PoSFinalState
+    pub fn new() -> Self {
+        PoSFinalState {
+            cycle_history: VecDeque::default(),
+            last_final_slot: Slot {
+                period: 0,
+                thread: 0,
+            },
+            deferred_credits: BTreeMap::default(),
+        }
+    }
     /// Finalizes changes at a slot S (cycle C):
     ///
     /// set self.last_final_slot = C
