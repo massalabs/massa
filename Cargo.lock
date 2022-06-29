@@ -1514,6 +1514,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "atty",
+ "bs58",
  "console",
  "dialoguer",
  "erased-serde",
@@ -1598,6 +1599,7 @@ dependencies = [
 name = "massa_api"
 version = "0.1.0"
 dependencies = [
+ "bs58",
  "displaydoc",
  "futures 0.3.21",
  "jsonrpc-core",
@@ -1610,6 +1612,7 @@ dependencies = [
  "massa_models",
  "massa_network_exports",
  "massa_pool",
+ "massa_serialization",
  "massa_signature",
  "massa_time",
  "serde 1.0.136",

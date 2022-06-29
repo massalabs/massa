@@ -11,10 +11,14 @@ use massa_execution_exports::{
 };
 use massa_graph::{DiscardReason, ExportBlockStatus};
 use massa_models::api::{
-    DatastoreEntryInput, DatastoreEntryOutput, ReadOnlyBytecodeExecution, ReadOnlyCall,
+    DatastoreEntryInput, DatastoreEntryOutput, OperationInput, ReadOnlyBytecodeExecution,
+    ReadOnlyCall,
 };
 use massa_models::execution::ReadOnlyResult;
-use massa_models::{Amount, WrappedOperation};
+use massa_models::operation::OperationDeserializer;
+use massa_models::wrapped::WrappedDeserializer;
+use massa_models::{Amount, ModelsError, WrappedOperation};
+use massa_serialization::{DeserializeError, Deserializer};
 
 use massa_models::{
     api::{
@@ -685,7 +689,7 @@ impl Endpoints for API<Public> {
 
     fn send_operations(
         &self,
-        ops: Vec<WrappedOperation>,
+        ops: Vec<OperationInput>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let api_cfg = self.0.api_settings;
@@ -693,9 +697,41 @@ impl Endpoints for API<Public> {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
+            let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new());
             let to_send = ops
                 .into_iter()
-                .map(|op| Ok((op.verify_integrity()?, op)))
+                .map(|op_input| {
+                    let mut op_serialized = Vec::new();
+                    op_serialized.extend(op_input.signature.to_bytes());
+                    op_serialized.extend(op_input.creator_public_key.to_bytes());
+                    op_serialized.extend(
+                        bs58::decode(op_input.serialized_content)
+                            .with_check(None)
+                            .into_vec()
+                            .map_err(|err| {
+                                ApiError::ModelsError(ModelsError::CheckedOperationError(format!(
+                                    "bs58 deserialization of content failed {}",
+                                    err
+                                )))
+                            })?,
+                    );
+                    let (rest, op): (&[u8], WrappedOperation) = operation_deserializer
+                        .deserialize::<DeserializeError>(&op_serialized)
+                        .map_err(|err| {
+                            ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
+                        })?;
+                    if rest.is_empty() {
+                        Ok(op)
+                    } else {
+                        Err(ApiError::ModelsError(ModelsError::DeserializeError(
+                            "There is data left after operation deserialization".to_owned(),
+                        )))
+                    }
+                })
+                .map(|op| match op {
+                    Ok(operation) => Ok((operation.verify_integrity()?, operation)),
+                    Err(e) => Err(e),
+                })
                 .collect::<Result<Map<OperationId, _>, ApiError>>()?;
             let ids = to_send.keys().copied().collect();
             cmd_sender.add_operations(to_send).await?;
