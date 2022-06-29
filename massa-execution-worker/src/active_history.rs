@@ -158,8 +158,9 @@ impl ActiveHistory {
     pub fn fetch_production_stats(&self, addr: &Address) -> Option<ProductionStats> {
         self.0
             .back()
-            .map(|v| {
-                v.state_changes
+            .map(|output| {
+                output
+                    .state_changes
                     .roll_state_changes
                     .production_stats
                     .get(addr)
