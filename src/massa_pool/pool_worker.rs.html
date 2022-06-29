@@ -362,12 +362,6 @@
 <span id="356">356</span>
 <span id="357">357</span>
 <span id="358">358</span>
-<span id="359">359</span>
-<span id="360">360</span>
-<span id="361">361</span>
-<span id="362">362</span>
-<span id="363">363</span>
-<span id="364">364</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::error::PoolError</span>;
@@ -722,16 +716,10 @@
                     <span class="self">self</span>.<span class="ident">endorsement_pool</span>.<span class="ident">add_endorsements</span>(<span class="ident">endorsements</span>)<span class="question-mark">?</span>;
                 }
             }
-            <span class="ident">ProtocolPoolEvent::GetOperations</span>((<span class="ident">node_id</span>, <span class="ident">operation_ids</span>)) =&gt; {
-                <span class="kw">let</span> <span class="ident">results</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">find_operations</span>(<span class="ident">operation_ids</span>);
-                <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
-                    .<span class="ident">send_get_operations_results</span>(<span class="ident">node_id</span>, <span class="ident">results</span>)
-                    .<span class="kw">await</span><span class="question-mark">?</span>;
-            }
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (2f3ddd9f5 2022-06-27)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (830880640 2022-06-28)" ></div>
 </body></html>

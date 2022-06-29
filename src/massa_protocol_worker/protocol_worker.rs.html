@@ -1514,6 +1514,9 @@
 <span id="1508">1508</span>
 <span id="1509">1509</span>
 <span id="1510">1510</span>
+<span id="1511">1511</span>
+<span id="1512">1512</span>
+<span id="1513">1513</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node_info::NodeInfo</span>, <span class="ident">worker_operations_impl::OperationBatchBuffer</span>};
@@ -1534,6 +1537,7 @@
     <span class="ident">ProtocolManagementCommand</span>, <span class="ident">ProtocolManager</span>, <span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolPoolEventReceiver</span>,
     <span class="ident">ProtocolSettings</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">massa_time::TimeError</span>;
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">tokio</span>::{
@@ -1561,6 +1565,7 @@
     <span class="ident">max_block_gas</span>: <span class="ident">u64</span>,
     <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
     <span class="ident">network_event_receiver</span>: <span class="ident">NetworkEventReceiver</span>,
+    <span class="ident">storage</span>: <span class="ident">Storage</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>
     (
         <span class="ident">ProtocolCommandSender</span>,
@@ -1591,6 +1596,7 @@
                 <span class="ident">controller_command_rx</span>,
                 <span class="ident">controller_manager_rx</span>,
             },
+            <span class="ident">storage</span>,
         )
         .<span class="ident">run_loop</span>()
         .<span class="kw">await</span>;
@@ -1666,6 +1672,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">asked_operations</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">Instant</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Buffer for operations that we want later</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">op_batch_buffer</span>: <span class="ident">OperationBatchBuffer</span>,
+    <span class="doccomment">/// Shared storage.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">storage</span>: <span class="ident">Storage</span>,
 }
 
 <span class="doccomment">/// channels used by the protocol worker</span>
@@ -1708,6 +1716,7 @@
             <span class="ident">controller_command_rx</span>,
             <span class="ident">controller_manager_rx</span>,
         }: <span class="ident">ProtocolWorkerChannels</span>,
+        <span class="ident">storage</span>: <span class="ident">Storage</span>,
     ) -&gt; <span class="ident">ProtocolWorker</span> {
         <span class="ident">ProtocolWorker</span> {
             <span class="ident">protocol_settings</span>,
@@ -1728,6 +1737,7 @@
             <span class="ident">op_batch_buffer</span>: <span class="ident">OperationBatchBuffer::with_capacity</span>(
                 <span class="ident">protocol_settings</span>.<span class="ident">operation_batch_buffer_capacity</span>,
             ),
+            <span class="ident">storage</span>,
         }
     }
 
@@ -2070,10 +2080,6 @@
                             .<span class="kw">await</span><span class="question-mark">?</span>;
                     }
                 }
-            }
-            <span class="ident">ProtocolCommand::GetOperationsResults</span>((<span class="ident">node_id</span>, <span class="ident">operations</span>)) =&gt; {
-                <span class="self">self</span>.<span class="ident">on_operation_results_from_pool</span>(<span class="ident">node_id</span>, <span class="ident">operations</span>)
-                    .<span class="kw">await</span><span class="question-mark">?</span>;
             }
         }
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.end&quot;</span>, {});
@@ -3025,5 +3031,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (2f3ddd9f5 2022-06-27)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (830880640 2022-06-28)" ></div>
 </body></html>

@@ -112,12 +112,21 @@
 <span id="106">106</span>
 <span id="107">107</span>
 <span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This crate is used to share blocks across the node</span>
 
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
+<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">WrappedBlock</span>, <span class="ident">WrappedOperation</span>};
 <span class="kw">use</span> <span class="ident">parking_lot::RwLock</span>;
 <span class="kw">use</span> <span class="ident">std::collections::hash_map::Entry</span>;
@@ -174,6 +183,15 @@
         }
     }
 
+    <span class="doccomment">/// Returns a set of operation ids that are found in storage.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_operations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">operations</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operations</span>.<span class="ident">read</span>();
+        <span class="ident">operation_ids</span>
+            .<span class="ident">into_iter</span>()
+            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">operations</span>.<span class="ident">contains_key</span>(<span class="ident">id</span>))
+            .<span class="ident">collect</span>()
+    }
+
     <span class="doccomment">/// Get a clone of the potentially stored operation.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">retrieve_operation</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">operation_id</span>: <span class="kw-2">&amp;</span><span class="ident">OperationId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">WrappedOperation</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;storage.storage.retrieve_operation&quot;</span>, {
@@ -221,5 +239,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_storage" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (2f3ddd9f5 2022-06-27)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_storage" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (830880640 2022-06-28)" ></div>
 </body></html>

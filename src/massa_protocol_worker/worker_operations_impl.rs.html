@@ -222,15 +222,6 @@
 <span id="216">216</span>
 <span id="217">217</span>
 <span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Implement the propagation algorithm written here [redirect to GitHub]</span>
@@ -250,8 +241,7 @@
     <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
     <span class="ident">prehash::BuildMap</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_network_exports::NetworkError</span>;
-<span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolError</span>, <span class="ident">ProtocolPoolEvent</span>};
+<span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolError</span>;
 <span class="kw">use</span> <span class="ident">massa_time::TimeError</span>;
 <span class="kw">use</span> <span class="ident">tokio::time</span>::{<span class="ident">sleep_until</span>, <span class="ident">Instant</span>, <span class="ident">Sleep</span>};
 <span class="kw">use</span> <span class="ident">tracing::warn</span>;
@@ -441,23 +431,15 @@
                 <span class="ident">operation_ids</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>);
             }
         }
-        <span class="self">self</span>.<span class="ident">send_protocol_pool_event</span>(<span class="ident">ProtocolPoolEvent::GetOperations</span>((<span class="ident">node_id</span>, <span class="ident">operation_ids</span>)))
-            .<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">found</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">find_operations</span>(<span class="ident">operation_ids</span>);
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">found</span>.<span class="ident">is_empty</span>() {
+            <span class="self">self</span>.<span class="ident">network_command_sender</span>
+                .<span class="ident">send_operations</span>(<span class="ident">node_id</span>, <span class="ident">found</span>)
+                .<span class="kw">await</span><span class="question-mark">?</span>;
+        }
         <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Pool send us the operations we previously asked for</span>
-    <span class="doccomment">/// Function called on</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_operation_results_from_pool</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
-        <span class="ident">operations</span>: <span class="ident">OperationIds</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">network_command_sender</span>
-            .<span class="ident">send_operations</span>(<span class="ident">node_id</span>, <span class="ident">operations</span>)
-            .<span class="kw">await</span>
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (2f3ddd9f5 2022-06-27)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (830880640 2022-06-28)" ></div>
 </body></html>
