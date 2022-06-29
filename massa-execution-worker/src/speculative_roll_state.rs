@@ -2,7 +2,8 @@
 
 use std::sync::Arc;
 
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_final_state::FinalState;
+use massa_models::{Address, Amount, Slot};
 use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
 
@@ -11,11 +12,16 @@ use crate::active_history::ActiveHistory;
 /// Speculative state of the rolls
 #[allow(dead_code)]
 pub(crate) struct SpeculativeRollState {
-    /// Selector used to feed_cycle and get_selection
-    selector: Box<dyn SelectorController>,
+    /// Thread-safe shared access to the final state. For reading only.
+    final_state: Arc<RwLock<FinalState>>,
+
     /// History of the outputs of recently executed slots.
     /// Slots should be consecutive, newest at the back.
     active_history: Arc<RwLock<ActiveHistory>>,
+
+    /// Selector used to feed_cycle and get_selection
+    selector: Box<dyn SelectorController>,
+
     /// List of changes to the state after settling roll sell/buy
     added_changes: PoSChanges,
 }
@@ -27,12 +33,14 @@ impl SpeculativeRollState {
     /// * `selector`: PoS draws selector controller
     /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
-        selector: Box<dyn SelectorController>,
+        final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        selector: Box<dyn SelectorController>,
     ) -> Self {
         SpeculativeRollState {
-            selector,
+            final_state,
             active_history,
+            selector,
             added_changes: Default::default(),
         }
     }
@@ -89,9 +97,13 @@ impl SpeculativeRollState {
                     .unwrap_or_default(),
             );
         *count = count.saturating_sub(roll_count);
-        let mut a: Map<Address, Amount> = Map::default();
-        a.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
-        let _b = self.added_changes.deferred_credits.entry(slot).or_insert(a);
+        let credits = self.added_changes.deferred_credits.entry(slot).or_insert(
+            self.active_history
+                .read()
+                .fetch_all_deferred_credits_at(&slot),
+            // NOTE: update deferred credits
+        );
+        credits.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
     }
 
     /// Update the production stats
