@@ -7,10 +7,10 @@ use massa_models::{
     node::NodeId,
     operation::OperationIds,
     prehash::{Map, Set},
-    Slot,
+    Slot, WrappedBlock,
 };
 use massa_models::{
-    Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
+    BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;
@@ -19,16 +19,13 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::debug;
 
 /// Possible types of events that can happen.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize)]
 pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
-        /// corresponding Id.
-        block_id: BlockId,
         /// corresponding block
-        block: Block,
-        /// The serialized form of the block
-        serialized: Vec<u8>,
+        block: WrappedBlock,
         /// the slot
         slot: Slot,
         /// operations in the block by (index, validity end period)
@@ -41,7 +38,7 @@ pub enum ProtocolEvent {
         /// its id
         block_id: BlockId,
         /// The header
-        header: SignedHeader,
+        header: WrappedHeader,
     },
     /// Ask for a list of blocks from consensus.
     GetBlocks(Vec<BlockId>),
@@ -52,14 +49,14 @@ pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
         /// the operations
-        operations: Map<OperationId, (SignedOperation, Vec<u8>)>,
+        operations: Map<OperationId, WrappedOperation>,
         /// whether or not to propagate operations
         propagate: bool,
     },
     /// Endorsements were received
     ReceivedEndorsements {
         /// the endorsements
-        endorsements: Map<EndorsementId, SignedEndorsement>,
+        endorsements: Map<EndorsementId, WrappedEndorsement>,
         /// whether or not to propagate endorsements
         propagate: bool,
     },
@@ -107,7 +104,7 @@ pub enum ProtocolCommand {
     ///       by the controller
     PropagateOperations(OperationIds),
     /// Propagate endorsements
-    PropagateEndorsements(Map<EndorsementId, SignedEndorsement>),
+    PropagateEndorsements(Map<EndorsementId, WrappedEndorsement>),
 }
 
 /// protocol management commands
@@ -224,7 +221,7 @@ impl ProtocolCommandSender {
     /// propagate endorsements to connected node
     pub async fn propagate_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, SignedEndorsement>,
+        endorsements: Map<EndorsementId, WrappedEndorsement>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
             "endorsements": endorsements

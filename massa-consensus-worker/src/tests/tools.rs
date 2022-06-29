@@ -6,17 +6,22 @@ use super::{
     mock_protocol_controller::MockProtocolController,
 };
 use crate::start_consensus_controller;
+
+use massa_cipher::decrypt;
+use massa_consensus_exports::{error::ConsensusResult, tools::TEST_PASSWORD};
 use massa_consensus_exports::{
     settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig, ConsensusEventReceiver,
 };
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
 use massa_hash::Hash;
+use massa_models::prehash::Map;
 use massa_models::{
     prehash::Set,
-    signed::{Signable, Signed},
-    Address, Amount, Block, BlockHeader, BlockId, Endorsement, Operation, OperationType,
-    SerializeCompact, SignedEndorsement, SignedOperation, Slot,
+    wrapped::{Id, WrappedContent},
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
+    Endorsement, EndorsementSerializer, Operation, OperationSerializer, OperationType, Slot,
+    WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -24,7 +29,7 @@ use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use std::{collections::HashSet, future::Future};
+use std::{collections::HashSet, future::Future, path::Path};
 use std::{
     str::FromStr,
     sync::{Arc, Mutex},
@@ -292,29 +297,30 @@ pub async fn create_and_test_block(
     trace: bool,
     creator: PrivateKey,
 ) -> BlockId {
-    let (block_hash, block, _) = create_block(cfg, slot, best_parents, creator);
+    let (block, _) = create_block(cfg, slot, best_parents, creator);
+    let block_id = block.id;
     if trace {
-        info!("create block:{}", block_hash);
+        info!("create block:{}", block.id);
     }
 
     protocol_controller.receive_block(block).await;
     if valid {
         // Assert that the block is propagated.
-        validate_propagate_block(protocol_controller, block_hash, 2000).await;
+        validate_propagate_block(protocol_controller, block_id, 2000).await;
     } else {
         // Assert that the the block is not propagated.
-        validate_notpropagate_block(protocol_controller, block_hash, 500).await;
+        validate_notpropagate_block(protocol_controller, block_id, 500).await;
     }
-    block_hash
+    block_id
 }
 
 pub async fn propagate_block(
     protocol_controller: &mut MockProtocolController,
-    block: Block,
+    block: WrappedBlock,
     valid: bool,
     timeout_ms: u64,
 ) -> BlockId {
-    let block_hash = block.header.content.compute_id().unwrap();
+    let block_hash = block.id;
     protocol_controller.receive_block(block).await;
     if valid {
         // see if the block is propagated.
@@ -333,7 +339,7 @@ pub fn create_roll_transaction(
     buy: bool,
     expire_period: u64,
     fee: u64,
-) -> SignedOperation {
+) -> WrappedOperation {
     let op = if buy {
         OperationType::RollBuy { roll_count }
     } else {
@@ -341,12 +347,17 @@ pub fn create_roll_transaction(
     };
 
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Signed::new_signed(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 pub async fn wait_pool_slot(
@@ -377,19 +388,24 @@ pub fn create_transaction(
     amount: u64,
     expire_period: u64,
     fee: u64,
-) -> SignedOperation {
+) -> WrappedOperation {
     let op = OperationType::Transaction {
         recipient_address,
         amount: Amount::from_str(&amount.to_string()).unwrap(),
     };
 
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Signed::new_signed(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -402,7 +418,7 @@ pub fn create_executesc(
     max_gas: u64,
     coins: u64,
     gas_price: u64,
-) -> SignedOperation {
+) -> WrappedOperation {
     let op = OperationType::ExecuteSC {
         data,
         max_gas,
@@ -411,12 +427,17 @@ pub fn create_executesc(
     };
 
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Signed::new_signed(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 pub fn create_roll_buy(
@@ -424,16 +445,21 @@ pub fn create_roll_buy(
     roll_count: u64,
     expire_period: u64,
     fee: u64,
-) -> SignedOperation {
+) -> WrappedOperation {
     let op = OperationType::RollBuy { roll_count };
     let sender_public_key = derive_public_key(&priv_key);
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Signed::new_signed(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 pub fn create_roll_sell(
@@ -441,16 +467,21 @@ pub fn create_roll_sell(
     roll_count: u64,
     expire_period: u64,
     fee: u64,
-) -> SignedOperation {
+) -> WrappedOperation {
     let op = OperationType::RollSell { roll_count };
     let sender_public_key = derive_public_key(&priv_key);
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Signed::new_signed(content, &priv_key).unwrap().1
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 // returns hash and resulting discarded blocks
@@ -459,7 +490,7 @@ pub fn create_block(
     slot: Slot,
     best_parents: Vec<BlockId>,
     creator: PrivateKey,
-) -> (BlockId, Block, PrivateKey) {
+) -> (WrappedBlock, PrivateKey) {
     create_block_with_merkle_root(
         cfg,
         Hash::compute_from("default_val".as_bytes()),
@@ -476,26 +507,33 @@ pub fn create_block_with_merkle_root(
     slot: Slot,
     best_parents: Vec<BlockId>,
     creator: PrivateKey,
-) -> (BlockId, Block, PrivateKey) {
+) -> (WrappedBlock, PrivateKey) {
     let public_key = derive_public_key(&creator);
-    let (hash, header) = Signed::new_signed(
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: public_key,
             slot,
             parents: best_parents,
             operation_merkle_root,
             endorsements: Vec::new(),
         },
+        BlockHeaderSerializer::new(),
         &creator,
+        &public_key,
     )
     .unwrap();
 
-    let block = Block {
-        header,
-        operations: Vec::new(),
-    };
+    let block = Block::new_wrapped(
+        Block {
+            header,
+            operations: Vec::new(),
+        },
+        BlockSerializer::new(),
+        &creator,
+        &public_key,
+    )
+    .unwrap();
 
-    (hash, block, creator)
+    (block, creator)
 }
 
 /// Creates an endorsement for use in consensus tests.
@@ -504,60 +542,70 @@ pub fn create_endorsement(
     slot: Slot,
     endorsed_block: BlockId,
     index: u32,
-) -> SignedEndorsement {
+) -> WrappedEndorsement {
     let sender_public_key = derive_public_key(&sender_priv);
 
     let content = Endorsement {
-        sender_public_key,
         slot,
         index,
         endorsed_block,
     };
-    Signed::new_signed(content, &sender_priv).unwrap().1
+    Endorsement::new_wrapped(
+        content,
+        EndorsementSerializer::new(),
+        &sender_priv,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 pub fn get_export_active_test_block(
     creator: PublicKey,
     parents: Vec<(BlockId, u64)>,
-    operations: Vec<SignedOperation>,
+    operations: Vec<WrappedOperation>,
     slot: Slot,
     is_final: bool,
-) -> (BlockId, ExportActiveBlock) {
-    let block = Block {
-        header: Signed::new_signed(
-            BlockHeader {
-                creator,
-                operation_merkle_root: Hash::compute_from(
-                    &operations
-                        .iter()
-                        .flat_map(|op| op.content.compute_id().unwrap().into_bytes())
-                        .collect::<Vec<_>>()[..],
-                ),
-                parents: parents.iter().map(|(id, _)| *id).collect(),
-                slot,
-                endorsements: Vec::new(),
-            },
-            &generate_random_private_key(),
-        )
-        .unwrap()
-        .1,
-        operations: operations.clone(),
-    };
-    let id = block.header.content.compute_id().unwrap();
-    (
-        id,
-        ExportActiveBlock {
-            parents,
-            dependencies: Default::default(),
-            block: block,
-            block_id: id,
-            children: vec![Default::default(), Default::default()],
-            is_final,
-            block_ledger_changes: Default::default(),
-            roll_updates: Default::default(),
-            production_events: vec![],
+) -> ExportActiveBlock {
+    let private_key = &generate_random_private_key();
+    let public_key = creator;
+    let block = Block::new_wrapped(
+        Block {
+            header: BlockHeader::new_wrapped(
+                BlockHeader {
+                    operation_merkle_root: Hash::compute_from(
+                        &operations
+                            .iter()
+                            .flat_map(|op| op.id.into_bytes())
+                            .collect::<Vec<_>>()[..],
+                    ),
+                    parents: parents.iter().map(|(id, _)| *id).collect(),
+                    slot,
+                    endorsements: Vec::new(),
+                },
+                BlockHeaderSerializer::new(),
+                &private_key,
+                &public_key,
+            )
+            .unwrap(),
+            operations: operations.clone(),
         },
+        BlockSerializer::new(),
+        &private_key,
+        &public_key,
     )
+    .unwrap();
+
+    ExportActiveBlock {
+        parents,
+        dependencies: Default::default(),
+        block: block.clone(),
+        block_id: block.id,
+        children: vec![Default::default(), Default::default()],
+        is_final,
+        block_ledger_changes: Default::default(),
+        roll_updates: Default::default(),
+        production_events: vec![],
+    }
 }
 
 pub fn create_block_with_operations(
@@ -565,31 +613,38 @@ pub fn create_block_with_operations(
     slot: Slot,
     best_parents: &Vec<BlockId>,
     creator: PrivateKey,
-    operations: Vec<SignedOperation>,
-) -> (BlockId, Block, PrivateKey) {
+    operations: Vec<WrappedOperation>,
+) -> (WrappedBlock, PrivateKey) {
     let public_key = derive_public_key(&creator);
 
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.to_bytes_compact().unwrap()].concat()
+            [acc, v.id.hash().to_bytes().to_vec()].concat()
         })[..],
     );
 
-    let (hash, header) = Signed::new_signed(
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: public_key,
             slot,
             parents: best_parents.clone(),
             operation_merkle_root,
             endorsements: Vec::new(),
         },
+        BlockHeaderSerializer::new(),
         &creator,
+        &public_key,
     )
     .unwrap();
 
-    let block = Block { header, operations };
+    let block = Block::new_wrapped(
+        Block { header, operations },
+        BlockSerializer::new(),
+        &creator,
+        &public_key,
+    )
+    .unwrap();
 
-    (hash, block, creator)
+    (block, creator)
 }
 
 pub fn create_block_with_operations_and_endorsements(
@@ -597,32 +652,39 @@ pub fn create_block_with_operations_and_endorsements(
     slot: Slot,
     best_parents: &Vec<BlockId>,
     creator: PrivateKey,
-    operations: Vec<SignedOperation>,
-    endorsements: Vec<SignedEndorsement>,
-) -> (BlockId, Block, PrivateKey) {
+    operations: Vec<WrappedOperation>,
+    endorsements: Vec<WrappedEndorsement>,
+) -> (WrappedBlock, PrivateKey) {
     let public_key = derive_public_key(&creator);
 
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.to_bytes_compact().unwrap()].concat()
+            [acc, v.id.hash().to_bytes().to_vec()].concat()
         })[..],
     );
 
-    let (hash, header) = Signed::new_signed(
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: public_key,
             slot,
             parents: best_parents.clone(),
             operation_merkle_root,
             endorsements,
         },
+        BlockHeaderSerializer::new(),
         &creator,
+        &public_key,
     )
     .unwrap();
 
-    let block = Block { header, operations };
+    let block = Block::new_wrapped(
+        Block { header, operations },
+        BlockSerializer::new(),
+        &creator,
+        &public_key,
+    )
+    .unwrap();
 
-    (hash, block, creator)
+    (block, creator)
 }
 
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateKey {
@@ -634,6 +696,26 @@ pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateK
         }
     }
     panic!("Matching key for draw not found.");
+}
+
+/// Load staking keys from file and derive public keys and addresses
+pub async fn load_initial_staking_keys(
+    path: &Path,
+    password: &str,
+) -> ConsensusResult<Map<Address, (PublicKey, PrivateKey)>> {
+    if !std::path::Path::is_file(path) {
+        return Ok(Map::default());
+    }
+    serde_json::from_slice::<Vec<PrivateKey>>(&decrypt(password, &tokio::fs::read(path).await?)?)?
+        .iter()
+        .map(|private_key| {
+            let public_key = derive_public_key(private_key);
+            Ok((
+                Address::from_public_key(&public_key),
+                (public_key, *private_key),
+            ))
+        })
+        .collect()
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.
@@ -660,12 +742,8 @@ pub async fn consensus_pool_test<F, V>(
 {
     let storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
-        for (block_id, export_block) in &graph.active_blocks {
-            let serialized_block = export_block
-                .block
-                .to_bytes_compact()
-                .expect("Fail to serialize block");
-            storage.store_block(*block_id, export_block.block.clone(), serialized_block);
+        for (_, export_block) in &graph.active_blocks {
+            storage.store_block(export_block.block.clone());
         }
     }
     // mock protocol & pool
@@ -682,6 +760,7 @@ pub async fn consensus_pool_test<F, V>(
         }
     });
     // launch consensus controller
+    let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -695,6 +774,10 @@ pub async fn consensus_pool_test<F, V>(
             boot_graph,
             storage.clone(),
             0,
+            password.clone(),
+            load_initial_staking_keys(&cfg.staking_keys_path, &password)
+                .await
+                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -753,12 +836,8 @@ pub async fn consensus_pool_test_with_storage<F, V>(
 {
     let storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
-        for (block_id, export_block) in &graph.active_blocks {
-            let serialized_block = export_block
-                .block
-                .to_bytes_compact()
-                .expect("Fail to serialize block");
-            storage.store_block(*block_id, export_block.block.clone(), serialized_block);
+        for (_, export_block) in &graph.active_blocks {
+            storage.store_block(export_block.block.clone());
         }
     }
     // mock protocol & pool
@@ -775,6 +854,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         }
     });
     // launch consensus controller
+    let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -788,6 +868,10 @@ pub async fn consensus_pool_test_with_storage<F, V>(
             boot_graph,
             storage.clone(),
             0,
+            password.clone(),
+            load_initial_staking_keys(&cfg.staking_keys_path, &password)
+                .await
+                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -839,7 +923,7 @@ where
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
+    // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
@@ -850,6 +934,7 @@ where
     });
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     // launch consensus controller
+    let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -863,6 +948,10 @@ where
             None,
             storage.clone(),
             0,
+            password.clone(),
+            load_initial_staking_keys(&cfg.staking_keys_path, &password)
+                .await
+                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -917,6 +1006,7 @@ where
     });
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     // launch consensus controller
+    let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -930,6 +1020,10 @@ where
             None,
             storage.clone(),
             0,
+            password.clone(),
+            load_initial_staking_keys(&cfg.staking_keys_path, &password)
+                .await
+                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");

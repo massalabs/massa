@@ -17,7 +17,7 @@ use std::str::FromStr;
 /// while providing a convenient decimal interface for users
 /// The underlying `u64` raw representation if a fixed-point value with factor `AMOUNT_DECIMAL_FACTOR`
 /// The minimal value is 0 and the maximal value is 18446744073.709551615
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
 impl Amount {
@@ -141,6 +141,13 @@ impl fmt::Display for Amount {
     }
 }
 
+/// Use display impl in debug to get the decimal representation
+impl fmt::Debug for Amount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
 /// build an Amount from decimal string form (like "10.33")
 /// note that this will fail if the string format is invalid
 /// or if the conversion would cause an overflow, underflow or precision loss
@@ -189,10 +196,16 @@ pub struct AmountSerializer {
 
 impl AmountSerializer {
     /// Create a new `AmountSerializer`
-    pub fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
+    pub fn new() -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::new(min_amount, max_amount),
+            u64_serializer: U64VarIntSerializer::new(),
         }
+    }
+}
+
+impl Default for AmountSerializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -204,7 +217,7 @@ impl Serializer<Amount> for AmountSerializer {
     /// use std::ops::Bound::Included;
     ///
     /// let amount = Amount::from_str("11.111").unwrap();
-    /// let serializer = AmountSerializer::new(Included(0), Included(u64::MAX));
+    /// let serializer = AmountSerializer::new();
     /// let mut serialized = vec![];
     /// serializer.serialize(&amount, &mut serialized).unwrap();
     /// ```
@@ -235,7 +248,7 @@ impl Deserializer<Amount> for AmountDeserializer {
     /// use std::ops::Bound::Included;
     ///
     /// let amount = Amount::from_str("11.111").unwrap();
-    /// let serializer = AmountSerializer::new(Included(0), Included(u64::MAX));
+    /// let serializer = AmountSerializer::new();
     /// let deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));
     /// let mut serialized = vec![];
     /// serializer.serialize(&amount, &mut serialized).unwrap();

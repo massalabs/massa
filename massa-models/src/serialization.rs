@@ -9,11 +9,11 @@ use massa_serialization::{
 use nom::bytes::complete::take;
 use nom::multi::length_data;
 use nom::sequence::preceded;
-use nom::Parser;
 use nom::{
     error::{context, ContextError, ParseError},
     IResult,
 };
+use nom::{Parser, ToUsize};
 use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
@@ -356,10 +356,16 @@ pub struct VecU8Serializer {
 
 impl VecU8Serializer {
     /// Creates a new `VecU8Serializer`
-    pub fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
+    pub fn new() -> Self {
         Self {
-            len_serializer: U64VarIntSerializer::new(min_length, max_length),
+            len_serializer: U64VarIntSerializer::new(),
         }
+    }
+}
+
+impl Default for VecU8Serializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -371,7 +377,7 @@ impl Serializer<Vec<u8>> for VecU8Serializer {
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut buffer = Vec::new();
-    /// let serializer = VecU8Serializer::new(Included(0), Included(1000000));
+    /// let serializer = VecU8Serializer::new();
     /// serializer.serialize(&vec, &mut buffer).unwrap();
     /// ```
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
@@ -406,7 +412,7 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut serialized = Vec::new();
-    /// let serializer = VecU8Serializer::new(Included(0), Included(1000000));
+    /// let serializer = VecU8Serializer::new();
     /// let deserializer = VecU8Deserializer::new(Included(0), Included(1000000));
     /// serializer.serialize(&vec, &mut serialized).unwrap();
     /// let (rest, vec_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
@@ -425,6 +431,100 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
     }
 }
 
+/// Serializer for `String` with generic serializer for the size of the string
+pub struct StringSerializer<SL, L>
+where
+    SL: Serializer<L>,
+    L: TryFrom<usize>,
+{
+    length_serializer: SL,
+    marker_l: std::marker::PhantomData<L>,
+}
+
+impl<SL, L> StringSerializer<SL, L>
+where
+    SL: Serializer<L>,
+    L: TryFrom<usize>,
+{
+    /// Creates a `StringSerializer`.
+    ///
+    /// # Arguments:
+    /// - `length_serializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
+    pub fn new(length_serializer: SL) -> Self {
+        Self {
+            length_serializer,
+            marker_l: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<SL, L> Serializer<String> for StringSerializer<SL, L>
+where
+    SL: Serializer<L>,
+    L: TryFrom<usize>,
+{
+    fn serialize(&self, value: &String, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.length_serializer.serialize(
+            &value.len().try_into().map_err(|_| {
+                SerializeError::StringTooBig("The string is too big to be serialized".to_string())
+            })?,
+            buffer,
+        )?;
+        buffer.extend(value.as_bytes());
+        Ok(())
+    }
+}
+
+/// Deserializer for `String` with generic deserializer for the size of the string
+pub struct StringDeserializer<DL, L>
+where
+    DL: Deserializer<L>,
+    L: TryFrom<usize> + ToUsize,
+{
+    length_deserializer: DL,
+    marker_l: std::marker::PhantomData<L>,
+}
+
+impl<DL, L> StringDeserializer<DL, L>
+where
+    DL: Deserializer<L>,
+    L: TryFrom<usize> + ToUsize,
+{
+    /// Creates a `StringDeserializer`.
+    ///
+    /// # Arguments:
+    /// - `length_deserializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
+    pub fn new(length_deserializer: DL) -> Self {
+        Self {
+            length_deserializer,
+            marker_l: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<DL, L> Deserializer<String> for StringDeserializer<DL, L>
+where
+    DL: Deserializer<L>,
+    L: TryFrom<usize> + ToUsize,
+{
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], String, E> {
+        let (rest, res) = length_data(|input| self.length_deserializer.deserialize(input))
+            .map(|data| {
+                String::from_utf8(data.to_vec()).map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        data,
+                        nom::error::ErrorKind::Verify,
+                    ))
+                })
+            })
+            .parse(buffer)?;
+        Ok((rest, res?))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -435,7 +535,7 @@ mod tests {
     #[serial]
     fn vec_u8() {
         let vec: Vec<u8> = vec![9, 8, 7];
-        let vec_u8_serializer = VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX));
+        let vec_u8_serializer = VecU8Serializer::new();
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let mut serialized = Vec::new();
         vec_u8_serializer.serialize(&vec, &mut serialized).unwrap();
@@ -452,7 +552,7 @@ mod tests {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 10;
         let mut serialized = Vec::new();
-        U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+        U64VarIntSerializer::new()
             .serialize(&len, &mut serialized)
             .unwrap();
         serialized.extend(vec);
@@ -468,7 +568,7 @@ mod tests {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 1;
         let mut serialized = Vec::new();
-        U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+        U64VarIntSerializer::new()
             .serialize(&len, &mut serialized)
             .unwrap();
         serialized.extend(vec);

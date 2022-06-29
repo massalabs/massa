@@ -83,7 +83,7 @@ impl RollUpdateSerializer {
     /// Creates a new `RollUpdateSerializer`
     pub fn new() -> Self {
         RollUpdateSerializer {
-            u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }

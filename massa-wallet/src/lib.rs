@@ -5,12 +5,15 @@
 #![warn(unused_crate_dependencies)]
 
 pub use error::WalletError;
+
+use massa_cipher::{decrypt, encrypt};
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
+use massa_models::operation::OperationSerializer;
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signed;
-use massa_models::{Operation, SignedOperation};
+use massa_models::wrapped::WrappedContent;
+use massa_models::{Operation, WrappedOperation};
 use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -22,29 +25,40 @@ mod error;
 pub struct Wallet {
     /// Private keys and derived public keys and addresses
     pub keys: Map<Address, (PublicKey, PrivateKey)>,
-    /// Path to the file containing the private keys (not encrypted)
+    /// Path to the file containing the private keys (encrypted)
     pub wallet_path: PathBuf,
+    /// Password
+    pub password: String,
 }
 
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
-    pub fn new(path: PathBuf) -> Result<Wallet, WalletError> {
-        let keys = if path.is_file() {
-            serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(&path)?)?
-        } else {
-            Vec::new()
-        };
-        let keys = keys
-            .iter()
-            .map(|key| {
-                let pub_key = derive_public_key(key);
-                Ok((Address::from_public_key(&pub_key), (pub_key, *key)))
+    pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
+        if path.is_file() {
+            let content = &std::fs::read(&path)?[..];
+            let decrypted_content = decrypt(&password, content)?;
+            let priv_keys = serde_json::from_slice::<Vec<PrivateKey>>(&decrypted_content[..])?;
+            let keys: Result<Map<Address, (PublicKey, PrivateKey)>, WalletError> = priv_keys
+                .iter()
+                .map(|priv_key| {
+                    let pub_key = derive_public_key(priv_key);
+                    Ok((Address::from_public_key(&pub_key), (pub_key, *priv_key)))
+                })
+                .collect();
+            Ok(Wallet {
+                keys: keys?,
+                wallet_path: path,
+                password,
             })
-            .collect::<Result<Map<Address, _>, WalletError>>()?;
-        Ok(Wallet {
-            keys,
-            wallet_path: path,
-        })
+        } else {
+            let wallet = Wallet {
+                keys: Map::default(),
+                wallet_path: path,
+                password,
+            };
+            wallet.save()?;
+            Ok(wallet)
+        }
     }
 
     /// Sign arbitrary message with the associated private key
@@ -112,12 +126,15 @@ impl Wallet {
     /// Save the wallet in json format in a file
     /// Only the private keys are dumped
     fn save(&self) -> Result<(), WalletError> {
-        std::fs::write(
-            &self.wallet_path,
-            serde_json::to_string_pretty(
-                &self.keys.iter().map(|(_, (_, pk))| *pk).collect::<Vec<_>>(),
-            )?,
+        let ser_keys = serde_json::to_string(
+            &self
+                .keys
+                .iter()
+                .map(|(_, (_, private_key))| *private_key)
+                .collect::<Vec<_>>(),
         )?;
+        let encrypted_content = encrypt(&self.password, ser_keys.as_bytes())?;
+        std::fs::write(&self.wallet_path, encrypted_content)?;
         Ok(())
     }
 
@@ -129,13 +146,17 @@ impl Wallet {
     /// Signs an operation with the private key corresponding to the given address
     pub fn create_operation(
         &self,
+        public_key: &PublicKey,
         content: Operation,
         address: Address,
-    ) -> Result<SignedOperation, WalletError> {
+    ) -> Result<WrappedOperation, WalletError> {
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;
-        Ok(Signed::new_signed(content, sender_priv).unwrap().1)
+        Ok(
+            Operation::new_wrapped(content, OperationSerializer::new(), sender_priv, public_key)
+                .unwrap(),
+        )
     }
 }
 

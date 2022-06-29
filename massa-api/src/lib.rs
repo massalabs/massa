@@ -22,7 +22,7 @@ use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
-use massa_models::{Address, BlockId, EndorsementId, SignedOperation, Version};
+use massa_models::{Address, BlockId, EndorsementId, Version, WrappedOperation};
 use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
@@ -247,7 +247,7 @@ pub trait Endpoints {
     #[rpc(name = "send_operations")]
     fn send_operations(
         &self,
-        _: Vec<SignedOperation>,
+        _: Vec<WrappedOperation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
 
     /// Get events optionally filtered by:

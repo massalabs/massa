@@ -11,9 +11,10 @@ use crate::NetworkSettings;
 
 use massa_hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::signed::Signed;
+use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, BlockId, Operation, OperationType, SerializeCompact, SignedOperation, Version,
+    Address, Amount, BlockId, Operation, OperationSerializer, OperationType, SerializeCompact,
+    Version, WrappedOperation,
 };
 use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
 use massa_network_exports::{
@@ -90,6 +91,8 @@ pub async fn full_connection_to_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
+        f64::INFINITY,
+        f64::INFINITY,
     )
     .await
     .expect("handshake creation failed")
@@ -140,7 +143,6 @@ pub async fn rejected_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-
     let result = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
@@ -149,6 +151,8 @@ pub async fn rejected_connection_to_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
+        f64::INFINITY,
+        f64::INFINITY,
     )
     .await
     .expect("handshake creation failed")
@@ -233,6 +237,8 @@ pub async fn full_connection_from_controller(
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
+        f64::INFINITY,
+        f64::INFINITY,
     )
     .await
     .expect("handshake creation failed")
@@ -323,7 +329,7 @@ pub async fn incoming_message_drain_stop(
     join_handle.await.expect("could not join message drain")
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
+pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
     let sender_priv = generate_random_private_key();
     let sender_pub = derive_public_key(&sender_priv);
 
@@ -337,14 +343,16 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
     let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
-        sender_public_key: sender_pub,
         expire_period,
     };
 
-    (
-        Signed::new_signed(content, &sender_priv).unwrap().1,
-        Address::from_public_key(&sender_pub).get_thread(2),
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &sender_priv,
+        &sender_pub,
     )
+    .unwrap()
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.

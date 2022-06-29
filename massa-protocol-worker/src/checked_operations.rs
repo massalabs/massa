@@ -38,6 +38,6 @@ impl CheckedOperations {
 
     #[inline(always)]
     pub fn contains(&self, prefix: &OperationPrefixId) -> bool {
-        self.0.contains_key(&prefix)
+        self.0.contains_key(prefix)
     }
 }

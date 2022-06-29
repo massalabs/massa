@@ -57,6 +57,7 @@ impl HandshakeWorker {
     /// * `timeout_duration`: after `timeout_duration` milliseconds, the handshake attempt is dropped.
     /// * `connection_id`: Node we are trying to connect for debugging
     /// * `version`: Node version used in handshake initialization (check peers compatibility)
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn(
         socket_reader: ReadHalf,
         socket_writer: WriteHalf,
@@ -65,6 +66,8 @@ impl HandshakeWorker {
         timeout_duration: MassaTime,
         version: Version,
         connection_id: ConnectionId,
+        max_bytes_read: f64,
+        max_bytes_write: f64,
     ) -> JoinHandle<(ConnectionId, HandshakeReturnType)> {
         debug!("starting handshake with connection_id={}", connection_id);
         massa_trace!("network_worker.new_connection", {
@@ -76,8 +79,8 @@ impl HandshakeWorker {
             (
                 connection_id_copy,
                 HandshakeWorker {
-                    reader: ReadBinder::new(socket_reader),
-                    writer: WriteBinder::new(socket_writer),
+                    reader: ReadBinder::new(socket_reader, max_bytes_read),
+                    writer: WriteBinder::new(socket_writer, max_bytes_write),
                     self_node_id,
                     private_key,
                     timeout_duration,
@@ -120,7 +123,7 @@ impl HandshakeWorker {
             Err(_) => throw!(HandshakeTimeout),
             Ok(Err(e)) => return Err(e),
             Ok(Ok((_, None))) => throw!(HandshakeInterruption, "init".into()),
-            Ok(Ok((_, Some((_, msg, _))))) => match msg {
+            Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeInitiation {
                     public_key: pk,
                     random_bytes: rb,
@@ -165,7 +168,7 @@ impl HandshakeWorker {
             Err(_) => throw!(HandshakeTimeout),
             Ok(Err(e)) => return Err(e),
             Ok(Ok((_, None))) => throw!(HandshakeInterruption, "repl".into()),
-            Ok(Ok((_, Some((_, msg, _))))) => match msg {
+            Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeReply { signature: sig } => sig,
                 _ => throw!(HandshakeWrongMessage),
             },

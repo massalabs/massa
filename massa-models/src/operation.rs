@@ -1,25 +1,37 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
+use crate::constants::OPERATION_ID_SIZE_BYTES;
+use crate::node_configuration::MAX_OPERATIONS_PER_MESSAGE;
 use crate::node_configuration::OPERATION_ID_PREFIX_SIZE_BYTES;
-use crate::prehash::{BuildMap, PreHashed, Set};
-use crate::signed::{Id, Signable, Signed};
-use crate::with_serialization_context;
+use crate::prehash::{PreHashed, Set};
+use crate::serialization::StringDeserializer;
+
+use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
+use crate::{Address, Amount, ModelsError};
 use crate::{
-    serialization::{
-        array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
-    },
-    Address, Amount, ModelsError,
+    AddressDeserializer, AmountDeserializer, AmountSerializer, StringSerializer, VecU8Deserializer,
+    VecU8Serializer,
 };
-use massa_hash::Hash;
-use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
+use massa_hash::{Hash, HashDeserializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::error::context;
+use nom::multi::length_count;
+use nom::sequence::tuple;
 use nom::AsBytes;
+use nom::Parser;
+use nom::{
+    error::{ContextError, ParseError},
+    IResult,
+};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::mem::transmute;
-use std::{ops::RangeInclusive, str::FromStr};
+use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 
 const OPERATION_ID_STRING_PREFIX: &str = "OPE";
 
@@ -120,14 +132,13 @@ impl Id for OperationId {
     fn new(hash: Hash) -> Self {
         OperationId(hash)
     }
+
+    fn hash(&self) -> Hash {
+        self.0
+    }
 }
 
 impl PreHashed for OperationPrefixId {}
-impl Id for OperationPrefixId {
-    fn new(hash: Hash) -> Self {
-        OperationId(hash).into_prefix()
-    }
-}
 
 impl From<&[u8; OPERATION_ID_PREFIX_SIZE_BYTES]> for OperationPrefixId {
     /// get prefix of the operation id of size [OPERATION_ID_PREFIX_SIZE_BIT]
@@ -181,7 +192,7 @@ impl OperationId {
         let bytes = self.0.to_bytes();
         let data: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES] = unsafe {
             transmute::<&[u8; OPERATION_ID_SIZE_BYTES], &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]>(
-                &bytes,
+                bytes,
             )
         };
         OperationPrefixId(*data)
@@ -201,8 +212,6 @@ enum OperationTypeId {
 /// the operation as sent in the network
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
-    /// the operation creator public key
-    pub sender_public_key: PublicKey,
     /// the fee they have decided for this operation
     pub fee: Amount,
     /// after `expire_period` slot the operation won't be included in a block
@@ -213,7 +222,6 @@ pub struct Operation {
 
 impl std::fmt::Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Sender public key: {}", self.sender_public_key)?;
         writeln!(f, "Fee: {}", self.fee)?;
         writeln!(f, "Expire period: {}", self.expire_period)?;
         writeln!(f, "Operation type: {}", self.op)?;
@@ -221,10 +229,97 @@ impl std::fmt::Display for Operation {
     }
 }
 
-impl Signable<OperationId> for Operation {}
-
 /// signed operation
-pub type SignedOperation = Signed<Operation, OperationId>;
+pub type WrappedOperation = Wrapped<Operation, OperationId>;
+
+impl WrappedContent for Operation {}
+
+/// Serializer for `Operation`
+pub struct OperationSerializer {
+    u64_serializer: U64VarIntSerializer,
+    amount_serializer: AmountSerializer,
+    op_type_serializer: OperationTypeSerializer,
+}
+
+impl OperationSerializer {
+    /// Creates a new `OperationSerializer`
+    pub fn new() -> Self {
+        Self {
+            u64_serializer: U64VarIntSerializer::new(),
+            amount_serializer: AmountSerializer::new(),
+            op_type_serializer: OperationTypeSerializer::new(),
+        }
+    }
+}
+
+impl Default for OperationSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<Operation> for OperationSerializer {
+    fn serialize(&self, value: &Operation, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.amount_serializer.serialize(&value.fee, buffer)?;
+        self.u64_serializer
+            .serialize(&value.expire_period, buffer)?;
+        self.op_type_serializer.serialize(&value.op, buffer)?;
+        Ok(())
+    }
+}
+
+/// Serializer for `Operation`
+pub struct OperationDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    amount_deserializer: AmountDeserializer,
+    op_type_deserializer: OperationTypeDeserializer,
+}
+
+impl OperationDeserializer {
+    /// Creates a `OperationDeserializer`
+    pub fn new() -> Self {
+        Self {
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
+            op_type_deserializer: OperationTypeDeserializer::new(),
+        }
+    }
+}
+
+impl Default for OperationDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<Operation> for OperationDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Operation, E> {
+        context(
+            "Failed Operation deserialization",
+            tuple((
+                context("Failed fee deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed expire_period deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed op deserialization", |input| {
+                    let (rest, op) = self.op_type_deserializer.deserialize(input)?;
+                    Ok((rest, op))
+                }),
+            )),
+        )
+        .map(|(fee, expire_period, op)| Operation {
+            fee,
+            expire_period,
+            op,
+        })
+        .parse(buffer)
+    }
+}
 
 /// Type specific operation content
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -330,38 +425,57 @@ impl std::fmt::Display for OperationType {
     }
 }
 
-/// Checks performed:
-/// - Validity of the amount.
-impl SerializeCompact for OperationType {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-        match self {
+/// Serializer for `OperationType`
+pub struct OperationTypeSerializer {
+    u32_serializer: U32VarIntSerializer,
+    u64_serializer: U64VarIntSerializer,
+    vec_u8_serializer: VecU8Serializer,
+    amount_serializer: AmountSerializer,
+    function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
+    parameter_serializer: StringSerializer<U16VarIntSerializer, u16>,
+}
+
+impl OperationTypeSerializer {
+    /// Creates a new `OperationTypeSerializer`
+    pub fn new() -> Self {
+        Self {
+            u32_serializer: U32VarIntSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(),
+            amount_serializer: AmountSerializer::new(),
+            function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
+            parameter_serializer: StringSerializer::new(U16VarIntSerializer::new()),
+        }
+    }
+}
+
+impl Default for OperationTypeSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<OperationType> for OperationTypeSerializer {
+    fn serialize(&self, value: &OperationType, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        match value {
             OperationType::Transaction {
                 recipient_address,
                 amount,
             } => {
-                // type id
-                res.extend(u32::from(OperationTypeId::Transaction).to_varint_bytes());
-
-                // recipient_address
-                res.extend(recipient_address.to_bytes());
-
-                // amount
-                res.extend(&amount.to_bytes_compact()?);
+                self.u32_serializer
+                    .serialize(&u32::from(OperationTypeId::Transaction), buffer)?;
+                buffer.extend(recipient_address.to_bytes());
+                self.amount_serializer.serialize(amount, buffer)?;
             }
             OperationType::RollBuy { roll_count } => {
-                // type id
-                res.extend(u32::from(OperationTypeId::RollBuy).to_varint_bytes());
-
-                // roll_count
-                res.extend(&roll_count.to_varint_bytes());
+                self.u32_serializer
+                    .serialize(&u32::from(OperationTypeId::RollBuy), buffer)?;
+                self.u64_serializer.serialize(roll_count, buffer)?;
             }
             OperationType::RollSell { roll_count } => {
-                // type id
-                res.extend(u32::from(OperationTypeId::RollSell).to_varint_bytes());
-
-                // roll_count
-                res.extend(&roll_count.to_varint_bytes());
+                self.u32_serializer
+                    .serialize(&u32::from(OperationTypeId::RollSell), buffer)?;
+                self.u64_serializer.serialize(roll_count, buffer)?;
             }
             OperationType::ExecuteSC {
                 data,
@@ -369,307 +483,215 @@ impl SerializeCompact for OperationType {
                 coins,
                 gas_price,
             } => {
-                // type id
-                res.extend(u32::from(OperationTypeId::ExecuteSC).to_varint_bytes());
-
-                // Max gas.
-                res.extend(max_gas.to_varint_bytes());
-
-                // Coins.
-                res.extend(&coins.to_bytes_compact()?);
-
-                // Gas price.
-                res.extend(&gas_price.to_bytes_compact()?);
-
-                // Contract data length
-                let data_len: u32 = data.len().try_into().map_err(|_| {
-                    ModelsError::SerializeError("ExecuteSC data length does not fit in u32".into())
-                })?;
-                res.extend(&data_len.to_varint_bytes());
-
-                // Contract data
-                res.extend(data);
+                self.u32_serializer
+                    .serialize(&u32::from(OperationTypeId::ExecuteSC), buffer)?;
+                self.u64_serializer.serialize(max_gas, buffer)?;
+                self.amount_serializer.serialize(coins, buffer)?;
+                self.amount_serializer.serialize(gas_price, buffer)?;
+                self.vec_u8_serializer.serialize(data, buffer)?;
             }
             OperationType::CallSC {
-                max_gas,
-                parallel_coins,
-                sequential_coins,
-                gas_price,
                 target_addr,
                 target_func,
                 param,
+                max_gas,
+                sequential_coins,
+                parallel_coins,
+                gas_price,
             } => {
-                // type id
-                res.extend(u32::from(OperationTypeId::CallSC).to_varint_bytes());
-
-                // Max gas.
-                res.extend(max_gas.to_varint_bytes());
-
-                // Parallel coins
-                res.extend(&parallel_coins.to_bytes_compact()?);
-
-                // Sequential coins
-                res.extend(&sequential_coins.to_bytes_compact()?);
-
-                // Gas price.
-                res.extend(&gas_price.to_bytes_compact()?);
-
-                // Target address
-                res.extend(target_addr.to_bytes());
-
-                // Target function name
-                let func_name_bytes = target_func.as_bytes();
-                let func_name_len: u8 = func_name_bytes.len().try_into().map_err(|_| {
-                    ModelsError::SerializeError(
-                        "CallSC target function name length does not fit in u8".into(),
-                    )
-                })?;
-                res.push(func_name_len);
-                res.extend(func_name_bytes);
-
-                // Parameter
-                let param_bytes = param.as_bytes();
-                let param_len: u16 = param_bytes.len().try_into().map_err(|_| {
-                    ModelsError::SerializeError(
-                        "CallSC parameter length does not fit in u16".into(),
-                    )
-                })?;
-                res.extend(param_len.to_varint_bytes());
-                res.extend(param_bytes);
+                self.u32_serializer
+                    .serialize(&u32::from(OperationTypeId::CallSC), buffer)?;
+                self.u64_serializer.serialize(max_gas, buffer)?;
+                self.amount_serializer.serialize(parallel_coins, buffer)?;
+                self.amount_serializer.serialize(sequential_coins, buffer)?;
+                self.amount_serializer.serialize(gas_price, buffer)?;
+                buffer.extend(target_addr.to_bytes());
+                self.function_name_serializer
+                    .serialize(target_func, buffer)?;
+                self.parameter_serializer.serialize(param, buffer)?;
             }
         }
-        Ok(res)
+        Ok(())
     }
 }
 
-/// Checks performed:
-/// - Validity of the type id.
-/// - Validity of the address(for transactions).
-/// - Validity of the amount(for transactions).
-/// - Validity of the roll count(for roll buy/sell).
-impl DeserializeCompact for OperationType {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0;
+/// Serializer for `OperationType`
+pub struct OperationTypeDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+    address_deserializer: AddressDeserializer,
+    vec_u8_deserializer: VecU8Deserializer,
+    amount_deserializer: AmountDeserializer,
+    function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
+    parameter_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
+}
 
-        // type id
-        let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
+impl OperationTypeDeserializer {
+    /// Creates a new `OperationTypeDeserializer`
+    pub fn new() -> Self {
+        Self {
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            address_deserializer: AddressDeserializer::new(),
+            vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
+            function_name_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
+                Included(0),
+                Included(u16::MAX),
+            )),
+            parameter_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
+                Included(0),
+                Included(u16::MAX),
+            )),
+        }
+    }
+}
 
-        let type_id: OperationTypeId = type_id_raw
-            .try_into()
-            .map_err(|_| ModelsError::DeserializeError("invalid operation type ID".into()))?;
+impl Default for OperationTypeDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-        let res = match type_id {
-            OperationTypeId::Transaction => {
-                // recipient_address
-                let recipient_address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-                cursor += ADDRESS_SIZE_BYTES;
-
-                // amount
-                let (amount, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                OperationType::Transaction {
+impl Deserializer<OperationType> for OperationTypeDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], OperationType, E> {
+        context("Failed OperationType deserialization", |buffer| {
+            let (input, id) = self.u32_deserializer.deserialize(buffer)?;
+            let id = OperationTypeId::try_from(id).map_err(|_| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    buffer,
+                    nom::error::ErrorKind::Eof,
+                ))
+            })?;
+            match id {
+                OperationTypeId::Transaction => context(
+                    "Failed Transaction deserialization",
+                    tuple((
+                        context("Failed recipient_address deserialization", |input| {
+                            self.address_deserializer.deserialize(input)
+                        }),
+                        context("Failed amount deserialization", |input| {
+                            self.amount_deserializer.deserialize(input)
+                        }),
+                    )),
+                )
+                .map(|(recipient_address, amount)| OperationType::Transaction {
                     recipient_address,
                     amount,
-                }
+                })
+                .parse(input),
+                OperationTypeId::RollBuy => context("Failed RollBuy deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                })
+                .map(|roll_count| OperationType::RollBuy { roll_count })
+                .parse(input),
+                OperationTypeId::RollSell => context("Failed RollSell deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                })
+                .map(|roll_count| OperationType::RollSell { roll_count })
+                .parse(input),
+                OperationTypeId::ExecuteSC => context(
+                    "Failed ExecuteSC deserialization",
+                    tuple((
+                        context("Failed max_gas deserialization", |input| {
+                            self.u64_deserializer.deserialize(input)
+                        }),
+                        context("Failed coins deserialization", |input| {
+                            self.amount_deserializer.deserialize(input)
+                        }),
+                        context("Failed gas_price deserialization", |input| {
+                            self.amount_deserializer.deserialize(input)
+                        }),
+                        context("Failed data deserialization", |input| {
+                            self.vec_u8_deserializer.deserialize(input)
+                        }),
+                    )),
+                )
+                .map(
+                    |(max_gas, coins, gas_price, data)| OperationType::ExecuteSC {
+                        data,
+                        max_gas,
+                        coins,
+                        gas_price,
+                    },
+                )
+                .parse(input),
+                OperationTypeId::CallSC => context(
+                    "Failed CallSC deserialization",
+                    tuple((
+                        context("Failed max_gas deserialization", |input| {
+                            self.u64_deserializer.deserialize(input)
+                        }),
+                        context("Failed parallel_coins deserialization", |input| {
+                            self.amount_deserializer.deserialize(input)
+                        }),
+                        context("Failed sequential_coins deserialization", |input| {
+                            self.amount_deserializer.deserialize(input)
+                        }),
+                        context("Failed gas_price deserialization", |input| {
+                            self.amount_deserializer.deserialize(input)
+                        }),
+                        context("Failed target_addr deserialization", |input| {
+                            self.address_deserializer.deserialize(input)
+                        }),
+                        context("Failed target_func deserialization", |input| {
+                            self.function_name_deserializer.deserialize(input)
+                        }),
+                        context("Failed param deserialization", |input| {
+                            self.parameter_deserializer.deserialize(input)
+                        }),
+                    )),
+                )
+                .map(
+                    |(
+                        max_gas,
+                        parallel_coins,
+                        sequential_coins,
+                        gas_price,
+                        target_addr,
+                        target_func,
+                        param,
+                    )| OperationType::CallSC {
+                        target_addr,
+                        target_func,
+                        param,
+                        max_gas,
+                        sequential_coins,
+                        parallel_coins,
+                        gas_price,
+                    },
+                )
+                .parse(input),
             }
-            OperationTypeId::RollBuy => {
-                // roll_count
-                let (roll_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-                cursor += delta;
-
-                OperationType::RollBuy { roll_count }
-            }
-            OperationTypeId::RollSell => {
-                // roll_count
-                let (roll_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-                cursor += delta;
-
-                OperationType::RollSell { roll_count }
-            }
-            OperationTypeId::ExecuteSC => {
-                // Max gas.
-                let (max_gas, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-                cursor += delta;
-
-                // Coins.
-                let (coins, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                // Gas price.
-                let (gas_price, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                // Contract data length
-                let (data_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-                // TODO limit size
-                cursor += delta;
-
-                // Contract data.
-                let mut data = Vec::with_capacity(data_len as usize);
-                if buffer[cursor..].len() < data_len as usize {
-                    return Err(ModelsError::DeserializeError(
-                        "ExecuteSC deserialization failed: not enough buffer to get all data"
-                            .into(),
-                    ));
-                }
-                data.extend(&buffer[cursor..(cursor + (data_len as usize))]);
-                cursor += data_len as usize;
-
-                OperationType::ExecuteSC {
-                    data,
-                    max_gas,
-                    coins,
-                    gas_price,
-                }
-            }
-            OperationTypeId::CallSC => {
-                // Max gas.
-                let (max_gas, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-                cursor += delta;
-
-                // Parallel coins
-                let (parallel_coins, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                // Sequential coins
-                let (sequential_coins, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                // Gas price.
-                let (gas_price, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-
-                // Target address
-                let target_addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-                cursor += ADDRESS_SIZE_BYTES;
-
-                // Target function name
-                let func_name_len = *buffer
-                    .get(cursor)
-                    .ok_or_else(|| ModelsError::DeserializeError("buffer too small".into()))?;
-                cursor += 1;
-                let target_func = match buffer.get(cursor..(cursor + func_name_len as usize)) {
-                    Some(s) => {
-                        cursor += s.len();
-                        String::from_utf8(s.to_vec()).map_err(|_| {
-                            ModelsError::DeserializeError("string is not utf8".into())
-                        })?
-                    }
-                    None => {
-                        return Err(ModelsError::DeserializeError("buffer too small".into()));
-                    }
-                };
-
-                // parameter
-                let (param_len, delta) = u16::from_varint_bytes(&buffer[cursor..])?;
-                cursor += delta;
-                let param = match buffer.get(cursor..(cursor + param_len as usize)) {
-                    Some(s) => {
-                        cursor += s.len();
-                        String::from_utf8(s.to_vec()).map_err(|_| {
-                            ModelsError::DeserializeError("string is not utf8".into())
-                        })?
-                    }
-                    None => {
-                        return Err(ModelsError::DeserializeError("buffer too small".into()));
-                    }
-                };
-
-                OperationType::CallSC {
-                    target_addr,
-                    sequential_coins,
-                    parallel_coins,
-                    target_func,
-                    max_gas,
-                    gas_price,
-                    param,
-                }
-            }
-        };
-        Ok((res, cursor))
+        })
+        .parse(buffer)
     }
 }
 
-/// Checks performed:
-/// - Validity of the fee.
-/// - Validity of the operation type.
-impl SerializeCompact for Operation {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        // fee
-        res.extend(&self.fee.to_bytes_compact()?);
-
-        // expire period
-        res.extend(self.expire_period.to_varint_bytes());
-
-        // sender public key
-        res.extend(&self.sender_public_key.to_bytes());
-
-        // operation type
-        res.extend(&self.op.to_bytes_compact()?);
-
-        Ok(res)
-    }
-}
-
-/// Checks performed:
-/// - Validity of the fee.
-/// - Validity of the expire period.
-/// - Validity of the sender public key.
-/// - Validity of the operation type.
-impl DeserializeCompact for Operation {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0usize;
-
-        // fee
-        let (fee, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        // expire period
-        let (expire_period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-
-        // sender public key
-        let sender_public_key = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += PUBLIC_KEY_SIZE_BYTES;
-
-        // op
-        let (op, delta) = OperationType::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        Ok((
-            Operation {
-                fee,
-                expire_period,
-                sender_public_key,
-                op,
-            },
-            cursor,
-        ))
-    }
-}
-
-impl SignedOperation {
+impl WrappedOperation {
     /// Verifies the signature and integrity of the operation and computes operation ID
     pub fn verify_integrity(&self) -> Result<OperationId, ModelsError> {
-        self.verify_signature(&self.content.sender_public_key)?;
-        self.content.compute_id()
+        self.verify_signature(OperationSerializer::new(), &self.creator_public_key)?;
+        Ok(self.id)
     }
 }
 
-impl Operation {
+impl WrappedOperation {
     /// get the range of periods during which an operation is valid
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
-        let start = self.expire_period.saturating_sub(operation_validity_period);
-        start..=self.expire_period
+        let start = self
+            .content
+            .expire_period
+            .saturating_sub(operation_validity_period);
+        start..=self.content.expire_period
     }
 
     /// Get the amount of gas used by the operation
     pub fn get_gas_usage(&self) -> u64 {
-        match &self.op {
+        match &self.content.op {
             OperationType::ExecuteSC { max_gas, .. } => *max_gas,
             OperationType::CallSC { max_gas, .. } => *max_gas,
             OperationType::RollBuy { .. } => 0,
@@ -680,7 +702,7 @@ impl Operation {
 
     /// Get the amount of coins used by the operation to pay for gas
     pub fn get_gas_coins(&self) -> Amount {
-        match &self.op {
+        match &self.content.op {
             OperationType::ExecuteSC {
                 max_gas, gas_price, ..
             } => gas_price.saturating_mul_u64(*max_gas),
@@ -696,9 +718,9 @@ impl Operation {
     /// get the addresses that are involved in this operation from a ledger point of view
     pub fn get_ledger_involved_addresses(&self) -> Set<Address> {
         let mut res = Set::<Address>::default();
-        let emitter_address = Address::from_public_key(&self.sender_public_key);
+        let emitter_address = Address::from_public_key(&self.creator_public_key);
         res.insert(emitter_address);
-        match &self.op {
+        match &self.content.op {
             OperationType::Transaction {
                 recipient_address, ..
             } => {
@@ -717,13 +739,13 @@ impl Operation {
     /// get the addresses that are involved in this operation from a rolls point of view
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();
-        match self.op {
+        match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {
-                res.insert(Address::from_public_key(&self.sender_public_key));
+                res.insert(Address::from_public_key(&self.creator_public_key));
             }
             OperationType::RollSell { .. } => {
-                res.insert(Address::from_public_key(&self.sender_public_key));
+                res.insert(Address::from_public_key(&self.creator_public_key));
             }
             OperationType::ExecuteSC { .. } => {}
             OperationType::CallSC { .. } => {}
@@ -737,130 +759,298 @@ pub type OperationIds = Set<OperationId>;
 /// Set of operation id's prefix
 pub type OperationPrefixIds = Set<OperationPrefixId>;
 
-impl SerializeCompact for OperationIds {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let list_len: u32 = self.len().try_into().map_err(|_| {
-            ModelsError::SerializeError("could not encode AskForBlocks list length as u32".into())
+/// Serializer for `OperationIds`
+pub struct OperationIdsSerializer {
+    u32_serializer: U32VarIntSerializer,
+}
+
+impl OperationIdsSerializer {
+    /// Creates a new `OperationIdsSerializer`
+    pub fn new() -> Self {
+        Self {
+            u32_serializer: U32VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Default for OperationIdsSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<OperationIds> for OperationIdsSerializer {
+    fn serialize(&self, value: &OperationIds, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        let list_len: u32 = value.len().try_into().map_err(|_| {
+            SerializeError::NumberTooBig("could not encode OperationIds list length as u32".into())
         })?;
-        let mut res = Vec::new();
-        res.extend(list_len.to_varint_bytes());
-        for hash in self {
-            res.extend(hash.into_bytes());
+        self.u32_serializer.serialize(&list_len, buffer)?;
+        for hash in value {
+            buffer.extend(hash.into_bytes());
         }
-        Ok(res)
+        Ok(())
     }
 }
 
-impl SerializeCompact for OperationPrefixIds {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let list_len: u32 = self.len().try_into().map_err(|_| {
-            ModelsError::SerializeError("could not encode AskForBlocks list length as u32".into())
+/// Deserializer for `OperationIds`
+pub struct OperationIdsDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    hash_deserializer: HashDeserializer,
+}
+
+impl OperationIdsDeserializer {
+    /// Creates a new `OperationIdsDeserializer`
+    pub fn new() -> Self {
+        Self {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(MAX_OPERATIONS_PER_MESSAGE),
+            ),
+            hash_deserializer: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Default for OperationIdsDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<OperationIds> for OperationIdsDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], OperationIds, E> {
+        context(
+            "Failed OperationIds deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u32_deserializer.deserialize(input)
+                }),
+                context("Failed OperationId deserialization", |input| {
+                    self.hash_deserializer.deserialize(input)
+                }),
+            ),
+        )
+        .map(|hashes| hashes.into_iter().map(OperationId).collect())
+        .parse(buffer)
+    }
+}
+
+/// Deserializer for [OperationPrefixId]
+#[derive(Default)]
+pub struct OperationPrefixIdDeserializer;
+
+impl OperationPrefixIdDeserializer {
+    /// Creates a deserializer for [OperationPrefixId]
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Deserializer<OperationPrefixId> for OperationPrefixIdDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], OperationPrefixId, E> {
+        context(
+            "Failed operation prefix id deserialization",
+            |input: &'a [u8]| {
+                if buffer.len() < OPERATION_ID_PREFIX_SIZE_BYTES {
+                    return Err(nom::Err::Error(ParseError::from_error_kind(
+                        input,
+                        nom::error::ErrorKind::LengthValue,
+                    )));
+                }
+                Ok((
+                    &buffer[OPERATION_ID_PREFIX_SIZE_BYTES..],
+                    OperationPrefixId::from(
+                        &buffer[..OPERATION_ID_PREFIX_SIZE_BYTES]
+                            .try_into()
+                            .map_err(|_| {
+                                nom::Err::Error(ParseError::from_error_kind(
+                                    input,
+                                    nom::error::ErrorKind::Fail,
+                                ))
+                            })?,
+                    ),
+                ))
+            },
+        )(buffer)
+    }
+}
+
+/// Deserializer for `OperationPrefixIds`
+pub struct OperationPrefixIdsDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    pref_deserializer: OperationPrefixIdDeserializer,
+}
+
+impl OperationPrefixIdsDeserializer {
+    /// Creates a new `OperationIdsDeserializer`
+    pub fn new() -> Self {
+        Self {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(MAX_OPERATIONS_PER_MESSAGE),
+            ),
+            pref_deserializer: OperationPrefixIdDeserializer::new(),
+        }
+    }
+}
+
+impl Default for OperationPrefixIdsDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], OperationPrefixIds, E> {
+        context(
+            "Failed OperationPrefixIds deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u32_deserializer.deserialize(input)
+                }),
+                context("Failed OperationPrefixId deserialization", |input| {
+                    self.pref_deserializer.deserialize(input)
+                }),
+            ),
+        )
+        .map(|hashes| hashes.into_iter().collect())
+        .parse(buffer)
+    }
+}
+
+/// Serializer for `OperationPrefixIds`
+pub struct OperationPrefixIdsSerializer {
+    u32_serializer: U32VarIntSerializer,
+}
+
+impl OperationPrefixIdsSerializer {
+    /// Creates a new `OperationIdsSerializer`
+    pub fn new() -> Self {
+        Self {
+            u32_serializer: U32VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Default for OperationPrefixIdsSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<OperationPrefixIds> for OperationPrefixIdsSerializer {
+    fn serialize(
+        &self,
+        value: &OperationPrefixIds,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        let list_len: u32 = value.len().try_into().map_err(|_| {
+            SerializeError::NumberTooBig("could not encode OperationIds list length as u32".into())
         })?;
-        let mut res = Vec::new();
-        res.extend(list_len.to_varint_bytes());
-        for hash in self {
-            res.extend(Vec::<u8>::from(hash));
+        self.u32_serializer.serialize(&list_len, buffer)?;
+        for prefix in value {
+            buffer.extend(Vec::<u8>::from(prefix));
         }
-        Ok(res)
-    }
-}
-
-/// Deserialize from the given `buffer`.
-///
-/// You know that the maximum number of ids is `max_operations_per_message` taken
-/// from the node configuration.
-///
-/// # Return
-/// A result that return the deserialized [OperationIds]
-impl DeserializeCompact for OperationIds {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let max_operations_per_message =
-            with_serialization_context(|context| context.max_operations_per_message);
-        let mut cursor = 0usize;
-        let (length, delta) =
-            u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
-        cursor += delta;
-        // hash list
-        let mut list: OperationIds =
-            Set::with_capacity_and_hasher(length as usize, BuildMap::default());
-        for _ in 0..length {
-            let b_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += OPERATION_ID_SIZE_BYTES;
-            list.insert(b_id);
-        }
-        Ok((list, cursor))
-    }
-}
-
-/// Deserialize from the given `buffer`.
-///
-/// You know that the maximum number of ids is `max_operations_per_message` taken
-/// from the node configuration.
-///
-/// # Return
-/// A result that return the deserialized `Vec<OperationPrefixId>`
-impl DeserializeCompact for OperationPrefixIds {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let max_operations_per_message =
-            with_serialization_context(|context| context.max_operations_per_message);
-        let mut cursor = 0usize;
-        let (length, delta) =
-            u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
-        cursor += delta;
-        // hash list
-        let mut list: OperationPrefixIds =
-            Set::with_capacity_and_hasher(length as usize, BuildMap::default());
-        for _ in 0..length {
-            let b_id = OperationPrefixId::from(&array_from_slice(&buffer[cursor..])?);
-            cursor += OPERATION_ID_SIZE_BYTES;
-            list.insert(b_id);
-        }
-        Ok((list, cursor))
+        Ok(())
     }
 }
 
 /// Set of self containing signed operations.
-pub type Operations = Vec<SignedOperation>;
+pub type Operations = Vec<WrappedOperation>;
 
-impl SerializeCompact for Operations {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res = Vec::new();
-        res.extend((self.len() as u32).to_varint_bytes());
-        for op in self.iter() {
-            res.extend(op.to_bytes_compact()?);
+/// Serializer for `Operations`
+pub struct OperationsSerializer {
+    u32_serializer: U32VarIntSerializer,
+    signed_op_serializer: WrappedSerializer,
+}
+
+impl OperationsSerializer {
+    /// Creates a new `OperationsSerializer`
+    pub fn new() -> Self {
+        Self {
+            u32_serializer: U32VarIntSerializer::new(),
+            signed_op_serializer: WrappedSerializer::new(),
         }
-        Ok(res)
     }
 }
 
-/// Deserialize from the given `buffer`.
-///
-/// You know that the maximum number of ids is `max_operations_per_message` taken
-/// from the node configuration.
-///
-/// # Return
-/// A result that return the deserialized `Vec<Operation>`
-impl DeserializeCompact for Operations {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let max_operations_per_message =
-            with_serialization_context(|context| context.max_operations_per_message);
-        let mut cursor = 0usize;
-        let (length, delta) =
-            u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
-        cursor += delta;
-        let mut ops: Operations = Operations::with_capacity(length as usize);
-        for _ in 0..length {
-            let (operation, delta) = SignedOperation::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            ops.push(operation);
+impl Default for OperationsSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<Operations> for OperationsSerializer {
+    fn serialize(&self, value: &Operations, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        let list_len: u32 = value.len().try_into().map_err(|_| {
+            SerializeError::NumberTooBig("could not encode Operations list length as u32".into())
+        })?;
+        self.u32_serializer.serialize(&list_len, buffer)?;
+        for op in value {
+            self.signed_op_serializer.serialize(op, buffer)?;
         }
-        Ok((ops, cursor))
+        Ok(())
+    }
+}
+
+/// Deserializer for `Operations`
+pub struct OperationsDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    signed_op_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
+}
+
+impl OperationsDeserializer {
+    /// Creates a new `OperationsDeserializer`
+    pub fn new() -> Self {
+        Self {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(MAX_OPERATIONS_PER_MESSAGE),
+            ),
+            signed_op_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
+        }
+    }
+}
+
+impl Default for OperationsDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<Operations> for OperationsDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Operations, E> {
+        context(
+            "Failed Operations deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u32_deserializer.deserialize(input)
+                }),
+                context("Failed operation deserialization", |input| {
+                    self.signed_op_deserializer.deserialize(input)
+                }),
+            ),
+        )
+        .parse(buffer)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use massa_serialization::DeserializeError;
     use massa_signature::{derive_public_key, generate_random_private_key};
     use serial_test::serial;
 
@@ -877,35 +1067,51 @@ mod tests {
             recipient_address: Address::from_public_key(&recv_pub),
             amount: Amount::default(),
         };
-        let ser_type = op.to_bytes_compact().unwrap();
-        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
+        let mut ser_type = Vec::new();
+        OperationTypeSerializer::new()
+            .serialize(&op, &mut ser_type)
+            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new()
+            .deserialize::<DeserializeError>(&ser_type)
+            .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
             fee: Amount::from_str("20").unwrap(),
-            sender_public_key: sender_pub,
             op,
             expire_period: 50,
         };
 
-        let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
+        let mut ser_content = Vec::new();
+        OperationSerializer::new()
+            .serialize(&content, &mut ser_content)
+            .unwrap();
+        let (_, res_content) = OperationDeserializer::new()
+            .deserialize::<DeserializeError>(&ser_content)
+            .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
+        let op_serializer = OperationSerializer::new();
 
-        let op = Signed::new_signed(content, &sender_priv).unwrap().1;
+        let op = Operation::new_wrapped(content, op_serializer, &sender_priv, &sender_pub).unwrap();
 
-        let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        let mut ser_op = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&op, &mut ser_op)
+            .unwrap();
+        let (_, res_op): (&[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new())
+                .deserialize::<DeserializeError>(&ser_op)
+                .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
-        assert_eq!(op.content.get_validity_range(10), 40..=50);
+        assert_eq!(op.get_validity_range(10), 40..=50);
     }
 
     #[test]
     #[serial]
     fn test_executesc() {
         let sender_priv = generate_random_private_key();
-        let sender_pub = derive_public_key(&sender_priv);
+        let public_key = derive_public_key(&sender_priv);
 
         let op = OperationType::ExecuteSC {
             max_gas: 123,
@@ -913,35 +1119,51 @@ mod tests {
             gas_price: Amount::from_str("772.122").unwrap(),
             data: vec![23u8, 123u8, 44u8],
         };
-        let ser_type = op.to_bytes_compact().unwrap();
-        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
+        let mut ser_type = Vec::new();
+        OperationTypeSerializer::new()
+            .serialize(&op, &mut ser_type)
+            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new()
+            .deserialize::<DeserializeError>(&ser_type)
+            .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
             fee: Amount::from_str("20").unwrap(),
-            sender_public_key: sender_pub,
             op,
             expire_period: 50,
         };
 
-        let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
+        let mut ser_content = Vec::new();
+        OperationSerializer::new()
+            .serialize(&content, &mut ser_content)
+            .unwrap();
+        let (_, res_content) = OperationDeserializer::new()
+            .deserialize::<DeserializeError>(&ser_content)
+            .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
+        let op_serializer = OperationSerializer::new();
 
-        let op = Signed::new_signed(content, &sender_priv).unwrap().1;
+        let op = Operation::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
 
-        let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        let mut ser_op = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&op, &mut ser_op)
+            .unwrap();
+        let (_, res_op): (&[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new())
+                .deserialize::<DeserializeError>(&ser_op)
+                .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
-        assert_eq!(op.content.get_validity_range(10), 40..=50);
+        assert_eq!(op.get_validity_range(10), 40..=50);
     }
 
     #[test]
     #[serial]
     fn test_callsc() {
         let sender_priv = generate_random_private_key();
-        let sender_pub = derive_public_key(&sender_priv);
+        let public_key = derive_public_key(&sender_priv);
 
         let target_priv = generate_random_private_key();
         let target_pub = derive_public_key(&target_priv);
@@ -956,27 +1178,43 @@ mod tests {
             target_func: "target function".to_string(),
             param: "parameter".to_string(),
         };
-        let ser_type = op.to_bytes_compact().unwrap();
-        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
+        let mut ser_type = Vec::new();
+        OperationTypeSerializer::new()
+            .serialize(&op, &mut ser_type)
+            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new()
+            .deserialize::<DeserializeError>(&ser_type)
+            .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
             fee: Amount::from_str("20").unwrap(),
-            sender_public_key: sender_pub,
             op,
             expire_period: 50,
         };
 
-        let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
+        let mut ser_content = Vec::new();
+        OperationSerializer::new()
+            .serialize(&content, &mut ser_content)
+            .unwrap();
+        let (_, res_content) = OperationDeserializer::new()
+            .deserialize::<DeserializeError>(&ser_content)
+            .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
+        let op_serializer = OperationSerializer::new();
 
-        let op = Signed::new_signed(content, &sender_priv).unwrap().1;
+        let op = Operation::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
 
-        let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        let mut ser_op = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&op, &mut ser_op)
+            .unwrap();
+        let (_, res_op): (&[u8], WrappedOperation) =
+            WrappedDeserializer::new(OperationDeserializer::new())
+                .deserialize::<DeserializeError>(&ser_op)
+                .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
-        assert_eq!(op.content.get_validity_range(10), 40..=50);
+        assert_eq!(op.get_validity_range(10), 40..=50);
     }
 }

@@ -8,6 +8,7 @@
 //! * the VM is called for execution within this context
 //! * the output of the execution is extracted from the context
 
+use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
 use massa_async_pool::AsyncMessage;
@@ -15,25 +16,16 @@ use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_final_state::{FinalState, StateChanges};
+use massa_final_state::FinalState;
 use massa_hash::Hash;
-
-use massa_ledger_exports::{
-    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
-};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::signed::Signable;
-use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
+use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
-use std::usize;
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 use tracing::debug;
 
 /// Used to acquire a lock on the execution context
@@ -52,7 +44,8 @@ pub(crate) struct ExecutionState {
     // Whenever an active slot is executed, it is appended at the back of active_history.
     // Whenever an executed active slot becomes final,
     // its output is popped from the front of active_history and applied to the final state.
-    active_history: VecDeque<ExecutionOutput>,
+    // It has atomic R/W access.
+    active_history: Arc<RwLock<ActiveHistory>>,
     // a cursor pointing to the highest executed slot
     pub active_cursor: Slot,
     // a cursor pointing to the highest executed final slot
@@ -67,12 +60,6 @@ pub(crate) struct ExecutionState {
     execution_interface: Box<dyn Interface>,
     /// Shared storage across all modules
     storage: Storage,
-}
-
-pub(crate) enum HistorySearchResult<T> {
-    Found(T),
-    NotFound,
-    Deleted,
 }
 
 impl ExecutionState {
@@ -94,10 +81,13 @@ impl ExecutionState {
         // This should be among the latest final slots.
         let last_final_slot = final_state.read().slot;
 
+        // Create default active history
+        let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
+
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             final_state.clone(),
-            Default::default(),
+            active_history.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -113,7 +103,7 @@ impl ExecutionState {
             execution_context,
             execution_interface,
             // empty execution output history: it is not recovered through bootstrap
-            active_history: Default::default(),
+            active_history,
             // empty final event store: it is not recovered through bootstrap
             final_events: Default::default(),
             // no active slots executed yet: set active_cursor to the last final block
@@ -128,7 +118,7 @@ impl ExecutionState {
     /// # Returns
     /// The earliest `ExecutionOutput` from the execution history, or None if the history is empty
     pub fn pop_first_execution_result(&mut self) -> Option<ExecutionOutput> {
-        self.active_history.pop_front()
+        self.active_history.write().0.pop_front()
     }
 
     /// Applies the output of an execution to the final execution state.
@@ -176,14 +166,14 @@ impl ExecutionState {
         self.active_cursor = exec_out.slot;
 
         // add the execution output at the end of the output history
-        self.active_history.push_back(exec_out);
+        self.active_history.write().0.push_back(exec_out);
     }
 
     /// Clear the whole execution history,
     /// deleting caches on executed non-final slots.
     pub fn clear_history(&mut self) {
         // clear history
-        self.active_history.clear();
+        self.active_history.write().0.clear();
 
         // reset active cursor to point to the latest final slot
         self.active_cursor = self.final_cursor;
@@ -206,7 +196,7 @@ impl ExecutionState {
         // find mismatch point (included)
         let mut truncate_at = None;
         // iterate over the output history, in chronological order
-        for (hist_index, exec_output) in self.active_history.iter().enumerate() {
+        for (hist_index, exec_output) in self.active_history.read().0.iter().enumerate() {
             // try to find the corresponding slot in active_slots or ready_final_slots.
             let found_block_id = active_slots
                 .get(&exec_output.slot)
@@ -223,12 +213,14 @@ impl ExecutionState {
         // If a mismatch was found
         if let Some(truncate_at) = truncate_at {
             // Truncate the execution output history at the cutoff index (excluded)
-            self.active_history.truncate(truncate_at);
+            self.active_history.write().0.truncate(truncate_at);
             // Now that part of the speculative executions were cancelled,
             // update the active cursor to match the latest executed slot.
             // The cursor is set to the latest executed final slot if the history is empty.
             self.active_cursor = self
                 .active_history
+                .read()
+                .0
                 .back()
                 .map_or(self.final_cursor, |out| out.slot);
             // safety check to ensure that the active cursor cannot go too far back in time
@@ -240,122 +232,6 @@ impl ExecutionState {
         }
     }
 
-    /// Check that the slot is within the reach of history
-    fn verify_active_slot(&self, slot: Slot) {
-        if slot <= self.final_cursor {
-            panic!("cannot execute at a slot before finality");
-        }
-        let max_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        if slot > max_slot {
-            panic!("cannot execute at a slot beyond active cursor + 1");
-        }
-    }
-
-    /// Computes the index of a given slot in the active history
-    fn get_active_index(&self, slot: Slot) -> Option<usize> {
-        if let Some(hist_front) = &self.active_history.front() {
-            slot.slots_since(&hist_front.slot, self.config.thread_count)
-                .map(|v| v.try_into().ok())
-                .ok()
-                .flatten()
-        } else {
-            None
-        }
-    }
-
-    /// Lazily query (from end to beginning) the active balance of an address at a given slot.
-    /// Returns None if the address balance could not be determined from the active history.
-    ///
-    /// NOTE: temporary, needs to be done in the speculative ledger
-    pub fn fetch_active_history_balance(
-        &self,
-        slot: Slot,
-        addr: &Address,
-    ) -> HistorySearchResult<Amount> {
-        self.verify_active_slot(slot);
-
-        if let Some(n) = self.get_active_index(slot) {
-            let iter = self.active_history.iter().skip(n).rev();
-
-            for output in iter {
-                match output.state_changes.ledger_changes.0.get(addr) {
-                    Some(SetUpdateOrDelete::Set(v)) => {
-                        return HistorySearchResult::Found(v.parallel_balance)
-                    }
-                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                        parallel_balance: SetOrKeep::Set(v),
-                        ..
-                    })) => return HistorySearchResult::Found(*v),
-                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
-                    _ => (),
-                }
-            }
-        }
-        HistorySearchResult::NotFound
-    }
-
-    /// Lazily query (from end to beginning) the active datastore entry of an address at a given slot.
-    /// Returns None if the datastore entry could not be determined from the active history.
-    pub fn fetch_active_history_data_entry(
-        &self,
-        slot: Slot,
-        addr: &Address,
-        key: &Hash,
-    ) -> HistorySearchResult<Vec<u8>> {
-        self.verify_active_slot(slot);
-
-        if let Some(n) = self.get_active_index(slot) {
-            let iter = self.active_history.iter().skip(n).rev();
-
-            for output in iter {
-                match output.state_changes.ledger_changes.0.get(addr) {
-                    Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
-                        match datastore.get(key) {
-                            Some(value) => return HistorySearchResult::Found(value.to_vec()),
-                            None => (),
-                        }
-                    }
-                    Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
-                        match datastore.get(key) {
-                            Some(SetOrDelete::Set(value)) => {
-                                return HistorySearchResult::Found(value.to_vec())
-                            }
-                            Some(SetOrDelete::Delete) => return HistorySearchResult::Deleted,
-                            None => (),
-                        }
-                    }
-                    Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Deleted,
-                    None => (),
-                }
-            }
-        }
-        HistorySearchResult::NotFound
-    }
-
-    /// Returns the state changes accumulated from the beginning of the output history,
-    /// up until a provided slot (excluded).
-    /// Only used in the VM main loop because the lock on the final ledger
-    /// carried by the returned `SpeculativeLedger` is not held.
-    /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry
-    /// by scanning through history from end to beginning
-    /// `https://github.com/massalabs/massa/issues/2343`
-    pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> StateChanges {
-        self.verify_active_slot(slot);
-        // gather the history of state changes in the relevant history range
-        let mut accumulated_changes = StateChanges::default();
-        for previous_output in &self.active_history {
-            if previous_output.slot >= slot {
-                break;
-            }
-            accumulated_changes.apply(previous_output.state_changes.clone());
-        }
-
-        accumulated_changes
-    }
-
     /// Execute an operation in the context of a block.
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
@@ -364,7 +240,7 @@ impl ExecutionState {
     /// * `block_creator_addr`: address of the block creator
     pub fn execute_operation(
         &self,
-        operation: &SignedOperation,
+        operation: &WrappedOperation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
         // prefilter only SC operations
@@ -374,31 +250,19 @@ impl ExecutionState {
             _ => return Ok(()),
         };
 
-        // get the operation's sender address
-        let sender_addr = Address::from_public_key(&operation.content.sender_public_key);
-
-        // get operation ID
-        // TODO have operation_id contained in the Operation object in the future to avoid recomputation
-        // https://github.com/massalabs/massa/issues/1121
-        // https://github.com/massalabs/massa/issues/2264
-        let operation_id = operation
-            .content
-            .compute_id()
-            .expect("could not compute operation ID");
-
         // call the execution process specific to the operation type
         match &operation.content.op {
             OperationType::ExecuteSC { .. } => self.execute_executesc_op(
                 &operation.content.op,
                 block_creator_addr,
-                operation_id,
-                sender_addr,
+                operation.id,
+                operation.creator_address,
             ),
             OperationType::CallSC { .. } => self.execute_callsc_op(
                 &operation.content.op,
                 block_creator_addr,
-                operation_id,
-                sender_addr,
+                operation.id,
+                operation.creator_address,
             ),
             _ => panic!("unexpected operation type"), // checked at the beginning of the function
         }
@@ -408,7 +272,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `SignedOperation` to process, must be an `ExecuteSC`
+    /// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`
     /// * `block_creator_addr`: address of the block creator
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
@@ -503,7 +367,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `SignedOperation` to process, must be an `CallSC`
+    /// * `operation`: the `WrappedOperation` to process, must be an `CallSC`
     /// * `block_creator_addr`: address of the block creator
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
@@ -739,15 +603,12 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(&self, slot: Slot, opt_block_id: Option<BlockId>) -> ExecutionOutput {
-        // accumulate previous active changes from output history
-        let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
-
         // create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             slot,
             opt_block_id,
-            previous_changes,
             self.final_state.clone(),
+            self.active_history.clone(),
         );
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
@@ -775,11 +636,10 @@ impl ExecutionState {
             let stored_block = block.read();
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
-                if let Err(err) = self.execute_operation(
-                    operation,
-                    Address::from_public_key(&stored_block.block.header.content.creator),
-                ) {
+            for (op_idx, operation) in stored_block.content.operations.iter().enumerate() {
+                if let Err(err) =
+                    self.execute_operation(operation, stored_block.content.header.creator_address)
+                {
                     debug!(
                         "failed executing operation index {} in block {}: {}",
                         op_idx, block_id, err
@@ -812,17 +672,14 @@ impl ExecutionState {
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow in readonly execution");
 
-        // accumulate state changes that happened in the output history before this slot
-        let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
-
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
             slot,
             req.max_gas,
             req.simulated_gas_price,
             req.call_stack,
-            previous_changes,
             self.final_state.clone(),
+            self.active_history.clone(),
         );
 
         // run the intepreter according to the target type
@@ -865,99 +722,44 @@ impl ExecutionState {
     }
 
     /// Gets a parallel balance both at the latest final and active executed slots
-    ///
-    /// NOTE: temporary, needs to be done in the speculative ledger
-    #[allow(dead_code)]
     pub fn get_final_and_active_parallel_balance(
         &self,
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
         let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
-        let next_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        let search_result = self.fetch_active_history_balance(next_slot, address);
+        let search_result = self
+            .active_history
+            .read()
+            .fetch_active_history_balance(address);
         (
             final_balance,
             match search_result {
-                HistorySearchResult::Found(active_balance) => Some(active_balance),
-                HistorySearchResult::NotFound => final_balance,
-                HistorySearchResult::Deleted => None,
+                HistorySearchResult::Present(active_balance) => Some(active_balance),
+                HistorySearchResult::NoInfo => final_balance,
+                HistorySearchResult::Absent => None,
             },
         )
     }
 
     /// Gets a data entry both at the latest final and active executed slots
-    ///
-    /// NOTE: temporary, needs to be done in the speculative ledger
     pub fn get_final_and_active_data_entry(
         &self,
         address: &Address,
         key: &Hash,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
-        let next_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        let search_result = self.fetch_active_history_data_entry(next_slot, address, key);
+        let search_result = self
+            .active_history
+            .read()
+            .fetch_active_history_data_entry(address, key);
         (
             final_entry.clone(),
             match search_result {
-                HistorySearchResult::Found(active_entry) => Some(active_entry),
-                HistorySearchResult::NotFound => final_entry,
-                HistorySearchResult::Deleted => None,
+                HistorySearchResult::Present(active_entry) => Some(active_entry),
+                HistorySearchResult::NoInfo => final_entry,
+                HistorySearchResult::Absent => None,
             },
         )
-    }
-
-    /// Gets a full ledger entry both at the latest final and active executed slots
-    /// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`
-    /// TODO: remove when API is updated
-    ///
-    /// # Returns
-    /// `(final_entry, active_entry)`
-    pub fn get_final_and_active_ledger_entry(
-        &self,
-        addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        // get the full entry from the final ledger
-        let final_entry = self.final_state.read().ledger.get_full_entry(addr);
-
-        // get cumulative active changes and apply them
-        // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
-        // also we should proceed backwards through history for performance
-        // https://github.com/massalabs/massa/issues/2343
-        // Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one
-        // in order to take all available active slots into account (and not forget the last one)
-        // and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.
-        let next_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        let active_change = self
-            .get_accumulated_active_changes_at_slot(next_slot)
-            .ledger_changes
-            .get(addr)
-            .cloned();
-        let active_entry = match (&final_entry, active_change) {
-            (final_v, None) => final_v.clone(),
-            (_, Some(SetUpdateOrDelete::Set(v))) => Some(v),
-            (_, Some(SetUpdateOrDelete::Delete)) => None,
-            (None, Some(SetUpdateOrDelete::Update(u))) => {
-                let mut v = LedgerEntry::default();
-                v.apply(u);
-                Some(v)
-            }
-            (Some(final_v), Some(SetUpdateOrDelete::Update(u))) => {
-                let mut v = final_v.clone();
-                v.apply(u);
-                Some(v)
-            }
-        };
-
-        (final_entry, active_entry)
     }
 
     /// Gets execution events optionally filtered by:
@@ -972,6 +774,8 @@ impl ExecutionState {
             .into_iter()
             .chain(
                 self.active_history
+                    .read()
+                    .0
                     .iter()
                     .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
             )

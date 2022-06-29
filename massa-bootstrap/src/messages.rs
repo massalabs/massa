@@ -98,25 +98,15 @@ pub struct BootstrapServerMessageSerializer {
 impl BootstrapServerMessageSerializer {
     /// Creates a new `BootstrapServerMessageSerializer`
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
-            u32_serializer: U32VarIntSerializer::new(Included(0), Included(100)),
-            time_serializer: MassaTimeSerializer::new((
-                Included(MassaTime::from(0)),
-                Included(MassaTime::from(u64::MAX)),
-            )),
+            u32_serializer: U32VarIntSerializer::new(),
+            time_serializer: MassaTimeSerializer::new(),
             version_serializer: VersionSerializer::new(),
-            peers_serializer: BootstrapPeersSerializer::new(MAX_ADVERTISE_LENGTH),
+            peers_serializer: BootstrapPeersSerializer::new(),
             pos_serializer: ExportProofOfStakeSerializer::new(),
             state_changes_serializer: StateChangesSerializer::new(),
-            vec_u8_serializer: VecU8Serializer::new(Included(0), Included(u64::MAX)),
-            slot_serializer: SlotSerializer::new(
-                (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
-            ),
+            vec_u8_serializer: VecU8Serializer::new(),
+            slot_serializer: SlotSerializer::new(),
         }
     }
 }
@@ -322,6 +312,8 @@ pub enum BootstrapClientMessage {
     },
     /// Bootstrap error
     BootstrapError { error: String },
+    /// Bootstrap succeed
+    BootstrapSuccess,
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -331,6 +323,7 @@ enum MessageClientTypeId {
     AskConsensusState = 1u32,
     AskFinalStatePart = 2u32,
     BootstrapError = 3u32,
+    BootstrapSuccess = 4u32,
 }
 
 /// Serializer for `BootstrapClientMessage`
@@ -344,16 +337,9 @@ pub struct BootstrapClientMessageSerializer {
 impl BootstrapClientMessageSerializer {
     /// Creates a new `BootstrapClientMessageSerializer`
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
-            u32_serializer: U32VarIntSerializer::new(Included(0), Included(1000)),
-            slot_serializer: SlotSerializer::new(
-                (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
-            ),
+            u32_serializer: U32VarIntSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
             async_message_id_serializer: AsyncMessageIdSerializer::new(),
             key_serializer: KeySerializer::new(),
         }
@@ -399,6 +385,10 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     buffer,
                 )?;
                 buffer.extend(error.as_bytes())
+            }
+            BootstrapClientMessage::BootstrapSuccess => {
+                self.u32_serializer
+                    .serialize(&u32::from(MessageClientTypeId::BootstrapSuccess), buffer)?;
             }
         }
         Ok(())
@@ -490,6 +480,9 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             error: String::from_utf8_lossy(error).into_owned(),
                         })
                         .parse(input)
+                }
+                MessageClientTypeId::BootstrapSuccess => {
+                    Ok((input, BootstrapClientMessage::BootstrapSuccess))
                 }
             }
         })

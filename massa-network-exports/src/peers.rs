@@ -43,15 +43,17 @@ pub struct BootstrapPeersSerializer {
 
 impl BootstrapPeersSerializer {
     /// Creates a new `BootstrapPeersSerializer`
-    ///
-    /// Arguments:
-    ///
-    /// * max_peers: maximum peers that can be serialized
-    pub fn new(max_peers: u32) -> Self {
+    pub fn new() -> Self {
         Self {
-            u32_serializer: U32VarIntSerializer::new(Included(0), Included(max_peers)),
+            u32_serializer: U32VarIntSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
         }
+    }
+}
+
+impl Default for BootstrapPeersSerializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -66,7 +68,7 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
     /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// let mut serialized = Vec::new();
     /// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);
-    /// let peers_serializer = BootstrapPeersSerializer::new(1000);
+    /// let peers_serializer = BootstrapPeersSerializer::new();
     /// peers_serializer.serialize(&peers, &mut serialized).unwrap();
     /// ```
     fn serialize(
@@ -119,7 +121,7 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
     /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// let mut serialized = Vec::new();
     /// let peers = BootstrapPeers(vec![localhost_v4, localhost_v6]);
-    /// let peers_serializer = BootstrapPeersSerializer::new(1000);
+    /// let peers_serializer = BootstrapPeersSerializer::new();
     /// let peers_deserializer = BootstrapPeersDeserializer::new(1000);
     /// peers_serializer.serialize(&peers, &mut serialized).unwrap();
     /// let (rest, peers_deser) = peers_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();

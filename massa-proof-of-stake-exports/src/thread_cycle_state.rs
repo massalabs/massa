@@ -53,20 +53,10 @@ pub struct ThreadCycleStateSerializer {
 impl ThreadCycleStateSerializer {
     /// Creates a new `ThreadCycleStateSerializer`
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         ThreadCycleStateSerializer {
-            u32_serializer: U32VarIntSerializer::new(
-                Included(0),
-                Included(MAX_BOOTSTRAP_POS_ENTRIES),
-            ),
-            u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
-            slot_serializer: SlotSerializer::new(
-                (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
-            ),
+            u32_serializer: U32VarIntSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
             roll_update_serializer: RollUpdateSerializer::new(),
         }
     }

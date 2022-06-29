@@ -3,7 +3,8 @@
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
 use massa_models::{
-    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, SignedOperation, Slot,
+    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, Slot,
+    WrappedOperation,
 };
 use massa_storage::Storage;
 use num::rational::Ratio;
@@ -52,26 +53,18 @@ struct OperationMetadata {
 }
 
 impl OperationMetadata {
-    fn new(
-        operation: &SignedOperation,
-        byte_count: u64,
-        thread_count: u8,
-        operation_validity_periods: u64,
-    ) -> Self {
+    fn new(operation: &WrappedOperation, byte_count: u64, operation_validity_periods: u64) -> Self {
         // Fee density
         // add inclusion fee and gas fees
         let total_return = operation
             .content
             .fee
-            .saturating_add(operation.content.get_gas_coins());
+            .saturating_add(operation.get_gas_coins());
         // return ratio with size
         let fee_density = Ratio::new(total_return.to_raw(), byte_count);
-        let thread =
-            Address::from_public_key(&operation.content.sender_public_key).get_thread(thread_count);
-        let ledger_involved_addresses = operation.content.get_ledger_involved_addresses();
-        let validity_range = operation
-            .content
-            .get_validity_range(operation_validity_periods);
+        let thread = operation.thread;
+        let ledger_involved_addresses = operation.get_ledger_involved_addresses();
+        let validity_range = operation.get_validity_range(operation_validity_periods);
         OperationMetadata {
             byte_count,
             thread,
@@ -120,10 +113,10 @@ impl OperationPool {
     /// Returns newly added.
     pub fn process_operations(
         &mut self,
-        mut operations: Map<OperationId, (SignedOperation, Vec<u8>)>,
+        mut operations: Map<OperationId, WrappedOperation>,
     ) -> Result<Set<OperationId>, PoolError> {
         let mut removed = Set::<OperationId>::default();
-        for (op_id, (op, serialized)) in operations.iter() {
+        for (op_id, op) in operations.iter() {
             massa_trace!("pool add_operations op", { "op_id": op_id });
 
             // Already present
@@ -141,17 +134,11 @@ impl OperationPool {
             }
 
             // wrap
-            let thread_count = self.cfg.thread_count;
             let operation_validity_periods = self.cfg.operation_validity_periods;
             let (wrapped_op, validity_start_period) = {
-                let byte_count = serialized.len() as u64;
-                let wrapped = OperationMetadata::new(
-                    op,
-                    byte_count,
-                    thread_count,
-                    operation_validity_periods,
-                );
-                let validity_range = op.content.get_validity_range(operation_validity_periods);
+                let byte_count = op.serialized_data.len() as u64;
+                let wrapped = OperationMetadata::new(op, byte_count, operation_validity_periods);
+                let validity_range = op.get_validity_range(operation_validity_periods);
                 let validity_start_period = validity_range.start();
                 (wrapped, *validity_start_period)
             };
@@ -229,8 +216,8 @@ impl OperationPool {
             .collect();
 
         // Add newly added to shared storage.
-        for (op_id, (op, serialized)) in operations.into_iter() {
-            self.storage.store_operation(op_id, op, serialized);
+        for (_, op) in operations.into_iter() {
+            self.storage.store_operation(op);
         }
 
         Ok(newly_added_ids)
@@ -321,7 +308,7 @@ impl OperationPool {
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-    ) -> Result<Vec<(OperationId, SignedOperation, u64)>, PoolError> {
+    ) -> Result<Vec<(WrappedOperation, u64)>, PoolError> {
         self.ops_by_thread_and_interest[block_slot.thread as usize]
             .iter()
             .filter_map(|(_rentability, id)| {
@@ -343,7 +330,7 @@ impl OperationPool {
                     let stored_operation = self
                         .storage
                         .retrieve_operation(id)?;
-                    Some(Ok((*id, stored_operation.operation, w_op.byte_count)))
+                    Some(Ok((stored_operation, w_op.byte_count)))
                 } else {
                     Some(Err(PoolError::ContainerInconsistency(
                         format!("operation pool get_ops inconsistency: op_id={} is in ops_by_thread_and_interest but not in ops", id)
@@ -357,13 +344,13 @@ impl OperationPool {
     pub fn get_operations(
         &self,
         operation_ids: &Set<OperationId>,
-    ) -> Map<OperationId, SignedOperation> {
+    ) -> Map<OperationId, WrappedOperation> {
         operation_ids
             .iter()
             .filter_map(|op_id| {
                 self.storage
                     .retrieve_operation(op_id)
-                    .map(|stored| (*op_id, stored.operation))
+                    .map(|stored| (*op_id, stored))
             })
             .collect()
     }
@@ -394,7 +381,7 @@ impl OperationPool {
                             (
                                 *op_id,
                                 OperationSearchResult {
-                                    op: op.operation,
+                                    op,
                                     in_pool: true,
                                     in_blocks: Map::default(),
                                     status: OperationSearchResultStatus::Pending,

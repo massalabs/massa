@@ -5,8 +5,8 @@ use crate::{pool_controller, settings::PoolConfig, PoolCommandSender, PoolManage
 use futures::Future;
 use massa_hash::Hash;
 use massa_models::{
-    signed::Signed, Address, Amount, BlockId, Endorsement, Operation, OperationType,
-    SignedEndorsement, SignedOperation, Slot,
+    wrapped::WrappedContent, Address, Amount, BlockId, Endorsement, EndorsementSerializer,
+    Operation, OperationSerializer, OperationType, Slot, WrappedEndorsement, WrappedOperation,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_storage::Storage;
@@ -37,7 +37,7 @@ where
     pool_manager.stop().await.unwrap();
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
+pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
     let sender_priv = generate_random_private_key();
     let sender_pub = derive_public_key(&sender_priv);
 
@@ -51,27 +51,34 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
     let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
-        sender_public_key: sender_pub,
         expire_period,
     };
-    (
-        Signed::new_signed(content, &sender_priv).unwrap().1,
-        Address::from_public_key(&sender_pub).get_thread(2),
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &sender_priv,
+        &sender_pub,
     )
+    .unwrap()
 }
 
 /// Creates an endorsement for use in pool tests.
-pub fn create_endorsement(slot: Slot) -> SignedEndorsement {
+pub fn create_endorsement(slot: Slot) -> WrappedEndorsement {
     let sender_priv = generate_random_private_key();
     let sender_public_key = derive_public_key(&sender_priv);
 
     let content = Endorsement {
-        sender_public_key,
         slot,
         index: 0,
         endorsed_block: BlockId(Hash::compute_from("blabla".as_bytes())),
     };
-    Signed::new_signed(content, &sender_priv).unwrap().1
+    Endorsement::new_wrapped(
+        content,
+        EndorsementSerializer::new(),
+        &sender_priv,
+        &sender_public_key,
+    )
+    .unwrap()
 }
 
 pub fn get_transaction_with_addresses(
@@ -80,7 +87,7 @@ pub fn get_transaction_with_addresses(
     sender_pub: PublicKey,
     sender_priv: PrivateKey,
     recv_pub: PublicKey,
-) -> (SignedOperation, u8) {
+) -> WrappedOperation {
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub),
         amount: Amount::default(),
@@ -88,13 +95,15 @@ pub fn get_transaction_with_addresses(
     let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
-        sender_public_key: sender_pub,
         expire_period,
     };
-    (
-        Signed::new_signed(content, &sender_priv).unwrap().1,
-        Address::from_public_key(&sender_pub).get_thread(2),
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &sender_priv,
+        &sender_pub,
     )
+    .unwrap()
 }
 
 pub fn create_executesc(
@@ -102,7 +111,7 @@ pub fn create_executesc(
     fee: u64,
     max_gas: u64,
     gas_price: u64,
-) -> (SignedOperation, u8) {
+) -> WrappedOperation {
     let priv_key = generate_random_private_key();
     let sender_public_key = derive_public_key(&priv_key);
 
@@ -117,14 +126,15 @@ pub fn create_executesc(
     };
 
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-
-    (
-        Signed::new_signed(content, &priv_key).unwrap().1,
-        Address::from_public_key(&sender_public_key).get_thread(2),
+    Operation::new_wrapped(
+        content,
+        OperationSerializer::new(),
+        &priv_key,
+        &sender_public_key,
     )
+    .unwrap()
 }

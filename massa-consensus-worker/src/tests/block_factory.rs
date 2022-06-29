@@ -10,8 +10,9 @@ use super::{
 };
 use massa_hash::Hash;
 use massa_models::{
-    signed::{Signable, Signed},
-    Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
+    wrapped::{Id, WrappedContent},
+    Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot, WrappedBlock,
+    WrappedEndorsement, WrappedOperation,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 
@@ -19,8 +20,8 @@ pub struct BlockFactory {
     pub best_parents: Vec<BlockId>,
     pub creator_priv_key: PrivateKey,
     pub slot: Slot,
-    pub endorsements: Vec<SignedEndorsement>,
-    pub operations: Vec<SignedOperation>,
+    pub endorsements: Vec<WrappedEndorsement>,
+    pub operations: Vec<WrappedOperation>,
     pub protocol_controller: MockProtocolController,
 }
 
@@ -39,54 +40,73 @@ impl BlockFactory {
         }
     }
 
-    pub async fn create_and_receive_block(&mut self, valid: bool) -> (BlockId, Block) {
+    pub async fn create_and_receive_block(&mut self, valid: bool) -> WrappedBlock {
         let public_key = derive_public_key(&self.creator_priv_key);
-        let (hash, header) = Signed::new_signed(
+        let header = BlockHeader::new_wrapped(
             BlockHeader {
-                creator: public_key,
                 slot: self.slot,
                 parents: self.best_parents.clone(),
                 operation_merkle_root: Hash::compute_from(
                     &self
                         .operations
                         .iter()
-                        .flat_map(|op| op.content.compute_id().unwrap().into_bytes())
+                        .flat_map(|op| op.id.hash().into_bytes())
                         .collect::<Vec<_>>()[..],
                 ),
                 endorsements: self.endorsements.clone(),
             },
+            BlockHeaderSerializer::new(),
             &self.creator_priv_key,
+            &public_key,
         )
         .unwrap();
 
-        let block = Block {
-            header,
-            operations: self.operations.clone(),
-        };
+        let block = Block::new_wrapped(
+            Block {
+                header,
+                operations: self.operations.clone(),
+            },
+            BlockSerializer::new(),
+            &self.creator_priv_key,
+            &public_key,
+        )
+        .unwrap();
 
         self.protocol_controller.receive_block(block.clone()).await;
         if valid {
             // Assert that the block is propagated.
-            validate_propagate_block(&mut self.protocol_controller, hash, 2000).await;
+            validate_propagate_block(&mut self.protocol_controller, block.id, 2000).await;
         } else {
             // Assert that the the block is not propagated.
-            validate_notpropagate_block(&mut self.protocol_controller, hash, 500).await;
+            validate_notpropagate_block(&mut self.protocol_controller, block.id, 500).await;
         }
-        (hash, block)
+        block
     }
 
-    pub fn sign_header(&self, header: BlockHeader) -> Block {
-        let _public_key = derive_public_key(&self.creator_priv_key);
-        let (_hash, header) = Signed::new_signed(header, &self.creator_priv_key).unwrap();
-
-        Block {
+    pub fn sign_header(&self, header: BlockHeader) -> WrappedBlock {
+        let public_key = derive_public_key(&self.creator_priv_key);
+        let header = BlockHeader::new_wrapped(
             header,
-            operations: self.operations.clone(),
-        }
+            BlockHeaderSerializer::new(),
+            &self.creator_priv_key,
+            &public_key,
+        )
+        .unwrap();
+
+        Block::new_wrapped(
+            Block {
+                header,
+                operations: self.operations.clone(),
+            },
+            BlockSerializer::new(),
+            &self.creator_priv_key,
+            &public_key,
+        )
+        .unwrap()
     }
 
-    pub async fn receieve_block(&mut self, valid: bool, block: Block) {
-        let hash = block.header.content.compute_id().unwrap();
+    pub async fn receieve_block(&mut self, valid: bool, block: WrappedBlock) {
+        let hash = block.id;
         self.protocol_controller.receive_block(block.clone()).await;
         if valid {
             // Assert that the block is propagated.

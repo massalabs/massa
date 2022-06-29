@@ -6,6 +6,8 @@ use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
     BootstrapServerMessageSerializer,
 };
+use async_speed_limit::clock::StandardClock;
+use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::Version;
@@ -25,7 +27,7 @@ pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     size_field_len: usize,
     local_privkey: PrivateKey,
-    duplex: Duplex,
+    duplex: Resource<Duplex, StandardClock>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
@@ -36,7 +38,9 @@ impl BootstrapServerBinder {
     ///
     /// # Argument
     /// * duplex: duplex stream.
-    pub fn new(duplex: Duplex, local_privkey: PrivateKey) -> Self {
+    /// * local_privkey: local node user private key
+    /// * limit: limit max bytes per second (up and down)
+    pub fn new(duplex: Duplex, local_privkey: PrivateKey, limit: f64) -> Self {
         let max_bootstrap_message_size =
             with_serialization_context(|context| context.max_bootstrap_message_size);
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
@@ -44,7 +48,7 @@ impl BootstrapServerBinder {
             max_bootstrap_message_size,
             size_field_len,
             local_privkey,
-            duplex,
+            duplex: <Limiter>::new(limit).limit(duplex),
             prev_message: None,
             version_serializer: VersionSerializer::new(),
             version_deserializer: VersionDeserializer::new(),

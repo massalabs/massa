@@ -28,7 +28,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, OperationPrefixIds},
     stats::NetworkStats,
-    BlockId, SignedEndorsement,
+    BlockId, WrappedEndorsement,
 };
 use massa_network_exports::{
     BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
@@ -265,7 +265,7 @@ pub async fn on_block_not_found_cmd(worker: &mut NetworkWorker, node: NodeId, bl
 pub async fn on_send_endorsements_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    endorsements: Vec<SignedEndorsement>,
+    endorsements: Vec<WrappedEndorsement>,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendEndorsements",

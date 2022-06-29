@@ -888,7 +888,8 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total
-                                            || info.candidate_sce_ledger_info.balance < coins
+                                            || info.candidate_balance_info.unwrap_or_default()
+                                                < coins
                                         {
                                             client_warning!("this operation may be rejected due to insufficient balance");
                                         }
@@ -1051,8 +1052,8 @@ async fn send_operation(
     };
 
     let op = wallet.create_operation(
+        &sender_public_key,
         Operation {
-            sender_public_key,
             fee,
             expire_period,
             op,

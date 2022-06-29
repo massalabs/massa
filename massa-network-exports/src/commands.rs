@@ -75,7 +75,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, OperationPrefixIds, Operations},
     stats::NetworkStats,
-    Block, BlockId, SignedEndorsement, SignedHeader,
+    BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
@@ -102,12 +102,13 @@ pub enum NodeCommand {
     /// Ask for a set of operations
     AskForOperations(OperationPrefixIds),
     /// Endorsements
-    SendEndorsements(Vec<SignedEndorsement>),
+    SendEndorsements(Vec<WrappedEndorsement>),
 }
 
 /// Event types that node worker can emit
 /// Append on receive something from inside and outside.
 /// Outside initialization with `Received` prefix.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum NodeEventType {
     /// Node we are connected to asked for advertised peers
@@ -115,21 +116,21 @@ pub enum NodeEventType {
     /// Node we are connected to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
     /// Node we are connected to sent block
-    ReceivedBlock(Block, Vec<u8>),
+    ReceivedBlock(WrappedBlock),
     /// Node we are connected to sent block header
-    ReceivedBlockHeader(SignedHeader),
+    ReceivedBlockHeader(WrappedHeader),
     /// Node we are connected to asks for a block.
     ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,
     BlockNotFound(BlockId),
     /// Received full operations.
-    ReceivedOperations(Operations, Vec<Vec<u8>>),
+    ReceivedOperations(Operations),
     /// Received an operation id batch announcing new operations
     ReceivedOperationAnnouncements(OperationPrefixIds),
     /// Receive a list of wanted operations
     ReceivedAskForOperations(OperationPrefixIds),
     /// Receive a set of endorsement
-    ReceivedEndorsements(Vec<SignedEndorsement>),
+    ReceivedEndorsements(Vec<WrappedEndorsement>),
 }
 
 /// Events node worker can emit.
@@ -183,7 +184,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// endorsements
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     },
     /// sign message with our node private key (associated to node id)
     /// != staking key
@@ -226,6 +227,7 @@ pub enum NetworkCommand {
 }
 
 /// network event
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum NetworkEvent {
     /// new connection from node
@@ -237,16 +239,14 @@ pub enum NetworkEvent {
         /// from node id
         node: NodeId,
         /// block
-        block: Block,
-        /// serialized block
-        serialized: Vec<u8>,
+        block: WrappedBlock,
     },
     /// A block header was received
     ReceivedBlockHeader {
         /// from node id
         source_node_id: NodeId,
         /// header
-        header: SignedHeader,
+        header: WrappedHeader,
     },
     /// Someone ask for block with given header hash.
     AskedForBlocks {
@@ -268,8 +268,6 @@ pub enum NetworkEvent {
         node: NodeId,
         /// operations
         operations: Operations,
-        /// serialized operations.
-        serialized: Vec<Vec<u8>>,
     },
     /// Receive a list of `OperationId`
     ReceivedOperationAnnouncements {
@@ -290,7 +288,7 @@ pub enum NetworkEvent {
         /// node id
         node: NodeId,
         /// Endorsements
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     },
 }
 

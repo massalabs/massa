@@ -4,6 +4,7 @@ members = [
   "massa-async-pool",
   "massa-bootstrap",
   "massa-client",
+  "massa-cipher",
   "massa-consensus-exports",
   "massa-consensus-worker",
   "massa-execution-exports",

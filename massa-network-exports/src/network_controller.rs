@@ -9,7 +9,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, OperationPrefixIds},
     stats::NetworkStats,
-    BlockId, SignedEndorsement,
+    BlockId, WrappedEndorsement,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -240,7 +240,7 @@ impl NetworkCommandSender {
     pub async fn send_endorsements(
         &self,
         node: NodeId,
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendEndorsements { node, endorsements })
