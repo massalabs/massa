@@ -63,7 +63,6 @@ impl SpeculativeRollState {
 
     /// Add `roll_count` rolls to the given address
     pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
-        // NOTE: probably want to move this to context
         let count = self
             .added_changes
             .roll_changes
@@ -73,6 +72,7 @@ impl SpeculativeRollState {
                     .read()
                     .fetch_roll_count(buyer_addr)
                     .unwrap_or_default(),
+                // NOTE: chain this with FinalState roll_count
             );
         *count = count.saturating_add(roll_count);
     }
@@ -95,13 +95,14 @@ impl SpeculativeRollState {
                     .read()
                     .fetch_roll_count(seller_addr)
                     .unwrap_or_default(),
+                // NOTE: chain this with FinalState roll_count
             );
         *count = count.saturating_sub(roll_count);
         let credits = self.added_changes.deferred_credits.entry(slot).or_insert(
             self.active_history
                 .read()
                 .fetch_all_deferred_credits_at(&slot),
-            // NOTE: update deferred credits
+            // NOTE: chain this with FinalState credits
         );
         credits.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
     }
