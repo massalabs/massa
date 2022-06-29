@@ -544,6 +544,20 @@ impl ExecutionContext {
             .add_rolls(buyer_addr, roll_count);
     }
 
+    /// Try to sell a given number of rolls.
+    ///
+    /// # Arguments
+    /// * `seller_addr`: address that will be credited
+    /// * `roll_count`: number of rolls to sell
+    pub fn try_sell_rolls(
+        &mut self,
+        seller_addr: &Address,
+        roll_count: u64,
+    ) -> Result<(), ExecutionError> {
+        self.speculative_roll_state
+            .try_sell_rolls(seller_addr, roll_count)
+    }
+
     /// Finishes a slot and generates the execution output.
     /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
     /// Moves the output of the execution out of the context,

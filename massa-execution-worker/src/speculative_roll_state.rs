@@ -70,9 +70,9 @@ impl SpeculativeRollState {
 
     /// TODO
     #[allow(dead_code)]
-    pub fn sell_rolls(
+    pub fn try_sell_rolls(
         &self,
-        _seller_addr: Address,
+        _seller_addr: &Address,
         _roll_count: u64,
     ) -> Result<(), ExecutionError> {
         Ok(())
