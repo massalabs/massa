@@ -361,20 +361,18 @@ async fn load_or_create_staking_keys_file(
                 .interact()
                 .expect("IO error: Password reading failed, staking keys file couldn't be unlocked")
         });
+        let (_version, decrypted_data) = decrypt(&password, &tokio::fs::read(path).await?)?;
         let staking_keys: anyhow::Result<Map<Address, (PublicKey, PrivateKey)>> =
-            serde_json::from_slice::<Vec<PrivateKey>>(&decrypt(
-                &password,
-                &tokio::fs::read(path).await?,
-            )?)?
-            .iter()
-            .map(|private_key| {
-                let public_key = derive_public_key(private_key);
-                Ok((
-                    Address::from_public_key(&public_key),
-                    (public_key, *private_key),
-                ))
-            })
-            .collect();
+            serde_json::from_slice::<Vec<PrivateKey>>(&decrypted_data)?
+                .iter()
+                .map(|private_key| {
+                    let public_key = derive_public_key(private_key);
+                    Ok((
+                        Address::from_public_key(&public_key),
+                        (public_key, *private_key),
+                    ))
+                })
+                .collect();
         Ok((password, staking_keys?))
     } else {
         let password = password.unwrap_or_else(|| {
