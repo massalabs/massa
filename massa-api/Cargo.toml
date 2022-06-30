@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bs58 = { version = "0.4", features = ["check"] }
 displaydoc = "0.2"
 futures = "0.3"
 jsonrpc-core = "18.0"
@@ -13,7 +14,7 @@ jsonrpc-derive = "18.0"
 jsonrpc-http-server = "18.0"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1.15", features = ["full"] }
+tokio = { version = "1.19", features = ["full"] }
 tracing = "0.1"
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
@@ -23,6 +24,7 @@ massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_network_exports = { path = "../massa-network-exports" }
 massa_pool = { path = "../massa-pool" }
+massa_serialization = { path = "../massa-serialization"}
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 

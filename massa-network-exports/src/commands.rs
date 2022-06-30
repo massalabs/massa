@@ -73,7 +73,7 @@ use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
     composite::PubkeySig,
     node::NodeId,
-    operation::{OperationIds, Operations},
+    operation::{OperationIds, OperationPrefixIds, Operations},
     stats::NetworkStats,
     BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
@@ -98,9 +98,9 @@ pub enum NodeCommand {
     /// Send full Operations (send to a node that previously asked for)
     SendOperations(OperationIds),
     /// Send a batch of operation ids
-    SendOperationAnnouncements(OperationIds),
+    SendOperationAnnouncements(OperationPrefixIds),
     /// Ask for a set of operations
-    AskForOperations(OperationIds),
+    AskForOperations(OperationPrefixIds),
     /// Endorsements
     SendEndorsements(Vec<WrappedEndorsement>),
 }
@@ -126,9 +126,9 @@ pub enum NodeEventType {
     /// Received full operations.
     ReceivedOperations(Operations),
     /// Received an operation id batch announcing new operations
-    ReceivedOperationAnnouncements(OperationIds),
+    ReceivedOperationAnnouncements(OperationPrefixIds),
     /// Receive a list of wanted operations
-    ReceivedAskForOperations(OperationIds),
+    ReceivedAskForOperations(OperationPrefixIds),
     /// Receive a set of endorsement
     ReceivedEndorsements(Vec<WrappedEndorsement>),
 }
@@ -211,14 +211,14 @@ pub enum NetworkCommand {
         /// to node id
         to_node: NodeId,
         /// batch of operation ids
-        batch: OperationIds,
+        batch: OperationPrefixIds,
     },
     /// Ask for operation
     AskForOperations {
         /// to node id
         to_node: NodeId,
         /// operation ids in the wish list
-        wishlist: OperationIds,
+        wishlist: OperationPrefixIds,
     },
     /// Whitelist a list of `IpAddr`
     Whitelist(Vec<IpAddr>),
@@ -273,15 +273,15 @@ pub enum NetworkEvent {
     ReceivedOperationAnnouncements {
         /// from node id
         node: NodeId,
-        /// operation ids
-        operation_ids: OperationIds,
+        /// operation prefix ids
+        operation_prefix_ids: OperationPrefixIds,
     },
     /// Receive a list of asked operations from `node`
     ReceiveAskForOperations {
         /// from node id
         node: NodeId,
-        /// operation ids
-        operation_ids: OperationIds,
+        /// operation prefix ids
+        operation_prefix_ids: OperationPrefixIds,
     },
     /// received endorsements from node
     ReceivedEndorsements {

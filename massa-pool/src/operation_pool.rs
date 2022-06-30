@@ -355,13 +355,6 @@ impl OperationPool {
             .collect()
     }
 
-    pub fn find_operations(&self, operation_ids: Set<OperationId>) -> Set<OperationId> {
-        operation_ids
-            .into_iter()
-            .filter(|id| self.ops.contains_key(id))
-            .collect()
-    }
-
     pub fn get_operations_involving_address(
         &self,
         address: &Address,

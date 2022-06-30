@@ -3,7 +3,7 @@
 #![warn(missing_docs)]
 
 use massa_logging::massa_trace;
-use massa_models::prehash::Map;
+use massa_models::prehash::{Map, Set};
 use massa_models::{BlockId, OperationId, WrappedBlock, WrappedOperation};
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry;
@@ -58,6 +58,15 @@ impl Storage {
                 entry.insert(operation);
             }
         }
+    }
+
+    /// Returns a set of operation ids that are found in storage.
+    pub fn find_operations(&self, operation_ids: Set<OperationId>) -> Set<OperationId> {
+        let operations = self.operations.read();
+        operation_ids
+            .into_iter()
+            .filter(|id| operations.contains_key(id))
+            .collect()
     }
 
     /// Get a clone of the potentially stored operation.

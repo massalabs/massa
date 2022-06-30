@@ -1,4 +1,4 @@
-use bitvec::{order::Lsb0, prelude::BitVec};
+use bitvec::prelude::BitVec;
 use massa_models::{
     constants::{MAX_BOOTSTRAP_POS_ENTRIES, THREAD_COUNT},
     prehash::Map,
@@ -30,7 +30,7 @@ pub struct ThreadCycleState {
     /// Cycle roll updates
     pub cycle_updates: RollUpdates,
     /// Used to seed the random selector at each cycle
-    pub rng_seed: BitVec<Lsb0, u8>,
+    pub rng_seed: BitVec<u8>,
     /// Per-address production statistics `(ok_count, nok_count)`
     pub production_stats: Map<Address, (u64, u64)>,
 }
@@ -215,7 +215,7 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
                             ErrorKind::Eof,
                         )));
                     }
-                    let mut rng_seed: BitVec<Lsb0, u8> =
+                    let mut rng_seed: BitVec<u8> =
                         BitVec::try_from_vec(rest[..bits_u8_len].to_vec()).map_err(|_| {
                             nom::Err::Error(ParseError::from_error_kind(input, ErrorKind::Eof))
                         })?;

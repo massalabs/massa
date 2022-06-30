@@ -20,8 +20,9 @@ pub use endorsement::{
 };
 pub use error::ModelsError;
 pub use operation::{
-    Operation, OperationId, OperationIdsDeserializer, OperationSerializer, OperationType,
-    WrappedOperation,
+    Operation, OperationId, OperationIdsDeserializer, OperationPrefixId,
+    OperationPrefixIdDeserializer, OperationPrefixIds, OperationPrefixIdsDeserializer,
+    OperationPrefixIdsSerializer, OperationSerializer, OperationType, WrappedOperation,
 };
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,

@@ -443,8 +443,19 @@ pool.
 .. code-block:: javascript
 
     [[
+        {
+            "serialized_content": String,
+            "creator_public_key": String,
+            "signature": String
+        }
+    ]]
+
+The `serialized_content` parameter contains all the content encoded in byte compact (see https://github.com/massalabs/massa/blob/main/massa-models/src/operation.rs#L185) base58 encoded.
+Here is an example of the content format :
+
+.. code-block:: javascript
+
     {
-        "content": {
         "expire_period": Number,
         "fee": String, // represent an Amount in coins
         "op": {
@@ -478,11 +489,9 @@ pool.
                 "gas_price": Number, // Amount
             }
         },
-        "sender_public_key": String
-        },
-        "signature": String
     }
-    ]]
+
+For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with blake3.
 
 -   Return:
 

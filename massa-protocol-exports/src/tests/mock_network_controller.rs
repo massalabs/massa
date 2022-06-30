@@ -115,7 +115,7 @@ impl MockNetworkController {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperationAnnouncements {
                 node: source_node_id,
-                operation_ids,
+                operation_prefix_ids: operation_ids.iter().map(|id| id.into_prefix()).collect(),
             })
             .await
             .expect("Couldn't send operations to protocol.");
@@ -131,7 +131,7 @@ impl MockNetworkController {
         self.network_event_tx
             .send(NetworkEvent::ReceiveAskForOperations {
                 node: source_node_id,
-                operation_ids,
+                operation_prefix_ids: operation_ids.iter().map(|id| id.into_prefix()).collect(),
             })
             .await
             .expect("Couldn't send operations to protocol.");

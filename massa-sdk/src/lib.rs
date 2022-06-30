@@ -8,7 +8,7 @@ use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcError, RpcResult, TypedClient};
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
-    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    OperationInput, ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -237,7 +237,7 @@ impl RpcClient {
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
     pub async fn send_operations(
         &self,
-        operations: Vec<WrappedOperation>,
+        operations: Vec<OperationInput>,
     ) -> RpcResult<Vec<OperationId>> {
         self.call_method("send_operations", "Vec<OperationId>", vec![operations])
             .await

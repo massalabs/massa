@@ -11,11 +11,23 @@ use crate::{
     Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
 use massa_hash::Hash;
+use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
 use std::str::FromStr;
+
+/// operation input
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OperationInput {
+    /// The public key of the creator of the TX
+    pub creator_public_key: PublicKey,
+    /// The signature of the operation
+    pub signature: Signature,
+    /// The serialized version of the content base58 encoded
+    pub serialized_content: String,
+}
 
 /// node status
 #[derive(Debug, Deserialize, Serialize)]

@@ -11,7 +11,7 @@ time = { version = "0.3", features = ["serde", "formatting"] }
 displaydoc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1.15", features = ["full"] }
+tokio = { version = "1.19", features = ["full"] }
 nom = "7.1"
 
 # Custom dependencies
