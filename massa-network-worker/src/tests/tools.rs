@@ -370,7 +370,7 @@ pub async fn network_test<F, V>(
     let (establisher, mock_interface) = mock_establisher::new();
     let storage: Storage = Default::default();
     // launch network controller
-    let (network_event_sender, network_event_receiver, network_manager, _private_key, _node_id) =
+    let (network_event_sender, network_event_receiver, network_manager, _keypair, _node_id) =
         start_network_controller(
             network_settings,
             establisher,

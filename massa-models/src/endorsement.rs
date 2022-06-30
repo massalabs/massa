@@ -230,12 +230,9 @@ mod tests {
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement: WrappedEndorsement = Endorsement::new_wrapped(
-            content,
-            EndorsementSerializer::new(),
-            &sender_keypair,
-        )
-        .unwrap();
+        let endorsement: WrappedEndorsement =
+            Endorsement::new_wrapped(content, EndorsementSerializer::new(), &sender_keypair)
+                .unwrap();
 
         let mut ser_endorsement: Vec<u8> = Vec::new();
         let serializer = WrappedSerializer::new();

@@ -47,7 +47,7 @@ use std::{collections::HashSet, str::FromStr};
 async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
     let staking_key =
-        KeyPair::from_str("S1264sDCSgWoaTX42R51E4wXKCPgs1AebN2J7cfUfbPz8hXGQSEj").unwrap();
+        KeyPair::from_str("S1cPcVMTtCvMTTErjGhiZCWosC45NBPeDUGCHFdJaSDhWGUFLzB").unwrap();
     let creator_addr = Address::from_public_key(&staking_key.get_public_key());
     let roll_price = Amount::from_str("42").unwrap();
     let initial_ledger = vec![(

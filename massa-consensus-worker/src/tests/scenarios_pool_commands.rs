@@ -8,7 +8,7 @@ use massa_models::clique::Clique;
 use massa_models::ledger_models::LedgerData;
 use massa_models::{Amount, BlockId, Slot, WrappedOperation};
 use massa_pool::PoolCommand;
-use massa_signature::{KeyPair, PublicKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
@@ -167,8 +167,7 @@ async fn test_new_final_ops() {
             .collect(),
     );
     let op = create_transaction(&keypair_a, address_b, 1, 10, 1);
-    let (boot_graph, mut p0, mut p1) =
-        get_bootgraph(keypair_a.get_public_key(), op.clone(), boot_ledger);
+    let (boot_graph, mut p0, mut p1) = get_bootgraph(op.clone(), boot_ledger);
 
     consensus_pool_test(
         cfg.clone(),
@@ -259,7 +258,7 @@ async fn test_max_attempts_get_operations() {
             .collect(),
     );
     let op = create_transaction(&keypair_a, address_b, 1, 10, 1);
-    let (boot_graph, _p0, _p1) = get_bootgraph(keypair_a.get_public_key(), op.clone(), boot_ledger);
+    let (boot_graph, _p0, _p1) = get_bootgraph(op.clone(), boot_ledger);
 
     consensus_pool_test(
         cfg.clone(),
@@ -350,7 +349,7 @@ async fn test_max_batch_size_get_operations() {
             .collect(),
     );
     let op = create_transaction(&keypair_a, address_b, 1, 10, 1);
-    let (boot_graph, _p0, _p1) = get_bootgraph(keypair_a.get_public_key(), op.clone(), boot_ledger);
+    let (boot_graph, _p0, _p1) = get_bootgraph(op.clone(), boot_ledger);
 
     consensus_pool_test(
         cfg.clone(),
@@ -411,7 +410,6 @@ async fn test_max_batch_size_get_operations() {
 }
 
 fn get_bootgraph(
-    creator: PublicKey,
     operation: WrappedOperation,
     ledger: ConsensusLedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {

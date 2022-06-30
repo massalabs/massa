@@ -642,7 +642,7 @@ impl ConsensusConfig {
         }
     }
 
-    /// Default consensus configuration from private staking keys
+    /// Default consensus configuration from staking keypairs
     pub fn default_with_staking_keys(staking_keys: &[KeyPair]) -> Self {
         use crate::tools::*;
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());

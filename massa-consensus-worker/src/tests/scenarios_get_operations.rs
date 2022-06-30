@@ -9,7 +9,7 @@ use massa_models::{
     clique::Clique, ledger_models::LedgerData, Amount, BlockId, OperationSearchResult,
     OperationSearchResultStatus, Slot,
 };
-use massa_signature::{KeyPair, PublicKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -61,11 +61,7 @@ async fn test_get_operation() {
             .collect(),
     );
 
-    let (boot_graph, b1, b2) = get_bootgraph(
-        staking_keys[0].get_public_key(),
-        vec![op2.clone(), op3.clone()],
-        boot_ledger,
-    );
+    let (boot_graph, b1, b2) = get_bootgraph(vec![op2.clone(), op3.clone()], boot_ledger);
     // there is only one node so it should be drawn at every slot
 
     consensus_pool_test(
@@ -141,7 +137,6 @@ async fn test_get_operation() {
 }
 
 fn get_bootgraph(
-    creator: PublicKey,
     operations: Vec<WrappedOperation>,
     ledger: ConsensusLedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {

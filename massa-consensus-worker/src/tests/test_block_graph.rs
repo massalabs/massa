@@ -141,18 +141,6 @@ pub async fn test_get_ledger_at_parents() {
     let mut cfg = ConsensusConfig::from(ledger_file.path());
     cfg.thread_count = thread_count;
     cfg.block_reward = Amount::from_str("1").unwrap();
-    // to generate address and public keys
-    /*        let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-
-    let add = Address::from_public_key(&public_key);
-
-    println!(
-        "public key:{}, address:{}, th:{}",
-        public_key.to_bs58_check(),
-        add.to_bs58_check(),
-        add.get_thread(thread_count)
-    ); */
 
     // define addresses use for the test
     let pubkey_a =

@@ -100,13 +100,11 @@ impl KeyPair {
     /// let serialized: String = signature.to_bs58_check();
     /// ```
     pub fn generate() -> KeyPair {
-        use secp256k1::rand::rngs::OsRng;
-        let mut rng = OsRng::new().expect("OsRng");
-        KeyPair(secp256k1::KeyPair::new(SECP256K1, &mut rng))
+        KeyPair(secp256k1::KeyPair::new(SECP256K1, &mut rand::thread_rng()))
     }
 
     /// Returns the Signature produced by signing
-    /// data bytes with a PrivateKey.
+    /// data bytes with a KeyPair.
     ///
     /// # Example
     ///  ```
@@ -171,7 +169,7 @@ impl KeyPair {
     /// let public_key = keypair.get_public_key();
     /// ```
     pub fn get_public_key(&self) -> PublicKey {
-        PublicKey(XOnlyPublicKey::from_keypair(&self.0))
+        PublicKey(XOnlyPublicKey::from_keypair(&self.0).0)
     }
 
     /// Encode a keypair into his base58 form
@@ -221,7 +219,7 @@ impl KeyPair {
 }
 
 impl ::serde::Serialize for KeyPair {
-    /// `::serde::Serialize` trait for `PrivateKey`
+    /// `::serde::Serialize` trait for `KeyPair`
     /// if the serializer is human readable,
     /// serialization is done using `serialize_bs58_check`
     /// else, it uses `serialize_binary`
@@ -232,8 +230,8 @@ impl ::serde::Serialize for KeyPair {
     /// ```
     /// # use massa_signature::KeyPair;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = KeyPair::generate();
-    /// let serialized: String = serde_json::to_string(&private_key).unwrap();
+    /// let keypair = KeyPair::generate();
+    /// let serialized: String = serde_json::to_string(&keypair).unwrap();
     /// ```
     ///
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -245,7 +243,7 @@ impl ::serde::Serialize for KeyPair {
 }
 
 impl<'de> ::serde::Deserialize<'de> for KeyPair {
-    /// `::serde::Deserialize` trait for `PrivateKey`
+    /// `::serde::Deserialize` trait for `KeyPair`
     /// if the deserializer is human readable,
     /// deserialization is done using `deserialize_bs58_check`
     /// else, it uses `deserialize_binary`
@@ -254,11 +252,11 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
     ///
     /// Human readable deserialization :
     /// ```
-    /// # use massa_signature::{PrivateKey, generate_random_private_key};
+    /// # use massa_signature::KeyPair;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let serialized = serde_json::to_string(&private_key).unwrap();
-    /// let deserialized: PrivateKey = serde_json::from_str(&serialized).unwrap();
+    /// let keypair = KeyPair::generate();
+    /// let serialized = serde_json::to_string(&keypair).unwrap();
+    /// let deserialized: KeyPair = serde_json::from_str(&serialized).unwrap();
     /// ```
     ///
     fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<KeyPair, D::Error> {
@@ -354,7 +352,7 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
 
 /// Public key used to check if a message was encoded
 /// by the corresponding `PublicKey`.
-/// Generated from the `PrivateKey` using `SignatureEngine`
+/// Generated from the `KeyPair` using `SignatureEngine`
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PublicKey(secp256k1::XOnlyPublicKey);
 
@@ -414,7 +412,7 @@ impl FromStr for PublicKey {
 
 impl PublicKey {
     /// Checks if the `Signature` associated with data bytes
-    /// was produced with the `PrivateKey` associated to given `PublicKey`
+    /// was produced with the `KeyPair` associated to given `PublicKey`
     pub fn verify_signature(
         &self,
         hash: &Hash,
@@ -428,12 +426,11 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{derive_public_key, generate_random_private_key};
+    /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
+    /// let keypair = KeyPair::generate();
     ///
-    /// let serialized: String = public_key.to_bs58_check();
+    /// let serialized: String = keypair.get_public_key().to_bs58_check();
     /// ```
     pub fn to_bs58_check(&self) -> String {
         bs58::encode(self.to_bytes()).with_check().into_string()
@@ -443,12 +440,11 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{derive_public_key, generate_random_private_key};
+    /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
+    /// let keypair = KeyPair::generate();
     ///
-    /// let serialize = public_key.to_bytes();
+    /// let serialize = keypair.get_public_key().to_bytes();
     /// ```
     pub fn to_bytes(&self) -> [u8; PUBLIC_KEY_SIZE_BYTES] {
         self.0.serialize()
@@ -458,12 +454,11 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{derive_public_key, generate_random_private_key};
+    /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
+    /// let keypair = KeyPair::generate();
     ///
-    /// let serialize = public_key.to_bytes();
+    /// let serialize = keypair.get_public_key().to_bytes();
     /// ```
     pub fn into_bytes(self) -> [u8; PUBLIC_KEY_SIZE_BYTES] {
         self.0.serialize()
@@ -473,12 +468,11 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{PublicKey, derive_public_key, generate_random_private_key};
+    /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
+    /// let keypair = KeyPair::generate();
     ///
-    /// let serialized: String = public_key.to_bs58_check();
+    /// let serialized: String = keypair.get_public_key().to_bs58_check();
     /// let deserialized: PublicKey = PublicKey::from_bs58_check(&serialized).unwrap();
     /// ```
     pub fn from_bs58_check(data: &str) -> Result<PublicKey, MassaSignatureError> {
@@ -505,12 +499,11 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{PublicKey, derive_public_key, generate_random_private_key};
+    /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
+    /// let keypair = KeyPair::generate();
     ///
-    /// let serialized = public_key.into_bytes();
+    /// let serialized = keypair.get_public_key().into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(
@@ -540,16 +533,15 @@ impl PublicKeyDeserializer {
 
 impl Deserializer<PublicKey> for PublicKeyDeserializer {
     /// ```
-    /// use massa_signature::{PublicKey, PublicKeyDeserializer, derive_public_key, generate_random_private_key, sign};
+    /// use massa_signature::{PublicKey, PublicKeyDeserializer, KeyPair};
     /// use massa_serialization::{DeserializeError, Deserializer};
     /// use massa_hash::Hash;
     ///
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
-    /// let serialized = public_key.to_bytes();
+    /// let keypair = KeyPair::generate();
+    /// let serialized = keypair.get_public_key().to_bytes();
     /// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
-    /// assert_eq!(public_key, deser_public_key);
+    /// assert_eq!(keypair.get_public_key(), deser_public_key);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
@@ -590,12 +582,10 @@ impl ::serde::Serialize for PublicKey {
     ///
     /// Human readable serialization :
     /// ```
-    /// # use massa_signature::{derive_public_key, generate_random_private_key};
+    /// # use massa_signature::KeyPair;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
-    ///
-    /// let serialized: String = serde_json::to_string(&public_key).unwrap();
+    /// let keypair = KeyPair::generate();
+    /// let serialized: String = serde_json::to_string(&keypair.get_public_key()).unwrap();
     /// ```
     ///
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -617,12 +607,11 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     ///
     /// Human readable deserialization :
     /// ```
-    /// # use massa_signature::{PublicKey, derive_public_key, generate_random_private_key};
+    /// # use massa_signature::{PublicKey, KeyPair};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
+    /// let keypair = KeyPair::generate();
     ///
-    /// let serialized = serde_json::to_string(&public_key).unwrap();
+    /// let serialized = serde_json::to_string(&keypair.get_public_key()).unwrap();
     /// let deserialized: PublicKey = serde_json::from_str(&serialized).unwrap();
     /// ```
     ///
@@ -679,7 +668,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     }
 }
 
-/// Signature generated from a message and a `PrivateKey`.
+/// Signature generated from a message and a `KeyPair`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Signature(schnorr::Signature);
 
@@ -720,12 +709,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{generate_random_private_key, sign};
+    /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
+    /// let keypair = KeyPair::generate();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
+    /// let signature = keypair.sign(&data).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// ```
@@ -737,12 +726,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{generate_random_private_key, sign};
+    /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
+    /// let keypair = KeyPair::generate();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
+    /// let signature = keypair.sign(&data).unwrap();
     ///
     /// let serialized = signature.to_bytes();
     /// ```
@@ -754,12 +743,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{generate_random_private_key, sign};
+    /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
+    /// let keypair = KeyPair::generate();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
+    /// let signature = keypair.sign(&data).unwrap();
     ///
     /// let serialized = signature.into_bytes();
     /// ```
@@ -771,12 +760,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{generate_random_private_key, sign, Signature};
+    /// # use massa_signature::{KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
+    /// let keypair = KeyPair::generate();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
+    /// let signature = keypair.sign(&data).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
@@ -805,12 +794,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use massa_signature::{generate_random_private_key, sign, Signature};
+    /// # use massa_signature::{KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
+    /// let keypair = KeyPair::generate();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
+    /// let signature = keypair.sign(&data).unwrap();
     ///
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
@@ -834,12 +823,12 @@ impl ::serde::Serialize for Signature {
     ///
     /// Human readable serialization :
     /// ```
-    /// # use massa_signature::{generate_random_private_key, sign};
+    /// # use massa_signature::{KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
+    /// let keypair = KeyPair::generate();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
+    /// let signature = keypair.sign(&data).unwrap();
     ///
     /// let serialized: String = serde_json::to_string(&signature).unwrap();
     /// ```
@@ -863,12 +852,12 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     ///
     /// Human readable deserialization :
     /// ```
-    /// # use massa_signature::{generate_random_private_key, sign, Signature};
+    /// # use massa_signature::{KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
+    /// let keypair = KeyPair::generate();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
+    /// let signature = keypair.sign(&data).unwrap();
     ///
     /// let serialized = serde_json::to_string(&signature).unwrap();
     /// let deserialized: Signature = serde_json::from_str(&serialized).unwrap();
@@ -940,13 +929,13 @@ impl SignatureDeserializer {
 
 impl Deserializer<Signature> for SignatureDeserializer {
     /// ```
-    /// use massa_signature::{Signature, SignatureDeserializer, generate_random_private_key, sign};
+    /// use massa_signature::{Signature, SignatureDeserializer, KeyPair};
     /// use massa_serialization::{DeserializeError, Deserializer};
     /// use massa_hash::Hash;
     ///
-    /// let private_key = generate_random_private_key();
+    /// let keypair = KeyPair::generate();
     /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
+    /// let signature = keypair.sign(&data).unwrap();
     /// let serialized = signature.into_bytes();
     /// let (rest, deser_signature) = SignatureDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());

@@ -12,7 +12,7 @@ use serial_test::serial;
 use tokio::io::duplex;
 
 lazy_static::lazy_static! {
-    pub static ref BOOTSTRAP_SETTINGS_PRIVATE_KEY: (BootstrapSettings, KeyPair) = {
+    pub static ref BOOTSTRAP_SETTINGS_KEYPAIR: (BootstrapSettings, KeyPair) = {
         let keypair = KeyPair::generate();
         (get_bootstrap_config(keypair.get_public_key()), keypair)
     };
@@ -22,10 +22,10 @@ lazy_static::lazy_static! {
 #[tokio::test]
 #[serial]
 async fn test_binders() {
-    let (bootstrap_settings, server_private_key): &(BootstrapSettings, KeyPair) =
-        &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
+    let (bootstrap_settings, server_keypair): &(BootstrapSettings, KeyPair) =
+        &BOOTSTRAP_SETTINGS_KEYPAIR;
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_private_key, f64::INFINITY);
+    let mut server = BootstrapServerBinder::new(server, *server_keypair, f64::INFINITY);
     let mut client = BootstrapClientBinder::new(
         client,
         bootstrap_settings.bootstrap_list[0].1,
@@ -110,11 +110,11 @@ async fn test_binders() {
 #[tokio::test]
 #[serial]
 async fn test_binders_double_send_server_works() {
-    let (bootstrap_settings, server_private_key): &(BootstrapSettings, KeyPair) =
-        &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
+    let (bootstrap_settings, server_keypair): &(BootstrapSettings, KeyPair) =
+        &BOOTSTRAP_SETTINGS_KEYPAIR;
 
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_private_key, f64::INFINITY);
+    let mut server = BootstrapServerBinder::new(server, *server_keypair, f64::INFINITY);
     let mut client = BootstrapClientBinder::new(
         client,
         bootstrap_settings.bootstrap_list[0].1,
@@ -184,11 +184,11 @@ async fn test_binders_double_send_server_works() {
 #[tokio::test]
 #[serial]
 async fn test_binders_try_double_send_client_works() {
-    let (bootstrap_settings, server_private_key): &(BootstrapSettings, KeyPair) =
-        &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
+    let (bootstrap_settings, server_keypair): &(BootstrapSettings, KeyPair) =
+        &BOOTSTRAP_SETTINGS_KEYPAIR;
 
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_private_key, f64::INFINITY);
+    let mut server = BootstrapServerBinder::new(server, *server_keypair, f64::INFINITY);
     let mut client = BootstrapClientBinder::new(
         client,
         bootstrap_settings.bootstrap_list[0].1,

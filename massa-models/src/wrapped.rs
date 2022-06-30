@@ -240,24 +240,22 @@ where
     DT: Deserializer<T>,
 {
     /// ```
-    /// use massa_models::{BlockId, Endorsement, EndorsementSerializer, EndorsementDeserializer, Slot, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer, WrappedContent}};
-    /// use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
-    /// use massa_signature::{derive_public_key, generate_random_private_key};
-    /// use std::ops::Bound::Included;
-    /// use massa_hash::Hash;
+    /// # use massa_models::{BlockId, Endorsement, EndorsementSerializer, EndorsementDeserializer, Slot, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer, WrappedContent}};
+    /// # use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
+    /// # use massa_signature::KeyPair;
+    /// # use std::ops::Bound::Included;
+    /// # use massa_hash::Hash;
     ///
     /// let content = Endorsement {
     ///    slot: Slot::new(10, 1),
     ///    index: 0,
     ///    endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
     /// };
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
+    /// let keypair = KeyPair::generate();
     /// let wrapped: Wrapped<Endorsement, BlockId> = Endorsement::new_wrapped(
     ///    content,
     ///    EndorsementSerializer::new(),
-    ///    &private_key,
-    ///    &public_key
+    ///    &keypair
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = WrappedSerializer::new().serialize(&wrapped, &mut serialized_data).unwrap();

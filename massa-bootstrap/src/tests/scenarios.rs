@@ -26,7 +26,7 @@ use std::{str::FromStr, sync::Arc};
 use tokio::sync::mpsc;
 
 lazy_static::lazy_static! {
-    pub static ref BOOTSTRAP_SETTINGS_PRIVATE_KEY: (BootstrapSettings, KeyPair) = {
+    pub static ref BOOTSTRAP_SETTINGS_KEYPAIR: (BootstrapSettings, KeyPair) = {
         let keypair = KeyPair::generate();
         (get_bootstrap_config(keypair.get_public_key()), keypair)
     };
@@ -35,8 +35,7 @@ lazy_static::lazy_static! {
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
-    let (bootstrap_settings, private_key): &(BootstrapSettings, KeyPair) =
-        &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
+    let (bootstrap_settings, keypair): &(BootstrapSettings, KeyPair) = &BOOTSTRAP_SETTINGS_KEYPAIR;
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
@@ -50,7 +49,7 @@ async fn test_bootstrap_server() {
         final_state.clone(),
         bootstrap_settings,
         bootstrap_establisher,
-        *private_key,
+        *keypair,
         0,
         Version::from_str("TEST.1.2").unwrap(),
     )

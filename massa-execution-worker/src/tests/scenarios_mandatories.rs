@@ -122,7 +122,7 @@ fn test_nested_call_gas_usage() {
     let storage = Storage::default();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
-    // get random private and public keys
+    // get random keypair
     let (_, keypair) = get_random_address_full();
     // load bytecode you can check the source code of the
     // following wasm file in massa-sc-examples
@@ -218,7 +218,7 @@ fn send_and_receive_async_message() {
     let storage = Storage::default();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
-    // get random private and public keys
+    // get random keypair
     let (_, keypair) = get_random_address_full();
     // load send_message bytecode you can check the source code of the
     // following wasm file in massa-sc-examples

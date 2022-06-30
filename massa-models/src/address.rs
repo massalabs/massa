@@ -159,15 +159,13 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
-    /// let bytes = address.to_bytes();
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
+    /// let bytes = address.into_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
@@ -177,15 +175,13 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
-    /// let bytes = address.clone().into_bytes();
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
+    /// let bytes = address.into_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
@@ -195,14 +191,12 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.to_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
@@ -213,14 +207,12 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_bs58_check();
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();
     /// assert_eq!(address, res_addr);
@@ -233,14 +225,12 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_bs58_check();
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();
     /// assert_eq!(address, res_addr);
