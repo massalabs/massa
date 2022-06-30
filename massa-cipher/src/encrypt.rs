@@ -21,7 +21,7 @@ pub fn encrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
         .hash_password(password.as_bytes(), &salt)
         .map_err(|e| CipherError::EncryptionError(e.to_string()))?
         .hash
-        .unwrap();
+        .expect("content is missing after a successful hash");
     let cipher = Aes256GcmSiv::new(Key::from_slice(password_hash.as_bytes()));
     let mut nonce_bytes = [0u8; NONCE_SIZE];
     thread_rng().fill_bytes(&mut nonce_bytes);

@@ -16,8 +16,6 @@
 //! No complete security audits of the crate we use has been performed.
 //! But some of this crate's dependencies were audited by by NCC Group as part of an audit of the AES-GCM crate
 
-#![feature(slice_take)]
-
 mod constants;
 mod decrypt;
 mod encrypt;
