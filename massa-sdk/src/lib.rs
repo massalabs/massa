@@ -55,7 +55,7 @@ impl From<RpcChannel> for RpcClient {
     fn from(channel: RpcChannel) -> Self {
         RpcClient {
             client: channel.into(),
-            timeout: 10000,
+            timeout: 100000,
         }
     }
 }

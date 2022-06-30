@@ -706,7 +706,6 @@ impl Endpoints for API<Public> {
                     op_serialized.extend(op_input.creator_public_key.to_bytes());
                     op_serialized.extend(
                         bs58::decode(op_input.serialized_content)
-                            .with_check(None)
                             .into_vec()
                             .map_err(|err| {
                                 ApiError::ModelsError(ModelsError::CheckedOperationError(format!(
