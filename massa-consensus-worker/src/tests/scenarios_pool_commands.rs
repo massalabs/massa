@@ -8,7 +8,7 @@ use massa_models::clique::Clique;
 use massa_models::ledger_models::LedgerData;
 use massa_models::{Amount, BlockId, Slot, WrappedOperation};
 use massa_pool::PoolCommand;
-use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
+use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
@@ -147,7 +147,7 @@ async fn test_update_latest_final_block_cmd_notification() {
 #[tokio::test]
 #[serial]
 async fn test_new_final_ops() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         delta_f0: 2,
@@ -158,16 +158,17 @@ async fn test_new_final_ops() {
     // define addresses use for the test
     // addresses a and b both in thread 0
 
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
-    let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, _) = random_address_on_thread(0, cfg.thread_count).into();
 
     let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
     );
-    let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
-    let (boot_graph, mut p0, mut p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);
+    let op = create_transaction(&keypair_a, address_b, 1, 10, 1);
+    let (boot_graph, mut p0, mut p1) =
+        get_bootgraph(keypair_a.get_public_key(), op.clone(), boot_ledger);
 
     consensus_pool_test(
         cfg.clone(),
@@ -184,7 +185,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -195,7 +196,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -206,7 +207,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
             // UpdateLatestFinalPeriods pool command filter
@@ -249,16 +250,16 @@ async fn test_max_attempts_get_operations() {
     };
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
-    let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, _) = random_address_on_thread(0, cfg.thread_count).into();
 
     let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
     );
-    let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
-    let (boot_graph, _p0, _p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);
+    let op = create_transaction(&keypair_a, address_b, 1, 10, 1);
+    let (boot_graph, _p0, _p1) = get_bootgraph(keypair_a.get_public_key(), op.clone(), boot_ledger);
 
     consensus_pool_test(
         cfg.clone(),
@@ -340,16 +341,16 @@ async fn test_max_batch_size_get_operations() {
     };
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
-    let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, _) = random_address_on_thread(0, cfg.thread_count).into();
 
     let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
     );
-    let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
-    let (boot_graph, _p0, _p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);
+    let op = create_transaction(&keypair_a, address_b, 1, 10, 1);
+    let (boot_graph, _p0, _p1) = get_bootgraph(keypair_a.get_public_key(), op.clone(), boot_ledger);
 
     consensus_pool_test(
         cfg.clone(),
@@ -414,10 +415,9 @@ fn get_bootgraph(
     operation: WrappedOperation,
     ledger: ConsensusLedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
-    let genesis_0 = get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);
-    let genesis_1 = get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
+    let genesis_0 = get_export_active_test_block(vec![], vec![], Slot::new(0, 0), true);
+    let genesis_1 = get_export_active_test_block(vec![], vec![], Slot::new(0, 1), true);
     let p1t0 = get_export_active_test_block(
-        creator,
         vec![(genesis_0.block_id, 0), (genesis_1.block_id, 0)],
         vec![operation],
         Slot::new(1, 0),

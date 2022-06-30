@@ -20,7 +20,7 @@ use massa_network_exports::test_exports::mock_establisher::{self, MockEstablishe
 use massa_network_exports::{
     ConnectionId, NetworkCommandSender, NetworkEventReceiver, NetworkManager, PeerInfo,
 };
-use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::str::FromStr;
@@ -80,14 +80,13 @@ pub async fn full_connection_to_controller(
     .expect("connection towards controller failed");
 
     // perform handshake
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let mock_node_id = NodeId(public_key);
+    let keypair = KeyPair::generate();
+    let mock_node_id = NodeId(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
-        private_key,
+        keypair,
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
@@ -140,14 +139,13 @@ pub async fn rejected_connection_to_controller(
     .expect("connection towards controller failed");
 
     // perform handshake and ignore errors
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let mock_node_id = NodeId(public_key);
+    let keypair = KeyPair::generate();
+    let mock_node_id = NodeId(keypair.get_public_key());
     let result = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
-        private_key,
+        keypair,
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
@@ -226,14 +224,13 @@ pub async fn full_connection_from_controller(
     resp_tx.send(true).expect("resp_tx failed");
 
     // perform handshake
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let mock_node_id = NodeId(public_key);
+    let keypair = KeyPair::generate();
+    let mock_node_id = NodeId(keypair.get_public_key());
     let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
-        private_key,
+        keypair,
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
         connection_id,
@@ -330,14 +327,12 @@ pub async fn incoming_message_drain_stop(
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
-    let sender_priv = generate_random_private_key();
-    let sender_pub = derive_public_key(&sender_priv);
+    let sender_keypair = KeyPair::generate();
 
-    let recv_priv = generate_random_private_key();
-    let recv_pub = derive_public_key(&recv_priv);
+    let recv_keypair = KeyPair::generate();
 
     let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&recv_pub),
+        recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
         amount: Amount::default(),
     };
     let content = Operation {
@@ -346,13 +341,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
         expire_period,
     };
 
-    Operation::new_wrapped(
-        content,
-        OperationSerializer::new(),
-        &sender_priv,
-        &sender_pub,
-    )
-    .unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.

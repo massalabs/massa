@@ -846,20 +846,17 @@ impl Deserializer<Operations> for OperationsDeserializer {
 mod tests {
     use super::*;
     use massa_serialization::DeserializeError;
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use massa_signature::KeyPair;
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_transaction() {
-        let sender_priv = generate_random_private_key();
-        let sender_pub = derive_public_key(&sender_priv);
-
-        let recv_priv = generate_random_private_key();
-        let recv_pub = derive_public_key(&recv_priv);
+        let sender_keypair = KeyPair::generate();
+        let recv_keypair = KeyPair::generate();
 
         let op = OperationType::Transaction {
-            recipient_address: Address::from_public_key(&recv_pub),
+            recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
             amount: Amount::default(),
         };
         let mut ser_type = Vec::new();
@@ -887,7 +884,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Operation::new_wrapped(content, op_serializer, &sender_priv, &sender_pub).unwrap();
+        let op = Operation::new_wrapped(content, op_serializer, &sender_keypair).unwrap();
 
         let mut ser_op = Vec::new();
         WrappedSerializer::new()
@@ -905,8 +902,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_executesc() {
-        let sender_priv = generate_random_private_key();
-        let public_key = derive_public_key(&sender_priv);
+        let sender_keypair = KeyPair::generate();
 
         let op = OperationType::ExecuteSC {
             max_gas: 123,
@@ -939,7 +935,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Operation::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
+        let op = Operation::new_wrapped(content, op_serializer, &sender_keypair).unwrap();
 
         let mut ser_op = Vec::new();
         WrappedSerializer::new()
@@ -957,12 +953,10 @@ mod tests {
     #[test]
     #[serial]
     fn test_callsc() {
-        let sender_priv = generate_random_private_key();
-        let public_key = derive_public_key(&sender_priv);
+        let sender_keypair = KeyPair::generate();
 
-        let target_priv = generate_random_private_key();
-        let target_pub = derive_public_key(&target_priv);
-        let target_addr = Address::from_public_key(&target_pub);
+        let target_keypair = KeyPair::generate();
+        let target_addr = Address::from_public_key(&target_keypair.get_public_key());
 
         let op = OperationType::CallSC {
             max_gas: 123,
@@ -998,7 +992,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
-        let op = Operation::new_wrapped(content, op_serializer, &sender_priv, &public_key).unwrap();
+        let op = Operation::new_wrapped(content, op_serializer, &sender_keypair).unwrap();
 
         let mut ser_op = Vec::new();
         WrappedSerializer::new()

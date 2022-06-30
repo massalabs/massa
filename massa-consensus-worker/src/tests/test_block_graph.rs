@@ -15,7 +15,7 @@ use massa_models::{
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
     DeserializeCompact, Endorsement, EndorsementSerializer, SerializeCompact, Slot, WrappedBlock,
 };
-use massa_signature::{derive_public_key, generate_random_private_key, PublicKey};
+use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use serial_test::serial;
 use std::str::FromStr;
@@ -25,8 +25,7 @@ use tracing::warn;
 /// the data input to create the public keys was generated using the secp256k1 curve
 /// a test using this function is a regression test not an implementation test
 fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
-    let pk = generate_random_private_key();
-    let pb = derive_public_key(&pk);
+    let keypair = KeyPair::generate();
     let block = Block::new_wrapped(
         Block {
             header: BlockHeader::new_wrapped(
@@ -41,21 +40,18 @@ fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
                             slot: Slot::new(1, 0),
                         },
                         EndorsementSerializer::new(),
-                        &pk,
-                        &pb,
+                        &keypair,
                     )
                     .unwrap()],
                 },
                 BlockHeaderSerializer::new(),
-                &pk,
-                &pb,
+                &keypair,
             )
             .unwrap(),
             operations: vec![],
         },
         BlockSerializer::new(),
-        &pk,
-        &pb,
+        &keypair,
     )
     .unwrap();
 

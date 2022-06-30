@@ -6,14 +6,14 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::{init_serialization_context, Slot};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_consensus_asks_for_block() {
     init_serialization_context(massa_models::SerializationContext::default());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 500.into(),
         future_block_processing_max_periods: 50,
@@ -56,7 +56,7 @@ async fn test_consensus_asks_for_block() {
 #[serial]
 async fn test_consensus_does_not_ask_for_block() {
     init_serialization_context(massa_models::SerializationContext::default());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,

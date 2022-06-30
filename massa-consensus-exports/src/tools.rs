@@ -6,7 +6,7 @@ use massa_models::{
     rolls::{RollCounts, RollUpdate, RollUpdates},
     Address,
 };
-use massa_signature::{derive_public_key, KeyPair, PrivateKey};
+use massa_signature::KeyPair;
 use tempfile::NamedTempFile;
 
 /// Password used for encryption in tests
@@ -54,11 +54,10 @@ pub fn generate_roll_counts_file(roll_counts: &RollCounts) -> NamedTempFile {
 
 /// generate a default named temporary JSON initial rolls file,
 /// assuming two threads.
-pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempFile {
+pub fn generate_default_roll_counts_file(stakers: Vec<KeyPair>) -> NamedTempFile {
     let mut roll_counts = RollCounts::default();
     for key in stakers.iter() {
-        let pub_key = derive_public_key(key);
-        let address = Address::from_public_key(&pub_key);
+        let address = Address::from_public_key(&key.get_public_key());
         let update = RollUpdate {
             roll_purchases: 1,
             roll_sales: 0,

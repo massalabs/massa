@@ -510,7 +510,7 @@ impl From<&std::path::Path> for ConsensusConfig {
     fn from(initial_ledger_path: &std::path::Path) -> Self {
         let mut staking_keys = Vec::new();
         for _ in 0..2 {
-            staking_keys.push(massa_signature::generate_random_private_key());
+            staking_keys.push(KeyPair::generate());
         }
         massa_models::init_serialization_context(massa_models::SerializationContext::default());
         ConsensusSettings {
@@ -643,7 +643,7 @@ impl ConsensusConfig {
     }
 
     /// Default consensus configuration from private staking keys
-    pub fn default_with_staking_keys(staking_keys: &[PrivateKey]) -> Self {
+    pub fn default_with_staking_keys(staking_keys: &[KeyPair]) -> Self {
         use crate::tools::*;
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
         let staking_file = generate_staking_keys_file(staking_keys);

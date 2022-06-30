@@ -594,14 +594,13 @@ mod test {
     use super::*;
     use crate::{endorsement::EndorsementSerializer, Endorsement};
     use massa_serialization::DeserializeError;
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use massa_signature::KeyPair;
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_block_serialization() {
-        let private_key = generate_random_private_key();
-        let public_key = derive_public_key(&private_key);
+        let keypair = KeyPair::generate();
         let parents = (0..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
@@ -620,8 +619,7 @@ mod test {
                             endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
                         },
                         EndorsementSerializer::new(),
-                        &private_key,
-                        &public_key,
+                        &keypair,
                     )
                     .unwrap(),
                     Endorsement::new_wrapped(
@@ -631,15 +629,13 @@ mod test {
                             endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
                         },
                         EndorsementSerializer::new(),
-                        &private_key,
-                        &public_key,
+                        &keypair,
                     )
                     .unwrap(),
                 ],
             },
             BlockHeaderSerializer::new(),
-            &private_key,
-            &public_key,
+            &keypair,
         )
         .unwrap();
 
@@ -650,13 +646,8 @@ mod test {
         };
 
         // serialize block
-        let wrapped_block: WrappedBlock = Block::new_wrapped(
-            orig_block.clone(),
-            BlockSerializer::new(),
-            &private_key,
-            &public_key,
-        )
-        .unwrap();
+        let wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         WrappedSerializer::new()
             .serialize(&wrapped_block, &mut ser_block)

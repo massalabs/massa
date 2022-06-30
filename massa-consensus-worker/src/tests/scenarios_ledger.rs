@@ -16,7 +16,7 @@ use massa_models::ledger_models::LedgerData;
 use massa_models::ledger_models::{LedgerChange, LedgerChanges};
 use massa_models::prehash::Map;
 use massa_models::{Amount, Slot};
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -462,9 +462,9 @@ async fn test_ledger_read_whole() {
 #[serial]
 async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     let thread_count = 2;
-    let (address_1, private_key_1, public_key_1) = random_address_on_thread(0, thread_count).into();
-    let (address_2, private_key_2, public_key_2) = random_address_on_thread(1, thread_count).into();
-    let (address_3, _, _) = random_address_on_thread(0, thread_count).into();
+    let (address_1, keypair_1) = random_address_on_thread(0, thread_count).into();
+    let (address_2, keypair_2) = random_address_on_thread(1, thread_count).into();
+    let (address_3, _) = random_address_on_thread(0, thread_count).into();
 
     // Ledger at genesis:
     //
@@ -483,7 +483,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         address_2,
         LedgerData::new(Amount::from_str("3000").unwrap()),
     );
-    let staking_keys: Vec<PrivateKey> = vec![private_key_1];
+    let staking_keys: Vec<KeyPair> = vec![keypair_1];
 
     let cfg = ConsensusConfig {
         t0: 1000.into(),
@@ -530,7 +530,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         .genesis_blocks;
 
     // A -> B [amount 10, fee 3]
-    let operation_1 = create_transaction(private_key_1, public_key_1, address_2, 10, 10, 3);
+    let operation_1 = create_transaction(&keypair_1, address_2, 10, 10, 3);
 
     // Add block B3
     let (block_a, _) = create_block_with_operations(
@@ -544,10 +544,10 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     validate_propagate_block(&mut protocol_controller, block_a.id, 150).await;
 
     // B -> A [amount 9, fee 2]
-    let operation_2 = create_transaction(private_key_2, public_key_2, address_1, 9, 10, 2);
+    let operation_2 = create_transaction(&keypair_2, address_1, 9, 10, 2);
 
     // B -> C [amount 3, fee 1]
-    let operation_3 = create_transaction(private_key_2, public_key_2, address_3, 3, 10, 1);
+    let operation_3 = create_transaction(&keypair_2, address_3, 3, 10, 1);
 
     // Add block B4
     let (block_b, _) = create_block_with_operations(
@@ -561,7 +561,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     validate_propagate_block(&mut protocol_controller, block_b.id, 150).await;
 
     // A -> C [amount 3, fee 4]
-    let operation_4 = create_transaction(private_key_1, public_key_1, address_3, 3, 10, 4);
+    let operation_4 = create_transaction(&keypair_1, address_3, 3, 10, 4);
 
     // Add block B5
     let (block_c, _) = create_block_with_operations(
@@ -586,7 +586,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     validate_propagate_block(&mut protocol_controller, block_d.id, 150).await;
 
     // A -> B [amount 11, fee 7]
-    let operation_5 = create_transaction(private_key_1, public_key_1, address_2, 11, 10, 7);
+    let operation_5 = create_transaction(&keypair_1, address_2, 11, 10, 7);
     // Add block B7
     let (block_e, _) = create_block_with_operations(
         &cfg,
@@ -599,7 +599,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     validate_propagate_block(&mut protocol_controller, block_e.id, 150).await;
 
     // B -> A [amount 17, fee 4]
-    let operation_6 = create_transaction(private_key_2, public_key_2, address_1, 17, 10, 4);
+    let operation_6 = create_transaction(&keypair_2, address_1, 17, 10, 4);
     // Add block B8
     let (block_f, _) = create_block_with_operations(
         &cfg,

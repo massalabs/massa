@@ -3,7 +3,7 @@
 use super::{
     mock_establisher,
     tools::{
-        bridge_mock_streams, get_boot_state, get_keys, get_peers, get_random_final_state_bootstrap,
+        bridge_mock_streams, get_boot_state, get_peers, get_random_final_state_bootstrap,
         wait_consensus_command, wait_network_command,
     },
 };
@@ -18,7 +18,7 @@ use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
 use massa_models::Version;
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
@@ -26,16 +26,16 @@ use std::{str::FromStr, sync::Arc};
 use tokio::sync::mpsc;
 
 lazy_static::lazy_static! {
-    pub static ref BOOTSTRAP_SETTINGS_PRIVATE_KEY: (BootstrapSettings, PrivateKey) = {
-        let (private_key, public_key) = get_keys();
-        (get_bootstrap_config(public_key), private_key)
+    pub static ref BOOTSTRAP_SETTINGS_PRIVATE_KEY: (BootstrapSettings, KeyPair) = {
+        let keypair = KeyPair::generate();
+        (get_bootstrap_config(keypair.get_public_key()), keypair)
     };
 }
 
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
-    let (bootstrap_settings, private_key): &(BootstrapSettings, PrivateKey) =
+    let (bootstrap_settings, private_key): &(BootstrapSettings, KeyPair) =
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);

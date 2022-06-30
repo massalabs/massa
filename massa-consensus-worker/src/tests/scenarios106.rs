@@ -8,7 +8,7 @@ use massa_consensus_exports::ConsensusConfig;
 use massa_models::prehash::Set;
 use massa_models::timeslots;
 use massa_models::{BlockId, Slot};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashSet;
@@ -22,7 +22,7 @@ async fn test_unsorted_block() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -145,7 +145,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         // slot 1 is in the past
@@ -237,7 +237,7 @@ async fn test_too_many_blocks_in_the_future() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         delta_f0: 1000,
         future_block_processing_max_periods: 100,
@@ -342,7 +342,7 @@ async fn test_dep_in_back_order() {
     .init()
     .unwrap();*/
 
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         genesis_timestamp: MassaTime::now()
             .unwrap()
@@ -503,7 +503,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         genesis_timestamp: MassaTime::now()
             .unwrap()
@@ -633,7 +633,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         genesis_timestamp: MassaTime::now()
             .unwrap()

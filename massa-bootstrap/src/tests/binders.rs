@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use super::tools::get_keys;
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::BootstrapSettings;
 use crate::{
@@ -8,14 +7,14 @@ use crate::{
     tests::tools::get_bootstrap_config, BootstrapPeers,
 };
 use massa_models::Version;
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use serial_test::serial;
 use tokio::io::duplex;
 
 lazy_static::lazy_static! {
-    pub static ref BOOTSTRAP_SETTINGS_PRIVATE_KEY: (BootstrapSettings, PrivateKey) = {
-        let (private_key, public_key) = get_keys();
-        (get_bootstrap_config(public_key), private_key)
+    pub static ref BOOTSTRAP_SETTINGS_PRIVATE_KEY: (BootstrapSettings, KeyPair) = {
+        let keypair = KeyPair::generate();
+        (get_bootstrap_config(keypair.get_public_key()), keypair)
     };
 }
 
@@ -23,7 +22,7 @@ lazy_static::lazy_static! {
 #[tokio::test]
 #[serial]
 async fn test_binders() {
-    let (bootstrap_settings, server_private_key): &(BootstrapSettings, PrivateKey) =
+    let (bootstrap_settings, server_private_key): &(BootstrapSettings, KeyPair) =
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
     let (client, server) = duplex(1000000);
     let mut server = BootstrapServerBinder::new(server, *server_private_key, f64::INFINITY);
@@ -111,7 +110,7 @@ async fn test_binders() {
 #[tokio::test]
 #[serial]
 async fn test_binders_double_send_server_works() {
-    let (bootstrap_settings, server_private_key): &(BootstrapSettings, PrivateKey) =
+    let (bootstrap_settings, server_private_key): &(BootstrapSettings, KeyPair) =
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
 
     let (client, server) = duplex(1000000);
@@ -185,7 +184,7 @@ async fn test_binders_double_send_server_works() {
 #[tokio::test]
 #[serial]
 async fn test_binders_try_double_send_client_works() {
-    let (bootstrap_settings, server_private_key): &(BootstrapSettings, PrivateKey) =
+    let (bootstrap_settings, server_private_key): &(BootstrapSettings, KeyPair) =
         &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
 
     let (client, server) = duplex(1000000);

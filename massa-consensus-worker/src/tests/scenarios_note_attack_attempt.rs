@@ -14,14 +14,14 @@ use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
 use massa_models::prehash::Map;
 use massa_models::{BlockId, Slot};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_invalid_block_notified_as_attack_attempt() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -90,7 +90,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
 #[tokio::test]
 #[serial]
 async fn test_invalid_header_notified_as_attack_attempt() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,

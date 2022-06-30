@@ -14,7 +14,7 @@ use massa_models::{
 };
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -29,8 +29,8 @@ async fn test_genesis_block_creation() {
     // addr 1 has 1 roll and 0 coins
     // addr 2 is in consensus and has 0 roll and 1000 coins
     let thread_count = 2;
-    let (address_1, priv_1, _) = random_address_on_thread(0, thread_count).into();
-    let (address_2, priv_2, _) = random_address_on_thread(0, thread_count).into();
+    let (address_1, keypair_1) = random_address_on_thread(0, thread_count).into();
+    let (address_2, keypair_2) = random_address_on_thread(0, thread_count).into();
     let mut ledger = HashMap::new();
     ledger.insert(
         address_2,
@@ -40,7 +40,7 @@ async fn test_genesis_block_creation() {
         genesis_timestamp: MassaTime::now()
             .unwrap()
             .saturating_sub(MassaTime::from(30000)),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[priv_1, priv_2], &ledger)
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1, keypair_2], &ledger)
     };
     // init roll count
     let mut roll_counts = RollCounts::default();
@@ -126,10 +126,10 @@ async fn test_block_creation_with_draw() {
     // addresses a and b both in thread 0
     // addr 1 has 1 roll and 0 coins
     // addr 2 is in consensus and has 0 roll and 1000 coins
-    let (address_1, priv_1, _) = random_address_on_thread(0, thread_count).into();
-    let (address_2, priv_2, pubkey_2) = random_address_on_thread(0, thread_count).into();
+    let (address_1, keypair_1) = random_address_on_thread(0, thread_count).into();
+    let (address_2, keypair_2) = random_address_on_thread(0, thread_count).into();
 
-    let staking_keys = vec![priv_1, priv_2];
+    let staking_keys = vec![keypair_1, keypair_2];
 
     // init address_2 with 1000 coins
     let mut ledger = HashMap::new();
@@ -185,7 +185,7 @@ async fn test_block_creation_with_draw() {
                 .genesis_blocks;
 
             // initial block: addr2 buys 1 roll
-            let op1 = create_roll_transaction(priv_2, pubkey_2, 1, true, 10, operation_fee);
+            let op1 = create_roll_transaction(&keypair_2, 1, true, 10, operation_fee);
             let (block, _) = tools::create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
@@ -208,7 +208,7 @@ async fn test_block_creation_with_draw() {
                         cur_parents.clone(),
                         true,
                         false,
-                        staking_keys[0],
+                        &staking_keys[0],
                     )
                     .await;
                     cur_parents[thread as usize] = res_block_id;
@@ -295,8 +295,8 @@ async fn test_interleaving_block_creation_with_reception() {
     let thread_count = 1;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_1, priv_1, _) = random_address_on_thread(0, thread_count).into();
-    let (address_2, priv_2, _) = random_address_on_thread(0, thread_count).into();
+    let (address_1, keypair_1) = random_address_on_thread(0, thread_count).into();
+    let (address_2, keypair_2) = random_address_on_thread(0, thread_count).into();
 
     let mut ledger = HashMap::new();
     ledger.insert(address_2, LedgerData::new(Amount::from_raw(1000)));
@@ -305,7 +305,7 @@ async fn test_interleaving_block_creation_with_reception() {
         t0: 1000.into(),
         genesis_timestamp: MassaTime::now().unwrap().checked_add(1000.into()).unwrap(),
         disable_block_creation: false,
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[priv_1], &ledger)
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1], &ledger)
     };
     serde_json::from_str::<ConsensusLedgerSubset>(
         &tokio::fs::read_to_string(&cfg.initial_ledger_path)
@@ -397,7 +397,7 @@ async fn test_interleaving_block_creation_with_reception() {
                         &cfg,
                         cur_slot,
                         &parents,
-                        priv_2,
+                        keypair_2,
                         vec![],
                     );
                     tools::propagate_block(
@@ -449,7 +449,7 @@ async fn test_interleaving_block_creation_with_reception() {
 #[tokio::test]
 #[serial]
 async fn test_order_of_inclusion() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     // Increase timestamp a bit to avoid missing the first slot.
     let init_time: MassaTime = 1000.into();
     let mut cfg = ConsensusConfig {
@@ -462,17 +462,17 @@ async fn test_order_of_inclusion() {
     };
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
-    let (address_b, priv_b, pubkey_b) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, keypair_b) = random_address_on_thread(0, cfg.thread_count).into();
 
     let mut ledger = HashMap::new();
     ledger.insert(address_a, LedgerData::new(Amount::from_str("100").unwrap()));
     let initial_ledger_file = generate_ledger_file(&ledger); // don't drop the `NamedTempFile`
     cfg.initial_ledger_path = initial_ledger_file.path().to_path_buf();
 
-    let op1 = create_transaction(priv_a, pubkey_a, address_b, 5, 10, 1);
-    let op2 = create_transaction(priv_a, pubkey_a, address_b, 50, 10, 10);
-    let op3 = create_transaction(priv_b, pubkey_b, address_a, 10, 10, 15);
+    let op1 = create_transaction(&keypair_a, address_b, 5, 10, 1);
+    let op2 = create_transaction(&keypair_a, address_b, 50, 10, 10);
+    let op3 = create_transaction(&keypair_b, address_a, 10, 10, 15);
 
     // there is only one node so it should be drawn at every slot
 
@@ -614,8 +614,8 @@ async fn test_block_filling() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, thread_count).into();
-    let (address_b, priv_b, _) = random_address_on_thread(0, thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, thread_count).into();
+    let (address_b, keypair_b) = random_address_on_thread(0, thread_count).into();
     let mut ledger = HashMap::new();
     ledger.insert(
         address_a,
@@ -630,12 +630,11 @@ async fn test_block_filling() {
         operation_validity_periods: 10,
         periods_per_cycle: 3,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[priv_a, priv_b], &ledger)
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_a, keypair_b], &ledger)
     };
 
     let mut ops = vec![create_executesc(
-        priv_a,
-        pubkey_a,
+        &keypair_a,
         10,
         10,
         vec![1; 200], // dummy bytes as here we do not test the content
@@ -645,7 +644,7 @@ async fn test_block_filling() {
     )]; // this operation has an higher rentability than any other
 
     for _ in 0..500 {
-        ops.push(create_transaction(priv_a, pubkey_a, address_a, 5, 10, 1))
+        ops.push(create_transaction(&keypair_a, address_a, 5, 10, 1))
     }
 
     tools::consensus_pool_test_with_storage(
@@ -734,9 +733,9 @@ async fn test_block_filling() {
                         let mut eds: Vec<WrappedEndorsement> = Vec::new();
                         for (index, creator) in creators.iter().enumerate() {
                             let ed = if *creator == address_a {
-                                create_endorsement(priv_a, target_slot, parent, index as u32)
+                                create_endorsement(&keypair_a, target_slot, parent, index as u32)
                             } else if *creator == address_b {
-                                create_endorsement(priv_b, target_slot, parent, index as u32)
+                                create_endorsement(&keypair_b, target_slot, parent, index as u32)
                             } else {
                                 panic!("invalid endorser choice");
                             };
@@ -829,8 +828,7 @@ async fn test_block_filling() {
                     endorsements: eds,
                 },
                 BlockHeaderSerializer::new(),
-                &priv_a,
-                &pubkey_a,
+                &keypair_a,
             )
             .unwrap();
             let empty: WrappedBlock = Block::new_wrapped(
@@ -839,8 +837,7 @@ async fn test_block_filling() {
                     operations: Vec::new(),
                 },
                 BlockSerializer::new(),
-                &priv_a,
-                &pubkey_a,
+                &keypair_a,
             )
             .unwrap();
             let remaining_block_space = (cfg.max_block_size as usize)

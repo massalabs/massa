@@ -133,10 +133,10 @@ impl FromStr for Address {
 
 #[test]
 fn test_address_str_format() {
-    use massa_signature::{derive_public_key, generate_random_private_key};
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    use massa_signature::KeyPair;
+
+    let keypair = KeyPair::generate();
+    let address = Address::from_public_key(&keypair.get_public_key());
     let a = address.to_string();
     let b = Address::from_str(&a).unwrap();
     assert!(address == b);

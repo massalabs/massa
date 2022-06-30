@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 use massa_models::{ledger_models::LedgerData, Address, Amount, BlockId, Slot};
-use massa_signature::{derive_public_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::{collections::HashSet, str::FromStr};
@@ -47,9 +47,8 @@ use std::{collections::HashSet, str::FromStr};
 async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
     let staking_key =
-        PrivateKey::from_str("2ubR6ErNAxMM8Q5ZEosmgMX5kEJFkKk2vKgdWWGscGRE8UfTB6").unwrap();
-    let creator_public_key = derive_public_key(&staking_key);
-    let creator_addr = Address::from_public_key(&creator_public_key);
+        KeyPair::from_str("S1264sDCSgWoaTX42R51E4wXKCPgs1AebN2J7cfUfbPz8hXGQSEj").unwrap();
+    let creator_addr = Address::from_public_key(&staking_key.get_public_key());
     let roll_price = Amount::from_str("42").unwrap();
     let initial_ledger = vec![(
         creator_addr,
@@ -104,7 +103,7 @@ async fn test_inter_cycle_batch_finalization() {
                 staking_key,
                 vec![],
                 vec![create_endorsement(
-                    staking_key,
+                    &staking_key,
                     Slot::new(1, 0),
                     b1_block.id,
                     0,
@@ -121,7 +120,7 @@ async fn test_inter_cycle_batch_finalization() {
                 staking_key,
                 vec![],
                 vec![create_endorsement(
-                    staking_key,
+                    &staking_key,
                     Slot::new(2, 0),
                     b2_block.id,
                     0,
@@ -131,7 +130,7 @@ async fn test_inter_cycle_batch_finalization() {
 
             // create and send B4
             tokio::time::sleep(t0.to_duration()).await;
-            let roll_sell = create_roll_sell(staking_key, 1, 4, 0);
+            let roll_sell = create_roll_sell(&staking_key, 1, 4, 0);
             let (b4_block, _) = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(4, 0),
@@ -139,7 +138,7 @@ async fn test_inter_cycle_batch_finalization() {
                 staking_key,
                 vec![roll_sell],
                 vec![create_endorsement(
-                    staking_key,
+                    &staking_key,
                     Slot::new(3, 0),
                     b3_block.id,
                     0,

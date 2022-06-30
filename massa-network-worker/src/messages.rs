@@ -311,7 +311,7 @@ impl DeserializeCompact for Message {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use massa_signature::KeyPair;
     use rand::{prelude::StdRng, RngCore, SeedableRng};
     use serial_test::serial;
     use std::str::FromStr;
@@ -347,10 +347,9 @@ mod tests {
         initialize_context();
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);
-        let priv_key = generate_random_private_key();
-        let public_key = derive_public_key(&priv_key);
+        let keypair = KeyPair::generate();
         let msg = Message::HandshakeInitiation {
-            public_key,
+            public_key: keypair.get_public_key(),
             random_bytes,
             version: Version::from_str("TEST.1.2").unwrap(),
         };
