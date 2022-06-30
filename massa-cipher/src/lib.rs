@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Cipher crate
+//! MASSA Cipher crate
 //!
 //! `massa-cipher` uses AES-GCM-SIV ([RFC 8452](https://datatracker.ietf.org/doc/html/rfc8452)).
 //!

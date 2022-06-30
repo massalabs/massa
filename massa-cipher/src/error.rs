@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+//! massa-cipher error module
+
 use displaydoc::Display;
 use thiserror::Error;
 
