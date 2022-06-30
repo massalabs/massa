@@ -10,4 +10,6 @@ pub enum CipherError {
     EncryptionError(String),
     /// Decryption error: {0}
     DecryptionError(String),
+    /// Utf8 error: {0}
+    Utf8Error(#[from] std::str::Utf8Error),
 }

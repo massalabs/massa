@@ -11,8 +11,12 @@
 //! A nonce is a single-use value which enables securely encrypting multiple messages under the same key.
 //! Nonces need not be random: a counter can be used, so long as the values are never repeated under the same key.
 //!
+//! To hash the password before using it as a cipher key, we use the PBKDF2 key derivation function as specified in [RFC 2898](https://datatracker.ietf.org/doc/html/rfc2898).
+//!
 //! No complete security audits of the crate we use has been performed.
 //! But some of this crate's dependencies were audited by by NCC Group as part of an audit of the AES-GCM crate
+
+#![feature(slice_take)]
 
 mod constants;
 mod decrypt;
