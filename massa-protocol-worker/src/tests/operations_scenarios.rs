@@ -30,11 +30,9 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create operation 1 and 2
-            let operation_1 =
-                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+            let operation_1 = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
-            let operation_2 =
-                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+            let operation_2 = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
             let expected_operation_id_1 = operation_1.verify_integrity().unwrap();
             let expected_operation_id_2 = operation_2.verify_integrity().unwrap();
@@ -114,7 +112,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 
             // 1. Create an operation.
             let mut operation =
-                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+                tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
             // Change the fee, making the signature invalid.
             operation.content.fee = Amount::from_str("111").unwrap();
@@ -166,7 +164,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
             // 1. Create an operation
-            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
 
             // Send operation and wait for the protocol event,
             // just to be sure the nodes are connected before sending the propagate command.
@@ -240,7 +238,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
             // 1. Create an operation
-            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
 
             // Send operation and wait for the protocol event,
             // just to be sure the nodes are connected before sending the propagate command.
@@ -326,12 +324,11 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.thread_count);
 
-            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
             let operation_id = operation.id;
 
             let block = tools::create_block_with_operations(
-                &nodes[0].private_key,
-                &nodes[0].id.0,
+                &nodes[0].keypair,
                 Slot::new(1, thread),
                 vec![operation.clone()],
             );
@@ -434,12 +431,11 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.thread_count);
 
-            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
             let operation_id = operation.id;
 
             let block = tools::create_block_with_operations(
-                &nodes[0].private_key,
-                &nodes[0].id.0,
+                &nodes[0].keypair,
                 Slot::new(1, thread),
                 vec![operation.clone()],
             );
@@ -543,12 +539,11 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.thread_count);
 
-            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
             let operation_id = operation.id;
 
             let block = tools::create_block_with_operations(
-                &nodes[0].private_key,
-                &nodes[0].id.0,
+                &nodes[0].keypair,
                 Slot::new(1, thread),
                 vec![operation.clone()],
             );
@@ -632,14 +627,13 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.thread_count);
 
-            let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
 
-            let operation_2 = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
+            let operation_2 = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
             let operation_id_2 = operation_2.id;
 
             let mut block = tools::create_block_with_operations(
-                &nodes[0].private_key,
-                &nodes[0].id.0,
+                &nodes[0].keypair,
                 Slot::new(1, thread),
                 vec![operation.clone()],
             );
@@ -726,8 +720,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create an operation
-            let operation =
-                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
             let address = Address::from_public_key(&creator_node.id.0);
             let serialization_context = massa_models::get_serialization_context();
@@ -735,8 +728,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
 
             // 2. Create a block coming from node creator_node, and including the operation.
             let block = tools::create_block_with_operations(
-                &creator_node.private_key,
-                &creator_node.id.0,
+                &creator_node.keypair,
                 Slot::new(1, thread),
                 vec![operation.clone()],
             );
@@ -804,8 +796,7 @@ async fn test_protocol_ask_operations_on_batch_received() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create an operation
-            let operation =
-                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
             let expected_operation_id = operation.verify_integrity().unwrap();
             // 3. Send operation batch to protocol.
@@ -860,8 +851,7 @@ async fn test_protocol_on_ask_operations() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create an operation
-            let operation =
-                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+            let operation = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
