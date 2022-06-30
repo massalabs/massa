@@ -243,7 +243,7 @@ pub struct BlockDeserializer {
 
 impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         BlockDeserializer {
             header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
             operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
@@ -475,7 +475,7 @@ pub struct BlockHeaderDeserializer {
 
 impl BlockHeaderDeserializer {
     /// Creates a new `BlockHeaderDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]

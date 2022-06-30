@@ -129,7 +129,7 @@ pub struct HashDeserializer;
 
 impl HashDeserializer {
     /// Creates a deserializer for `Hash`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }

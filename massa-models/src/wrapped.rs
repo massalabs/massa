@@ -183,7 +183,7 @@ pub struct WrappedSerializer;
 
 impl WrappedSerializer {
     /// Creates a new `WrappedSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -224,7 +224,7 @@ where
     ///
     /// # Arguments
     /// * `content_deserializer` - Deserializer for the content
-    pub fn new(content_deserializer: DT) -> Self {
+    pub const fn new(content_deserializer: DT) -> Self {
         Self {
             signature_deserializer: SignatureDeserializer::new(),
             public_key_deserializer: PublicKeyDeserializer::new(),

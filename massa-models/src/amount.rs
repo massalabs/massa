@@ -233,7 +233,7 @@ pub struct AmountDeserializer {
 
 impl AmountDeserializer {
     /// Create a new `AmountDeserializer`
-    pub fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
+    pub const fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(min_amount, max_amount),
         }
