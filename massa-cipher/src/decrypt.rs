@@ -6,6 +6,7 @@
 
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
+use massa_models::DeserializeVarInt;
 use pbkdf2::{
     password_hash::{PasswordHasher, SaltString},
     Pbkdf2,
@@ -17,8 +18,15 @@ use crate::error::CipherError;
 /// Decryption function using AES-GCM-SIV cipher.
 ///
 /// Read `lib.rs` module documentation for more information.
-pub fn decrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
-    let salt_data = data.get(..B64_SALT_SIZE).ok_or_else(|| {
+pub fn decrypt(password: &str, data: &[u8]) -> Result<(u32, Vec<u8>), CipherError> {
+    let (version, index): (u32, usize) =
+        DeserializeVarInt::from_varint_bytes(data).map_err(|_| {
+            CipherError::DecryptionError(
+                "wallet file truncated: version missing or incomplete".to_string(),
+            )
+        })?;
+    let salt_end_index = index + B64_SALT_SIZE;
+    let salt_data = data.get(index..salt_end_index).ok_or_else(|| {
         CipherError::DecryptionError(
             "wallet file truncated: salt missing or incomplete".to_string(),
         )
@@ -31,8 +39,8 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
         .hash
         .expect("content is missing after a successful hash");
     let cipher = Aes256Gcm::new(Key::from_slice(password_hash.as_bytes()));
-    let nonce_end_index = B64_SALT_SIZE + NONCE_SIZE;
-    let nonce = Nonce::from_slice(data.get(B64_SALT_SIZE..nonce_end_index).ok_or_else(|| {
+    let nonce_end_index = salt_end_index + NONCE_SIZE;
+    let nonce = Nonce::from_slice(data.get(salt_end_index..nonce_end_index).ok_or_else(|| {
         CipherError::DecryptionError(
             "wallet file truncated: nonce missing or incomplete".to_string(),
         )
@@ -49,5 +57,5 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
         .map_err(|_| {
             CipherError::DecryptionError("wrong password or corrupted data".to_string())
         })?;
-    Ok(decrypted_bytes)
+    Ok((version, decrypted_bytes))
 }

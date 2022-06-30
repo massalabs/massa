@@ -6,6 +6,9 @@
 
 use pbkdf2::Params;
 
+/// Cipher version
+pub const VERSION: u32 = 0;
+
 /// AES-GCM-SIV nonce size.
 pub const NONCE_SIZE: usize = 12;
 

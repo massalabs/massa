@@ -6,13 +6,14 @@
 
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
+use massa_models::SerializeVarInt;
 use pbkdf2::{
     password_hash::{PasswordHasher, SaltString},
     Pbkdf2,
 };
 use rand::{thread_rng, Rng, RngCore};
 
-use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
+use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE, VERSION};
 use crate::error::CipherError;
 
 /// Encryption function using AES-GCM-SIV cipher.
@@ -34,7 +35,8 @@ pub fn encrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
     let encrypted_bytes = cipher
         .encrypt(nonce, data.as_ref())
         .map_err(|e| CipherError::EncryptionError(e.to_string()))?;
-    let mut content = salt.as_bytes().to_vec();
+    let mut content = VERSION.to_varint_bytes();
+    content.extend(salt.as_bytes());
     content.extend(nonce_bytes);
     content.extend(encrypted_bytes);
     Ok(content)
