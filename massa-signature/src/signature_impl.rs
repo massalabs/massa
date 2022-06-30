@@ -15,7 +15,7 @@ use serde::{
     ser::SerializeStruct,
     Deserialize,
 };
-use std::ops::Bound::Included;
+use std::{borrow::Cow, ops::Bound::Included};
 use std::{convert::TryInto, str::FromStr};
 
 /// Size of a public key
@@ -236,8 +236,9 @@ impl ::serde::Serialize for KeyPair {
     ///
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         let mut keypair_serializer = s.serialize_struct("keypair", 2)?;
-        keypair_serializer.serialize_field("secret_key", &self.to_string())?;
-        keypair_serializer.serialize_field("public_key", &self.get_public_key().to_string())?;
+        keypair_serializer.serialize_field("secret_key", &Cow::from(self.to_string()))?;
+        keypair_serializer
+            .serialize_field("public_key", &Cow::from(self.get_public_key().to_string()))?;
         keypair_serializer.end()
     }
 }
@@ -308,13 +309,13 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
             where
                 V: SeqAccess<'de>,
             {
-                let secret = seq
+                let secret: Cow<str> = seq
                     .next_element()?
                     .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
-                let _: &str = seq
+                let _: Cow<str> = seq
                     .next_element()?
                     .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-                KeyPair::from_str(secret).map_err(serde::de::Error::custom)
+                KeyPair::from_str(&secret).map_err(serde::de::Error::custom)
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<KeyPair, V::Error>
@@ -339,9 +340,11 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
                         }
                     }
                 }
-                let secret = secret.ok_or_else(|| serde::de::Error::missing_field("secret"))?;
-                let _: &str = public.ok_or_else(|| serde::de::Error::missing_field("public"))?;
-                KeyPair::from_str(secret).map_err(serde::de::Error::custom)
+                let secret: Cow<str> =
+                    secret.ok_or_else(|| serde::de::Error::missing_field("secret"))?;
+                let _: Cow<str> =
+                    public.ok_or_else(|| serde::de::Error::missing_field("public"))?;
+                KeyPair::from_str(&secret).map_err(serde::de::Error::custom)
             }
         }
 
@@ -589,11 +592,7 @@ impl ::serde::Serialize for PublicKey {
     /// ```
     ///
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        if s.is_human_readable() {
-            s.collect_str(&self.to_bs58_check())
-        } else {
-            s.serialize_bytes(&self.to_bytes())
-        }
+        s.collect_str(&self.to_string())
     }
 }
 
@@ -616,55 +615,34 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     /// ```
     ///
     fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<PublicKey, D::Error> {
-        if d.is_human_readable() {
-            struct Base58CheckVisitor;
+        struct Base58CheckVisitor;
 
-            impl<'de> ::serde::de::Visitor<'de> for Base58CheckVisitor {
-                type Value = PublicKey;
+        impl<'de> ::serde::de::Visitor<'de> for Base58CheckVisitor {
+            type Value = PublicKey;
 
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("an ASCII base58check string")
-                }
-
-                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    if let Ok(v_str) = std::str::from_utf8(v) {
-                        PublicKey::from_bs58_check(v_str).map_err(E::custom)
-                    } else {
-                        Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
-                    }
-                }
-
-                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    PublicKey::from_bs58_check(v).map_err(E::custom)
-                }
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("an ASCII base58check string")
             }
-            d.deserialize_str(Base58CheckVisitor)
-        } else {
-            struct BytesVisitor;
 
-            impl<'de> ::serde::de::Visitor<'de> for BytesVisitor {
-                type Value = PublicKey;
-
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("a bytestring")
-                }
-
-                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-                where
-                    E: ::serde::de::Error,
-                {
-                    PublicKey::from_bytes(v.try_into().map_err(E::custom)?).map_err(E::custom)
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: ::serde::de::Error,
+            {
+                if let Ok(v_str) = std::str::from_utf8(v) {
+                    PublicKey::from_str(v_str).map_err(E::custom)
+                } else {
+                    Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                 }
             }
 
-            d.deserialize_bytes(BytesVisitor)
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: ::serde::de::Error,
+            {
+                PublicKey::from_str(v).map_err(E::custom)
+            }
         }
+        d.deserialize_str(Base58CheckVisitor)
     }
 }
 

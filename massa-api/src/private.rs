@@ -72,7 +72,7 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn add_staking_keys(&self, keys: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
+    fn add_staking_secret_keys(&self, keys: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
         let closure = async move || Ok(cmd_sender.register_staking_keys(keys).await?);
         Box::pin(closure())

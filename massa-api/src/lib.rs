@@ -138,8 +138,8 @@ pub trait Endpoints {
 
     /// Add a vector of new keys for the node to use to stake.
     /// No confirmation to expect.
-    #[rpc(name = "add_staking_keys")]
-    fn add_staking_keys(&self, _: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>>;
+    #[rpc(name = "add_staking_secret_keys")]
+    fn add_staking_secret_keys(&self, _: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>>;
 
     /// Execute bytecode in read-only mode.
     #[rpc(name = "execute_read_only_bytecode")]

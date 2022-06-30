@@ -970,7 +970,7 @@ impl ConsensusWorker {
 
     /// Save the staking keys to a file
     async fn dump_staking_keys(&self) -> Result<()> {
-        let json = serde_json::to_string_pretty(&self.staking_keys)?;
+        let json = serde_json::to_string(&self.staking_keys)?;
         let encrypted_data = encrypt(&self.password, json.as_bytes())?;
         tokio::fs::write(self.cfg.staking_keys_path.clone(), encrypted_data).await?;
         Ok(())
