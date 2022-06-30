@@ -80,8 +80,11 @@ pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
     use massa_models::{
-        node::NodeId, operation::OperationPrefixIds, operation::Operations, wrapped::Id, BlockId,
-        WrappedBlock, WrappedEndorsement, WrappedHeader,
+        node::NodeId,
+        operation::OperationPrefixIds,
+        operation::{OperationIds, Operations},
+        wrapped::Id,
+        BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
     };
     use massa_network_exports::NodeCommand;
     use massa_network_exports::{NetworkError, NetworkEvent};
@@ -155,6 +158,30 @@ pub mod event_impl {
             .send(NetworkEvent::ReceivedBlockHeader {
                 source_node_id: from,
                 header,
+            })
+            .await
+        {
+            evt_failed!(err)
+        }
+        Ok(())
+    }
+
+    pub async fn on_received_block_info(
+        worker: &mut NetworkWorker,
+        from: NodeId,
+        block_id: BlockId,
+        operation_list: OperationIds,
+    ) -> Result<(), NetworkError> {
+        massa_trace!(
+            "network_worker.on_node_event receive NetworkEvent::ReceivedBlockInfo",
+            {"block_id": block_id, "node": from}
+        );
+        if let Err(err) = worker
+            .event
+            .send(NetworkEvent::ReceivedBlockInfo {
+                node: from,
+                block_id,
+                operation_list,
             })
             .await
         {

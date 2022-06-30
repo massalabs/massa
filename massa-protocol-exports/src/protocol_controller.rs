@@ -3,6 +3,7 @@
 use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
+use massa_hash::Hash;
 use massa_models::{
     operation::OperationIds,
     prehash::{Map, Set},
@@ -88,7 +89,7 @@ pub enum ProtocolCommand {
     /// Wish list delta
     WishlistDelta {
         /// add to wish list
-        new: Set<BlockId>,
+        new: Map<BlockId, Hash>,
         /// remove from wish list
         remove: Set<BlockId>,
     },
@@ -166,7 +167,7 @@ impl ProtocolCommandSender {
     /// update the block wish list
     pub async fn send_wishlist_delta(
         &mut self,
-        new: Set<BlockId>,
+        new: Map<BlockId, Hash>,
         remove: Set<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });

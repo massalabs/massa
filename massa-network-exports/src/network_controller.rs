@@ -81,6 +81,26 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// Send info about the contents of a block.
+    pub async fn send_block_info(
+        &self,
+        node: NodeId,
+        block_id: BlockId,
+        operation_list: OperationIds,
+    ) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::SendBlockInfo {
+                node,
+                block_id,
+                operation_list,
+            })
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send SendBlockInfo command".into())
+            })?;
+        Ok(())
+    }
+
     /// Send the order to send block.
     pub async fn send_block(&self, node: NodeId, block_id: BlockId) -> Result<(), NetworkError> {
         self.0

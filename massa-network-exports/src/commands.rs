@@ -87,6 +87,13 @@ pub enum NodeCommand {
     SendPeerList(Vec<IpAddr>),
     /// Send that block to node.
     SendBlock(BlockId),
+    /// Send info about the content of a block to a node.
+    SendBlockInfo {
+        /// block id
+        block_id: BlockId,
+        /// List of operations
+        operation_list: OperationIds,
+    },
     /// Send the header of a block to a node.
     SendBlockHeader(BlockId),
     /// Ask for a block from that node.
@@ -123,6 +130,11 @@ pub enum NodeEventType {
     ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,
     BlockNotFound(BlockId),
+    /// Info about the contents of a block.
+    ReceivedBlockInfo {
+        block_id: BlockId,
+        operation_list: OperationIds,
+    },
     /// Received full operations.
     ReceivedOperations(Operations),
     /// Received an operation id batch announcing new operations
@@ -152,6 +164,15 @@ pub enum NetworkCommand {
         node: NodeId,
         /// block id
         block_id: BlockId,
+    },
+    /// Send info about the content of a block to a node.
+    SendBlockInfo {
+        /// to node id
+        node: NodeId,
+        /// block id
+        block_id: BlockId,
+        /// List of operations
+        operation_list: OperationIds,
     },
     /// Send a header to a node.
     SendBlockHeader {
@@ -240,6 +261,14 @@ pub enum NetworkEvent {
         node: NodeId,
         /// block
         block: WrappedBlock,
+    },
+    /// Info about a block was received
+    ReceivedBlockInfo {
+        /// from node id
+        node: NodeId,
+        /// block
+        block_id: BlockId,
+        operation_list: OperationIds,
     },
     /// A block header was received
     ReceivedBlockHeader {

@@ -524,6 +524,11 @@ impl NetworkWorker {
             NetworkCommand::SendBlock { node, block_id } => {
                 on_send_block_cmd(self, node, block_id).await?
             }
+            NetworkCommand::SendBlockInfo {
+                node,
+                block_id,
+                operation_list,
+            } => on_send_block_info_cmd(self, node, block_id, operation_list).await?,
             NetworkCommand::GetPeers(response_tx) => on_get_peers_cmd(self, response_tx).await,
             NetworkCommand::GetBootstrapPeers(response_tx) => {
                 on_get_bootstrap_peers_cmd(self, response_tx).await
@@ -780,6 +785,16 @@ impl NetworkWorker {
             }
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
                 event_impl::on_received_block_header(self, source_node_id, header).await?
+            }
+            NodeEvent(
+                source_node_id,
+                NodeEventType::ReceivedBlockInfo {
+                    block_id,
+                    operation_list,
+                },
+            ) => {
+                event_impl::on_received_block_info(self, source_node_id, block_id, operation_list)
+                    .await?
             }
             NodeEvent(from_node_id, NodeEventType::AskedPeerList) => {
                 event_impl::on_asked_peer_list(self, from_node_id).await?

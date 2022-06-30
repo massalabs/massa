@@ -225,6 +225,30 @@ pub async fn on_send_block_cmd(
     Ok(())
 }
 
+pub async fn on_send_block_info_cmd(
+    worker: &mut NetworkWorker,
+    node: NodeId,
+    block_id: BlockId,
+    operation_list: OperationIds,
+) -> Result<(), NetworkError> {
+    massa_trace!(
+        "network_worker.manage_network_command send NodeCommand::SendBlock",
+        {"hash": block_id, "node": node}
+    );
+    worker
+        .event
+        .forward(
+            node,
+            worker.active_nodes.get(&node),
+            NodeCommand::SendBlockInfo {
+                block_id,
+                operation_list,
+            },
+        )
+        .await;
+    Ok(())
+}
+
 pub async fn on_get_peers_cmd(worker: &mut NetworkWorker, response_tx: oneshot::Sender<Peers>) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::GetPeers",

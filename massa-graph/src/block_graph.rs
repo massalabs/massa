@@ -3702,9 +3702,9 @@ impl BlockGraph {
         Ok(discarded_finals)
     }
 
-    /// get the current block wish list
-    pub fn get_block_wishlist(&self) -> Result<Set<BlockId>> {
-        let mut wishlist = Set::<BlockId>::default();
+    /// get the current block wish list, including the operations hash.
+    pub fn get_block_wishlist(&self) -> Result<Map<BlockId, Hash>> {
+        let mut wishlist = Map::<BlockId, Hash>::default();
         for block_id in self.waiting_for_dependencies_index.iter() {
             if let Some(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
@@ -3713,14 +3713,15 @@ impl BlockGraph {
             {
                 for unsatisfied_h in unsatisfied_dependencies.iter() {
                     if let Some(BlockStatus::WaitingForDependencies {
-                        header_or_block: HeaderOrBlock::Block(..),
+                        header_or_block: HeaderOrBlock::Header(header),
                         ..
                     }) = self.block_statuses.get(unsatisfied_h)
                     {
-                        // the full block is already available
-                        continue;
+                        wishlist.insert(
+                            unsatisfied_h.clone(),
+                            header.content.operation_merkle_root.clone(),
+                        );
                     }
-                    wishlist.insert(*unsatisfied_h);
                 }
             }
         }

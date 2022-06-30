@@ -291,6 +291,9 @@ impl NodeWorker {
                                 );
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
                             },
+                            Message::BlockInfo {block_id, operation_list } => {
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockInfo{block_id, operation_list})).await;
+                            },
                             Message::BlockHeader(header) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::BlockHeader",
@@ -379,6 +382,13 @@ impl NodeWorker {
                                 break;
                             }
                             trace!("after sending Message::Block from writer_command_tx in node_worker run_loop");
+                        },
+                        Some(NodeCommand::SendBlockInfo {block_id, operation_list }) => {
+                            massa_trace!("node_worker.run_loop. send Message::BlockInfo", {"hash": block_id, "node": self.node_id});
+                            if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::BlockInfo{ block_id, operation_list })).is_err() {
+                                break;
+                            }
+                            trace!("after sending Message::BlockInfo from writer_command_tx in node_worker run_loop");
                         },
                         Some(NodeCommand::AskForBlocks(list)) => {
                             // cut hash list on sub list if exceed max_ask_blocks_per_message

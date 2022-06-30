@@ -5,6 +5,7 @@ use massa_models::{
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
     operation::OperationPrefixIds,
     operation::{
+        OperationIds, OperationIdsDeserializer, OperationIdsSerializer,
         OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, Operations,
         OperationsDeserializer, OperationsSerializer,
     },
@@ -39,6 +40,11 @@ pub enum Message {
     HandshakeReply {
         /// Signature of the received random bytes with our `private_key`.
         signature: Signature,
+    },
+    /// Info about the contents of a block.
+    BlockInfo {
+        block_id: BlockId,
+        operation_list: OperationIds,
     },
     /// Whole block structure.
     Block(WrappedBlock),
@@ -80,6 +86,7 @@ pub(crate) enum MessageTypeId {
     Endorsements = 9,
     AskForOperations = 10,
     OperationsAnnouncement = 11,
+    BlockInfo = 12,
 }
 
 /// For more details on how incoming objects are checked for validity at this stage,
@@ -110,6 +117,14 @@ impl SerializeCompact for Message {
             Message::BlockHeader(header) => {
                 res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
                 WrappedSerializer::new().serialize(header, &mut res)?;
+            }
+            Message::BlockInfo {
+                block_id,
+                operation_list,
+            } => {
+                res.extend(u32::from(MessageTypeId::BlockInfo).to_varint_bytes());
+                res.extend(block_id.to_bytes());
+                OperationIdsSerializer::new().serialize(operation_list, &mut res)?;
             }
             Message::AskForBlocks(list) => {
                 res.extend(u32::from(MessageTypeId::AskForBlocks).to_varint_bytes());
@@ -238,6 +253,17 @@ impl DeserializeCompact for Message {
                     list.push(b_id);
                 }
                 Message::AskForBlocks(list)
+            }
+            MessageTypeId::BlockInfo => {
+                let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
+                cursor += BLOCK_ID_SIZE_BYTES;
+                let (rest, operation_list) =
+                    OperationIdsDeserializer::new().deserialize(&buffer[cursor..])?;
+                cursor += buffer[cursor..].len() - rest.len();
+                Message::BlockInfo {
+                    block_id,
+                    operation_list,
+                }
             }
             MessageTypeId::AskPeerList => Message::AskPeerList,
             MessageTypeId::PeerList => {

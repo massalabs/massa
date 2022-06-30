@@ -10,6 +10,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, OperationPrefixId, Operations},
     prehash::{BuildMap, Map, Set},
+    wrapped::Id,
     BlockHeaderSerializer, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
 };
 use massa_models::{EndorsementSerializer, OperationSerializer, WrappedBlock};
@@ -109,13 +110,16 @@ struct BlockInfo {
     /// Operations contained in the block,
     /// if we've received them already, and none otherwise.
     operations: Option<Vec<OperationId>>,
+    /// Operation we are waiting for to be able to process the block.
+    awaiting_operations: Set<OperationId>,
 }
 
 impl BlockInfo {
-    fn new(endorsements: Map<EndorsementId, u32>, operations: Option<Vec<OperationId>>) -> Self {
+    fn new(endorsements: Map<EndorsementId, u32>) -> Self {
         BlockInfo {
             endorsements,
-            operations,
+            operations: Default::default(),
+            awaiting_operations: Set::default(),
         }
     }
 }
@@ -142,8 +146,10 @@ pub struct ProtocolWorker {
     controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
-    /// List of wanted blocks.
-    block_wishlist: Set<BlockId>,
+    /// List of wanted blocks, with the hash of their operations.
+    block_wishlist: Map<BlockId, Hash>,
+    /// Map of blocks waiting for operation.
+    awaiting_operations: Map<OperationId, BlockId>,
     /// List of processed endorsements
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
@@ -212,6 +218,7 @@ impl ProtocolWorker {
             controller_manager_rx,
             active_nodes: Default::default(),
             block_wishlist: Default::default(),
+            awaiting_operations: Default::default(),
             checked_endorsements: Default::default(),
             checked_operations: Default::default(),
             checked_headers: Default::default(),
@@ -465,16 +472,22 @@ impl ProtocolWorker {
                                             operation_ids.clone(),
                                             self.protocol_settings.max_node_known_ops_size,
                                         );
-                                    }
-                                    massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "block_id": block_id});
-                                    self.network_command_sender
-                                        .send_block(*node_id, block_id)
-                                        .await
-                                        .map_err(|_| {
-                                            ProtocolError::ChannelError(
-                                                "send block node command send failed".into(),
+
+                                        massa_trace!("protocol.protocol_worker.process_command.found_block.send_block_info", { "node": node_id, "block_id": block_id});
+                                        self.network_command_sender
+                                            .send_block_info(
+                                                *node_id,
+                                                block_id,
+                                                operation_ids.clone(),
                                             )
-                                        })?;
+                                            .await
+                                            .map_err(|_| {
+                                                ProtocolError::ChannelError(
+                                                    "send block info node command send failed"
+                                                        .into(),
+                                                )
+                                            })?;
+                                    }
                                 }
                             }
                             massa_trace!(
@@ -506,7 +519,9 @@ impl ProtocolWorker {
             ProtocolCommand::WishlistDelta { new, remove } => {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                 self.stop_asking_blocks(remove)?;
-                self.block_wishlist.extend(new);
+                for (block, hash) in new.into_iter() {
+                    self.block_wishlist.insert(block, hash);
+                }
                 self.update_ask_block(timer).await?;
                 massa_trace!(
                     "protocol.protocol_worker.process_command.wishlist_delta.end",
@@ -581,7 +596,8 @@ impl ProtocolWorker {
                 .asked_blocks
                 .retain(|h, _| !remove_hashes.contains(h));
         }
-        self.block_wishlist.retain(|h| !remove_hashes.contains(h));
+        self.block_wishlist
+            .retain(|h, _| !remove_hashes.contains(h));
         Ok(())
     }
 
@@ -603,7 +619,7 @@ impl ProtocolWorker {
         let mut ask_block_list: HashMap<NodeId, Vec<BlockId>> = Default::default();
 
         // list blocks to re-ask and from whom
-        for hash in self.block_wishlist.iter() {
+        for (hash, _) in self.block_wishlist.iter() {
             let mut needs_ask = true;
 
             for (node_id, node_info) in self.active_nodes.iter_mut() {
@@ -912,10 +928,7 @@ impl ProtocolWorker {
 
         if self
             .checked_headers
-            .insert(
-                block_id,
-                BlockInfo::new(endorsement_ids.clone(), Default::default()),
-            )
+            .insert(block_id, BlockInfo::new(endorsement_ids.clone()))
             .is_none()
         {
             self.prune_checked_headers();
@@ -1127,6 +1140,23 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
+            for (op_id, _) in received_ids.iter() {
+                if let Some(block_id) = self.awaiting_operations.get(op_id) {
+                    if let Some(info) = self.checked_headers.get_mut(block_id) {
+                        info.awaiting_operations.remove(op_id);
+                        if info.awaiting_operations.is_empty() {
+                            self.awaiting_operations.remove(op_id);
+                            // TODO: re-constitute block and send it to graph.
+                        }
+                    } else {
+                        warn!(
+                            "Missing block info when receiving operations for {}",
+                            block_id
+                        );
+                    }
+                }
+            }
+
             // Add to pool, propagate when received outside of a header.
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
                 operations: new_operations,
@@ -1261,6 +1291,46 @@ impl ProtocolWorker {
                     let _ = self.ban_node(&from_node_id).await;
                 }
             }
+            NetworkEvent::ReceivedBlockInfo {
+                node: from_node_id,
+                block_id,
+                operation_list,
+            } => {
+                massa_trace!("protocol.protocol_worker.on_network_event.received_block_info", { "node": from_node_id, "block_id": block_id});
+
+                // Check operation_list against expected operations hash from header.
+                if let Some(op_hash) = self.block_wishlist.get(&block_id) {
+                    let mut total_hash: Vec<u8> = vec![];
+                    for op_id in operation_list.iter() {
+                        let op_hash = op_id.hash().into_bytes();
+                        total_hash.extend(op_hash);
+                    }
+                    if op_hash == &Hash::compute_from(&total_hash) {
+                        // Note ops are needed for block
+                        for op_id in operation_list
+                            .iter()
+                            .filter(|op| !self.checked_operations.contains(&op.into_prefix()))
+                        {
+                            self.awaiting_operations
+                                .insert(op_id.clone(), block_id.clone());
+                            if let Some(info) = self.checked_headers.get_mut(&block_id) {
+                                info.awaiting_operations.insert(op_id.clone());
+                            } else {
+                                warn!("Missing block info for {}", block_id);
+                            }
+                        }
+
+                        // Ask for the operations.
+                        self.on_operations_announcements_received(
+                            operation_list.iter().map(|id| id.into_prefix()).collect(),
+                            from_node_id,
+                        )
+                        .await?;
+                    } else {
+                        let _ = self.ban_node(&from_node_id).await;
+                    }
+                }
+            }
             NetworkEvent::AskedForBlocks {
                 node: from_node_id,
                 list,
@@ -1277,6 +1347,7 @@ impl ProtocolWorker {
                 } else {
                     return Ok(());
                 }
+                // TODO: Get op list instead.
                 self.send_protocol_event(ProtocolEvent::GetBlocks(list))
                     .await;
             }
