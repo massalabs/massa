@@ -66,6 +66,5 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<(u32, Vec<u8>), CipherErro
         .map_err(|_| {
             CipherError::DecryptionError("wrong password or corrupted data".to_string())
         })?;
-
     Ok((version, decrypted_bytes))
 }
