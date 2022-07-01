@@ -639,7 +639,8 @@ pub async fn load_initial_staking_keys(
     if !std::path::Path::is_file(path) {
         return Ok(Map::default());
     }
-    serde_json::from_slice::<Vec<KeyPair>>(&decrypt(password, &tokio::fs::read(path).await?)?)?
+    let (_version, data) = decrypt(password, &tokio::fs::read(path).await?)?;
+    serde_json::from_slice::<Vec<KeyPair>>(&data)?
         .into_iter()
         .map(|key| Ok((Address::from_public_key(&key.get_public_key()), key)))
         .collect()

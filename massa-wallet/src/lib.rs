@@ -36,7 +36,7 @@ impl Wallet {
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
         if path.is_file() {
             let content = &std::fs::read(&path)?[..];
-            let decrypted_content = decrypt(&password, content)?;
+            let (__version, decrypted_content) = decrypt(&password, content)?;
             let keys = serde_json::from_slice::<Map<Address, KeyPair>>(&decrypted_content[..])?;
             Ok(Wallet {
                 keys,
