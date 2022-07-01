@@ -43,8 +43,8 @@ async fn test_get_selection_draws_high_end_slot() {
         LedgerData::new(Amount::from_str("10000").unwrap()),
     );
     let initial_ledger_file = generate_ledger_file(&ledger);
-    let initial_rolls_file = generate_default_roll_counts_file(vec![addr_1.private_key]);
-    let staking_keys_file = generate_staking_keys_file(&[addr_2.private_key]);
+    let initial_rolls_file = generate_default_roll_counts_file(vec![addr_1.keypair]);
+    let staking_keys_file = generate_staking_keys_file(&[addr_2.keypair]);
 
     cfg.initial_ledger_path = initial_ledger_file.path().to_path_buf();
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();

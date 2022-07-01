@@ -37,7 +37,7 @@ use massa_network_worker::start_network_controller;
 use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
-use massa_signature::{derive_public_key, PrivateKey, PublicKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -53,7 +53,7 @@ mod settings;
 
 async fn launch(
     password: &str,
-    staking_keys: &Map<Address, (PublicKey, PrivateKey)>,
+    staking_keys: &Map<Address, KeyPair>,
 ) -> (
     PoolCommandSender,
     ConsensusEventReceiver,
@@ -353,7 +353,7 @@ struct Args {
 async fn load_or_create_staking_keys_file(
     password: Option<String>,
     path: &Path,
-) -> anyhow::Result<(String, Map<Address, (PublicKey, PrivateKey)>)> {
+) -> anyhow::Result<(String, Map<Address, KeyPair>)> {
     if path.is_file() {
         let password = password.unwrap_or_else(|| {
             Password::new()
@@ -362,17 +362,9 @@ async fn load_or_create_staking_keys_file(
                 .expect("IO error: Password reading failed, staking keys file couldn't be unlocked")
         });
         let (_version, decrypted_data) = decrypt(&password, &tokio::fs::read(path).await?)?;
-        let staking_keys: anyhow::Result<Map<Address, (PublicKey, PrivateKey)>> =
-            serde_json::from_slice::<Vec<PrivateKey>>(&decrypted_data)?
-                .iter()
-                .map(|private_key| {
-                    let public_key = derive_public_key(private_key);
-                    Ok((
-                        Address::from_public_key(&public_key),
-                        (public_key, *private_key),
-                    ))
-                })
-                .collect();
+        let staking_keys: anyhow::Result<Map<Address, KeyPair>> = Ok(serde_json::from_slice::<
+            Map<Address, KeyPair>,
+        >(&decrypted_data)?);
         Ok((password, staking_keys?))
     } else {
         let password = password.unwrap_or_else(|| {
@@ -382,7 +374,7 @@ async fn load_or_create_staking_keys_file(
                 .interact()
                 .expect("IO error: Password reading failed, staking keys file couldn't be created")
         });
-        let json = serde_json::to_string_pretty(&Vec::<PrivateKey>::new())?;
+        let json = serde_json::to_string_pretty(&Vec::<KeyPair>::new())?;
         let encrypted_data = encrypt(&password, json.as_bytes())?;
         tokio::fs::write(path, encrypted_data).await?;
         Ok((password, Map::default()))

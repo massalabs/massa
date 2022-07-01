@@ -26,8 +26,8 @@ pub struct NetworkSettings {
     pub initial_peers_file: std::path::PathBuf,
     /// Path to the file containing known peers.
     pub peers_file: std::path::PathBuf,
-    /// Path to the file containing our private key
-    pub private_key_file: std::path::PathBuf,
+    /// Path to the file containing our keypair
+    pub keypair_file: std::path::PathBuf,
     /// Configuration for `PeerType` connections
     pub peer_types_config: EnumMap<PeerType, PeerTypeConnectionConfig>,
     /// Limit on the number of in connections per ip.
@@ -74,7 +74,7 @@ pub struct PeerTypeConnectionConfig {
 #[cfg(feature = "testing")]
 pub mod tests {
     use crate::NetworkSettings;
-    use crate::{test_exports::tools::get_temp_private_key_file, PeerType};
+    use crate::{test_exports::tools::get_temp_keypair_file, PeerType};
     use enum_map::enum_map;
     use massa_models::constants::{BASE_NETWORK_CONTROLLER_IP, MAX_OPERATIONS_PER_MESSAGE};
     use massa_time::MassaTime;
@@ -114,7 +114,7 @@ pub mod tests {
                 peers_file_dump_interval: MassaTime::from(10_000),
                 message_timeout: MassaTime::from(5000u64),
                 ask_peer_list_interval: MassaTime::from(50000u64),
-                private_key_file: std::path::PathBuf::new(),
+                keypair_file: std::path::PathBuf::new(),
                 max_send_wait: MassaTime::from(100),
                 ban_timeout: MassaTime::from(100_000_000),
                 initial_peers_file: std::path::PathBuf::new(),
@@ -173,7 +173,7 @@ pub mod tests {
                 peers_file_dump_interval: MassaTime::from(30000),
                 message_timeout: MassaTime::from(5000u64),
                 ask_peer_list_interval: MassaTime::from(50000u64),
-                private_key_file: get_temp_private_key_file().path().to_path_buf(),
+                keypair_file: get_temp_keypair_file().path().to_path_buf(),
                 max_send_wait: MassaTime::from(100),
                 ban_timeout: MassaTime::from(100_000_000),
                 initial_peers_file: peers_file.to_path_buf(),

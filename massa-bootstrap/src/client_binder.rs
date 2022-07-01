@@ -15,7 +15,7 @@ use massa_models::{
     SerializeMinBEInt, VersionSerializer,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{verify_signature, PublicKey, Signature, SIGNATURE_SIZE_BYTES};
+use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
@@ -93,24 +93,24 @@ impl BootstrapClientBinder {
         let message_deserializer = BootstrapServerMessageDeserializer::new();
         let message = {
             if let Some(prev_message) = self.prev_message {
-                self.prev_message = Some(Hash::compute_from(sig.to_bytes()));
+                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
                 let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
                 sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
                 self.duplex
                     .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])
                     .await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
-                verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
+                self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
                     .deserialize::<DeserializeError>(&sig_msg_bytes[HASH_SIZE_BYTES..])
                     .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
                 msg
             } else {
-                self.prev_message = Some(Hash::compute_from(sig.to_bytes()));
+                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
                 let mut sig_msg_bytes = vec![0u8; msg_len as usize];
                 self.duplex.read_exact(&mut sig_msg_bytes[..]).await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
-                verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
+                self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
                 let (_, msg) = message_deserializer
                     .deserialize::<DeserializeError>(&sig_msg_bytes[..])
                     .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;

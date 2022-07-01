@@ -4,8 +4,7 @@ use crate::{node_configuration::THREAD_COUNT, Address, ModelsError};
 use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
-    sign, verify_signature, PrivateKey, PublicKey, PublicKeyDeserializer, Signature,
-    SignatureDeserializer,
+    KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -54,23 +53,23 @@ where
     fn new_wrapped<SC: Serializer<Self>, U: Id>(
         content: Self,
         content_serializer: SC,
-        private_key: &PrivateKey,
-        public_key: &PublicKey,
+        keypair: &KeyPair,
     ) -> Result<Wrapped<Self, U>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
         let mut hash_data = Vec::new();
+        let public_key = keypair.get_public_key();
         hash_data.extend(public_key.to_bytes());
         hash_data.extend(content_serialized.clone());
         let hash = Hash::compute_from(&hash_data);
-        let creator_address = Address::from_public_key(public_key);
+        let creator_address = Address::from_public_key(&public_key);
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]
         let thread_count = THREAD_COUNT;
         Ok(Wrapped {
-            signature: sign(&hash, private_key)?,
-            creator_public_key: *public_key,
+            signature: keypair.sign(&hash)?,
+            creator_public_key: public_key,
             creator_address,
             thread: creator_address.get_thread(thread_count),
             content,
@@ -172,7 +171,7 @@ where
         hash_data.extend(self.creator_public_key.to_bytes());
         hash_data.extend(content_serialized.clone());
         let hash = Hash::compute_from(&hash_data);
-        Ok(verify_signature(&hash, &self.signature, public_key)?)
+        Ok(public_key.verify_signature(&hash, &self.signature)?)
     }
 }
 
@@ -241,24 +240,22 @@ where
     DT: Deserializer<T>,
 {
     /// ```
-    /// use massa_models::{BlockId, Endorsement, EndorsementSerializer, EndorsementDeserializer, Slot, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer, WrappedContent}};
-    /// use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
-    /// use massa_signature::{derive_public_key, generate_random_private_key};
-    /// use std::ops::Bound::Included;
-    /// use massa_hash::Hash;
+    /// # use massa_models::{BlockId, Endorsement, EndorsementSerializer, EndorsementDeserializer, Slot, wrapped::{Wrapped, WrappedSerializer, WrappedDeserializer, WrappedContent}};
+    /// # use massa_serialization::{Deserializer, Serializer, DeserializeError, U16VarIntSerializer, U16VarIntDeserializer};
+    /// # use massa_signature::KeyPair;
+    /// # use std::ops::Bound::Included;
+    /// # use massa_hash::Hash;
     ///
     /// let content = Endorsement {
     ///    slot: Slot::new(10, 1),
     ///    index: 0,
     ///    endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
     /// };
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
+    /// let keypair = KeyPair::generate();
     /// let wrapped: Wrapped<Endorsement, BlockId> = Endorsement::new_wrapped(
     ///    content,
     ///    EndorsementSerializer::new(),
-    ///    &private_key,
-    ///    &public_key
+    ///    &keypair
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = WrappedSerializer::new().serialize(&wrapped, &mut serialized_data).unwrap();

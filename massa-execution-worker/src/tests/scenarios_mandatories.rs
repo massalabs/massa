@@ -17,7 +17,7 @@ use massa_models::{
     OperationSerializer, OperationType, WrappedBlock, WrappedOperation,
 };
 use massa_models::{Address, Amount, Slot};
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use serial_test::serial;
@@ -30,12 +30,11 @@ use std::{
 };
 use tempfile::{NamedTempFile, TempDir};
 
-/// Same as `get_random_address()` and return `priv_key` and `pub_key` associated
+/// Same as `get_random_address()` and return `keypair` associated
 /// to the address.
-pub fn get_random_address_full() -> (Address, PrivateKey, PublicKey) {
-    let priv_key = generate_random_private_key();
-    let pub_key = derive_public_key(&priv_key);
-    (Address::from_public_key(&pub_key), priv_key, pub_key)
+pub fn get_random_address_full() -> (Address, KeyPair) {
+    let keypair = KeyPair::generate();
+    (Address::from_public_key(&keypair.get_public_key()), keypair)
 }
 
 /// Get a randomized address
@@ -123,14 +122,14 @@ fn test_nested_call_gas_usage() {
     let storage = Storage::default();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
-    // get random private and public keys
-    let (_, priv_key, pub_key) = get_random_address_full();
+    // get random keypair
+    let (_, keypair) = get_random_address_full();
     // load bytecode you can check the source code of the
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
     // create the block containing the smart contract execution operation
     let block = create_block(
-        vec![create_execute_sc_operation(priv_key, pub_key, bytecode).unwrap()],
+        vec![create_execute_sc_operation(&keypair, bytecode).unwrap()],
         Slot::new(1, 0),
     )
     .unwrap();
@@ -155,8 +154,7 @@ fn test_nested_call_gas_usage() {
     let address = events[0].clone().data;
     // Call the function test of the smart contract
     let operation = create_call_sc_operation(
-        priv_key,
-        pub_key,
+        &keypair,
         10000000,
         Amount::from_str("0").unwrap(),
         Address::from_str(&address).unwrap(),
@@ -220,14 +218,14 @@ fn send_and_receive_async_message() {
     let storage = Storage::default();
     // start the execution worker
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
-    // get random private and public keys
-    let (_, priv_key, pub_key) = get_random_address_full();
+    // get random keypair
+    let (_, keypair) = get_random_address_full();
     // load send_message bytecode you can check the source code of the
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
     // create the block contaning the smart contract execution operation
     let block = create_block(
-        vec![create_execute_sc_operation(priv_key, pub_key, bytecode).unwrap()],
+        vec![create_execute_sc_operation(&keypair, bytecode).unwrap()],
         Slot::new(1, 0),
     )
     .unwrap();
@@ -269,13 +267,10 @@ fn generate_events() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
 
-    let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
+    let (sender_address, keypair) = get_random_address_full();
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
     let block = create_block(
-        vec![
-            create_execute_sc_operation(sender_private_key, sender_public_key, event_test_data)
-                .unwrap(),
-        ],
+        vec![create_execute_sc_operation(&keypair, event_test_data).unwrap()],
         Slot::new(1, 0),
     )
     .unwrap();
@@ -303,8 +298,7 @@ fn generate_events() {
 /// Create an operation for the given sender with `data` as bytecode.
 /// Return a result that should be unwrapped in the root `#[test]` routine.
 fn create_execute_sc_operation(
-    sender_private_key: PrivateKey,
-    sender_public_key: PublicKey,
+    sender_keypair: &KeyPair,
     data: &[u8],
 ) -> Result<WrappedOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
@@ -320,8 +314,7 @@ fn create_execute_sc_operation(
             op,
         },
         OperationSerializer::new(),
-        &sender_private_key,
-        &sender_public_key,
+        &sender_keypair,
     )?;
     Ok(op)
 }
@@ -329,8 +322,7 @@ fn create_execute_sc_operation(
 /// Create an operation for the given sender with `data` as bytecode.
 /// Return a result that should be unwrapped in the root `#[test]` routine.
 fn create_call_sc_operation(
-    sender_private_key: PrivateKey,
-    sender_public_key: PublicKey,
+    sender_keypair: &KeyPair,
     max_gas: u64,
     gas_price: Amount,
     target_addr: Address,
@@ -353,8 +345,7 @@ fn create_call_sc_operation(
             op,
         },
         OperationSerializer::new(),
-        &sender_private_key,
-        &sender_public_key,
+        sender_keypair,
     )?;
     Ok(op)
 }
@@ -367,8 +358,7 @@ fn create_block(
     operations: Vec<WrappedOperation>,
     slot: Slot,
 ) -> Result<WrappedBlock, ExecutionError> {
-    let creator = generate_random_private_key();
-    let public_key = derive_public_key(&creator);
+    let creator_keypair = KeyPair::generate();
 
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
@@ -384,14 +374,12 @@ fn create_block(
             endorsements: vec![],
         },
         BlockHeaderSerializer::new(),
-        &creator,
-        &public_key,
+        &creator_keypair,
     )?;
 
     Ok(Block::new_wrapped(
         Block { header, operations },
         BlockSerializer::new(),
-        &creator,
-        &public_key,
+        &creator_keypair,
     )?)
 }

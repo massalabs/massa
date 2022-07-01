@@ -6,7 +6,7 @@ use massa_models::{
     rolls::{RollCounts, RollUpdate, RollUpdates},
     Address,
 };
-use massa_signature::{derive_public_key, PrivateKey};
+use massa_signature::KeyPair;
 use tempfile::NamedTempFile;
 
 /// Password used for encryption in tests
@@ -25,8 +25,8 @@ pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedT
     ledger_file_named
 }
 
-/// generate staking key temp file from private keys
-pub fn generate_staking_keys_file(staking_keys: &[PrivateKey]) -> NamedTempFile {
+/// generate staking key temp file from keypairs
+pub fn generate_staking_keys_file(staking_keys: &[KeyPair]) -> NamedTempFile {
     use std::io::prelude::*;
     let file_named = NamedTempFile::new().expect("cannot create temp file");
     let json = serde_json::to_string_pretty(&staking_keys).expect("json serialization failed");
@@ -54,11 +54,10 @@ pub fn generate_roll_counts_file(roll_counts: &RollCounts) -> NamedTempFile {
 
 /// generate a default named temporary JSON initial rolls file,
 /// assuming two threads.
-pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempFile {
+pub fn generate_default_roll_counts_file(stakers: Vec<KeyPair>) -> NamedTempFile {
     let mut roll_counts = RollCounts::default();
     for key in stakers.iter() {
-        let pub_key = derive_public_key(key);
-        let address = Address::from_public_key(&pub_key);
+        let address = Address::from_public_key(&key.get_public_key());
         let update = RollUpdate {
             roll_purchases: 1,
             roll_sales: 0,

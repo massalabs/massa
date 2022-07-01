@@ -8,7 +8,7 @@ use massa_models::Address;
 use massa_models::OperationId;
 use massa_models::{Slot, WrappedOperation};
 use massa_protocol_exports::ProtocolCommand;
-use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_signature::KeyPair;
 use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;
@@ -491,23 +491,19 @@ async fn test_get_involved_operations() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = generate_random_private_key();
-    let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a);
+    let mut keypair_a = KeyPair::generate();
+    let mut address_a = Address::from_public_key(&keypair_a.get_public_key());
     while 1 != address_a.get_thread(thread_count) {
-        priv_a = generate_random_private_key();
-        pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a);
+        keypair_a = KeyPair::generate();
+        address_a = Address::from_public_key(&keypair_a.get_public_key());
     }
     assert_eq!(1, address_a.get_thread(thread_count));
 
-    let mut priv_b = generate_random_private_key();
-    let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b);
+    let mut keypair_b = KeyPair::generate();
+    let mut address_b = Address::from_public_key(&keypair_b.get_public_key());
     while 1 != address_b.get_thread(thread_count) {
-        priv_b = generate_random_private_key();
-        pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b);
+        keypair_b = KeyPair::generate();
+        address_b = Address::from_public_key(&keypair_b.get_public_key());
     }
     assert_eq!(1, address_b.get_thread(thread_count));
 
@@ -523,9 +519,10 @@ async fn test_get_involved_operations() {
                 .update_current_slot(Slot::new(1, 0))
                 .await
                 .unwrap();
-            let op1 = get_transaction_with_addresses(1, 1, pubkey_a, priv_a, pubkey_b);
-            let op2 = get_transaction_with_addresses(2, 10, pubkey_b, priv_b, pubkey_b);
-            let op3 = get_transaction_with_addresses(3, 100, pubkey_a, priv_a, pubkey_a);
+            let op1 = get_transaction_with_addresses(1, 1, &keypair_a, keypair_b.get_public_key());
+            let op2 = get_transaction_with_addresses(2, 10, &keypair_b, keypair_b.get_public_key());
+            let op3 =
+                get_transaction_with_addresses(3, 100, &keypair_a, keypair_a.get_public_key());
             let op1_id = op1.id;
             let op2_id = op2.id;
             let op3_id = op3.id;
@@ -642,23 +639,19 @@ async fn test_new_final_ops() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = generate_random_private_key();
-    let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a);
+    let mut keypair_a = KeyPair::generate();
+    let mut address_a = Address::from_public_key(&keypair_a.get_public_key());
     while 0 != address_a.get_thread(thread_count) {
-        priv_a = generate_random_private_key();
-        pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a);
+        keypair_a = KeyPair::generate();
+        address_a = Address::from_public_key(&keypair_a.get_public_key());
     }
     assert_eq!(0, address_a.get_thread(thread_count));
 
-    let mut priv_b = generate_random_private_key();
-    let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b);
+    let mut keypair_b = KeyPair::generate();
+    let mut address_b = Address::from_public_key(&keypair_b.get_public_key());
     while 0 != address_b.get_thread(thread_count) {
-        priv_b = generate_random_private_key();
-        pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b);
+        keypair_b = KeyPair::generate();
+        address_b = Address::from_public_key(&keypair_b.get_public_key());
     }
     assert_eq!(0, address_b.get_thread(thread_count));
 
@@ -672,7 +665,8 @@ async fn test_new_final_ops() {
 
             let mut ops: Vec<WrappedOperation> = Vec::new();
             for i in 0..10 {
-                let op = get_transaction_with_addresses(8, i, pubkey_a, priv_a, pubkey_b);
+                let op =
+                    get_transaction_with_addresses(8, i, &keypair_a, keypair_b.get_public_key());
                 ops.push(op);
             }
 

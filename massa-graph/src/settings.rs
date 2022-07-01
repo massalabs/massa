@@ -3,7 +3,7 @@
 #![allow(clippy::assertions_on_constants)]
 
 use massa_models::Amount;
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, usize};
@@ -41,8 +41,8 @@ impl From<&GraphConfig> for LedgerConfig {
 pub struct GraphConfig {
     /// Number of threads
     pub thread_count: u8,
-    /// Private key to sign genesis blocks.
-    pub genesis_key: PrivateKey,
+    /// Keypair to sign genesis blocks.
+    pub genesis_key: KeyPair,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
     /// If a block `is future_block_processing_max_periods` periods in the future, it is just discarded.

@@ -24,15 +24,15 @@ Create a keypair in massa-client:
 .. code-block:: bash
 
     cd massa-client && cargo run
-    wallet_generate_private_key
+    wallet_generate_secret_key
 
 For the rest of the tutorial we will use theses abreviations:
 
-- `PRIVK` : The private key you just generated
+- `PRIVK` : The secret you just generated
 - `PUBK` : The public key corresponding to PRIVK
 - `ADDR` : The address corresponding to PUBK
 
-Setup your node to use the private key you just generated as its private key and staking key:
+Setup your node to use the secret you just generated as its public key and staking key:
  * modify or create the file `massa-node/config/node_privkey.key` :
 
  .. code-block:: bash

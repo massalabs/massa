@@ -29,9 +29,7 @@ use massa_proof_of_stake_exports::{
     ThreadCycleState,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{
-    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
-};
+use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
@@ -103,19 +101,18 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 pub fn get_random_public_key() -> PublicKey {
-    let priv_key = generate_random_private_key();
-    derive_public_key(&priv_key)
+    let priv_key = KeyPair::generate();
+    priv_key.get_public_key()
 }
 
 pub fn get_random_address() -> Address {
-    let priv_key = generate_random_private_key();
-    let pub_key = derive_public_key(&priv_key);
-    Address::from_public_key(&pub_key)
+    let priv_key = KeyPair::generate();
+    Address::from_public_key(&priv_key.get_public_key())
 }
 
 pub fn get_dummy_signature(s: &str) -> Signature {
-    let priv_key = generate_random_private_key();
-    sign(&Hash::compute_from(s.as_bytes()), &priv_key).unwrap()
+    let priv_key = KeyPair::generate();
+    priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
 pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSettings {
@@ -157,12 +154,6 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         per_ip_min_interval: 10000.into(),
         max_bytes_read_write: std::f64::INFINITY,
     }
-}
-
-pub fn get_keys() -> (PrivateKey, PublicKey) {
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    (private_key, public_key)
 }
 
 pub async fn wait_consensus_command<F, T>(
@@ -349,9 +340,8 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 }
 
 pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let keypair = KeyPair::generate();
+    let address = Address::from_public_key(&keypair.get_public_key());
 
     let mut ledger_subset = ConsensusLedgerSubset::default();
     ledger_subset.0.insert(
@@ -404,8 +394,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
-    let priv_k = generate_random_private_key();
-    let pub_k = derive_public_key(&priv_k);
+    let keypair = KeyPair::generate();
 
     let block = Block::new_wrapped(
         Block {
@@ -422,8 +411,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
                             EndorsementSerializer::new(),
-                            &priv_k,
-                            &pub_k,
+                            &keypair,
                         )
                         .unwrap(),
                         Endorsement::new_wrapped(
@@ -433,15 +421,13 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
                             EndorsementSerializer::new(),
-                            &priv_k,
-                            &pub_k,
+                            &keypair,
                         )
                         .unwrap(),
                     ],
                 },
                 BlockHeaderSerializer::new(),
-                &priv_k,
-                &pub_k,
+                &keypair,
             )
             .unwrap(),
             operations: vec![
@@ -455,8 +441,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                         },
                     },
                     OperationSerializer::new(),
-                    &priv_k,
-                    &pub_k,
+                    &keypair,
                 )
                 .unwrap(),
                 Operation::new_wrapped(
@@ -466,8 +451,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                         op: massa_models::OperationType::RollBuy { roll_count: 45544 },
                     },
                     OperationSerializer::new(),
-                    &priv_k,
-                    &pub_k,
+                    &keypair,
                 )
                 .unwrap(),
                 Operation::new_wrapped(
@@ -479,15 +463,13 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                         },
                     },
                     OperationSerializer::new(),
-                    &priv_k,
-                    &pub_k,
+                    &keypair,
                 )
                 .unwrap(),
             ],
         },
         BlockSerializer::new(),
-        &priv_k,
-        &pub_k,
+        &keypair,
     )
     .unwrap();
 

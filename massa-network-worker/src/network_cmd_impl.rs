@@ -33,7 +33,6 @@ use massa_models::{
 use massa_network_exports::{
     BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
 };
-use massa_signature::{derive_public_key, sign};
 use std::{
     collections::{HashMap, HashSet},
     net::IpAddr,
@@ -290,11 +289,10 @@ pub async fn on_node_sign_message_cmd(
         "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
         { "mdg": msg }
     );
-    let signature = sign(&Hash::compute_from(&msg), &worker.private_key)?;
-    let public_key = derive_public_key(&worker.private_key);
+    let signature = worker.keypair.sign(&Hash::compute_from(&msg))?;
     if response_tx
         .send(PubkeySig {
-            public_key,
+            public_key: worker.keypair.get_public_key(),
             signature,
         })
         .is_err()
