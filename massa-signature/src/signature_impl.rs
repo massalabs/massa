@@ -960,10 +960,9 @@ mod tests {
     fn test_serde_keypair() {
         let keypair = KeyPair::generate();
         let serialized = serde_json::to_string(&keypair).expect("could not serialize keypair");
-        println!("{}", serialized);
-        let deserialized: PublicKey =
+        let deserialized: KeyPair =
             serde_json::from_str(&serialized).expect("could not deserialize keypair");
-        assert_eq!(keypair.0.public, deserialized.0);
+        assert_eq!(keypair.0.public, deserialized.0.public);
     }
 
     #[test]
