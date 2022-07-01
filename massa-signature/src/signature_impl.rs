@@ -9,7 +9,6 @@ use nom::{
     error::{ContextError, ParseError},
     IResult,
 };
-use secp256k1::{schnorr, Message, XOnlyPublicKey, SECP256K1};
 use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::SerializeStruct,
@@ -19,17 +18,21 @@ use std::{borrow::Cow, ops::Bound::Included};
 use std::{convert::TryInto, str::FromStr};
 
 /// Size of a public key
-pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
+pub const PUBLIC_KEY_SIZE_BYTES: usize = schnorrkel::PUBLIC_KEY_LENGTH;
 /// Size of a keypair
-pub const SECRET_KEY_SIZE_BYTES: usize = 32;
+pub const KEYPAIR_SIZE_BYTES: usize = schnorrkel::KEYPAIR_LENGTH;
 /// Size of a signature
-pub const SIGNATURE_SIZE_BYTES: usize = 64;
+pub const SIGNATURE_SIZE_BYTES: usize = schnorrkel::SIGNATURE_LENGTH;
 
 const SIGNATURE_STRING_PREFIX: &str = "SIG";
 
+lazy_static::lazy_static! {
+    pub static ref SIGNATURE_CONTEXT: schnorrkel::context::SigningContext = schnorrkel::signing_context("massa protocol".as_bytes());
+}
+
 /// `KeyPair` is used for signature and decrypting
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub struct KeyPair(secp256k1::KeyPair);
+#[derive(Clone)]
+pub struct KeyPair(schnorrkel::Keypair);
 
 const SECRET_PREFIX: char = 'S';
 const KEYPAIR_VERSION: u64 = 0;
@@ -41,7 +44,7 @@ impl std::fmt::Display for KeyPair {
         u64_serializer
             .serialize(&KEYPAIR_VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.secret_bytes());
+        bytes.extend(self.0.to_half_ed25519_bytes());
         write!(
             f,
             "{}{}",
@@ -100,7 +103,7 @@ impl KeyPair {
     /// let serialized: String = signature.to_bs58_check();
     /// ```
     pub fn generate() -> KeyPair {
-        KeyPair(secp256k1::KeyPair::new(SECP256K1, &mut rand::thread_rng()))
+        KeyPair(schnorrkel::Keypair::generate_with(&mut rand::rngs::OsRng))
     }
 
     /// Returns the Signature produced by signing
@@ -115,8 +118,9 @@ impl KeyPair {
     /// let signature = keypair.sign(&data).unwrap();
     /// ```
     pub fn sign(&self, hash: &Hash) -> Result<Signature, MassaSignatureError> {
-        let message = Message::from_slice(hash.to_bytes())?;
-        Ok(Signature(SECP256K1.sign_schnorr(&message, &self.0)))
+        Ok(Signature(
+            self.0.sign(SIGNATURE_CONTEXT.bytes(hash.to_bytes())),
+        ))
     }
 
     /// Return the bytes representing the keypair (should be a reference in the future)
@@ -127,8 +131,8 @@ impl KeyPair {
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> [u8; SECRET_KEY_SIZE_BYTES] {
-        self.0.secret_bytes()
+    pub fn to_bytes(&self) -> [u8; KEYPAIR_SIZE_BYTES] {
+        self.0.to_half_ed25519_bytes()
     }
 
     /// Return the bytes representing the keypair
@@ -139,8 +143,8 @@ impl KeyPair {
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.into_bytes();
     /// ```
-    pub fn into_bytes(&self) -> [u8; SECRET_KEY_SIZE_BYTES] {
-        self.0.secret_bytes()
+    pub fn into_bytes(&self) -> [u8; KEYPAIR_SIZE_BYTES] {
+        self.0.to_half_ed25519_bytes()
     }
 
     /// Convert a byte array of size `SECRET_KEY_SIZE_BYTES` to a `KeyPair`
@@ -152,8 +156,8 @@ impl KeyPair {
     /// let bytes = keypair.into_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; SECRET_KEY_SIZE_BYTES]) -> Result<Self, MassaSignatureError> {
-        secp256k1::KeyPair::from_seckey_slice(SECP256K1, &data[..])
+    pub fn from_bytes(data: &[u8; KEYPAIR_SIZE_BYTES]) -> Result<Self, MassaSignatureError> {
+        schnorrkel::Keypair::from_half_ed25519_bytes(&data[..])
             .map(Self)
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
@@ -169,7 +173,7 @@ impl KeyPair {
     /// let public_key = keypair.get_public_key();
     /// ```
     pub fn get_public_key(&self) -> PublicKey {
-        PublicKey(XOnlyPublicKey::from_keypair(&self.0).0)
+        PublicKey(self.0.public)
     }
 
     /// Encode a keypair into his base58 form
@@ -204,16 +208,9 @@ impl KeyPair {
                 ))
             })
             .and_then(|key| {
-                Ok(KeyPair(
-                    secp256k1::KeyPair::from_seckey_slice(SECP256K1, key.as_slice()).map_err(
-                        |err| {
-                            MassaSignatureError::ParsingError(format!(
-                                "keypair bs58_check parsing error: {:?}",
-                                err
-                            ))
-                        },
-                    )?,
-                ))
+                KeyPair::from_bytes(&key.try_into().map_err(|_| {
+                    MassaSignatureError::ParsingError("Bad keypair format".to_string())
+                })?)
             })
     }
 }
@@ -357,7 +354,7 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
 /// by the corresponding `PublicKey`.
 /// Generated from the `KeyPair` using `SignatureEngine`
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct PublicKey(secp256k1::XOnlyPublicKey);
+pub struct PublicKey(schnorrkel::PublicKey);
 
 const PUBLIC_PREFIX: char = 'P';
 
@@ -368,7 +365,7 @@ impl std::fmt::Display for PublicKey {
         u64_serializer
             .serialize(&KEYPAIR_VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.serialize());
+        bytes.extend(self.0.to_bytes());
         write!(
             f,
             "{}{}",
@@ -421,8 +418,14 @@ impl PublicKey {
         hash: &Hash,
         signature: &Signature,
     ) -> Result<(), MassaSignatureError> {
-        let message = Message::from_slice(hash.to_bytes())?;
-        Ok(SECP256K1.verify_schnorr(&signature.0, &message, &self.0)?)
+        self.0
+            .verify(SIGNATURE_CONTEXT.bytes(hash.to_bytes()), &signature.0)
+            .map_err(|err| {
+                MassaSignatureError::SignatureError(format!(
+                    "Signature failed: {}",
+                    err.to_string()
+                ))
+            })
     }
 
     /// Serialize a `PublicKey` using `bs58` encoding with checksum.
@@ -450,7 +453,7 @@ impl PublicKey {
     /// let serialize = keypair.get_public_key().to_bytes();
     /// ```
     pub fn to_bytes(&self) -> [u8; PUBLIC_KEY_SIZE_BYTES] {
-        self.0.serialize()
+        self.0.to_bytes()
     }
 
     /// Serialize into bytes.
@@ -464,7 +467,7 @@ impl PublicKey {
     /// let serialize = keypair.get_public_key().to_bytes();
     /// ```
     pub fn into_bytes(self) -> [u8; PUBLIC_KEY_SIZE_BYTES] {
-        self.0.serialize()
+        self.0.to_bytes()
     }
 
     /// Deserialize a `PublicKey` using `bs58` encoding with checksum.
@@ -512,14 +515,9 @@ impl PublicKey {
     pub fn from_bytes(
         data: &[u8; PUBLIC_KEY_SIZE_BYTES],
     ) -> Result<PublicKey, MassaSignatureError> {
-        secp256k1::XOnlyPublicKey::from_slice(&data[..])
-            .map(PublicKey)
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(format!(
-                    "public key bytes parsing error: {}",
-                    err
-                ))
-            })
+        schnorrkel::PublicKey::from_bytes(data)
+            .map(Self)
+            .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
     }
 }
 
@@ -648,7 +646,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
 
 /// Signature generated from a message and a `KeyPair`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Signature(schnorr::Signature);
+pub struct Signature(schnorrkel::Signature);
 
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -713,8 +711,8 @@ impl Signature {
     ///
     /// let serialized = signature.to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> &[u8; SIGNATURE_SIZE_BYTES] {
-        self.0.as_ref()
+    pub fn to_bytes(&self) -> [u8; SIGNATURE_SIZE_BYTES] {
+        self.0.to_bytes()
     }
 
     /// Serialize a Signature into bytes.
@@ -731,7 +729,7 @@ impl Signature {
     /// let serialized = signature.into_bytes();
     /// ```
     pub fn into_bytes(self) -> [u8; SIGNATURE_SIZE_BYTES] {
-        *self.0.as_ref()
+        self.0.to_bytes()
     }
 
     /// Deserialize a `Signature` using `bs58` encoding with checksum.
@@ -783,8 +781,8 @@ impl Signature {
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, MassaSignatureError> {
-        schnorr::Signature::from_slice(&data[..])
-            .map(Signature)
+        schnorrkel::Signature::from_bytes(&data[..])
+            .map(Self)
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))
             })
@@ -815,7 +813,7 @@ impl ::serde::Serialize for Signature {
         if s.is_human_readable() {
             s.collect_str(&self.to_bs58_check())
         } else {
-            s.serialize_bytes(self.to_bytes())
+            s.serialize_bytes(self.to_bytes().as_ref())
         }
     }
 }
@@ -967,9 +965,9 @@ mod tests {
         let keypair = KeyPair::generate();
         let serialized = serde_json::to_string(&keypair).expect("could not serialize keypair");
         println!("{}", serialized);
-        let deserialized =
+        let deserialized: PublicKey =
             serde_json::from_str(&serialized).expect("could not deserialize keypair");
-        assert_eq!(keypair, deserialized);
+        assert_eq!(keypair.0.public, deserialized.0);
     }
 
     #[test]
