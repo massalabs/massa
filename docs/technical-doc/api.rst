@@ -491,7 +491,7 @@ Here is an example of the content format :
         },
     }
 
-For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with blake3.
+For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with schnorr.
 
 -   Return:
 
