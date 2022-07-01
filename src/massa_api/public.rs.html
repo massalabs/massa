@@ -764,16 +764,6 @@
 <span id="758">758</span>
 <span id="759">759</span>
 <span id="760">760</span>
-<span id="761">761</span>
-<span id="762">762</span>
-<span id="763">763</span>
-<span id="764">764</span>
-<span id="765">765</span>
-<span id="766">766</span>
-<span id="767">767</span>
-<span id="768">768</span>
-<span id="769">769</span>
-<span id="770">770</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -1480,17 +1470,7 @@
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">op_serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
                     <span class="ident">op_serialized</span>.<span class="ident">extend</span>(<span class="ident">op_input</span>.<span class="ident">signature</span>.<span class="ident">to_bytes</span>());
                     <span class="ident">op_serialized</span>.<span class="ident">extend</span>(<span class="ident">op_input</span>.<span class="ident">creator_public_key</span>.<span class="ident">to_bytes</span>());
-                    <span class="ident">op_serialized</span>.<span class="ident">extend</span>(
-                        <span class="ident">bs58::decode</span>(<span class="ident">op_input</span>.<span class="ident">serialized_content</span>)
-                            .<span class="ident">with_check</span>(<span class="prelude-val">None</span>)
-                            .<span class="ident">into_vec</span>()
-                            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                                <span class="ident">ApiError::ModelsError</span>(<span class="ident">ModelsError::CheckedOperationError</span>(<span class="macro">format!</span>(
-                                    <span class="string">&quot;bs58 deserialization of content failed {}&quot;</span>,
-                                    <span class="ident">err</span>
-                                )))
-                            })<span class="question-mark">?</span>,
-                    );
+                    <span class="ident">op_serialized</span>.<span class="ident">extend</span>(<span class="ident">op_input</span>.<span class="ident">serialized_content</span>);
                     <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">op</span>): (<span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">WrappedOperation</span>) <span class="op">=</span> <span class="ident">operation_deserializer</span>
                         .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">op_serialized</span>)
                         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {

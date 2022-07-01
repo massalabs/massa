@@ -2177,7 +2177,7 @@
         .<span class="ident">public</span>
         .<span class="ident">send_operations</span>(<span class="macro">vec!</span>[<span class="ident">OperationInput</span> {
             <span class="ident">creator_public_key</span>: <span class="ident">op</span>.<span class="ident">creator_public_key</span>,
-            <span class="ident">serialized_content</span>: <span class="ident">bs58::encode</span>(<span class="ident">op</span>.<span class="ident">serialized_data</span>).<span class="ident">with_check</span>().<span class="ident">into_string</span>(),
+            <span class="ident">serialized_content</span>: <span class="ident">op</span>.<span class="ident">serialized_data</span>,
             <span class="ident">signature</span>: <span class="ident">op</span>.<span class="ident">signature</span>,
         }])
         .<span class="kw">await</span>
