@@ -47,7 +47,7 @@ use std::{collections::HashSet, str::FromStr};
 async fn test_inter_cycle_batch_finalization() {
     let t0: MassaTime = 1000.into();
     let staking_key =
-        KeyPair::from_str("S1cPcVMTtCvMTTErjGhiZCWosC45NBPeDUGCHFdJaSDhWGUFLzB").unwrap();
+        KeyPair::from_str("S1VMwuSa7YaKcofd7jiFhDxdjmgr743onh69zknPFceKZ5DaZpvi5AiZMFYVxMzzNYhRLXYxCuSHWJsAuhcm6YGJRAqhoXM").unwrap();
     let creator_addr = Address::from_public_key(&staking_key.get_public_key());
     let roll_price = Amount::from_str("42").unwrap();
     let initial_ledger = vec![(
@@ -71,7 +71,10 @@ async fn test_inter_cycle_batch_finalization() {
         roll_price,
         t0,
         genesis_timestamp: MassaTime::now().unwrap().saturating_add(warmup_time),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[staking_key], &initial_ledger)
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(
+            &[staking_key.clone()],
+            &initial_ledger,
+        )
     };
 
     consensus_without_pool_test(
@@ -91,16 +94,16 @@ async fn test_inter_cycle_batch_finalization() {
 
             // create B1 but DO NOT SEND IT
             tokio::time::sleep(t0.to_duration()).await;
-            let (b1_block, _) =
-                create_block(&cfg, Slot::new(1, 0), genesis_blocks.clone(), staking_key);
+            let b1_block =
+                create_block(&cfg, Slot::new(1, 0), genesis_blocks.clone(), &staking_key);
 
             // create and send B2
             tokio::time::sleep(t0.to_duration()).await;
-            let (b2_block, _) = create_block_with_operations_and_endorsements(
+            let b2_block = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(2, 0),
                 &vec![b1_block.id],
-                staking_key,
+                &staking_key,
                 vec![],
                 vec![create_endorsement(
                     &staking_key,
@@ -113,11 +116,11 @@ async fn test_inter_cycle_batch_finalization() {
 
             // create and send B3
             tokio::time::sleep(t0.to_duration()).await;
-            let (b3_block, _) = create_block_with_operations_and_endorsements(
+            let b3_block = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(3, 0),
                 &vec![b2_block.id],
-                staking_key,
+                &staking_key,
                 vec![],
                 vec![create_endorsement(
                     &staking_key,
@@ -131,11 +134,11 @@ async fn test_inter_cycle_batch_finalization() {
             // create and send B4
             tokio::time::sleep(t0.to_duration()).await;
             let roll_sell = create_roll_sell(&staking_key, 1, 4, 0);
-            let (b4_block, _) = create_block_with_operations_and_endorsements(
+            let b4_block = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(4, 0),
                 &vec![b3_block.id],
-                staking_key,
+                &staking_key,
                 vec![roll_sell],
                 vec![create_endorsement(
                     &staking_key,

@@ -28,7 +28,7 @@ async fn test_reward_split() {
     let mut ledger = HashMap::new();
     ledger.insert(address_a, LedgerData::new(Amount::from_str("10").unwrap()));
     ledger.insert(address_b, LedgerData::new(Amount::from_str("10").unwrap()));
-    let staking_keys = vec![keypair_a, keypair_b];
+    let staking_keys = vec![keypair_a.clone(), keypair_b.clone()];
     let init_time: MassaTime = 1000.into();
     let cfg = ConsensusConfig {
         endorsement_count: 5,
@@ -74,9 +74,9 @@ async fn test_reward_split() {
             let slot_one_endorsements_addrs = draws.get(&Slot::new(1, 0)).unwrap().1.clone();
 
             let slot_one_keypair = if slot_one_block_addr == address_a {
-                keypair_a
+                keypair_a.clone()
             } else {
-                keypair_b
+                keypair_b.clone()
             };
 
             // Create, and propagate, block 1.
@@ -89,7 +89,7 @@ async fn test_reward_split() {
                 .map(|(b, _p)| *b)
                 .collect();
 
-            let (b1, _) = create_block(&cfg, Slot::new(1, 0), parents, slot_one_keypair);
+            let b1 = create_block(&cfg, Slot::new(1, 0), parents, &slot_one_keypair);
 
             propagate_block(
                 &mut protocol_controller,
@@ -104,9 +104,9 @@ async fn test_reward_split() {
             let slot_two_block_addr = draws.get(&Slot::new(2, 0)).unwrap().0;
 
             let slot_two_keypair = if slot_two_block_addr == address_a {
-                keypair_a
+                keypair_a.clone()
             } else {
-                keypair_b
+                keypair_b.clone()
             };
 
             // Create, and propagate, block 2.
@@ -120,7 +120,7 @@ async fn test_reward_split() {
                 .collect();
             assert!(parents.contains(&b1.id));
 
-            let (mut b2, _) = create_block(&cfg, Slot::new(2, 0), parents, slot_two_keypair);
+            let mut b2 = create_block(&cfg, Slot::new(2, 0), parents, &slot_two_keypair);
 
             // Endorsements in block 2.
 
@@ -201,7 +201,7 @@ async fn test_reward_split() {
 
             let expected_a = Amount::from_str("10")
                 .unwrap() // initial ledger
-                .saturating_add(if keypair_a == slot_one_keypair {
+                .saturating_add(if keypair_a.to_bytes() == slot_one_keypair.to_bytes() {
                     // block 1 reward
                     cfg.block_reward
                         .checked_mul_u64(1)
@@ -219,7 +219,7 @@ async fn test_reward_split() {
                 } else {
                     Default::default()
                 })
-                .saturating_add(if keypair_a == slot_two_keypair {
+                .saturating_add(if keypair_a.to_bytes() == slot_two_keypair.to_bytes() {
                     // block 2 creation reward
                     cfg.block_reward
                         .checked_mul_u64(1 + 3)
@@ -238,7 +238,7 @@ async fn test_reward_split() {
 
             let expected_b = Amount::from_str("10")
                 .unwrap() // initial ledger
-                .saturating_add(if keypair_b == slot_one_keypair {
+                .saturating_add(if keypair_b.to_bytes() == slot_one_keypair.to_bytes() {
                     // block 1 reward
                     cfg.block_reward
                         .checked_mul_u64(1)
@@ -256,7 +256,7 @@ async fn test_reward_split() {
                 } else {
                     Default::default()
                 })
-                .saturating_add(if keypair_b == slot_two_keypair {
+                .saturating_add(if keypair_b.to_bytes() == slot_two_keypair.to_bytes() {
                     // block 2 creation reward
                     cfg.block_reward
                         .checked_mul_u64(1 + 3)

@@ -66,10 +66,10 @@ async fn test_roll() {
     let initial_ledger_file = tools::generate_ledger_file(&ledger);
     cfg.initial_ledger_path = initial_ledger_file.path().to_path_buf();
 
-    let staking_keys_file = tools::generate_staking_keys_file(&[keypair_2]);
+    let staking_keys_file = tools::generate_staking_keys_file(&[keypair_2.clone()]);
     cfg.staking_keys_path = staking_keys_file.path().to_path_buf();
 
-    let initial_rolls_file = tools::generate_default_roll_counts_file(vec![keypair_1]);
+    let initial_rolls_file = tools::generate_default_roll_counts_file(vec![keypair_1.clone()]);
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     consensus_pool_test(
@@ -102,11 +102,11 @@ async fn test_roll() {
             let addresses = addresses;
 
             // cycle 0
-            let (block1_err1, _) = create_block_with_operations(
+            let block1_err1 = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &parents,
-                keypair_1,
+                &keypair_1,
                 vec![rb_a1_r1_err],
             );
             tokio::time::sleep(init_time.to_duration()).await;
@@ -114,21 +114,21 @@ async fn test_roll() {
             // invalid because a1 has not enough coins to buy a roll
             propagate_block(&mut protocol_controller, block1_err1, false, 150).await;
 
-            let (block1_err2, _) = create_block_with_operations(
+            let block1_err2 = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &parents,
-                keypair_1,
+                &keypair_1,
                 vec![rs_a2_r1_err],
             );
             // invalid because a2 does not have enough rolls to sell
             propagate_block(&mut protocol_controller, block1_err2, false, 150).await;
 
-            let (block1, _) = create_block_with_operations(
+            let block1 = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &parents,
-                keypair_1,
+                &keypair_1,
                 vec![rb_a2_r1],
             );
 
@@ -151,8 +151,8 @@ async fn test_roll() {
                 Amount::from_str("9000").unwrap()
             );
 
-            let (block1t1, _) =
-                create_block_with_operations(&cfg, Slot::new(1, 1), &parents, keypair_1, vec![]);
+            let block1t1 =
+                create_block_with_operations(&cfg, Slot::new(1, 1), &parents, &keypair_1, vec![]);
 
             wait_pool_slot(&mut pool_controller, cfg.t0, 1, 1).await;
             // valid
@@ -161,11 +161,11 @@ async fn test_roll() {
 
             // cycle 1
 
-            let (block2, _) = create_block_with_operations(
+            let block2 = create_block_with_operations(
                 &cfg,
                 Slot::new(2, 0),
                 &parents,
-                keypair_1,
+                &keypair_1,
                 vec![rs_a2_r1],
             );
 
@@ -187,8 +187,8 @@ async fn test_roll() {
             let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("9000").unwrap());
 
-            let (block2t2, _) =
-                create_block_with_operations(&cfg, Slot::new(2, 1), &parents, keypair_1, vec![]);
+            let block2t2 =
+                create_block_with_operations(&cfg, Slot::new(2, 1), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 2, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block2t2.clone(), true, 150).await;
@@ -197,8 +197,8 @@ async fn test_roll() {
             // miss block 3 in thread 0
 
             // block 3 in thread 1
-            let (block3t1, _) =
-                create_block_with_operations(&cfg, Slot::new(3, 1), &parents, keypair_1, vec![]);
+            let block3t1 =
+                create_block_with_operations(&cfg, Slot::new(3, 1), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 3, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block3t1.clone(), true, 150).await;
@@ -208,22 +208,22 @@ async fn test_roll() {
 
             // miss block 4
 
-            let (block4t1, _) =
-                create_block_with_operations(&cfg, Slot::new(4, 1), &parents, keypair_1, vec![]);
+            let block4t1 =
+                create_block_with_operations(&cfg, Slot::new(4, 1), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 4, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block4t1.clone(), true, 150).await;
             parents[1] = block4t1.id;
 
-            let (block5, _) =
-                create_block_with_operations(&cfg, Slot::new(5, 0), &parents, keypair_1, vec![]);
+            let block5 =
+                create_block_with_operations(&cfg, Slot::new(5, 0), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 5, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block5.clone(), true, 150).await;
             parents[0] = block5.id;
 
-            let (block5t1, _) =
-                create_block_with_operations(&cfg, Slot::new(5, 1), &parents, keypair_1, vec![]);
+            let block5t1 =
+                create_block_with_operations(&cfg, Slot::new(5, 1), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 5, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block5t1.clone(), true, 150).await;
@@ -244,24 +244,24 @@ async fn test_roll() {
                 address_1
             };
 
-            let (block6_err, _) = create_block_with_operations(
+            let block6_err = create_block_with_operations(
                 &cfg,
                 Slot::new(6, 0),
                 &parents,
-                get_creator_for_draw(&other_addr, &vec![keypair_1, keypair_2]),
+                &get_creator_for_draw(&other_addr, &vec![keypair_1.clone(), keypair_2.clone()]),
                 vec![],
             );
             wait_pool_slot(&mut pool_controller, cfg.t0, 6, 0).await;
             // invalid: other_addr wasn't drawn for that block creation
             propagate_block(&mut protocol_controller, block6_err, false, 150).await;
 
-            let (block6, _) = create_block_with_operations(
+            let block6 = create_block_with_operations(
                 &cfg,
                 Slot::new(6, 0),
                 &parents,
-                get_creator_for_draw(
+                &get_creator_for_draw(
                     draws.get(&Slot::new(6, 0)).unwrap(),
-                    &vec![keypair_1, keypair_2],
+                    &vec![keypair_1.clone(), keypair_2.clone()],
                 ),
                 vec![],
             );
@@ -281,13 +281,13 @@ async fn test_roll() {
             assert_eq!(addr_state.rolls.final_rolls, 0);
             assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
-            let (block6t1, _) = create_block_with_operations(
+            let block6t1 = create_block_with_operations(
                 &cfg,
                 Slot::new(6, 1),
                 &parents,
-                get_creator_for_draw(
+                &get_creator_for_draw(
                     draws.get(&Slot::new(6, 1)).unwrap(),
-                    &vec![keypair_1, keypair_2],
+                    &vec![keypair_1.clone(), keypair_2.clone()],
                 ),
                 vec![],
             );
@@ -297,13 +297,13 @@ async fn test_roll() {
             propagate_block(&mut protocol_controller, block6t1.clone(), true, 150).await;
             parents[1] = block6t1.id;
 
-            let (block7, _) = create_block_with_operations(
+            let block7 = create_block_with_operations(
                 &cfg,
                 Slot::new(7, 0),
                 &parents,
-                get_creator_for_draw(
+                &get_creator_for_draw(
                     draws.get(&Slot::new(7, 0)).unwrap(),
-                    &vec![keypair_1, keypair_2],
+                    &vec![keypair_1.clone(), keypair_2.clone()],
                 ),
                 vec![],
             );
@@ -324,13 +324,13 @@ async fn test_roll() {
             assert_eq!(addr_state.rolls.final_rolls, 0);
             assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
-            let (block7t1, _) = create_block_with_operations(
+            let block7t1 = create_block_with_operations(
                 &cfg,
                 Slot::new(7, 1),
                 &parents,
-                get_creator_for_draw(
+                &get_creator_for_draw(
                     draws.get(&Slot::new(7, 1)).unwrap(),
-                    &vec![keypair_1, keypair_2],
+                    &vec![keypair_1.clone(), keypair_2.clone()],
                 ),
                 vec![],
             );
@@ -342,11 +342,11 @@ async fn test_roll() {
 
             // cycle 4
 
-            let (block8, _) = create_block_with_operations(
+            let block8 = create_block_with_operations(
                 &cfg,
                 Slot::new(8, 0),
                 &parents,
-                keypair_1,
+                &keypair_1,
                 vec![rb_a2_r2],
             );
             wait_pool_slot(&mut pool_controller, cfg.t0, 8, 0).await;
@@ -367,18 +367,18 @@ async fn test_roll() {
             let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("7000").unwrap());
 
-            let (block8t1, _) =
-                create_block_with_operations(&cfg, Slot::new(8, 1), &parents, keypair_1, vec![]);
+            let block8t1 =
+                create_block_with_operations(&cfg, Slot::new(8, 1), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 8, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block8t1.clone(), true, 150).await;
             parents[1] = block8t1.id;
 
-            let (block9, _) = create_block_with_operations(
+            let block9 = create_block_with_operations(
                 &cfg,
                 Slot::new(9, 0),
                 &parents,
-                keypair_1,
+                &keypair_1,
                 vec![rs_a2_r2],
             );
             wait_pool_slot(&mut pool_controller, cfg.t0, 9, 0).await;
@@ -399,8 +399,8 @@ async fn test_roll() {
             let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("9000").unwrap());
 
-            let (block9t1, _) =
-                create_block_with_operations(&cfg, Slot::new(9, 1), &parents, keypair_1, vec![]);
+            let block9t1 =
+                create_block_with_operations(&cfg, Slot::new(9, 1), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 9, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block9t1.clone(), true, 150).await;
@@ -408,8 +408,8 @@ async fn test_roll() {
 
             // cycle 5
 
-            let (block10, _) =
-                create_block_with_operations(&cfg, Slot::new(10, 0), &parents, keypair_1, vec![]);
+            let block10 =
+                create_block_with_operations(&cfg, Slot::new(10, 0), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 10, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block10.clone(), true, 150).await;
@@ -437,15 +437,15 @@ async fn test_roll() {
                 .balance;
             assert_eq!(balance, Amount::from_str("10000").unwrap());
 
-            let (block10t1, _) =
-                create_block_with_operations(&cfg, Slot::new(10, 1), &parents, keypair_1, vec![]);
+            let block10t1 =
+                create_block_with_operations(&cfg, Slot::new(10, 1), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 10, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block10t1.clone(), true, 150).await;
             parents[1] = block10t1.id;
 
-            let (block11, _) =
-                create_block_with_operations(&cfg, Slot::new(11, 0), &parents, keypair_1, vec![]);
+            let block11 =
+                create_block_with_operations(&cfg, Slot::new(11, 0), &parents, &keypair_1, vec![]);
             wait_pool_slot(&mut pool_controller, cfg.t0, 11, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block11.clone(), true, 150).await;
@@ -507,8 +507,8 @@ async fn test_roll_block_creation() {
         LedgerData::new(Amount::from_str("10000").unwrap()),
     );
     let initial_ledger_file = tools::generate_ledger_file(&ledger);
-    let staking_keys_file = tools::generate_staking_keys_file(&[keypair_1]);
-    let initial_rolls_file = tools::generate_default_roll_counts_file(vec![keypair_1]);
+    let staking_keys_file = tools::generate_staking_keys_file(&[keypair_1.clone()]);
+    let initial_rolls_file = tools::generate_default_roll_counts_file(vec![keypair_1.clone()]);
     cfg.initial_ledger_path = initial_ledger_file.path().to_path_buf();
     cfg.staking_keys_path = staking_keys_file.path().to_path_buf();
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
@@ -787,7 +787,10 @@ async fn test_roll_deactivation() {
     let initial_ledger_file = tools::generate_ledger_file(&HashMap::new());
     let staking_keys_file = tools::generate_staking_keys_file(&[]);
     let initial_rolls_file = tools::generate_default_roll_counts_file(vec![
-        keypair_a0, keypair_a1, keypair_b0, keypair_b1,
+        keypair_a0.clone(),
+        keypair_a1.clone(),
+        keypair_b0.clone(),
+        keypair_b1.clone(),
     ]);
 
     cfg.initial_ledger_path = initial_ledger_file.path().to_path_buf();
@@ -902,19 +905,19 @@ async fn test_roll_deactivation() {
             // create and propagate block
             if let Some(addr) = cur_draw {
                 let creator_privkey = if addr == address_a0 {
-                    keypair_a0
+                    keypair_a0.clone()
                 } else if addr == address_a1 {
-                    keypair_a1
+                    keypair_a1.clone()
                 } else if addr == address_b0 {
-                    keypair_b0
+                    keypair_b0.clone()
                 } else if addr == address_b1 {
-                    keypair_b1
+                    keypair_b1.clone()
                 } else {
                     panic!("invalid address selected");
                 };
                 let block_id = propagate_block(
                     &mut protocol_controller,
-                    create_block(&cfg, cur_slot, best_parents.clone(), creator_privkey).0,
+                    create_block(&cfg, cur_slot, best_parents.clone(), &creator_privkey),
                     true,
                     500,
                 )

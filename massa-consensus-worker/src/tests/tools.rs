@@ -289,7 +289,7 @@ pub async fn create_and_test_block(
     trace: bool,
     creator: &KeyPair,
 ) -> BlockId {
-    let (block, _) = create_block(cfg, slot, best_parents, *creator);
+    let block = create_block(cfg, slot, best_parents, creator);
     let block_id = block.id;
     if trace {
         info!("create block:{}", block.id);
@@ -446,8 +446,8 @@ pub fn create_block(
     cfg: &ConsensusConfig,
     slot: Slot,
     best_parents: Vec<BlockId>,
-    creator: KeyPair,
-) -> (WrappedBlock, KeyPair) {
+    creator: &KeyPair,
+) -> WrappedBlock {
     create_block_with_merkle_root(
         cfg,
         Hash::compute_from("default_val".as_bytes()),
@@ -463,8 +463,8 @@ pub fn create_block_with_merkle_root(
     operation_merkle_root: Hash,
     slot: Slot,
     best_parents: Vec<BlockId>,
-    creator: KeyPair,
-) -> (WrappedBlock, KeyPair) {
+    creator: &KeyPair,
+) -> WrappedBlock {
     let header = BlockHeader::new_wrapped(
         BlockHeader {
             slot,
@@ -487,7 +487,7 @@ pub fn create_block_with_merkle_root(
     )
     .unwrap();
 
-    (block, creator)
+    block
 }
 
 /// Creates an endorsement for use in consensus tests.
@@ -554,9 +554,9 @@ pub fn create_block_with_operations(
     _cfg: &ConsensusConfig,
     slot: Slot,
     best_parents: &Vec<BlockId>,
-    creator: KeyPair,
+    creator: &KeyPair,
     operations: Vec<WrappedOperation>,
-) -> (WrappedBlock, KeyPair) {
+) -> WrappedBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.id.hash().to_bytes().to_vec()].concat()
@@ -578,21 +578,21 @@ pub fn create_block_with_operations(
     let block = Block::new_wrapped(
         Block { header, operations },
         BlockSerializer::new(),
-        &creator,
+        creator,
     )
     .unwrap();
 
-    (block, creator)
+    block
 }
 
 pub fn create_block_with_operations_and_endorsements(
     _cfg: &ConsensusConfig,
     slot: Slot,
     best_parents: &Vec<BlockId>,
-    creator: KeyPair,
+    creator: &KeyPair,
     operations: Vec<WrappedOperation>,
     endorsements: Vec<WrappedEndorsement>,
-) -> (WrappedBlock, KeyPair) {
+) -> WrappedBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.id.hash().to_bytes().to_vec()].concat()
@@ -607,25 +607,25 @@ pub fn create_block_with_operations_and_endorsements(
             endorsements,
         },
         BlockHeaderSerializer::new(),
-        &creator,
+        creator,
     )
     .unwrap();
 
     let block = Block::new_wrapped(
         Block { header, operations },
         BlockSerializer::new(),
-        &creator,
+        creator,
     )
     .unwrap();
 
-    (block, creator)
+    block
 }
 
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<KeyPair>) -> KeyPair {
     for key in nodes.iter() {
         let address = Address::from_public_key(&key.get_public_key());
         if address == *draw {
-            return *key;
+            return key.clone();
         }
     }
     panic!("Matching key for draw not found.");
@@ -640,8 +640,8 @@ pub async fn load_initial_staking_keys(
         return Ok(Map::default());
     }
     serde_json::from_slice::<Vec<KeyPair>>(&decrypt(password, &tokio::fs::read(path).await?)?)?
-        .iter()
-        .map(|&key| Ok((Address::from_public_key(&key.get_public_key()), key)))
+        .into_iter()
+        .map(|key| Ok((Address::from_public_key(&key.get_public_key()), key)))
         .collect()
 }
 

@@ -39,7 +39,7 @@ async fn test_wishlist_delta_with_empty_remove() {
                 .1
                  .0;
             let creator = get_creator_for_draw(&draw, &staking_keys.clone());
-            let (t0s1, _) = create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone(), creator);
+            let t0s1 = create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone(), &creator);
 
             // send header for block t0s1
             protocol_controller
@@ -85,11 +85,11 @@ async fn test_wishlist_delta_remove() {
                 .genesis_blocks;
 
             // create test blocks
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
             // send header for block t0s1
             protocol_controller

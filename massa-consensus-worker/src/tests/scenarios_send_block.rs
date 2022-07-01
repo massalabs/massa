@@ -38,11 +38,11 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
                 .1
                  .0;
             let creator = get_creator_for_draw(&draw, &staking_keys.clone());
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1 + start_slot, 0),
                 genesis_hashes.clone(),
-                creator,
+                &creator,
             );
 
             // Send the actual block.
@@ -95,11 +95,11 @@ async fn test_consensus_block_not_found() {
                 .genesis_blocks;
 
             // create test blocks
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1 + start_slot, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             // Ask for the block to consensus.

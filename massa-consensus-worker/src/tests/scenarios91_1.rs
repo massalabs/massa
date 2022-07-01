@@ -79,12 +79,12 @@ async fn test_ti() {
             assert_eq!(block1_clic, block2_clic);
 
             // Create other clique bock T0S2
-            let (fork_block, _) = create_block_with_merkle_root(
+            let fork_block = create_block_with_merkle_root(
                 &cfg,
                 Hash::compute_from("Other hash!".as_bytes()),
                 Slot::new(2, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             protocol_controller.receive_block(fork_block.clone()).await;
@@ -132,11 +132,11 @@ async fn test_ti() {
             }
 
             // create new block in other clique
-            let (block, _) = create_block(
+            let block = create_block(
                 &cfg,
                 Slot::new(2, 1),
                 vec![fork_block.id, valid_hasht1s1],
-                staking_keys[0],
+                &staking_keys[0],
             );
             protocol_controller.receive_block(block.clone()).await;
             assert!(!validate_notpropagate_block(&mut protocol_controller, block.id, 1000,).await);

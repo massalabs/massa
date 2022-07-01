@@ -40,7 +40,8 @@ async fn test_endorsement_check() {
     let (address_1, keypair_1) = random_address_on_thread(0, cfg.thread_count).into();
     let (address_2, keypair_2) = random_address_on_thread(0, cfg.thread_count).into();
     assert_eq!(0, address_2.get_thread(cfg.thread_count));
-    let initial_rolls_file = generate_default_roll_counts_file(vec![keypair_1, keypair_2]);
+    let initial_rolls_file =
+        generate_default_roll_counts_file(vec![keypair_1.clone(), keypair_2.clone()]);
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     consensus_without_pool_test(
@@ -58,19 +59,19 @@ async fn test_endorsement_check() {
             let address_c = draws.get(&Slot::new(1, 1)).unwrap().1[0];
 
             let keypair_a = if address_a == address_1 {
-                keypair_1
+                keypair_1.clone()
             } else {
-                keypair_2
+                keypair_2.clone()
             };
             let keypair_b = if address_b == address_1 {
-                keypair_1
+                keypair_1.clone()
             } else {
-                keypair_2
+                keypair_2.clone()
             };
             let keypair_c = if address_c == address_1 {
-                keypair_1
+                keypair_1.clone()
             } else {
-                keypair_2
+                keypair_2.clone()
             };
 
             let parents: Vec<BlockId> = consensus_command_sender
@@ -82,7 +83,7 @@ async fn test_endorsement_check() {
                 .map(|(b, _p)| *b)
                 .collect();
 
-            let (mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), keypair_a);
+            let mut b10 = create_block(&cfg, Slot::new(1, 0), parents.clone(), &keypair_a);
 
             // create an otherwise valid endorsement with another address, include it in valid block(1,0), assert it is not propagated
             let sender_keypair = KeyPair::generate();
@@ -110,7 +111,7 @@ async fn test_endorsement_check() {
             let ed =
                 Endorsement::new_wrapped(content.clone(), EndorsementSerializer::new(), &keypair_c)
                     .unwrap();
-            let (mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), keypair_a);
+            let mut b10 = create_block(&cfg, Slot::new(1, 0), parents.clone(), &keypair_a);
             b10.content.header.content.endorsements = vec![ed];
 
             propagate_block(&mut protocol_controller, b10, false, 500).await;
@@ -124,7 +125,7 @@ async fn test_endorsement_check() {
             let ed =
                 Endorsement::new_wrapped(content.clone(), EndorsementSerializer::new(), &keypair_b)
                     .unwrap();
-            let (mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), keypair_a);
+            let mut b10 = create_block(&cfg, Slot::new(1, 0), parents.clone(), &keypair_a);
             b10.content.header.content.endorsements = vec![ed];
 
             propagate_block(&mut protocol_controller, b10, false, 500).await;
@@ -138,7 +139,7 @@ async fn test_endorsement_check() {
             let ed =
                 Endorsement::new_wrapped(content.clone(), EndorsementSerializer::new(), &keypair_b)
                     .unwrap();
-            let (mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), keypair_a);
+            let mut b10 = create_block(&cfg, Slot::new(1, 0), parents.clone(), &keypair_a);
             b10.content.header.content.endorsements = vec![ed];
 
             propagate_block(&mut protocol_controller, b10, false, 500).await;

@@ -37,7 +37,7 @@ async fn test_operations_check() {
         future_block_processing_max_periods: 50,
         operation_validity_periods: 10,
         genesis_timestamp: MassaTime::now().unwrap().saturating_sub(10000.into()),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1], &ledger)
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1.clone()], &ledger)
     };
 
     consensus_without_pool_test(
@@ -51,11 +51,11 @@ async fn test_operations_check() {
 
             // Valid block A sending 5 from addr1 to addr2 + reward 1 to addr1
             let operation_1 = create_transaction(&keypair_1, address_2, 5, 5, 1);
-            let (block_a, _) = create_block_with_operations(
+            let block_a = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &genesis_ids,
-                keypair_1,
+                &keypair_1,
                 vec![operation_1.clone()],
             );
             propagate_block(&mut protocol_controller, block_a.clone(), true, 150).await;
@@ -75,21 +75,21 @@ async fn test_operations_check() {
 
             // receive block b with invalid operation (not enough coins)
             let operation_2 = create_transaction(&keypair_2, address_1, 10, 8, 1);
-            let (block_2b, _) = create_block_with_operations(
+            let block_2b = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 1),
                 &vec![block_a.id, genesis_ids[1]],
-                keypair_2,
+                &keypair_2,
                 vec![operation_2],
             );
             propagate_block(&mut protocol_controller, block_2b, false, 1000).await;
 
             // receive empty block b
-            let (block_b, _) = create_block_with_operations(
+            let block_b = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 1),
                 &vec![block_a.id, genesis_ids[1]],
-                keypair_1,
+                &keypair_1,
                 vec![],
             );
             propagate_block(&mut protocol_controller, block_b.clone(), true, 150).await;
@@ -108,11 +108,11 @@ async fn test_operations_check() {
             assert_eq!(res.balance, Amount::from_str("5").unwrap());
 
             // receive block with reused operation
-            let (block_1c, _) = create_block_with_operations(
+            let block_1c = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &vec![block_a.id, block_b.id],
-                keypair_1,
+                &keypair_1,
                 vec![operation_1.clone()],
             );
             propagate_block(&mut protocol_controller, block_1c.clone(), false, 1000).await;
@@ -135,12 +135,12 @@ async fn test_execution_check() {
     let mut ledger = HashMap::new();
     ledger.insert(address_1, LedgerData::new(Amount::from_str("5").unwrap()));
 
-    let staking_keys: Vec<KeyPair> = vec![keypair_1];
+    let staking_keys: Vec<KeyPair> = vec![keypair_1.clone()];
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
         operation_validity_periods: 10,
-        genesis_key: keypair_1,
+        genesis_key: keypair_1.clone(),
         genesis_timestamp: MassaTime::now().unwrap().saturating_sub(10000.into()),
         ..ConsensusConfig::default_with_staking_keys_and_ledger(&staking_keys, &ledger)
     };
@@ -156,11 +156,11 @@ async fn test_execution_check() {
 
             // Valid block A executing some bytecode and spending 2 coins.
             let operation_1 = create_executesc(&keypair_1, 5, 5, Default::default(), 1, 2, 1);
-            let (block_a, _) = create_block_with_operations(
+            let block_a = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &genesis_ids,
-                keypair_1,
+                &keypair_1,
                 vec![operation_1.clone()],
             );
             propagate_block(&mut protocol_controller, block_a, true, 150).await;

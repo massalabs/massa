@@ -66,12 +66,12 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         .collect();
 
     // Block for a non-existent thread.
-    let (block, _) = create_block_with_merkle_root(
+    let block = create_block_with_merkle_root(
         &cfg,
         Hash::compute_from("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        staking_keys[0],
+        &staking_keys[0],
     );
     protocol_controller.receive_block(block.clone()).await;
 
@@ -134,12 +134,12 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         .collect();
 
     // Block for a non-existent thread.
-    let (block, _) = create_block_with_merkle_root(
+    let block = create_block_with_merkle_root(
         &cfg,
         Hash::compute_from("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        staking_keys[0],
+        &staking_keys[0],
     );
     protocol_controller
         .receive_header(block.content.header)

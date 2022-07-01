@@ -483,7 +483,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         address_2,
         LedgerData::new(Amount::from_str("3000").unwrap()),
     );
-    let staking_keys: Vec<KeyPair> = vec![keypair_1];
+    let staking_keys: Vec<KeyPair> = vec![keypair_1.clone()];
 
     let cfg = ConsensusConfig {
         t0: 1000.into(),
@@ -533,11 +533,11 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     let operation_1 = create_transaction(&keypair_1, address_2, 10, 10, 3);
 
     // Add block B3
-    let (block_a, _) = create_block_with_operations(
+    let block_a = create_block_with_operations(
         &cfg,
         Slot::new(1, 0),
-        &genesis_ids,
-        staking_keys[0],
+        &&genesis_ids,
+        &staking_keys[0],
         vec![operation_1],
     );
     protocol_controller.receive_block(block_a.clone()).await;
@@ -550,11 +550,11 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     let operation_3 = create_transaction(&keypair_2, address_3, 3, 10, 1);
 
     // Add block B4
-    let (block_b, _) = create_block_with_operations(
+    let block_b = create_block_with_operations(
         &cfg,
         Slot::new(1, 1),
-        &genesis_ids,
-        staking_keys[0],
+        &&genesis_ids,
+        &staking_keys[0],
         vec![operation_2, operation_3],
     );
     protocol_controller.receive_block(block_b.clone()).await;
@@ -564,22 +564,22 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     let operation_4 = create_transaction(&keypair_1, address_3, 3, 10, 4);
 
     // Add block B5
-    let (block_c, _) = create_block_with_operations(
+    let block_c = create_block_with_operations(
         &cfg,
         Slot::new(2, 0),
         &vec![block_a.id, block_b.id],
-        staking_keys[0],
+        &staking_keys[0],
         vec![operation_4],
     );
     protocol_controller.receive_block(block_c.clone()).await;
     validate_propagate_block(&mut protocol_controller, block_c.id, 150).await;
 
     // Add block B6, no operations.
-    let (block_d, _) = create_block_with_operations(
+    let block_d = create_block_with_operations(
         &cfg,
         Slot::new(2, 1),
         &vec![block_a.id, block_b.id],
-        staking_keys[0],
+        &staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_d.clone()).await;
@@ -588,11 +588,11 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // A -> B [amount 11, fee 7]
     let operation_5 = create_transaction(&keypair_1, address_2, 11, 10, 7);
     // Add block B7
-    let (block_e, _) = create_block_with_operations(
+    let block_e = create_block_with_operations(
         &cfg,
         Slot::new(3, 0),
         &vec![block_c.id, block_b.id],
-        staking_keys[0],
+        &staking_keys[0],
         vec![operation_5],
     );
     protocol_controller.receive_block(block_e.clone()).await;
@@ -601,22 +601,22 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     // B -> A [amount 17, fee 4]
     let operation_6 = create_transaction(&keypair_2, address_1, 17, 10, 4);
     // Add block B8
-    let (block_f, _) = create_block_with_operations(
+    let block_f = create_block_with_operations(
         &cfg,
         Slot::new(3, 1),
         &vec![block_c.id, block_d.id],
-        staking_keys[0],
+        &staking_keys[0],
         vec![operation_6],
     );
     protocol_controller.receive_block(block_f.clone()).await;
     validate_propagate_block(&mut protocol_controller, block_f.id, 150).await;
 
     // Add block B9
-    let (block_g, _) = create_block_with_operations(
+    let block_g = create_block_with_operations(
         &cfg,
         Slot::new(4, 0),
         &vec![block_e.id, block_f.id],
-        staking_keys[0],
+        &staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_g.clone()).await;
@@ -647,22 +647,22 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     }
 
     // Add block B10
-    let (block_h, _) = create_block_with_operations(
+    let block_h = create_block_with_operations(
         &cfg,
         Slot::new(5, 0),
         &vec![block_g.id, block_f.id],
-        staking_keys[0],
+        &staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_h.clone()).await;
     validate_propagate_block(&mut protocol_controller, block_h.id, 150).await;
 
     // Add block B11
-    let (block_i, _) = create_block_with_operations(
+    let block_i = create_block_with_operations(
         &cfg,
         Slot::new(6, 0),
         &vec![block_h.id, block_f.id],
-        staking_keys[0],
+        &staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_i.clone()).await;
@@ -694,11 +694,11 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     }
 
     // Add block B12
-    let (block_j, _) = create_block_with_operations(
+    let block_j = create_block_with_operations(
         &cfg,
         Slot::new(7, 0),
         &vec![block_i.id, block_f.id],
-        staking_keys[0],
+        &staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_j.clone()).await;
@@ -730,11 +730,11 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     }
 
     // Add block B13
-    let (block_k, _) = create_block_with_operations(
+    let block_k = create_block_with_operations(
         &cfg,
         Slot::new(8, 0),
         &vec![block_j.id, block_f.id],
-        staking_keys[0],
+        &staking_keys[0],
         vec![],
     );
     protocol_controller.receive_block(block_k.clone()).await;

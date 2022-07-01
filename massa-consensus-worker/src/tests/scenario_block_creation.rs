@@ -129,7 +129,7 @@ async fn test_block_creation_with_draw() {
     let (address_1, keypair_1) = random_address_on_thread(0, thread_count).into();
     let (address_2, keypair_2) = random_address_on_thread(0, thread_count).into();
 
-    let staking_keys = vec![keypair_1, keypair_2];
+    let staking_keys = vec![keypair_1.clone(), keypair_2.clone()];
 
     // init address_2 with 1000 coins
     let mut ledger = HashMap::new();
@@ -186,11 +186,11 @@ async fn test_block_creation_with_draw() {
 
             // initial block: addr2 buys 1 roll
             let op1 = create_roll_transaction(&keypair_2, 1, true, 10, operation_fee);
-            let (block, _) = tools::create_block_with_operations(
+            let block = tools::create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
                 &genesis_ids,
-                staking_keys[0],
+                &staking_keys[0],
                 vec![op1],
             );
 
@@ -393,11 +393,11 @@ async fn test_interleaving_block_creation_with_reception() {
                     id
                 } else if *creator == address_2 {
                     // create block and propagate it
-                    let (block, _) = tools::create_block_with_operations(
+                    let block = tools::create_block_with_operations(
                         &cfg,
                         cur_slot,
                         &parents,
-                        keypair_2,
+                        &keypair_2,
                         vec![],
                     );
                     tools::propagate_block(
@@ -630,7 +630,10 @@ async fn test_block_filling() {
         operation_validity_periods: 10,
         periods_per_cycle: 3,
         t0: 1000.into(),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_a, keypair_b], &ledger)
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(
+            &[keypair_a.clone(), keypair_b.clone()],
+            &ledger,
+        )
     };
 
     let mut ops = vec![create_executesc(

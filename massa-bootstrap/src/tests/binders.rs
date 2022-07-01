@@ -25,7 +25,7 @@ async fn test_binders() {
     let (bootstrap_settings, server_keypair): &(BootstrapSettings, KeyPair) =
         &BOOTSTRAP_SETTINGS_KEYPAIR;
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_keypair, f64::INFINITY);
+    let mut server = BootstrapServerBinder::new(server, server_keypair.clone(), f64::INFINITY);
     let mut client = BootstrapClientBinder::new(
         client,
         bootstrap_settings.bootstrap_list[0].1,
@@ -114,7 +114,7 @@ async fn test_binders_double_send_server_works() {
         &BOOTSTRAP_SETTINGS_KEYPAIR;
 
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_keypair, f64::INFINITY);
+    let mut server = BootstrapServerBinder::new(server, server_keypair.clone(), f64::INFINITY);
     let mut client = BootstrapClientBinder::new(
         client,
         bootstrap_settings.bootstrap_list[0].1,
@@ -188,7 +188,7 @@ async fn test_binders_try_double_send_client_works() {
         &BOOTSTRAP_SETTINGS_KEYPAIR;
 
     let (client, server) = duplex(1000000);
-    let mut server = BootstrapServerBinder::new(server, *server_keypair, f64::INFINITY);
+    let mut server = BootstrapServerBinder::new(server, server_keypair.clone(), f64::INFINITY);
     let mut client = BootstrapClientBinder::new(
         client,
         bootstrap_settings.bootstrap_list[0].1,

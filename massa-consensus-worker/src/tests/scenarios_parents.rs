@@ -26,11 +26,11 @@ async fn test_parent_in_the_future() {
                 .genesis_blocks;
 
             // Parent, in the future.
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(4, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             let _ = create_and_test_block(

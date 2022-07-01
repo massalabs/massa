@@ -120,11 +120,11 @@ async fn test_thread_incompatibility() {
             let mut parents = vec![status.best_parents[0].0, hash_2];
             let mut current_period = 8;
             for _ in 0..30 {
-                let (b, _) = create_block(
+                let b = create_block(
                     &cfg,
                     Slot::new(current_period, 0),
                     parents.clone(),
-                    staking_keys[0],
+                    &staking_keys[0],
                 );
                 current_period += 1;
                 parents[0] = b.id;

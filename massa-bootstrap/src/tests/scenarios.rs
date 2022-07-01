@@ -49,7 +49,7 @@ async fn test_bootstrap_server() {
         final_state.clone(),
         bootstrap_settings,
         bootstrap_establisher,
-        *keypair,
+        keypair.clone(),
         0,
         Version::from_str("TEST.1.2").unwrap(),
     )

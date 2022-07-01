@@ -135,8 +135,8 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                 .collect();
 
             // Too far into the future.
-            let (bad_block, _) =
-                create_block(&cfg, Slot::new(10000, 0), parents.clone(), staking_keys[0]);
+            let bad_block =
+                create_block(&cfg, Slot::new(10000, 0), parents.clone(), &staking_keys[0]);
 
             for i in 1..4 {
                 // Sent several headers with the bad parent as dependency.

@@ -88,11 +88,11 @@ async fn test_queueing() {
                 .await;
             }
 
-            let (missed_block, _missed_key) = create_block(
+            let missed_block = create_block(
                 &cfg,
                 Slot::new(32, 0),
                 vec![valid_hasht0, valid_hasht1],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             // create 1 block in thread 0 slot 33 with missed block as parent
@@ -324,23 +324,23 @@ async fn test_double_staking() {
 
             // same creator same slot, different block
             let operation_merkle_root = Hash::compute_from("42".as_bytes());
-            let (block_1, _key) = create_block_with_merkle_root(
+            let block_1 = create_block_with_merkle_root(
                 &cfg,
                 operation_merkle_root,
                 Slot::new(41, 0),
                 vec![valid_hasht0, valid_hasht1],
-                staking_keys[0],
+                &staking_keys[0],
             );
             propagate_block(&mut protocol_controller, block_1.clone(), true, 150).await;
 
             let operation_merkle_root =
                 Hash::compute_from("so long and thanks for all the fish".as_bytes());
-            let (block_2, _key) = create_block_with_merkle_root(
+            let block_2 = create_block_with_merkle_root(
                 &cfg,
                 operation_merkle_root,
                 Slot::new(41, 0),
                 vec![valid_hasht0, valid_hasht1],
-                staking_keys[0],
+                &staking_keys[0],
             );
             propagate_block(&mut protocol_controller, block_2.clone(), true, 150).await;
 

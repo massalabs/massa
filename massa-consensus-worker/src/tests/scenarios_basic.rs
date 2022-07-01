@@ -32,7 +32,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
 
             let mut block_factory =
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
-            block_factory.creator_keypair = staking_keys[0];
+            block_factory.creator_keypair = staking_keys[0].clone();
             block_factory.slot = Slot::new(1, 0);
 
             let block_1 = block_factory.create_and_receive_block(true).await;
@@ -85,7 +85,7 @@ async fn test_block_not_processed_multiple_times() {
 
             let mut block_factory =
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
-            block_factory.creator_keypair = staking_keys[0];
+            block_factory.creator_keypair = staking_keys[0].clone();
             block_factory.slot = Slot::new(1, 0);
             let block_1 = block_factory.create_and_receive_block(true).await;
 
@@ -135,7 +135,7 @@ async fn test_queuing() {
 
             let mut block_factory =
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
-            block_factory.creator_keypair = staking_keys[0];
+            block_factory.creator_keypair = staking_keys[0].clone();
             block_factory.slot = Slot::new(3, 0);
 
             let block_1 = block_factory.create_and_receive_block(false).await;
@@ -185,7 +185,7 @@ async fn test_double_staking_does_not_propagate() {
 
             let mut block_factory =
                 BlockFactory::start_block_factory(parents.clone(), protocol_controller);
-            block_factory.creator_keypair = staking_keys[0];
+            block_factory.creator_keypair = staking_keys[0].clone();
             block_factory.slot = Slot::new(1, 0);
             let mut block_1 = block_factory.create_and_receive_block(true).await;
 

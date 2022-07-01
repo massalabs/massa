@@ -30,11 +30,11 @@ async fn test_consensus_asks_for_block() {
                 .genesis_blocks;
 
             // create test blocks
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
             // send header for block t0s1
             protocol_controller
@@ -74,11 +74,11 @@ async fn test_consensus_does_not_ask_for_block() {
                 .genesis_blocks;
 
             // create test blocks
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1 + start_slot, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
             let header = t0s1.content.header.clone();
 

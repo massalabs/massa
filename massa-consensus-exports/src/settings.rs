@@ -575,7 +575,7 @@ impl Default for ConsensusConfig {
             end_timestamp: *END_TIMESTAMP,
             thread_count: THREAD_COUNT,
             t0: T0,
-            genesis_key: *GENESIS_KEY,
+            genesis_key: GENESIS_KEY.clone(),
             staking_keys_path: Default::default(),
             max_discarded_blocks: MAX_DISCARDED_BLOCKS,
             future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
