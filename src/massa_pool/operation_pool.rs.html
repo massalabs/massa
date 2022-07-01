@@ -583,6 +583,7 @@
                     <span class="self">self</span>.<span class="ident">ops_by_address</span>.<span class="ident">insert_op</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="kw-2">*</span><span class="ident">op_id</span>);
                 });
             <span class="self">self</span>.<span class="ident">ops</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">op_id</span>, <span class="ident">wrapped_op</span>);
+            <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">store_operation</span>(<span class="ident">op</span>.<span class="ident">clone</span>());
         }
 
         <span class="comment">// remove excess operations if pool is full</span>
@@ -600,6 +601,7 @@
                         <span class="self">self</span>.<span class="ident">ops_by_address</span>
                             .<span class="ident">remove_op_for_address</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">removed_id</span>);
                     }
+                    <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">remove_operations</span>(<span class="macro">vec!</span>[<span class="ident">removed_id</span>].<span class="ident">as_slice</span>());
                 }
                 <span class="ident">operations</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">removed_id</span>);
             }
@@ -610,11 +612,6 @@
             .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="op">!</span><span class="ident">removed</span>.<span class="ident">contains</span>(<span class="ident">id</span>))
             .<span class="ident">copied</span>()
             .<span class="ident">collect</span>();
-
-        <span class="comment">// Add newly added to shared storage.</span>
-        <span class="kw">for</span> (<span class="kw">_</span>, <span class="ident">op</span>) <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">into_iter</span>() {
-            <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">store_operation</span>(<span class="ident">op</span>);
-        }
 
         <span class="prelude-val">Ok</span>(<span class="ident">newly_added_ids</span>)
     }
@@ -632,6 +629,8 @@
                 }
             } <span class="comment">// else final op wasn&#39;t in pool.</span>
         }
+        <span class="self">self</span>.<span class="ident">storage</span>
+            .<span class="ident">remove_operations</span>(<span class="kw-2">&amp;</span><span class="ident">ops</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">as_slice</span>());
         <span class="self">self</span>.<span class="ident">final_operations</span>.<span class="ident">extend</span>(<span class="ident">ops</span>);
         <span class="prelude-val">Ok</span>(())
     }
@@ -680,7 +679,7 @@
         <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">remove_operations</span>(<span class="kw-2">&amp;</span><span class="ident">op_ids</span>);
 
         <span class="comment">// Remove from internal structures.</span>
-        <span class="kw">for</span> <span class="ident">op_id</span> <span class="kw">in</span> <span class="ident">op_ids</span>.<span class="ident">into_iter</span>() {
+        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">op_id</span> <span class="kw">in</span> <span class="ident">op_ids</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">wrapped_op</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ops</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">op_id</span>) {
                 <span class="comment">// complexity: const</span>
                 <span class="kw">let</span> <span class="ident">interest</span> <span class="op">=</span> (<span class="ident">std::cmp::Reverse</span>(<span class="ident">wrapped_op</span>.<span class="ident">fee_density</span>), <span class="ident">op_id</span>);
@@ -692,6 +691,7 @@
                 }
             }
         }
+        <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">remove_operations</span>(<span class="kw-2">&amp;</span><span class="ident">op_ids</span>);
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -785,5 +785,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (830880640 2022-06-28)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (7425fb293 2022-06-30)" ></div>
 </body></html>
