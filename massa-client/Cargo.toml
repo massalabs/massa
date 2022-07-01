@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bs58 = { version = "0.4", features = ["check"] }
 anyhow = "1.0"
 atty = "0.2"
 console = "0.15"
