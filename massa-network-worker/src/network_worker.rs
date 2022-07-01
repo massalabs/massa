@@ -749,7 +749,7 @@ impl NetworkWorker {
             reader,
             writer,
             self.self_node_id,
-            self.keypair,
+            self.keypair.clone(),
             self.cfg.connect_timeout,
             self.version,
             connection_id,

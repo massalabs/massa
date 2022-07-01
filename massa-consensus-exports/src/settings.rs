@@ -218,7 +218,7 @@ impl Clone for ConsensusConfig {
             end_timestamp: self.end_timestamp,
             thread_count: self.thread_count,
             t0: self.t0,
-            genesis_key: self.genesis_key,
+            genesis_key: self.genesis_key.clone(),
             staking_keys_path: self.staking_keys_path.clone(),
             max_discarded_blocks: self.max_discarded_blocks,
             future_block_processing_max_periods: self.future_block_processing_max_periods,
@@ -260,7 +260,7 @@ impl From<&ConsensusConfig> for GraphConfig {
     fn from(cfg: &ConsensusConfig) -> Self {
         GraphConfig {
             thread_count: cfg.thread_count,
-            genesis_key: cfg.genesis_key,
+            genesis_key: cfg.genesis_key.clone(),
             max_discarded_blocks: cfg.max_discarded_blocks,
             future_block_processing_max_periods: cfg.future_block_processing_max_periods,
             max_future_processing_blocks: cfg.max_future_processing_blocks,
@@ -285,7 +285,7 @@ impl From<&ConsensusConfig> for ProofOfStakeConfig {
     fn from(cfg: &ConsensusConfig) -> Self {
         ProofOfStakeConfig {
             thread_count: cfg.thread_count,
-            genesis_key: cfg.genesis_key,
+            genesis_key: cfg.genesis_key.clone(),
             periods_per_cycle: cfg.periods_per_cycle,
             pos_lookback_cycles: cfg.pos_lookback_cycles,
             pos_lock_cycles: cfg.pos_lock_cycles,
@@ -368,7 +368,7 @@ impl From<&ConsensusSettings> for ConsensusConfig {
             end_timestamp: *END_TIMESTAMP,
             thread_count,
             t0,
-            genesis_key: *GENESIS_KEY,
+            genesis_key: GENESIS_KEY.clone(),
             staking_keys_path: settings.staking_keys_path.clone(),
             max_discarded_blocks: settings.max_discarded_blocks,
             future_block_processing_max_periods: settings.future_block_processing_max_periods,
@@ -429,7 +429,7 @@ impl From<ConsensusSettings> for ConsensusConfig {
             end_timestamp: *END_TIMESTAMP,
             thread_count,
             t0,
-            genesis_key: *GENESIS_KEY,
+            genesis_key: GENESIS_KEY.clone(),
             staking_keys_path: settings.staking_keys_path,
             max_discarded_blocks: settings.max_discarded_blocks,
             future_block_processing_max_periods: settings.future_block_processing_max_periods,

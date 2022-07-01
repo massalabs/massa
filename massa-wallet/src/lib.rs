@@ -75,7 +75,11 @@ impl Wallet {
     /// Adds a new keypair to wallet, if it was missing
     /// returns corresponding address
     pub fn add_keypair(&mut self, key: KeyPair) -> Result<Address, WalletError> {
-        if !self.keys.iter().any(|(_, file_key)| file_key == &key) {
+        if !self
+            .keys
+            .iter()
+            .any(|(_, file_key)| file_key.to_bytes() == key.to_bytes())
+        {
             let ad = Address::from_public_key(&key.get_public_key());
             self.keys.insert(ad, key);
             self.save()?;
@@ -85,7 +89,7 @@ impl Wallet {
             Ok(*self
                 .keys
                 .iter()
-                .find(|(_, &file_key)| file_key == key)
+                .find(|(_, file_key)| file_key.to_bytes() == key.to_bytes())
                 .unwrap()
                 .0)
         }

@@ -412,7 +412,7 @@ pub fn create_genesis_block(
     cfg: &GraphConfig,
     thread_number: u8,
 ) -> Result<(BlockId, WrappedBlock)> {
-    let keypair = cfg.genesis_key;
+    let keypair = &cfg.genesis_key;
     let header = BlockHeader::new_wrapped(
         BlockHeader {
             slot: Slot::new(0, thread_number),
@@ -421,7 +421,7 @@ pub fn create_genesis_block(
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        &keypair,
+        keypair,
     )?;
 
     Ok((
@@ -432,7 +432,7 @@ pub fn create_genesis_block(
                 operations: Vec::new(),
             },
             BlockSerializer::new(),
-            &keypair,
+            keypair,
         )?,
     ))
 }

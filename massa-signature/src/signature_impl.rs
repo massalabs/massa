@@ -20,7 +20,7 @@ use std::{convert::TryInto, str::FromStr};
 /// Size of a public key
 pub const PUBLIC_KEY_SIZE_BYTES: usize = schnorrkel::PUBLIC_KEY_LENGTH;
 /// Size of a keypair
-pub const KEYPAIR_SIZE_BYTES: usize = schnorrkel::KEYPAIR_LENGTH;
+pub const SECRET_KEY_SIZE_BYTES: usize = schnorrkel::SECRET_KEY_LENGTH;
 /// Size of a signature
 pub const SIGNATURE_SIZE_BYTES: usize = schnorrkel::SIGNATURE_LENGTH;
 
@@ -44,7 +44,7 @@ impl std::fmt::Display for KeyPair {
         u64_serializer
             .serialize(&KEYPAIR_VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.to_half_ed25519_bytes());
+        bytes.extend(self.to_bytes());
         write!(
             f,
             "{}{}",
@@ -131,8 +131,8 @@ impl KeyPair {
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> [u8; KEYPAIR_SIZE_BYTES] {
-        self.0.to_half_ed25519_bytes()
+    pub fn to_bytes(&self) -> [u8; SECRET_KEY_SIZE_BYTES] {
+        self.0.secret.to_ed25519_bytes()
     }
 
     /// Return the bytes representing the keypair
@@ -143,8 +143,8 @@ impl KeyPair {
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.into_bytes();
     /// ```
-    pub fn into_bytes(&self) -> [u8; KEYPAIR_SIZE_BYTES] {
-        self.0.to_half_ed25519_bytes()
+    pub fn into_bytes(&self) -> [u8; SECRET_KEY_SIZE_BYTES] {
+        self.0.secret.to_ed25519_bytes()
     }
 
     /// Convert a byte array of size `SECRET_KEY_SIZE_BYTES` to a `KeyPair`
@@ -156,12 +156,11 @@ impl KeyPair {
     /// let bytes = keypair.into_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; KEYPAIR_SIZE_BYTES]) -> Result<Self, MassaSignatureError> {
-        schnorrkel::Keypair::from_half_ed25519_bytes(&data[..])
-            .map(Self)
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
-            })
+    pub fn from_bytes(data: &[u8; SECRET_KEY_SIZE_BYTES]) -> Result<Self, MassaSignatureError> {
+        let secret = schnorrkel::SecretKey::from_ed25519_bytes(&data[..]).map_err(|err| {
+            MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
+        })?;
+        Ok(KeyPair(schnorrkel::Keypair::from(secret)))
     }
 
     /// Get the public key of the keypair
@@ -365,7 +364,7 @@ impl std::fmt::Display for PublicKey {
         u64_serializer
             .serialize(&KEYPAIR_VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.0.to_bytes());
+        bytes.extend(self.to_bytes());
         write!(
             f,
             "{}{}",
@@ -421,10 +420,7 @@ impl PublicKey {
         self.0
             .verify(SIGNATURE_CONTEXT.bytes(hash.to_bytes()), &signature.0)
             .map_err(|err| {
-                MassaSignatureError::SignatureError(format!(
-                    "Signature failed: {}",
-                    err.to_string()
-                ))
+                MassaSignatureError::SignatureError(format!("Signature failed: {}", err))
             })
     }
 

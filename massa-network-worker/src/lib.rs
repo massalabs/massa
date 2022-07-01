@@ -109,10 +109,11 @@ pub async fn start_network_controller(
     let (controller_event_tx, event_rx) = mpsc::channel::<NetworkEvent>(CHANNEL_SIZE);
     let (manager_tx, controller_manager_rx) = mpsc::channel::<NetworkManagementCommand>(1);
     let cfg_copy = network_settings.clone();
+    let keypair_cloned = keypair.clone();
     let join_handle = tokio::spawn(async move {
         let res = NetworkWorker::new(
             cfg_copy,
-            keypair,
+            keypair_cloned,
             listener,
             establisher,
             peer_info_db,

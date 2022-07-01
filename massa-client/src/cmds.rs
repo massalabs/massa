@@ -295,14 +295,14 @@ impl ExtendedWallet {
             addresses_info
                 .iter()
                 .map(|x| {
-                    let &keypair = wallet
+                    let keypair = wallet
                         .keys
                         .get(&x.address)
                         .ok_or_else(|| anyhow!("missing key"))?;
                     Ok((
                         x.address,
                         ExtendedWalletEntry {
-                            keypair,
+                            keypair: keypair.clone(),
                             address_info: x.compact(),
                         },
                     ))
@@ -594,7 +594,7 @@ impl Command {
 
             Command::wallet_generate_secret_key => {
                 let key = KeyPair::generate();
-                let ad = wallet.add_keypair(key)?;
+                let ad = wallet.add_keypair(key.clone())?;
                 if json {
                     Ok(Box::new(ad.to_string()))
                 } else {
@@ -610,7 +610,7 @@ impl Command {
             Command::wallet_add_secret_keys => {
                 let addresses = parse_vec::<KeyPair>(parameters)?
                     .into_iter()
-                    .map(|key| Ok((wallet.add_keypair(key)?, key)))
+                    .map(|key| Ok((wallet.add_keypair(key.clone())?, key)))
                     .collect::<Result<HashMap<Address, KeyPair>>>()?;
                 if json {
                     return Ok(Box::new(addresses.into_keys().collect::<Vec<Address>>()));
