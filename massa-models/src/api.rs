@@ -25,7 +25,7 @@ pub struct OperationInput {
     /// The signature of the operation
     pub signature: Signature,
     /// The serialized version of the content base58 encoded
-    pub serialized_content: String,
+    pub serialized_content: Vec<u8>,
 }
 
 /// node status

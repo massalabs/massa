@@ -704,17 +704,7 @@ impl Endpoints for API<Public> {
                     let mut op_serialized = Vec::new();
                     op_serialized.extend(op_input.signature.to_bytes());
                     op_serialized.extend(op_input.creator_public_key.to_bytes());
-                    op_serialized.extend(
-                        bs58::decode(op_input.serialized_content)
-                            .with_check(None)
-                            .into_vec()
-                            .map_err(|err| {
-                                ApiError::ModelsError(ModelsError::CheckedOperationError(format!(
-                                    "bs58 deserialization of content failed {}",
-                                    err
-                                )))
-                            })?,
-                    );
+                    op_serialized.extend(op_input.serialized_content);
                     let (rest, op): (&[u8], WrappedOperation) = operation_deserializer
                         .deserialize::<DeserializeError>(&op_serialized)
                         .map_err(|err| {

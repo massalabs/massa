@@ -1065,7 +1065,7 @@ async fn send_operation(
         .public
         .send_operations(vec![OperationInput {
             creator_public_key: op.creator_public_key,
-            serialized_content: bs58::encode(op.serialized_data).with_check().into_string(),
+            serialized_content: op.serialized_data,
             signature: op.signature,
         }])
         .await
