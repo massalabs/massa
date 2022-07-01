@@ -196,6 +196,7 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
+<span id="193">193</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//!</span>
@@ -211,8 +212,10 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! A parallel file with the same constant definitions exist for the testing case.</span>
 <span class="doccomment">//! (`default_testing.rs`) But as for the current file you shouldn&#39;t modify it.</span>
+<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Amount</span>, <span class="ident">Version</span>};
-<span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
 
@@ -250,9 +253,8 @@
     } <span class="kw">else</span> {
         <span class="prelude-val">Some</span>(<span class="number">1656626400000</span>.<span class="ident">into</span>())
     };
-    <span class="doccomment">/// `PrivateKey` to sign genesis blocks.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">PrivateKey</span> <span class="op">=</span> <span class="string">&quot;2Rmcp5w4MjcTQvPJeCV14UQf75XjKwDVJF14F2V1o5Kr3i9LZL&quot;</span>
-        .<span class="ident">parse</span>()
+    <span class="doccomment">/// `KeyPair` to sign genesis blocks.</span>
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">KeyPair</span> <span class="op">=</span> <span class="ident">KeyPair::from_str</span>(<span class="string">&quot;S17LtHapbr3mtTuNwU3woyS7upSD8BaxayRqhSXKj7MtUfRXjvxkhTDzGEg2AW4adYwcUPvrKNzkGoHGiPXbG2tFjPmcGhd&quot;</span>)
         .<span class="ident">unwrap</span>();
     <span class="doccomment">/// number of cycle misses (strictly) above which stakers are deactivated</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">POS_MISS_RATE_DEACTIVATION_THRESHOLD</span>: <span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Ratio::new</span>(<span class="number">7</span>, <span class="number">10</span>);

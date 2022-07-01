@@ -470,8 +470,6 @@
 <span id="464">464</span>
 <span id="465">465</span>
 <span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
 </pre><pre class="rust"><code><span class="doccomment">//! On `NetworkWorker` receive a command behaviors implementation</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! All following function take by default a reference to the `NetworkWorker`</span>
@@ -507,7 +505,6 @@
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
     <span class="ident">BootstrapPeers</span>, <span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">NodeCommand</span>, <span class="ident">Peer</span>, <span class="ident">Peers</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">sign</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>},
     <span class="ident">net::IpAddr</span>,
@@ -764,11 +761,10 @@
         <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::NodeSignMessage&quot;</span>,
         { <span class="string">&quot;mdg&quot;</span>: <span class="ident">msg</span> }
     );
-    <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>), <span class="kw-2">&amp;</span><span class="ident">worker</span>.<span class="ident">private_key</span>)<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">worker</span>.<span class="ident">private_key</span>);
+    <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">worker</span>.<span class="ident">keypair</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>))<span class="question-mark">?</span>;
     <span class="kw">if</span> <span class="ident">response_tx</span>
         .<span class="ident">send</span>(<span class="ident">PubkeySig</span> {
-            <span class="ident">public_key</span>,
+            <span class="ident">public_key</span>: <span class="ident">worker</span>.<span class="ident">keypair</span>.<span class="ident">get_public_key</span>(),
             <span class="ident">signature</span>,
         })
         .<span class="ident">is_err</span>()

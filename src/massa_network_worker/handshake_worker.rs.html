@@ -188,6 +188,9 @@
 <span id="182">182</span>
 <span id="183">183</span>
 <span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Here are happening handshakes.</span>
@@ -206,7 +209,7 @@
     <span class="ident">throw_handshake_error</span> <span class="kw">as</span> <span class="ident">throw</span>, <span class="ident">ConnectionId</span>, <span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkError</span>, <span class="ident">ReadHalf</span>,
     <span class="ident">WriteHalf</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">sign</span>, <span class="ident">verify_signature</span>, <span class="ident">PrivateKey</span>};
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">RngCore</span>, <span class="ident">SeedableRng</span>};
 <span class="kw">use</span> <span class="ident">tokio</span>::{<span class="ident">task::JoinHandle</span>, <span class="ident">time::timeout</span>};
@@ -223,8 +226,8 @@
     <span class="ident">writer</span>: <span class="ident">WriteBinder</span>,
     <span class="doccomment">/// Our node id.</span>
     <span class="ident">self_node_id</span>: <span class="ident">NodeId</span>,
-    <span class="doccomment">/// Our private key.</span>
-    <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
+    <span class="doccomment">/// Our keypair.</span>
+    <span class="ident">keypair</span>: <span class="ident">KeyPair</span>,
     <span class="doccomment">/// After `timeout_duration` milliseconds, the handshake attempt is dropped.</span>
     <span class="ident">timeout_duration</span>: <span class="ident">MassaTime</span>,
     <span class="ident">version</span>: <span class="ident">Version</span>,
@@ -243,7 +246,7 @@
     <span class="doccomment">/// * `socket_reader`: receives data.</span>
     <span class="doccomment">/// * `socket_writer`: sends data.</span>
     <span class="doccomment">/// * `self_node_id`: our node id.</span>
-    <span class="doccomment">/// * `private_key`: our private key.</span>
+    <span class="doccomment">/// * `keypair`: our keypair.</span>
     <span class="doccomment">/// * `timeout_duration`: after `timeout_duration` milliseconds, the handshake attempt is dropped.</span>
     <span class="doccomment">/// * `connection_id`: Node we are trying to connect for debugging</span>
     <span class="doccomment">/// * `version`: Node version used in handshake initialization (check peers compatibility)</span>
@@ -252,7 +255,7 @@
         <span class="ident">socket_reader</span>: <span class="ident">ReadHalf</span>,
         <span class="ident">socket_writer</span>: <span class="ident">WriteHalf</span>,
         <span class="ident">self_node_id</span>: <span class="ident">NodeId</span>,
-        <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
+        <span class="ident">keypair</span>: <span class="ident">KeyPair</span>,
         <span class="ident">timeout_duration</span>: <span class="ident">MassaTime</span>,
         <span class="ident">version</span>: <span class="ident">Version</span>,
         <span class="ident">connection_id</span>: <span class="ident">ConnectionId</span>,
@@ -272,7 +275,7 @@
                     <span class="ident">reader</span>: <span class="ident">ReadBinder::new</span>(<span class="ident">socket_reader</span>, <span class="ident">max_bytes_read</span>),
                     <span class="ident">writer</span>: <span class="ident">WriteBinder::new</span>(<span class="ident">socket_writer</span>, <span class="ident">max_bytes_write</span>),
                     <span class="ident">self_node_id</span>,
-                    <span class="ident">private_key</span>,
+                    <span class="ident">keypair</span>,
                     <span class="ident">timeout_duration</span>,
                     <span class="ident">version</span>,
                 }
@@ -336,7 +339,7 @@
 
         <span class="comment">// sign their random bytes</span>
         <span class="kw">let</span> <span class="ident">other_random_hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">other_random_bytes</span>);
-        <span class="kw">let</span> <span class="ident">self_signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">other_random_hash</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">private_key</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">self_signature</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">keypair</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">other_random_hash</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// send handshake reply future</span>
         <span class="kw">let</span> <span class="ident">send_reply_msg</span> <span class="op">=</span> <span class="ident">Message::HandshakeReply</span> {
@@ -365,9 +368,12 @@
         };
 
         <span class="comment">// check their signature</span>
-        <span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">self_random_hash</span>, <span class="kw-2">&amp;</span><span class="ident">other_signature</span>, <span class="kw-2">&amp;</span><span class="ident">other_node_id</span>.<span class="number">0</span>).<span class="ident">map_err</span>(
-            <span class="op">|</span><span class="ident">_err</span><span class="op">|</span> <span class="ident">NetworkError::HandshakeError</span>(<span class="ident">HandshakeErrorType::HandshakeInvalidSignature</span>),
-        )<span class="question-mark">?</span>;
+        <span class="ident">other_node_id</span>
+            .<span class="number">0</span>
+            .<span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">self_random_hash</span>, <span class="kw-2">&amp;</span><span class="ident">other_signature</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">_err</span><span class="op">|</span> {
+                <span class="ident">NetworkError::HandshakeError</span>(<span class="ident">HandshakeErrorType::HandshakeInvalidSignature</span>)
+            })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((<span class="ident">other_node_id</span>, <span class="self">self</span>.<span class="ident">reader</span>, <span class="self">self</span>.<span class="ident">writer</span>))
     }

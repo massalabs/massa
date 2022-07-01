@@ -1213,12 +1213,6 @@
 <span id="1207">1207</span>
 <span id="1208">1208</span>
 <span id="1209">1209</span>
-<span id="1210">1210</span>
-<span id="1211">1211</span>
-<span id="1212">1212</span>
-<span id="1213">1213</span>
-<span id="1214">1214</span>
-<span id="1215">1215</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::OPERATION_ID_SIZE_BYTES</span>;
@@ -2267,20 +2261,17 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">massa_serialization::DeserializeError</span>;
-    <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>};
+    <span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
     <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_transaction</span>() {
-        <span class="kw">let</span> <span class="ident">sender_priv</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">sender_pub</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">sender_priv</span>);
-
-        <span class="kw">let</span> <span class="ident">recv_priv</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">recv_pub</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">recv_priv</span>);
+        <span class="kw">let</span> <span class="ident">sender_keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
+        <span class="kw">let</span> <span class="ident">recv_keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
 
         <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">OperationType::Transaction</span> {
-            <span class="ident">recipient_address</span>: <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">recv_pub</span>),
+            <span class="ident">recipient_address</span>: <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">recv_keypair</span>.<span class="ident">get_public_key</span>()),
             <span class="ident">amount</span>: <span class="ident">Amount::default</span>(),
         };
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ser_type</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
@@ -2308,7 +2299,7 @@
         <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">res_content</span>), <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">content</span>));
         <span class="kw">let</span> <span class="ident">op_serializer</span> <span class="op">=</span> <span class="ident">OperationSerializer::new</span>();
 
-        <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">Operation::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">op_serializer</span>, <span class="kw-2">&amp;</span><span class="ident">sender_priv</span>, <span class="kw-2">&amp;</span><span class="ident">sender_pub</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">Operation::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">op_serializer</span>, <span class="kw-2">&amp;</span><span class="ident">sender_keypair</span>).<span class="ident">unwrap</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ser_op</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="ident">WrappedSerializer::new</span>()
@@ -2326,8 +2317,7 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_executesc</span>() {
-        <span class="kw">let</span> <span class="ident">sender_priv</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">sender_priv</span>);
+        <span class="kw">let</span> <span class="ident">sender_keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
 
         <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">OperationType::ExecuteSC</span> {
             <span class="ident">max_gas</span>: <span class="number">123</span>,
@@ -2360,7 +2350,7 @@
         <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">res_content</span>), <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">content</span>));
         <span class="kw">let</span> <span class="ident">op_serializer</span> <span class="op">=</span> <span class="ident">OperationSerializer::new</span>();
 
-        <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">Operation::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">op_serializer</span>, <span class="kw-2">&amp;</span><span class="ident">sender_priv</span>, <span class="kw-2">&amp;</span><span class="ident">public_key</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">Operation::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">op_serializer</span>, <span class="kw-2">&amp;</span><span class="ident">sender_keypair</span>).<span class="ident">unwrap</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ser_op</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="ident">WrappedSerializer::new</span>()
@@ -2378,12 +2368,10 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_callsc</span>() {
-        <span class="kw">let</span> <span class="ident">sender_priv</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">sender_priv</span>);
+        <span class="kw">let</span> <span class="ident">sender_keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
 
-        <span class="kw">let</span> <span class="ident">target_priv</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">target_pub</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">target_priv</span>);
-        <span class="kw">let</span> <span class="ident">target_addr</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">target_pub</span>);
+        <span class="kw">let</span> <span class="ident">target_keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
+        <span class="kw">let</span> <span class="ident">target_addr</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">target_keypair</span>.<span class="ident">get_public_key</span>());
 
         <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">OperationType::CallSC</span> {
             <span class="ident">max_gas</span>: <span class="number">123</span>,
@@ -2419,7 +2407,7 @@
         <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">res_content</span>), <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">content</span>));
         <span class="kw">let</span> <span class="ident">op_serializer</span> <span class="op">=</span> <span class="ident">OperationSerializer::new</span>();
 
-        <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">Operation::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">op_serializer</span>, <span class="kw-2">&amp;</span><span class="ident">sender_priv</span>, <span class="kw-2">&amp;</span><span class="ident">public_key</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">Operation::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">op_serializer</span>, <span class="kw-2">&amp;</span><span class="ident">sender_keypair</span>).<span class="ident">unwrap</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ser_op</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="ident">WrappedSerializer::new</span>()

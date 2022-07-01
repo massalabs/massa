@@ -34,8 +34,8 @@
     <span class="doccomment">/// parsing error : {0}</span>
     <span class="ident">ParsingError</span>(<span class="ident">String</span>),
 
-    <span class="doccomment">/// secp256k1 engine error: {0}</span>
-    <span class="ident">EngineError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">secp256k1::Error</span>),
+    <span class="doccomment">/// signature error : {0}</span>
+    <span class="ident">SignatureError</span>(<span class="ident">String</span>),
 
     <span class="doccomment">/// Wrong prefix for hash: expected {0}, got {1}</span>
     <span class="ident">WrongPrefix</span>(<span class="ident">String</span>, <span class="ident">String</span>),

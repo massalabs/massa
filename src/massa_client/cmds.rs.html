@@ -1108,8 +1108,6 @@
 <span id="1102">1102</span>
 <span id="1103">1103</span>
 <span id="1104">1104</span>
-<span id="1105">1105</span>
-<span id="1106">1106</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -1124,7 +1122,7 @@
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">Slot</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_sdk::Client</span>;
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">massa_wallet</span>::{<span class="ident">Wallet</span>, <span class="ident">WalletError</span>};
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
@@ -1192,10 +1190,10 @@
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
-        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;PrivateKey1 PrivateKey2 ...&quot;</span>),
-        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;add staking private keys&quot;</span>
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;SecretKey1 SecretKey2 ...&quot;</span>),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;add staking secret keys&quot;</span>
     )]</span>
-    <span class="ident">node_add_staking_private_keys</span>,
+    <span class="ident">node_add_staking_secret_keys</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
@@ -1263,22 +1261,22 @@
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
-        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;show wallet info (private keys, public keys, addresses, balances ...)&quot;</span>
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;show wallet info (keys, addresses, balances ...)&quot;</span>
     )]</span>
     <span class="ident">wallet_info</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
-        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;generate a private key and add it into the wallet&quot;</span>
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;generate a secret key and add it into the wallet&quot;</span>
     )]</span>
-    <span class="ident">wallet_generate_private_key</span>,
+    <span class="ident">wallet_generate_secret_key</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
-        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;PrivateKey1 PrivateKey2 ...&quot;</span>),
-        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;add a list of private keys to the wallet&quot;</span>
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;SecretKey1 SecretKey2 ...&quot;</span>),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;add a list of secret keys to the wallet&quot;</span>
     )]</span>
-    <span class="ident">wallet_add_private_keys</span>,
+    <span class="ident">wallet_add_secret_keys</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
@@ -1379,18 +1377,16 @@
 <span class="doccomment">/// TODO re-factor me</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">struct</span> <span class="ident">ExtendedWalletEntry</span> {
-    <span class="doccomment">/// the private key</span>
-    <span class="kw">pub</span> <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
-    <span class="doccomment">/// corresponding pub key</span>
-    <span class="kw">pub</span> <span class="ident">public_key</span>: <span class="ident">PublicKey</span>,
+    <span class="doccomment">/// the keypair</span>
+    <span class="kw">pub</span> <span class="ident">keypair</span>: <span class="ident">KeyPair</span>,
     <span class="doccomment">/// address and balance information</span>
     <span class="kw">pub</span> <span class="ident">address_info</span>: <span class="ident">CompactAddressInfo</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">ExtendedWalletEntry</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Private key: {}&quot;</span>, <span class="self">self</span>.<span class="ident">private_key</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Public key: {}&quot;</span>, <span class="self">self</span>.<span class="ident">public_key</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Secret key: {}&quot;</span>, <span class="self">self</span>.<span class="ident">keypair</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Public key: {}&quot;</span>, <span class="self">self</span>.<span class="ident">keypair</span>.<span class="ident">get_public_key</span>())<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">address_info</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\n=====\n&quot;</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -1409,15 +1405,14 @@
             <span class="ident">addresses_info</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="kw-2">&amp;</span>(<span class="ident">public_key</span>, <span class="ident">private_key</span>) <span class="op">=</span> <span class="ident">wallet</span>
+                    <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">wallet</span>
                         .<span class="ident">keys</span>
                         .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="ident">address</span>)
-                        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">anyhow!</span>(<span class="string">&quot;missing private key&quot;</span>))<span class="question-mark">?</span>;
+                        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">anyhow!</span>(<span class="string">&quot;missing key&quot;</span>))<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>((
                         <span class="ident">x</span>.<span class="ident">address</span>,
                         <span class="ident">ExtendedWalletEntry</span> {
-                            <span class="ident">private_key</span>,
-                            <span class="ident">public_key</span>,
+                            <span class="ident">keypair</span>: <span class="ident">keypair</span>.<span class="ident">clone</span>(),
                             <span class="ident">address_info</span>: <span class="ident">x</span>.<span class="ident">compact</span>(),
                         },
                     ))
@@ -1577,12 +1572,12 @@
                 <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
             }
 
-            <span class="ident">Command::node_add_staking_private_keys</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">private_keys</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>;
-                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">add_staking_private_keys</span>(<span class="ident">private_keys</span>).<span class="kw">await</span> {
+            <span class="ident">Command::node_add_staking_secret_keys</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">keypairs</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>;
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">add_staking_secret_keys</span>(<span class="ident">keypairs</span>).<span class="kw">await</span> {
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
-                            <span class="macro">println!</span>(<span class="string">&quot;Private keys successfully added!&quot;</span>)
+                            <span class="macro">println!</span>(<span class="string">&quot;Keys successfully added!&quot;</span>)
                         }
                     }
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">rpc_error!</span>(<span class="ident">e</span>),
@@ -1693,7 +1688,7 @@
 
             <span class="ident">Command::wallet_info</span> =&gt; {
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
-                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your private key&quot;</span>);
+                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your key&quot;</span>);
                 }
                 <span class="kw">match</span> <span class="ident">client</span>
                     .<span class="ident">public</span>
@@ -1707,29 +1702,35 @@
                 }
             }
 
-            <span class="ident">Command::wallet_generate_private_key</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-                <span class="kw">let</span> <span class="ident">ad</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">add_private_key</span>(<span class="ident">key</span>)<span class="question-mark">?</span>;
+            <span class="ident">Command::wallet_generate_secret_key</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
+                <span class="kw">let</span> <span class="ident">ad</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">add_keypair</span>(<span class="ident">key</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
                 <span class="kw">if</span> <span class="ident">json</span> {
                     <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">ad</span>.<span class="ident">to_string</span>()))
                 } <span class="kw">else</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;Generated {} address and added it to the wallet&quot;</span>, <span class="ident">ad</span>);
-                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_private_keys {}` to start staking with this private_key.\n&quot;</span>,<span class="ident">key</span>);
+                    <span class="macro">println!</span>(
+                        <span class="string">&quot;Type `node_add_staking_secret_keys {}` to start staking with this key.\n&quot;</span>,
+                        <span class="ident">key</span>
+                    );
                     <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
                 }
             }
 
-            <span class="ident">Command::wallet_add_private_keys</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">addresses</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>
+            <span class="ident">Command::wallet_add_secret_keys</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">addresses</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>
                     .<span class="ident">into_iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">key</span><span class="op">|</span> <span class="prelude-val">Ok</span>((<span class="ident">wallet</span>.<span class="ident">add_private_key</span>(<span class="ident">key</span>)<span class="question-mark">?</span>, <span class="ident">key</span>)))
-                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">PrivateKey</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">key</span><span class="op">|</span> <span class="prelude-val">Ok</span>((<span class="ident">wallet</span>.<span class="ident">add_keypair</span>(<span class="ident">key</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>, <span class="ident">key</span>)))
+                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
                 <span class="kw">if</span> <span class="ident">json</span> {
                     <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">addresses</span>.<span class="ident">into_keys</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span>()));
                 } <span class="kw">else</span> {
                     <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">key</span>) <span class="kw">in</span> <span class="ident">addresses</span>.<span class="ident">iter</span>() {
                         <span class="macro">println!</span>(<span class="string">&quot;Derived and added address {} to the wallet.&quot;</span>, <span class="ident">address</span>);
-                        <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_private_keys {}` to start staking with this private_key.\n&quot;</span>, <span class="ident">key</span>);
+                        <span class="macro">println!</span>(
+                            <span class="string">&quot;Type `node_add_staking_secret_keys {}` to start staking with this key.\n&quot;</span>,
+                            <span class="ident">key</span>
+                        );
                     }
                 }
                 <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
@@ -2158,13 +2159,8 @@
     <span class="kw">if</span> <span class="ident">slot</span>.<span class="ident">thread</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">addr</span>.<span class="ident">get_thread</span>(<span class="ident">cfg</span>.<span class="ident">thread_count</span>) {
         <span class="ident">expire_period</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
     };
-    <span class="kw">let</span> <span class="ident">sender_public_key</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">wallet</span>.<span class="ident">find_associated_public_key</span>(<span class="ident">addr</span>) {
-        <span class="prelude-val">Some</span>(<span class="ident">pk</span>) =&gt; <span class="kw-2">*</span><span class="ident">pk</span>,
-        <span class="prelude-val">None</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Missing public key&quot;</span>),
-    };
 
     <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">create_operation</span>(
-        <span class="kw-2">&amp;</span><span class="ident">sender_public_key</span>,
         <span class="ident">Operation</span> {
             <span class="ident">fee</span>,
             <span class="ident">expire_period</span>,

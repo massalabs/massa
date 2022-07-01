@@ -539,6 +539,17 @@
 <span id="533">533</span>
 <span id="534">534</span>
 <span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::address::AddressCycleProductionStats</span>;
@@ -557,6 +568,7 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
+<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
 <span class="doccomment">/// operation input</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
@@ -874,8 +886,18 @@
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Address: {}&quot;</span>, <span class="self">self</span>.<span class="ident">address</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Thread: {}&quot;</span>, <span class="self">self</span>.<span class="ident">thread</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Parallel balance:&quot;</span>,)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tFinal: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">final_balance</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tCandidate: {:?}\n&quot;</span>, <span class="self">self</span>.<span class="ident">candidate_balance</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(
+            <span class="ident">f</span>,
+            <span class="string">&quot;\tFinal: {:?}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">final_balance</span>
+                .<span class="ident">unwrap_or</span>(<span class="ident">Amount::from_str</span>(<span class="string">&quot;0&quot;</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">std::fmt::Error</span>)<span class="question-mark">?</span>)
+        )<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(
+            <span class="ident">f</span>,
+            <span class="string">&quot;\tCandidate: {:?}\n&quot;</span>,
+            <span class="self">self</span>.<span class="ident">candidate_balance</span>
+                .<span class="ident">unwrap_or</span>(<span class="ident">Amount::from_str</span>(<span class="string">&quot;0&quot;</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">std::fmt::Error</span>)<span class="question-mark">?</span>)
+        )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Sequential balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">balance</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Rolls:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">rolls</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())

@@ -1521,7 +1521,6 @@
 <span id="1515">1515</span>
 <span id="1516">1516</span>
 <span id="1517">1517</span>
-<span id="1518">1518</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::checked_operations::CheckedOperations</span>;
@@ -1554,7 +1553,7 @@
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>};
 
 <span class="doccomment">/// start a new `ProtocolController` from a `ProtocolConfig`</span>
-<span class="doccomment">/// - generate public / private key</span>
+<span class="doccomment">/// - generate keypair</span>
 <span class="doccomment">/// - create `protocol_command/protocol_event` channels</span>
 <span class="doccomment">/// - launch `protocol_controller_fn` in an other task</span>
 <span class="doccomment">///</span>
@@ -1705,7 +1704,6 @@
     <span class="doccomment">/// * `protocol_settings`: protocol configuration.</span>
     <span class="doccomment">/// * `operation_validity_periods`: operation validity periods</span>
     <span class="doccomment">/// * `max_block_gas`: max gas per block</span>
-    <span class="doccomment">/// * `self_node_id`: our private key.</span>
     <span class="doccomment">/// * `network_controller`: associated network controller.</span>
     <span class="doccomment">/// * `controller_event_tx`: Channel to send protocol events.</span>
     <span class="doccomment">/// * `controller_command_rx`: Channel receiving commands.</span>

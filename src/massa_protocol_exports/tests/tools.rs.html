@@ -374,32 +374,6 @@
 <span id="368">368</span>
 <span id="369">369</span>
 <span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
-<span id="373">373</span>
-<span id="374">374</span>
-<span id="375">375</span>
-<span id="376">376</span>
-<span id="377">377</span>
-<span id="378">378</span>
-<span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
-<span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
-<span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::mock_network_controller::MockNetworkController</span>;
@@ -419,26 +393,26 @@
     <span class="ident">BlockHeaderSerializer</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementSerializer</span>, <span class="ident">Operation</span>, <span class="ident">OperationType</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network_exports::NetworkCommand</span>;
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">tokio::time::sleep</span>;
 
 <span class="doccomment">/// test utility structures</span>
-<span class="doccomment">/// keeps private key and associated node id</span>
+<span class="doccomment">/// keeps keypair and associated node id</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeInfo</span> {
-    <span class="doccomment">/// private key</span>
-    <span class="kw">pub</span> <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
+    <span class="doccomment">/// key pair of the node</span>
+    <span class="kw">pub</span> <span class="ident">keypair</span>: <span class="ident">KeyPair</span>,
     <span class="doccomment">/// node id</span>
     <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">NodeId</span>,
 }
 
 <span class="doccomment">/// create node info</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_node</span>() -&gt; <span class="ident">NodeInfo</span> {
-    <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-    <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">NodeId</span>(<span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>));
-    <span class="ident">NodeInfo</span> { <span class="ident">private_key</span>, <span class="ident">id</span> }
+    <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
+    <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">NodeId</span>(<span class="ident">keypair</span>.<span class="ident">get_public_key</span>());
+    <span class="ident">NodeInfo</span> { <span class="ident">keypair</span>, <span class="ident">id</span> }
 }
 
 <span class="doccomment">/// create number of nodes and connect them with protocol</span>
@@ -459,7 +433,7 @@
 <span class="doccomment">/// Creates a block for use in protocol,</span>
 <span class="doccomment">/// without paying attention to consensus related things</span>
 <span class="doccomment">/// like slot, parents, and merkle root.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_block</span>(<span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>, <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>) -&gt; <span class="ident">WrappedBlock</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_block</span>(<span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>) -&gt; <span class="ident">WrappedBlock</span> {
     <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="ident">BlockHeader::new_wrapped</span>(
         <span class="ident">BlockHeader</span> {
             <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">1</span>, <span class="number">0</span>),
@@ -471,8 +445,7 @@
             <span class="ident">endorsements</span>: <span class="ident">Vec::new</span>(),
         },
         <span class="ident">BlockHeaderSerializer::new</span>(),
-        <span class="ident">private_key</span>,
-        <span class="ident">public_key</span>,
+        <span class="ident">keypair</span>,
     )
     .<span class="ident">unwrap</span>();
 
@@ -482,21 +455,18 @@
             <span class="ident">operations</span>: <span class="ident">Vec::new</span>(),
         },
         <span class="ident">BlockSerializer::new</span>(),
-        <span class="ident">private_key</span>,
-        <span class="ident">public_key</span>,
+        <span class="ident">keypair</span>,
     )
     .<span class="ident">unwrap</span>()
 }
 
 <span class="doccomment">/// create a block with no endorsement</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// * `private_key`: key that sign the block</span>
-<span class="doccomment">/// * `public_key`: creator&#39;s key TODO could be derived from the private key</span>
+<span class="doccomment">/// * `keypair`: key that sign the block</span>
 <span class="doccomment">/// * `slot`</span>
 <span class="doccomment">/// * `operations`</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_block_with_operations</span>(
-    <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>,
-    <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
+    <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>,
     <span class="ident">slot</span>: <span class="ident">Slot</span>,
     <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
 ) -&gt; <span class="ident">WrappedBlock</span> {
@@ -516,29 +486,25 @@
             <span class="ident">endorsements</span>: <span class="ident">Vec::new</span>(),
         },
         <span class="ident">BlockHeaderSerializer::new</span>(),
-        <span class="ident">private_key</span>,
-        <span class="ident">public_key</span>,
+        <span class="ident">keypair</span>,
     )
     .<span class="ident">unwrap</span>();
 
     <span class="ident">Block::new_wrapped</span>(
         <span class="ident">Block</span> { <span class="ident">header</span>, <span class="ident">operations</span> },
         <span class="ident">BlockSerializer::new</span>(),
-        <span class="ident">private_key</span>,
-        <span class="ident">public_key</span>,
+        <span class="ident">keypair</span>,
     )
     .<span class="ident">unwrap</span>()
 }
 
 <span class="doccomment">/// create a block with no operation</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// * `private_key`: key that sign the block</span>
-<span class="doccomment">/// * `public_key`: creator&#39;s key TODO could be derived from the private key</span>
+<span class="doccomment">/// * `keypair`: key that sign the block</span>
 <span class="doccomment">/// * `slot`</span>
 <span class="doccomment">/// * `endorsements`</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_block_with_endorsements</span>(
-    <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>,
-    <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
+    <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>,
     <span class="ident">slot</span>: <span class="ident">Slot</span>,
     <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WrappedEndorsement</span><span class="op">&gt;</span>,
 ) -&gt; <span class="ident">WrappedBlock</span> {
@@ -553,8 +519,7 @@
             <span class="ident">endorsements</span>,
         },
         <span class="ident">BlockHeaderSerializer::new</span>(),
-        <span class="ident">private_key</span>,
-        <span class="ident">public_key</span>,
+        <span class="ident">keypair</span>,
     )
     .<span class="ident">unwrap</span>();
 
@@ -564,8 +529,7 @@
             <span class="ident">operations</span>: <span class="ident">Default::default</span>(),
         },
         <span class="ident">BlockSerializer::new</span>(),
-        <span class="ident">private_key</span>,
-        <span class="ident">public_key</span>,
+        <span class="ident">keypair</span>,
     )
     .<span class="ident">unwrap</span>()
 }
@@ -604,35 +568,25 @@
 <span class="doccomment">/// Creates an endorsement for use in protocol tests,</span>
 <span class="doccomment">/// without paying attention to consensus related things.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_endorsement</span>() -&gt; <span class="ident">WrappedEndorsement</span> {
-    <span class="kw">let</span> <span class="ident">sender_priv</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-    <span class="kw">let</span> <span class="ident">sender_public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">sender_priv</span>);
+    <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
 
     <span class="kw">let</span> <span class="ident">content</span> <span class="op">=</span> <span class="ident">Endorsement</span> {
         <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">10</span>, <span class="number">1</span>),
         <span class="ident">index</span>: <span class="number">0</span>,
         <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span>[])),
     };
-    <span class="ident">Endorsement::new_wrapped</span>(
-        <span class="ident">content</span>,
-        <span class="ident">EndorsementSerializer::new</span>(),
-        <span class="kw-2">&amp;</span><span class="ident">sender_priv</span>,
-        <span class="kw-2">&amp;</span><span class="ident">sender_public_key</span>,
-    )
-    .<span class="ident">unwrap</span>()
+    <span class="ident">Endorsement::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">EndorsementSerializer::new</span>(), <span class="kw-2">&amp;</span><span class="ident">keypair</span>).<span class="ident">unwrap</span>()
 }
 
 <span class="doccomment">/// Create an operation, from a specific sender, and with a specific expire period.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_operation_with_expire_period</span>(
-    <span class="ident">sender_priv</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>,
+    <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>,
     <span class="ident">expire_period</span>: <span class="ident">u64</span>,
 ) -&gt; <span class="ident">WrappedOperation</span> {
-    <span class="kw">let</span> <span class="ident">sender_pub</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="ident">sender_priv</span>);
-
-    <span class="kw">let</span> <span class="ident">recv_priv</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-    <span class="kw">let</span> <span class="ident">recv_pub</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">recv_priv</span>);
+    <span class="kw">let</span> <span class="ident">recv_keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
 
     <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">OperationType::Transaction</span> {
-        <span class="ident">recipient_address</span>: <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">recv_pub</span>),
+        <span class="ident">recipient_address</span>: <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">recv_keypair</span>.<span class="ident">get_public_key</span>()),
         <span class="ident">amount</span>: <span class="ident">Amount::default</span>(),
     };
     <span class="kw">let</span> <span class="ident">content</span> <span class="op">=</span> <span class="ident">Operation</span> {
@@ -640,13 +594,7 @@
         <span class="ident">op</span>,
         <span class="ident">expire_period</span>,
     };
-    <span class="ident">Operation::new_wrapped</span>(
-        <span class="ident">content</span>,
-        <span class="ident">OperationSerializer::new</span>(),
-        <span class="ident">sender_priv</span>,
-        <span class="kw-2">&amp;</span><span class="ident">sender_pub</span>,
-    )
-    .<span class="ident">unwrap</span>()
+    <span class="ident">Operation::new_wrapped</span>(<span class="ident">content</span>, <span class="ident">OperationSerializer::new</span>(), <span class="ident">keypair</span>).<span class="ident">unwrap</span>()
 }
 
 <span class="macro">lazy_static::lazy_static!</span> {

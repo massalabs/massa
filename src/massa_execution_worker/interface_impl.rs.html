@@ -934,7 +934,7 @@
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
         };
         <span class="kw">let</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">massa_hash::Hash::compute_from</span>(<span class="ident">data</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">massa_signature::verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>, <span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="kw-2">&amp;</span><span class="ident">public_key</span>).<span class="ident">is_ok</span>())
+        <span class="prelude-val">Ok</span>(<span class="ident">public_key</span>.<span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>, <span class="kw-2">&amp;</span><span class="ident">signature</span>).<span class="ident">is_ok</span>())
     }
 
     <span class="doccomment">/// Transfer parallel coins from the current address (top of the call stack) towards a target address.</span>

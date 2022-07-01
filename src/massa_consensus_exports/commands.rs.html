@@ -140,7 +140,7 @@
 };
 
 <span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ExportProofOfStake</span>;
-<span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync::oneshot</span>;
@@ -211,8 +211,8 @@
     <span class="ident">GetStats</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusStats</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Get all stakers</span>
     <span class="ident">GetActiveStakers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Add private keys to use them for staking</span>
-    <span class="ident">RegisterStakingPrivateKeys</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Add keys to use them for staking</span>
+    <span class="ident">RegisterStakingKeys</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Remove associated staking keys</span>
     <span class="ident">RemoveStakingAddresses</span>(<span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Get staking addresses</span>

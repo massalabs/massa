@@ -240,14 +240,14 @@
 <span class="doccomment">//! };</span>
 <span class="doccomment">//! ```</span>
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Amount</span>, <span class="ident">Version</span>};
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>};
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">Ipv4Addr</span>};
 
 <span class="macro">lazy_static::lazy_static!</span> {
-    <span class="doccomment">/// genesis private keys</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">PrivateKey</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
+    <span class="doccomment">/// genesis keypair</span>
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">KeyPair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
     <span class="doccomment">/// Time in milliseconds when the blockclique started.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
         <span class="ident">MassaTime::now</span>()

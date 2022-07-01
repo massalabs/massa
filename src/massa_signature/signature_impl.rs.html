@@ -966,169 +966,255 @@
 <span id="960">960</span>
 <span id="961">961</span>
 <span id="962">962</span>
+<span id="963">963</span>
+<span id="964">964</span>
+<span id="965">965</span>
+<span id="966">966</span>
+<span id="967">967</span>
+<span id="968">968</span>
+<span id="969">969</span>
+<span id="970">970</span>
+<span id="971">971</span>
+<span id="972">972</span>
+<span id="973">973</span>
+<span id="974">974</span>
+<span id="975">975</span>
+<span id="976">976</span>
+<span id="977">977</span>
+<span id="978">978</span>
+<span id="979">979</span>
+<span id="980">980</span>
+<span id="981">981</span>
+<span id="982">982</span>
+<span id="983">983</span>
+<span id="984">984</span>
+<span id="985">985</span>
+<span id="986">986</span>
+<span id="987">987</span>
+<span id="988">988</span>
+<span id="989">989</span>
+<span id="990">990</span>
+<span id="991">991</span>
+<span id="992">992</span>
+<span id="993">993</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::MassaSignatureError</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_serialization::Deserializer</span>;
+<span class="kw">use</span> <span class="ident">massa_serialization</span>::{
+    <span class="ident">DeserializeError</span>, <span class="ident">Deserializer</span>, <span class="ident">Serializer</span>, <span class="ident">U64VarIntDeserializer</span>, <span class="ident">U64VarIntSerializer</span>,
+};
 <span class="kw">use</span> <span class="ident">nom</span>::{
     <span class="ident">error</span>::{<span class="ident">ContextError</span>, <span class="ident">ParseError</span>},
     <span class="ident">IResult</span>,
 };
-<span class="kw">use</span> <span class="ident">secp256k1</span>::{<span class="ident">schnorr</span>, <span class="ident">Message</span>, <span class="ident">SECP256K1</span>};
+<span class="kw">use</span> <span class="ident">serde</span>::{
+    <span class="ident">de</span>::{<span class="ident">MapAccess</span>, <span class="ident">SeqAccess</span>, <span class="ident">Visitor</span>},
+    <span class="ident">ser::SerializeStruct</span>,
+    <span class="ident">Deserialize</span>,
+};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">borrow::Cow</span>, <span class="ident">ops::Bound::Included</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryInto</span>, <span class="ident">str::FromStr</span>};
 
-<span class="doccomment">/// Size of a private key</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
 <span class="doccomment">/// Size of a public key</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">schnorrkel::PUBLIC_KEY_LENGTH</span>;
+<span class="doccomment">/// Size of a keypair</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SECRET_KEY_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">schnorrkel::SECRET_KEY_LENGTH</span>;
 <span class="doccomment">/// Size of a signature</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SIGNATURE_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">64</span>;
-<span class="kw">const</span> <span class="ident">PRIVATE_KEY_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;PRI&quot;</span>;
-<span class="kw">const</span> <span class="ident">PUBLIC_KEY_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;PUB&quot;</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SIGNATURE_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">schnorrkel::SIGNATURE_LENGTH</span>;
+
 <span class="kw">const</span> <span class="ident">SIGNATURE_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;SIG&quot;</span>;
 
-<span class="doccomment">/// `PrivateKey` used to sign messages.</span>
-<span class="doccomment">/// Schnorr signatures require a [KeyPair](secp256k1::KeyPair) to be signed.</span>
-<span class="doccomment">/// The KeyPair is generated when deserializing a private key.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::KeyPair</span>);
+<span class="macro">lazy_static::lazy_static!</span> {
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">SIGNATURE_CONTEXT</span>: <span class="ident">schnorrkel::context::SigningContext</span> <span class="op">=</span> <span class="ident">schnorrkel::signing_context</span>(<span class="string">&quot;massa protocol&quot;</span>.<span class="ident">as_bytes</span>());
+}
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">PrivateKey</span> {
+<span class="doccomment">/// `KeyPair` is used for signature and decrypting</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KeyPair</span>(<span class="ident">schnorrkel::Keypair</span>);
+
+<span class="kw">const</span> <span class="ident">SECRET_PREFIX</span>: <span class="ident">char</span> <span class="op">=</span> <span class="string">&#39;S&#39;</span>;
+<span class="kw">const</span> <span class="ident">KEYPAIR_VERSION</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+
+<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">KeyPair</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}-{}&quot;</span>, <span class="ident">PRIVATE_KEY_STRING_PREFIX</span>, <span class="self">self</span>.<span class="ident">to_bs58_check</span>())
-        } <span class="kw">else</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">to_bs58_check</span>())
-        }
+        <span class="kw">let</span> <span class="ident">u64_serializer</span> <span class="op">=</span> <span class="ident">U64VarIntSerializer::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="ident">u64_serializer</span>
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">KEYPAIR_VERSION</span>, <span class="kw-2">&amp;mut</span> <span class="ident">bytes</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">std::fmt::Error</span>)<span class="question-mark">?</span>;
+        <span class="ident">bytes</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>());
+        <span class="macro">write!</span>(
+            <span class="ident">f</span>,
+            <span class="string">&quot;{}{}&quot;</span>,
+            <span class="ident">SECRET_PREFIX</span>,
+            <span class="ident">bs58::encode</span>(<span class="ident">bytes</span>).<span class="ident">with_check</span>().<span class="ident">into_string</span>()
+        )
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">PrivateKey</span> {
+<span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">KeyPair</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">KeyPair</span> {
     <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">MassaSignatureError</span>;
     <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
-            <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">split</span>(<span class="string">&#39;-&#39;</span>).<span class="ident">collect</span>();
-            <span class="kw">if</span> <span class="ident">v</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">2</span> {
-                <span class="comment">// assume there is no prefix</span>
-                <span class="ident">PrivateKey::from_bs58_check</span>(<span class="ident">s</span>)
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">v</span>[<span class="number">0</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">PRIVATE_KEY_STRING_PREFIX</span> {
-                <span class="prelude-val">Err</span>(<span class="ident">MassaSignatureError::WrongPrefix</span>(
-                    <span class="ident">PRIVATE_KEY_STRING_PREFIX</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">v</span>[<span class="number">0</span>].<span class="ident">to_string</span>(),
-                ))
-            } <span class="kw">else</span> {
-                <span class="ident">PrivateKey::from_bs58_check</span>(<span class="ident">v</span>[<span class="number">1</span>])
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chars</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">chars</span>();
+        <span class="kw">match</span> <span class="ident">chars</span>.<span class="ident">next</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">prefix</span>) <span class="kw">if</span> <span class="ident">prefix</span> <span class="op">==</span> <span class="ident">SECRET_PREFIX</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">chars</span>.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>();
+                <span class="kw">let</span> <span class="ident">decoded_bs58_check</span> <span class="op">=</span>
+                    <span class="ident">bs58::decode</span>(<span class="ident">data</span>)
+                        .<span class="ident">with_check</span>(<span class="prelude-val">None</span>)
+                        .<span class="ident">into_vec</span>()
+                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                            <span class="ident">MassaSignatureError::ParsingError</span>(<span class="string">&quot;Bad secret key bs58&quot;</span>.<span class="ident">to_owned</span>())
+                        })<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">u64_deserializer</span> <span class="op">=</span> <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>));
+                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">_version</span>) <span class="op">=</span> <span class="ident">u64_deserializer</span>
+                    .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">decoded_bs58_check</span>[..])
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">MassaSignatureError::ParsingError</span>(<span class="ident">err</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
+                <span class="ident">KeyPair::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">rest</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                    <span class="ident">MassaSignatureError::ParsingError</span>(<span class="string">&quot;Secret key not long enough&quot;</span>.<span class="ident">to_string</span>())
+                })<span class="question-mark">?</span>)
             }
-        } <span class="kw">else</span> {
-            <span class="ident">PrivateKey::from_bs58_check</span>(<span class="ident">s</span>)
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">MassaSignatureError::ParsingError</span>(
+                <span class="string">&quot;Bad secret prefix&quot;</span>.<span class="ident">to_owned</span>(),
+            )),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PrivateKey</span> {
-    <span class="doccomment">/// Serialize a `PrivateKey` using `bs58` encoding with checksum.</span>
+<span class="kw">impl</span> <span class="ident">KeyPair</span> {
+    <span class="doccomment">/// Generate a new `KeyPair`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::generate_random_private_key;</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
     <span class="doccomment">/// # use massa_hash::Hash;</span>
-    <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let serialized: String = private_key.to_bs58_check();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let serialized: String = signature.to_bs58_check();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>() -&gt; <span class="ident">KeyPair</span> {
+        <span class="ident">KeyPair</span>(<span class="ident">schnorrkel::Keypair::generate_with</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rand::rngs::OsRng</span>))
+    }
+
+    <span class="doccomment">/// Returns the Signature produced by signing</span>
+    <span class="doccomment">/// data bytes with a KeyPair.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Example</span>
+    <span class="doccomment">///  ```</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">Signature</span>(
+            <span class="self">self</span>.<span class="number">0</span>.<span class="ident">sign</span>(<span class="ident">SIGNATURE_CONTEXT</span>.<span class="ident">bytes</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>())),
+        ))
+    }
+
+    <span class="doccomment">/// Return the bytes representing the keypair (should be a reference in the future)</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Example</span>
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let bytes = keypair.to_bytes();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">SECRET_KEY_SIZE_BYTES</span>] {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">secret</span>.<span class="ident">to_ed25519_bytes</span>()
+    }
+
+    <span class="doccomment">/// Return the bytes representing the keypair</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Example</span>
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let bytes = keypair.into_bytes();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">SECRET_KEY_SIZE_BYTES</span>] {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">secret</span>.<span class="ident">to_ed25519_bytes</span>()
+    }
+
+    <span class="doccomment">/// Convert a byte array of size `SECRET_KEY_SIZE_BYTES` to a `KeyPair`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Example</span>
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let bytes = keypair.into_bytes();</span>
+    <span class="doccomment">/// let keypair2 = KeyPair::from_bytes(&amp;bytes).unwrap();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">SECRET_KEY_SIZE_BYTES</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">schnorrkel::SecretKey::from_ed25519_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..]).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
+            <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(<span class="string">&quot;keypair bytes parsing error: {}&quot;</span>, <span class="ident">err</span>))
+        })<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">KeyPair</span>(<span class="ident">schnorrkel::Keypair::from</span>(<span class="ident">secret</span>)))
+    }
+
+    <span class="doccomment">/// Get the public key of the keypair</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Example</span>
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let public_key = keypair.get_public_key();</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">PublicKey</span> {
+        <span class="ident">PublicKey</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">public</span>)
+    }
+
+    <span class="doccomment">/// Encode a keypair into his base58 form</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Example</span>
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let bs58 = keypair.to_bs58_check();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bs58_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="ident">bs58::encode</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>()).<span class="ident">with_check</span>().<span class="ident">into_string</span>()
     }
 
-    <span class="doccomment">/// Serialize a `PrivateKey` as bytes.</span>
+    <span class="doccomment">/// Decode a base58 encoded keypair</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
-    <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::generate_random_private_key;</span>
-    <span class="doccomment">/// # use massa_hash::Hash;</span>
-    <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let serialized = private_key.to_bytes();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>] {
-        <span class="comment">// note: should return a ref to respect conventions</span>
-        <span class="comment">// but KeyPair has no function to do so</span>
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">secret_bytes</span>()
-    }
-
-    <span class="doccomment">/// Serialize a `PrivateKey` into bytes.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Example</span>
-    <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::generate_random_private_key;</span>
-    <span class="doccomment">/// # use massa_hash::Hash;</span>
-    <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let serialized = private_key.into_bytes();</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let bs58 = keypair.to_bs58_check();</span>
+    <span class="doccomment">/// let keypair2 = KeyPair::from_bs58_check(&amp;bs58).unwrap();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>] {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">secret_bytes</span>()
-    }
-
-    <span class="doccomment">/// Deserialize a `PrivateKey` using `bs58` encoding with checksum.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Example</span>
-    <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{PrivateKey, generate_random_private_key};</span>
-    <span class="doccomment">/// # use massa_hash::Hash;</span>
-    <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let serialized: String = private_key.to_bs58_check();</span>
-    <span class="doccomment">/// let deserialized: PrivateKey = PrivateKey::from_bs58_check(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PrivateKey</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
         <span class="ident">bs58::decode</span>(<span class="ident">data</span>)
             .<span class="ident">with_check</span>(<span class="prelude-val">None</span>)
             .<span class="ident">into_vec</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
                 <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
-                    <span class="string">&quot;private key bs58_check parsing error: {}&quot;</span>,
+                    <span class="string">&quot;keypair bs58_check parsing error: {}&quot;</span>,
                     <span class="ident">err</span>
                 ))
             })
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">key</span><span class="op">|</span> {
-                <span class="ident">PrivateKey::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                    <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
-                        <span class="string">&quot;private key bs58_check parsing error: {:?}&quot;</span>,
-                        <span class="ident">err</span>
-                    ))
+                <span class="ident">KeyPair::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                    <span class="ident">MassaSignatureError::ParsingError</span>(<span class="string">&quot;Bad keypair format&quot;</span>.<span class="ident">to_string</span>())
                 })<span class="question-mark">?</span>)
-            })
-    }
-
-    <span class="doccomment">/// Deserialize a `PrivateKey` from bytes.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Example</span>
-    <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{PrivateKey, generate_random_private_key};</span>
-    <span class="doccomment">/// # use massa_hash::Hash;</span>
-    <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let serialized = private_key.to_bytes();</span>
-    <span class="doccomment">/// let deserialized: PrivateKey = PrivateKey::from_bytes(&amp;serialized).unwrap();</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(
-        <span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PrivateKey</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
-        <span class="ident">secp256k1::KeyPair::from_seckey_slice</span>(<span class="ident">SECP256K1</span>, <span class="kw-2">&amp;</span><span class="ident">data</span>[..])
-            .<span class="ident">map</span>(<span class="ident">PrivateKey</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
-                    <span class="string">&quot;private key bytes parsing error: {}&quot;</span>,
-                    <span class="ident">err</span>
-                ))
             })
     }
 }
 
-<span class="kw">impl</span> <span class="ident">::serde::Serialize</span> <span class="kw">for</span> <span class="ident">PrivateKey</span> {
-    <span class="doccomment">/// `::serde::Serialize` trait for `PrivateKey`</span>
+<span class="kw">impl</span> <span class="ident">::serde::Serialize</span> <span class="kw">for</span> <span class="ident">KeyPair</span> {
+    <span class="doccomment">/// `::serde::Serialize` trait for `KeyPair`</span>
     <span class="doccomment">/// if the serializer is human readable,</span>
     <span class="doccomment">/// serialization is done using `serialize_bs58_check`</span>
     <span class="doccomment">/// else, it uses `serialize_binary`</span>
@@ -1137,23 +1223,23 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Human readable serialization :</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_signature::generate_random_private_key;</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let serialized: String = serde_json::to_string(&amp;private_key).unwrap();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let serialized: String = serde_json::to_string(&amp;keypair).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
     <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">::serde::Serializer</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">s</span>: <span class="ident">S</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">is_human_readable</span>() {
-            <span class="ident">s</span>.<span class="ident">collect_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bs58_check</span>())
-        } <span class="kw">else</span> {
-            <span class="ident">s</span>.<span class="ident">serialize_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes</span>())
-        }
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">keypair_serializer</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">serialize_struct</span>(<span class="string">&quot;keypair&quot;</span>, <span class="number">2</span>)<span class="question-mark">?</span>;
+        <span class="ident">keypair_serializer</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;secret_key&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Cow::from</span>(<span class="self">self</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
+        <span class="ident">keypair_serializer</span>
+            .<span class="ident">serialize_field</span>(<span class="string">&quot;public_key&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Cow::from</span>(<span class="self">self</span>.<span class="ident">get_public_key</span>().<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
+        <span class="ident">keypair_serializer</span>.<span class="ident">end</span>()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PrivateKey</span> {
-    <span class="doccomment">/// `::serde::Deserialize` trait for `PrivateKey`</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyPair</span> {
+    <span class="doccomment">/// `::serde::Deserialize` trait for `KeyPair`</span>
     <span class="doccomment">/// if the deserializer is human readable,</span>
     <span class="doccomment">/// deserialization is done using `deserialize_bs58_check`</span>
     <span class="doccomment">/// else, it uses `deserialize_binary`</span>
@@ -1162,115 +1248,190 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Human readable deserialization :</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_signature::{PrivateKey, generate_random_private_key};</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let serialized = serde_json::to_string(&amp;private_key).unwrap();</span>
-    <span class="doccomment">/// let deserialized: PrivateKey = serde_json::from_str(&amp;serialized).unwrap();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let serialized = serde_json::to_string(&amp;keypair).unwrap();</span>
+    <span class="doccomment">/// let deserialized: KeyPair = serde_json::from_str(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
-    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">::serde::Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">d</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PrivateKey</span>, <span class="ident">D::Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">d</span>.<span class="ident">is_human_readable</span>() {
-            <span class="kw">struct</span> <span class="ident">Base58CheckVisitor</span>;
+    <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">::serde::Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">d</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KeyPair</span>, <span class="ident">D::Error</span><span class="op">&gt;</span> {
+        <span class="kw">enum</span> <span class="ident">Field</span> {
+            <span class="ident">SecretKey</span>,
+            <span class="ident">PublicKey</span>,
+        }
 
-            <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::de::Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Base58CheckVisitor</span> {
-                <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">PrivateKey</span>;
+        <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Field</span> {
+            <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">deserializer</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Field</span>, <span class="ident">D::Error</span><span class="op">&gt;</span>
+            <span class="kw">where</span>
+                <span class="ident">D</span>: <span class="ident">serde::Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
+            {
+                <span class="kw">struct</span> <span class="ident">FieldVisitor</span>;
 
-                <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-                    <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="string">&quot;an ASCII base58check string&quot;</span>)
-                }
+                <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">FieldVisitor</span> {
+                    <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">Field</span>;
 
-                <span class="kw">fn</span> <span class="ident">visit_bytes</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">v</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
-                <span class="kw">where</span>
-                    <span class="ident">E</span>: <span class="ident">::serde::de::Error</span>,
-                {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">v_str</span>) <span class="op">=</span> <span class="ident">std::str::from_utf8</span>(<span class="ident">v</span>) {
-                        <span class="ident">PrivateKey::from_bs58_check</span>(<span class="ident">v_str</span>).<span class="ident">map_err</span>(<span class="ident">E::custom</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">E::invalid_value</span>(<span class="ident">::serde::de::Unexpected::Bytes</span>(<span class="ident">v</span>), <span class="kw-2">&amp;</span><span class="self">self</span>))
+                    <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+                        <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="string">&quot;`secret_key` or `public_key`&quot;</span>)
+                    }
+
+                    <span class="kw">fn</span> <span class="ident">visit_str</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Field</span>, <span class="ident">E</span><span class="op">&gt;</span>
+                    <span class="kw">where</span>
+                        <span class="ident">E</span>: <span class="ident">serde::de::Error</span>,
+                    {
+                        <span class="kw">match</span> <span class="ident">value</span> {
+                            <span class="string">&quot;secret_key&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::SecretKey</span>),
+                            <span class="string">&quot;public_key&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::PublicKey</span>),
+                            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">serde::de::Error::unknown_field</span>(<span class="ident">value</span>, <span class="ident">FIELDS</span>)),
+                        }
                     }
                 }
 
-                <span class="kw">fn</span> <span class="ident">visit_str</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">v</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
-                <span class="kw">where</span>
-                    <span class="ident">E</span>: <span class="ident">::serde::de::Error</span>,
-                {
-                    <span class="ident">PrivateKey::from_bs58_check</span>(<span class="ident">v</span>).<span class="ident">map_err</span>(<span class="ident">E::custom</span>)
-                }
+                <span class="ident">deserializer</span>.<span class="ident">deserialize_identifier</span>(<span class="ident">FieldVisitor</span>)
             }
-            <span class="ident">d</span>.<span class="ident">deserialize_str</span>(<span class="ident">Base58CheckVisitor</span>)
-        } <span class="kw">else</span> {
-            <span class="kw">struct</span> <span class="ident">BytesVisitor</span>;
-
-            <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::de::Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BytesVisitor</span> {
-                <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">PrivateKey</span>;
-
-                <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-                    <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="string">&quot;a bytestring&quot;</span>)
-                }
-
-                <span class="kw">fn</span> <span class="ident">visit_bytes</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">v</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
-                <span class="kw">where</span>
-                    <span class="ident">E</span>: <span class="ident">::serde::de::Error</span>,
-                {
-                    <span class="ident">PrivateKey::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="ident">E::custom</span>)<span class="question-mark">?</span>).<span class="ident">map_err</span>(<span class="ident">E::custom</span>)
-                }
-            }
-
-            <span class="ident">d</span>.<span class="ident">deserialize_bytes</span>(<span class="ident">BytesVisitor</span>)
         }
+
+        <span class="kw">struct</span> <span class="ident">KeyPairVisitor</span>;
+
+        <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyPairVisitor</span> {
+            <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">KeyPair</span>;
+
+            <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+                <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="string">&quot;{&#39;secret_key&#39;: &#39;xxx&#39;, &#39;public_key&#39;: &#39;xxx&#39;}&quot;</span>)
+            }
+
+            <span class="kw">fn</span> <span class="ident">visit_seq</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">seq</span>: <span class="ident">V</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KeyPair</span>, <span class="ident">V::Error</span><span class="op">&gt;</span>
+            <span class="kw">where</span>
+                <span class="ident">V</span>: <span class="ident">SeqAccess</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
+            {
+                <span class="kw">let</span> <span class="ident">secret</span>: <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">seq</span>
+                    .<span class="ident">next_element</span>()<span class="question-mark">?</span>
+                    .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">serde::de::Error::invalid_length</span>(<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="self">self</span>))<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="kw">_</span>: <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">seq</span>
+                    .<span class="ident">next_element</span>()<span class="question-mark">?</span>
+                    .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">serde::de::Error::invalid_length</span>(<span class="number">1</span>, <span class="kw-2">&amp;</span><span class="self">self</span>))<span class="question-mark">?</span>;
+                <span class="ident">KeyPair::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">secret</span>).<span class="ident">map_err</span>(<span class="ident">serde::de::Error::custom</span>)
+            }
+
+            <span class="kw">fn</span> <span class="ident">visit_map</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">map</span>: <span class="ident">V</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KeyPair</span>, <span class="ident">V::Error</span><span class="op">&gt;</span>
+            <span class="kw">where</span>
+                <span class="ident">V</span>: <span class="ident">MapAccess</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
+            {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">secret</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">public</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+                <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key</span>) <span class="op">=</span> <span class="ident">map</span>.<span class="ident">next_key</span>()<span class="question-mark">?</span> {
+                    <span class="kw">match</span> <span class="ident">key</span> {
+                        <span class="ident">Field::SecretKey</span> =&gt; {
+                            <span class="kw">if</span> <span class="ident">secret</span>.<span class="ident">is_some</span>() {
+                                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">serde::de::Error::duplicate_field</span>(<span class="string">&quot;secret&quot;</span>));
+                            }
+                            <span class="ident">secret</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">map</span>.<span class="ident">next_value</span>()<span class="question-mark">?</span>);
+                        }
+                        <span class="ident">Field::PublicKey</span> =&gt; {
+                            <span class="kw">if</span> <span class="ident">public</span>.<span class="ident">is_some</span>() {
+                                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">serde::de::Error::duplicate_field</span>(<span class="string">&quot;public&quot;</span>));
+                            }
+                            <span class="ident">public</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">map</span>.<span class="ident">next_value</span>()<span class="question-mark">?</span>);
+                        }
+                    }
+                }
+                <span class="kw">let</span> <span class="ident">secret</span>: <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span>
+                    <span class="ident">secret</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">serde::de::Error::missing_field</span>(<span class="string">&quot;secret&quot;</span>))<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="kw">_</span>: <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span>
+                    <span class="ident">public</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">serde::de::Error::missing_field</span>(<span class="string">&quot;public&quot;</span>))<span class="question-mark">?</span>;
+                <span class="ident">KeyPair::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">secret</span>).<span class="ident">map_err</span>(<span class="ident">serde::de::Error::custom</span>)
+            }
+        }
+
+        <span class="kw">const</span> <span class="ident">FIELDS</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>] <span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="string">&quot;secret_key&quot;</span>, <span class="string">&quot;public_key&quot;</span>];
+        <span class="ident">d</span>.<span class="ident">deserialize_struct</span>(<span class="string">&quot;KeyPair&quot;</span>, <span class="ident">FIELDS</span>, <span class="ident">KeyPairVisitor</span>)
     }
 }
 
 <span class="doccomment">/// Public key used to check if a message was encoded</span>
 <span class="doccomment">/// by the corresponding `PublicKey`.</span>
-<span class="doccomment">/// Generated from the `PrivateKey` using `SignatureEngine`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PublicKey</span>(<span class="ident">secp256k1::XOnlyPublicKey</span>);
+<span class="doccomment">/// Generated from the `KeyPair` using `SignatureEngine`</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PublicKey</span>(<span class="ident">schnorrkel::PublicKey</span>);
+
+<span class="kw">const</span> <span class="ident">PUBLIC_PREFIX</span>: <span class="ident">char</span> <span class="op">=</span> <span class="string">&#39;P&#39;</span>;
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">PublicKey</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}-{}&quot;</span>, <span class="ident">PUBLIC_KEY_STRING_PREFIX</span>, <span class="self">self</span>.<span class="ident">to_bs58_check</span>())
-        } <span class="kw">else</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">to_bs58_check</span>())
-        }
+        <span class="kw">let</span> <span class="ident">u64_serializer</span> <span class="op">=</span> <span class="ident">U64VarIntSerializer::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="ident">u64_serializer</span>
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">KEYPAIR_VERSION</span>, <span class="kw-2">&amp;mut</span> <span class="ident">bytes</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">std::fmt::Error</span>)<span class="question-mark">?</span>;
+        <span class="ident">bytes</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>());
+        <span class="macro">write!</span>(
+            <span class="ident">f</span>,
+            <span class="string">&quot;{}{}&quot;</span>,
+            <span class="ident">PUBLIC_PREFIX</span>,
+            <span class="ident">bs58::encode</span>(<span class="ident">bytes</span>).<span class="ident">with_check</span>().<span class="ident">into_string</span>()
+        )
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">PublicKey</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
     }
 }
 
 <span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">PublicKey</span> {
     <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">MassaSignatureError</span>;
     <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;hash-prefix&quot;</span>) {
-            <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">split</span>(<span class="string">&#39;-&#39;</span>).<span class="ident">collect</span>();
-            <span class="kw">if</span> <span class="ident">v</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">2</span> {
-                <span class="comment">// assume there is no prefix</span>
-                <span class="ident">PublicKey::from_bs58_check</span>(<span class="ident">s</span>)
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">v</span>[<span class="number">0</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">PUBLIC_KEY_STRING_PREFIX</span> {
-                <span class="prelude-val">Err</span>(<span class="ident">MassaSignatureError::WrongPrefix</span>(
-                    <span class="ident">PUBLIC_KEY_STRING_PREFIX</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">v</span>[<span class="number">0</span>].<span class="ident">to_string</span>(),
-                ))
-            } <span class="kw">else</span> {
-                <span class="ident">PublicKey::from_bs58_check</span>(<span class="ident">v</span>[<span class="number">1</span>])
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chars</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">chars</span>();
+        <span class="kw">match</span> <span class="ident">chars</span>.<span class="ident">next</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">prefix</span>) <span class="kw">if</span> <span class="ident">prefix</span> <span class="op">==</span> <span class="ident">PUBLIC_PREFIX</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">chars</span>.<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>();
+                <span class="kw">let</span> <span class="ident">decoded_bs58_check</span> <span class="op">=</span>
+                    <span class="ident">bs58::decode</span>(<span class="ident">data</span>)
+                        .<span class="ident">with_check</span>(<span class="prelude-val">None</span>)
+                        .<span class="ident">into_vec</span>()
+                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                            <span class="ident">MassaSignatureError::ParsingError</span>(<span class="string">&quot;Bad public key bs58&quot;</span>.<span class="ident">to_owned</span>())
+                        })<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">u64_deserializer</span> <span class="op">=</span> <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>));
+                <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">_version</span>) <span class="op">=</span> <span class="ident">u64_deserializer</span>
+                    .<span class="ident">deserialize</span>::<span class="op">&lt;</span><span class="ident">DeserializeError</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">decoded_bs58_check</span>[..])
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">MassaSignatureError::ParsingError</span>(<span class="ident">err</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
+                <span class="ident">PublicKey::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">rest</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                    <span class="ident">MassaSignatureError::ParsingError</span>(<span class="string">&quot;Public key not long enough&quot;</span>.<span class="ident">to_string</span>())
+                })<span class="question-mark">?</span>)
             }
-        } <span class="kw">else</span> {
-            <span class="ident">PublicKey::from_bs58_check</span>(<span class="ident">s</span>)
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">MassaSignatureError::ParsingError</span>(
+                <span class="string">&quot;Bad public key prefix&quot;</span>.<span class="ident">to_owned</span>(),
+            )),
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">PublicKey</span> {
+    <span class="doccomment">/// Checks if the `Signature` associated with data bytes</span>
+    <span class="doccomment">/// was produced with the `KeyPair` associated to given `PublicKey`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_signature</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>,
+        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="number">0</span>
+            .<span class="ident">verify</span>(<span class="ident">SIGNATURE_CONTEXT</span>.<span class="ident">bytes</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>()), <span class="kw-2">&amp;</span><span class="ident">signature</span>.<span class="number">0</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
+                <span class="ident">MassaSignatureError::SignatureError</span>(<span class="macro">format!</span>(<span class="string">&quot;Signature failed: {}&quot;</span>, <span class="ident">err</span>))
+            })
+    }
+
     <span class="doccomment">/// Serialize a `PublicKey` using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key};</span>
+    <span class="doccomment">/// # use massa_signature::{PublicKey, KeyPair};</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// let serialized: String = public_key.to_bs58_check();</span>
+    <span class="doccomment">/// let serialized: String = keypair.get_public_key().to_bs58_check();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bs58_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="ident">bs58::encode</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>()).<span class="ident">with_check</span>().<span class="ident">into_string</span>()
@@ -1280,42 +1441,39 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key};</span>
+    <span class="doccomment">/// # use massa_signature::{PublicKey, KeyPair};</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// let serialize = public_key.to_bytes();</span>
+    <span class="doccomment">/// let serialize = keypair.get_public_key().to_bytes();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>] {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">serialize</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_bytes</span>()
     }
 
     <span class="doccomment">/// Serialize into bytes.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key};</span>
+    <span class="doccomment">/// # use massa_signature::{PublicKey, KeyPair};</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// let serialize = public_key.to_bytes();</span>
+    <span class="doccomment">/// let serialize = keypair.get_public_key().to_bytes();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>] {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">serialize</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_bytes</span>()
     }
 
     <span class="doccomment">/// Deserialize a `PublicKey` using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{PublicKey, derive_public_key, generate_random_private_key};</span>
+    <span class="doccomment">/// # use massa_signature::{PublicKey, KeyPair};</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// let serialized: String = public_key.to_bs58_check();</span>
+    <span class="doccomment">/// let serialized: String = keypair.get_public_key().to_bs58_check();</span>
     <span class="doccomment">/// let deserialized: PublicKey = PublicKey::from_bs58_check(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicKey</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
@@ -1342,25 +1500,19 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{PublicKey, derive_public_key, generate_random_private_key};</span>
+    <span class="doccomment">/// # use massa_signature::{PublicKey, KeyPair};</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// let serialized = public_key.into_bytes();</span>
+    <span class="doccomment">/// let serialized = keypair.get_public_key().into_bytes();</span>
     <span class="doccomment">/// let deserialized: PublicKey = PublicKey::from_bytes(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(
         <span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>],
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicKey</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
-        <span class="ident">secp256k1::XOnlyPublicKey::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..])
-            .<span class="ident">map</span>(<span class="ident">PublicKey</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-                <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(
-                    <span class="string">&quot;public key bytes parsing error: {}&quot;</span>,
-                    <span class="ident">err</span>
-                ))
-            })
+        <span class="ident">schnorrkel::PublicKey::from_bytes</span>(<span class="ident">data</span>)
+            .<span class="ident">map</span>(<span class="self">Self</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">MassaSignatureError::ParsingError</span>(<span class="ident">err</span>.<span class="ident">to_string</span>()))
     }
 }
 
@@ -1377,16 +1529,15 @@
 
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">PublicKey</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PublicKeyDeserializer</span> {
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_signature::{PublicKey, PublicKeyDeserializer, derive_public_key, generate_random_private_key, sign};</span>
+    <span class="doccomment">/// use massa_signature::{PublicKey, PublicKeyDeserializer, KeyPair};</span>
     <span class="doccomment">/// use massa_serialization::{DeserializeError, Deserializer};</span>
     <span class="doccomment">/// use massa_hash::Hash;</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
-    <span class="doccomment">/// let serialized = public_key.to_bytes();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let serialized = keypair.get_public_key().to_bytes();</span>
     <span class="doccomment">/// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// assert!(rest.is_empty());</span>
-    <span class="doccomment">/// assert_eq!(public_key, deser_public_key);</span>
+    <span class="doccomment">/// assert_eq!(keypair.get_public_key(), deser_public_key);</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">ParseError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">ContextError</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -1427,20 +1578,14 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Human readable serialization :</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key};</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let serialized: String = serde_json::to_string(&amp;public_key).unwrap();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
+    <span class="doccomment">/// let serialized: String = serde_json::to_string(&amp;keypair.get_public_key()).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
     <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">::serde::Serializer</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">s</span>: <span class="ident">S</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">is_human_readable</span>() {
-            <span class="ident">s</span>.<span class="ident">collect_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bs58_check</span>())
-        } <span class="kw">else</span> {
-            <span class="ident">s</span>.<span class="ident">serialize_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes</span>())
-        }
+        <span class="ident">s</span>.<span class="ident">collect_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_string</span>())
     }
 }
 
@@ -1454,71 +1599,49 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Human readable deserialization :</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_signature::{PublicKey, derive_public_key, generate_random_private_key};</span>
+    <span class="doccomment">/// # use massa_signature::{PublicKey, KeyPair};</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// let serialized = serde_json::to_string(&amp;public_key).unwrap();</span>
+    <span class="doccomment">/// let serialized = serde_json::to_string(&amp;keypair.get_public_key()).unwrap();</span>
     <span class="doccomment">/// let deserialized: PublicKey = serde_json::from_str(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
     <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">::serde::Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">d</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicKey</span>, <span class="ident">D::Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">d</span>.<span class="ident">is_human_readable</span>() {
-            <span class="kw">struct</span> <span class="ident">Base58CheckVisitor</span>;
+        <span class="kw">struct</span> <span class="ident">Base58CheckVisitor</span>;
 
-            <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::de::Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Base58CheckVisitor</span> {
-                <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">PublicKey</span>;
+        <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::de::Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Base58CheckVisitor</span> {
+            <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">PublicKey</span>;
 
-                <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-                    <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="string">&quot;an ASCII base58check string&quot;</span>)
-                }
-
-                <span class="kw">fn</span> <span class="ident">visit_bytes</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">v</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
-                <span class="kw">where</span>
-                    <span class="ident">E</span>: <span class="ident">::serde::de::Error</span>,
-                {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">v_str</span>) <span class="op">=</span> <span class="ident">std::str::from_utf8</span>(<span class="ident">v</span>) {
-                        <span class="ident">PublicKey::from_bs58_check</span>(<span class="ident">v_str</span>).<span class="ident">map_err</span>(<span class="ident">E::custom</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">E::invalid_value</span>(<span class="ident">::serde::de::Unexpected::Bytes</span>(<span class="ident">v</span>), <span class="kw-2">&amp;</span><span class="self">self</span>))
-                    }
-                }
-
-                <span class="kw">fn</span> <span class="ident">visit_str</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">v</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
-                <span class="kw">where</span>
-                    <span class="ident">E</span>: <span class="ident">::serde::de::Error</span>,
-                {
-                    <span class="ident">PublicKey::from_bs58_check</span>(<span class="ident">v</span>).<span class="ident">map_err</span>(<span class="ident">E::custom</span>)
-                }
+            <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+                <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="string">&quot;an ASCII base58check string&quot;</span>)
             }
-            <span class="ident">d</span>.<span class="ident">deserialize_str</span>(<span class="ident">Base58CheckVisitor</span>)
-        } <span class="kw">else</span> {
-            <span class="kw">struct</span> <span class="ident">BytesVisitor</span>;
 
-            <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::de::Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BytesVisitor</span> {
-                <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">PublicKey</span>;
-
-                <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-                    <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="string">&quot;a bytestring&quot;</span>)
-                }
-
-                <span class="kw">fn</span> <span class="ident">visit_bytes</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">v</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
-                <span class="kw">where</span>
-                    <span class="ident">E</span>: <span class="ident">::serde::de::Error</span>,
-                {
-                    <span class="ident">PublicKey::from_bytes</span>(<span class="ident">v</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="ident">E::custom</span>)<span class="question-mark">?</span>).<span class="ident">map_err</span>(<span class="ident">E::custom</span>)
+            <span class="kw">fn</span> <span class="ident">visit_bytes</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">v</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
+            <span class="kw">where</span>
+                <span class="ident">E</span>: <span class="ident">::serde::de::Error</span>,
+            {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">v_str</span>) <span class="op">=</span> <span class="ident">std::str::from_utf8</span>(<span class="ident">v</span>) {
+                    <span class="ident">PublicKey::from_str</span>(<span class="ident">v_str</span>).<span class="ident">map_err</span>(<span class="ident">E::custom</span>)
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">E::invalid_value</span>(<span class="ident">::serde::de::Unexpected::Bytes</span>(<span class="ident">v</span>), <span class="kw-2">&amp;</span><span class="self">self</span>))
                 }
             }
 
-            <span class="ident">d</span>.<span class="ident">deserialize_bytes</span>(<span class="ident">BytesVisitor</span>)
+            <span class="kw">fn</span> <span class="ident">visit_str</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">v</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
+            <span class="kw">where</span>
+                <span class="ident">E</span>: <span class="ident">::serde::de::Error</span>,
+            {
+                <span class="ident">PublicKey::from_str</span>(<span class="ident">v</span>).<span class="ident">map_err</span>(<span class="ident">E::custom</span>)
+            }
         }
+        <span class="ident">d</span>.<span class="ident">deserialize_str</span>(<span class="ident">Base58CheckVisitor</span>)
     }
 }
 
-<span class="doccomment">/// Signature generated from a message and a `PrivateKey`.</span>
+<span class="doccomment">/// Signature generated from a message and a `KeyPair`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span>(<span class="ident">schnorr::Signature</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span>(<span class="ident">schnorrkel::Signature</span>);
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Signature</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
@@ -1557,12 +1680,12 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign};</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
     <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized: String = signature.to_bs58_check();</span>
     <span class="doccomment">/// ```</span>
@@ -1574,46 +1697,46 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign};</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
     <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized = signature.to_bytes();</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">SIGNATURE_SIZE_BYTES</span>] {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>()
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">SIGNATURE_SIZE_BYTES</span>] {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_bytes</span>()
     }
 
     <span class="doccomment">/// Serialize a Signature into bytes.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign};</span>
+    <span class="doccomment">/// # use massa_signature::KeyPair;</span>
     <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized = signature.into_bytes();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="ident">SIGNATURE_SIZE_BYTES</span>] {
-        <span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>()
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_bytes</span>()
     }
 
     <span class="doccomment">/// Deserialize a `Signature` using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign, Signature};</span>
+    <span class="doccomment">/// # use massa_signature::{KeyPair, Signature};</span>
     <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized: String = signature.to_bs58_check();</span>
     <span class="doccomment">/// let deserialized: Signature = Signature::from_bs58_check(&amp;serialized).unwrap();</span>
@@ -1642,19 +1765,19 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
-    <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign, Signature};</span>
+    <span class="doccomment">/// # use massa_signature::{KeyPair, Signature};</span>
     <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized = signature.to_bytes();</span>
     <span class="doccomment">/// let deserialized: Signature = Signature::from_bytes(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="ident">SIGNATURE_SIZE_BYTES</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
-        <span class="ident">schnorr::Signature::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..])
-            .<span class="ident">map</span>(<span class="ident">Signature</span>)
+        <span class="ident">schnorrkel::Signature::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..])
+            .<span class="ident">map</span>(<span class="self">Self</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
                 <span class="ident">MassaSignatureError::ParsingError</span>(<span class="macro">format!</span>(<span class="string">&quot;signature bytes parsing error: {}&quot;</span>, <span class="ident">err</span>))
             })
@@ -1671,12 +1794,12 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Human readable serialization :</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign};</span>
+    <span class="doccomment">/// # use massa_signature::{KeyPair, Signature};</span>
     <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized: String = serde_json::to_string(&amp;signature).unwrap();</span>
     <span class="doccomment">/// ```</span>
@@ -1685,7 +1808,7 @@
         <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">is_human_readable</span>() {
             <span class="ident">s</span>.<span class="ident">collect_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bs58_check</span>())
         } <span class="kw">else</span> {
-            <span class="ident">s</span>.<span class="ident">serialize_bytes</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>())
+            <span class="ident">s</span>.<span class="ident">serialize_bytes</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>().<span class="ident">as_ref</span>())
         }
     }
 }
@@ -1700,12 +1823,12 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Human readable deserialization :</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign, Signature};</span>
+    <span class="doccomment">/// # use massa_signature::{KeyPair, Signature};</span>
     <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized = serde_json::to_string(&amp;signature).unwrap();</span>
     <span class="doccomment">/// let deserialized: Signature = serde_json::from_str(&amp;serialized).unwrap();</span>
@@ -1777,13 +1900,13 @@
 
 <span class="kw">impl</span> <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SignatureDeserializer</span> {
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use massa_signature::{Signature, SignatureDeserializer, generate_random_private_key, sign};</span>
+    <span class="doccomment">/// use massa_signature::{Signature, SignatureDeserializer, KeyPair};</span>
     <span class="doccomment">/// use massa_serialization::{DeserializeError, Deserializer};</span>
     <span class="doccomment">/// use massa_hash::Hash;</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// let private_key = generate_random_private_key();</span>
+    <span class="doccomment">/// let keypair = KeyPair::generate();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-    <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+    <span class="doccomment">/// let signature = keypair.sign(&amp;data).unwrap();</span>
     <span class="doccomment">/// let serialized = signature.into_bytes();</span>
     <span class="doccomment">/// let (rest, deser_signature) = SignatureDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();</span>
     <span class="doccomment">/// assert!(rest.is_empty());</span>
@@ -1812,68 +1935,6 @@
     }
 }
 
-<span class="doccomment">/// Derives a PublicKey from a PrivateKey.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Example</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key};</span>
-<span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-<span class="doccomment">/// let private_key = generate_random_private_key();</span>
-<span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">derive_public_key</span>(<span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="ident">PublicKey</span> {
-    <span class="ident">PublicKey</span>(<span class="ident">private_key</span>.<span class="number">0</span>.<span class="ident">public_key</span>().<span class="ident">x_only_public_key</span>().<span class="number">0</span>)
-}
-
-<span class="doccomment">/// Returns the Signature produced by signing</span>
-<span class="doccomment">/// data bytes with a PrivateKey.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Example</span>
-<span class="doccomment">///  ```</span>
-<span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, PublicKey};</span>
-<span class="doccomment">/// # use massa_hash::Hash;</span>
-<span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-<span class="doccomment">/// let private_key = generate_random_private_key();</span>
-<span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
-<span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-<span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>, <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">Message::from_slice</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>())<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(<span class="ident">Signature</span>(<span class="ident">SECP256K1</span>.<span class="ident">sign_schnorr</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>, <span class="kw-2">&amp;</span><span class="ident">private_key</span>.<span class="number">0</span>)))
-}
-
-<span class="doccomment">/// Checks if the `Signature` associated with data bytes</span>
-<span class="doccomment">/// was produced with the `PrivateKey` associated to given `PublicKey`</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Example</span>
-<span class="doccomment">///  ```</span>
-<span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, verify_signature, PublicKey};</span>
-<span class="doccomment">/// # use massa_hash::Hash;</span>
-<span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
-<span class="doccomment">/// let private_key = generate_random_private_key();</span>
-<span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
-<span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
-<span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
-<span class="doccomment">/// let verification: bool = verify_signature(&amp;data, &amp;signature, &amp;public_key).is_ok();</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_signature</span>(
-    <span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>,
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
-    <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MassaSignatureError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">Message::from_slice</span>(<span class="ident">hash</span>.<span class="ident">to_bytes</span>())<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(<span class="ident">SECP256K1</span>.<span class="ident">verify_schnorr</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>.<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">message</span>, <span class="kw-2">&amp;</span><span class="ident">public_key</span>.<span class="number">0</span>)<span class="question-mark">?</span>)
-}
-
-<span class="doccomment">/// Generate a random private key from a RNG.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_random_private_key</span>() -&gt; <span class="ident">PrivateKey</span> {
-    <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::KeyPair::from_secret_key</span>(
-        <span class="ident">SECP256K1</span>,
-        <span class="kw-2">&amp;</span><span class="ident">secp256k1::SecretKey::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rand::thread_rng</span>()),
-    ))
-}
-
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -1883,30 +1944,31 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_example</span>() {
-        <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>);
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
         <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;Hello World!&quot;</span>.<span class="ident">as_bytes</span>();
         <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="ident">message</span>);
-        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="ident">private_key</span>).<span class="ident">unwrap</span>();
-        <span class="macro">assert!</span>(<span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="kw-2">&amp;</span><span class="ident">public_key</span>).<span class="ident">is_ok</span>())
+        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>).<span class="ident">unwrap</span>();
+        <span class="macro">assert!</span>(<span class="ident">keypair</span>
+            .<span class="ident">get_public_key</span>()
+            .<span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="ident">signature</span>)
+            .<span class="ident">is_ok</span>())
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_serde_private_key</span>() {
-        <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span>
-            <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>).<span class="ident">expect</span>(<span class="string">&quot;could not serialize private key&quot;</span>);
-        <span class="kw">let</span> <span class="ident">deserialized</span> <span class="op">=</span>
-            <span class="ident">serde_json::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">serialized</span>).<span class="ident">expect</span>(<span class="string">&quot;could not deserialize private key&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">private_key</span>, <span class="ident">deserialized</span>);
+    <span class="kw">fn</span> <span class="ident">test_serde_keypair</span>() {
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
+        <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>).<span class="ident">expect</span>(<span class="string">&quot;could not serialize keypair&quot;</span>);
+        <span class="kw">let</span> <span class="ident">deserialized</span>: <span class="ident">KeyPair</span> <span class="op">=</span>
+            <span class="ident">serde_json::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">serialized</span>).<span class="ident">expect</span>(<span class="string">&quot;could not deserialize keypair&quot;</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">keypair</span>.<span class="number">0</span>.<span class="ident">public</span>, <span class="ident">deserialized</span>.<span class="number">0</span>.<span class="ident">public</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_serde_public_key</span>() {
-        <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>);
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
+        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">get_public_key</span>();
         <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span>
             <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>).<span class="ident">expect</span>(<span class="string">&quot;Could not serialize public key&quot;</span>);
         <span class="kw">let</span> <span class="ident">deserialized</span> <span class="op">=</span>
@@ -1917,10 +1979,10 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_serde_signature</span>() {
-        <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
         <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;Hello World!&quot;</span>.<span class="ident">as_bytes</span>();
         <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="ident">message</span>);
-        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="ident">private_key</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span>
             <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>).<span class="ident">expect</span>(<span class="string">&quot;could not serialize signature key&quot;</span>);
         <span class="kw">let</span> <span class="ident">deserialized</span> <span class="op">=</span>

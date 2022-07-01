@@ -383,7 +383,6 @@
 <span id="377">377</span>
 <span id="378">378</span>
 <span id="379">379</span>
-<span id="380">380</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
@@ -415,7 +414,7 @@
     <span class="ident">HandshakeInitiation</span> {
         <span class="doccomment">/// Our `public_key`, so the peer can decode our reply.</span>
         <span class="ident">public_key</span>: <span class="ident">PublicKey</span>,
-        <span class="doccomment">/// Random data we expect the peer to sign with its `private_key`.</span>
+        <span class="doccomment">/// Random data we expect the peer to sign with its `keypair`.</span>
         <span class="doccomment">/// They should send us their handshake initiation message to</span>
         <span class="doccomment">/// let us know their public key.</span>
         <span class="ident">random_bytes</span>: [<span class="ident">u8</span>; <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>],
@@ -423,7 +422,7 @@
     },
     <span class="doccomment">/// Reply to a handshake initiation message.</span>
     <span class="ident">HandshakeReply</span> {
-        <span class="doccomment">/// Signature of the received random bytes with our `private_key`.</span>
+        <span class="doccomment">/// Signature of the received random bytes with our `keypair`.</span>
         <span class="ident">signature</span>: <span class="ident">Signature</span>,
     },
     <span class="doccomment">/// Whole block structure.</span>
@@ -698,7 +697,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>};
+    <span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
     <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">prelude::StdRng</span>, <span class="ident">RngCore</span>, <span class="ident">SeedableRng</span>};
     <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
     <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
@@ -734,10 +733,9 @@
         <span class="ident">initialize_context</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">random_bytes</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="number">32</span>];
         <span class="ident">StdRng::from_entropy</span>().<span class="ident">fill_bytes</span>(<span class="kw-2">&amp;mut</span> <span class="ident">random_bytes</span>);
-        <span class="kw">let</span> <span class="ident">priv_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">priv_key</span>);
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
         <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="ident">Message::HandshakeInitiation</span> {
-            <span class="ident">public_key</span>,
+            <span class="ident">public_key</span>: <span class="ident">keypair</span>.<span class="ident">get_public_key</span>(),
             <span class="ident">random_bytes</span>,
             <span class="ident">version</span>: <span class="ident">Version::from_str</span>(<span class="string">&quot;TEST.1.2&quot;</span>).<span class="ident">unwrap</span>(),
         };

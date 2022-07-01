@@ -683,15 +683,6 @@
 <span id="677">677</span>
 <span id="678">678</span>
 <span id="679">679</span>
-<span id="680">680</span>
-<span id="681">681</span>
-<span id="682">682</span>
-<span id="683">683</span>
-<span id="684">684</span>
-<span id="685">685</span>
-<span id="686">686</span>
-<span id="687">687</span>
-<span id="688">688</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::BLOCK_ID_SIZE_BYTES</span>;
@@ -708,7 +699,7 @@
 <span class="kw">use</span> <span class="ident">massa_serialization</span>::{
     <span class="ident">Deserializer</span>, <span class="ident">SerializeError</span>, <span class="ident">Serializer</span>, <span class="ident">U32VarIntDeserializer</span>, <span class="ident">U32VarIntSerializer</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
+<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">KeyPair</span>, <span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
 <span class="kw">use</span> <span class="ident">nom::branch::alt</span>;
 <span class="kw">use</span> <span class="ident">nom::bytes::complete::tag</span>;
 <span class="kw">use</span> <span class="ident">nom::error::context</span>;
@@ -830,12 +821,12 @@
     <span class="kw">fn</span> <span class="ident">new_wrapped</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">Serializer</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">U</span>: <span class="ident">Id</span><span class="op">&gt;</span>(
         <span class="ident">content</span>: <span class="self">Self</span>,
         <span class="ident">content_serializer</span>: <span class="ident">SC</span>,
-        <span class="ident">_private_key</span>: <span class="kw-2">&amp;</span><span class="ident">massa_signature::PrivateKey</span>,
-        <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">massa_signature::PublicKey</span>,
+        <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPair</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Wrapped</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">U</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">get_public_key</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">content_serialized</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="ident">content_serializer</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">content</span>, <span class="kw-2">&amp;mut</span> <span class="ident">content_serialized</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">creator_address</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="ident">public_key</span>);
+        <span class="kw">let</span> <span class="ident">creator_address</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>);
 
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
         <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
@@ -843,7 +834,7 @@
         <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">Wrapped</span> {
             <span class="ident">signature</span>: <span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">signature</span>,
-            <span class="ident">creator_public_key</span>: <span class="kw-2">*</span><span class="ident">public_key</span>,
+            <span class="ident">creator_public_key</span>: <span class="ident">public_key</span>,
             <span class="ident">creator_address</span>,
             <span class="ident">thread</span>: <span class="ident">creator_address</span>.<span class="ident">get_thread</span>(<span class="ident">thread_count</span>),
             <span class="ident">id</span>: <span class="ident">U::new</span>(<span class="ident">content</span>.<span class="ident">header</span>.<span class="ident">id</span>.<span class="ident">hash</span>()),
@@ -1288,14 +1279,13 @@
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">endorsement::EndorsementSerializer</span>, <span class="ident">Endorsement</span>};
     <span class="kw">use</span> <span class="ident">massa_serialization::DeserializeError</span>;
-    <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>};
+    <span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
     <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_block_serialization</span>() {
-        <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>);
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">KeyPair::generate</span>();
         <span class="kw">let</span> <span class="ident">parents</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">THREAD_COUNT</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span>[<span class="ident">i</span>])))
             .<span class="ident">collect</span>();
@@ -1314,8 +1304,7 @@
                             <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;blk1&quot;</span>.<span class="ident">as_bytes</span>())),
                         },
                         <span class="ident">EndorsementSerializer::new</span>(),
-                        <span class="kw-2">&amp;</span><span class="ident">private_key</span>,
-                        <span class="kw-2">&amp;</span><span class="ident">public_key</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
                     )
                     .<span class="ident">unwrap</span>(),
                     <span class="ident">Endorsement::new_wrapped</span>(
@@ -1325,15 +1314,13 @@
                             <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;blk2&quot;</span>.<span class="ident">as_bytes</span>())),
                         },
                         <span class="ident">EndorsementSerializer::new</span>(),
-                        <span class="kw-2">&amp;</span><span class="ident">private_key</span>,
-                        <span class="kw-2">&amp;</span><span class="ident">public_key</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
                     )
                     .<span class="ident">unwrap</span>(),
                 ],
             },
             <span class="ident">BlockHeaderSerializer::new</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">private_key</span>,
-            <span class="kw-2">&amp;</span><span class="ident">public_key</span>,
+            <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
         )
         .<span class="ident">unwrap</span>();
 
@@ -1344,13 +1331,8 @@
         };
 
         <span class="comment">// serialize block</span>
-        <span class="kw">let</span> <span class="ident">wrapped_block</span>: <span class="ident">WrappedBlock</span> <span class="op">=</span> <span class="ident">Block::new_wrapped</span>(
-            <span class="ident">orig_block</span>.<span class="ident">clone</span>(),
-            <span class="ident">BlockSerializer::new</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">private_key</span>,
-            <span class="kw-2">&amp;</span><span class="ident">public_key</span>,
-        )
-        .<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">wrapped_block</span>: <span class="ident">WrappedBlock</span> <span class="op">=</span>
+            <span class="ident">Block::new_wrapped</span>(<span class="ident">orig_block</span>.<span class="ident">clone</span>(), <span class="ident">BlockSerializer::new</span>(), <span class="kw-2">&amp;</span><span class="ident">keypair</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ser_block</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="ident">WrappedSerializer::new</span>()
             .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">wrapped_block</span>, <span class="kw-2">&amp;mut</span> <span class="ident">ser_block</span>)

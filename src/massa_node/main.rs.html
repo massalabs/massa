@@ -491,14 +491,6 @@
 <span id="485">485</span>
 <span id="486">486</span>
 <span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -538,7 +530,7 @@
 <span class="kw">use</span> <span class="ident">massa_pool</span>::{<span class="ident">start_pool_controller</span>, <span class="ident">PoolCommandSender</span>, <span class="ident">PoolManager</span>};
 <span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolManager</span>;
 <span class="kw">use</span> <span class="ident">massa_protocol_worker::start_protocol_controller</span>;
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 <span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">parking_lot::RwLock</span>;
@@ -554,7 +546,7 @@
 
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">launch</span>(
     <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    <span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
+    <span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span>,
 ) -&gt; (
     <span class="ident">PoolCommandSender</span>,
     <span class="ident">ConsensusEventReceiver</span>,
@@ -854,7 +846,7 @@
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">load_or_create_staking_keys_file</span>(
     <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>,
-) -&gt; <span class="ident">anyhow::Result</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>)<span class="op">&gt;</span> {
+) -&gt; <span class="ident">anyhow::Result</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="ident">path</span>.<span class="ident">is_file</span>() {
         <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">password</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
             <span class="ident">Password::new</span>()
@@ -863,17 +855,9 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be unlocked&quot;</span>)
         });
         <span class="kw">let</span> (<span class="ident">_version</span>, <span class="ident">decrypted_data</span>) <span class="op">=</span> <span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">password</span>, <span class="kw-2">&amp;</span><span class="ident">tokio::fs::read</span>(<span class="ident">path</span>).<span class="kw">await</span><span class="question-mark">?</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">staking_keys</span>: <span class="ident">anyhow::Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">decrypted_data</span>)<span class="question-mark">?</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">private_key</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="ident">private_key</span>);
-                    <span class="prelude-val">Ok</span>((
-                        <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>),
-                        (<span class="ident">public_key</span>, <span class="kw-2">*</span><span class="ident">private_key</span>),
-                    ))
-                })
-                .<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">staking_keys</span>: <span class="ident">anyhow::Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span>
+            <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span>,
+        <span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">decrypted_data</span>)<span class="question-mark">?</span>);
         <span class="prelude-val">Ok</span>((<span class="ident">password</span>, <span class="ident">staking_keys</span><span class="question-mark">?</span>))
     } <span class="kw">else</span> {
         <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">password</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
@@ -883,7 +867,7 @@
                 .<span class="ident">interact</span>()
                 .<span class="ident">expect</span>(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be created&quot;</span>)
         });
-        <span class="kw">let</span> <span class="ident">json</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="kw-2">&amp;</span><span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span><span class="ident">::new</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">json</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="kw-2">&amp;</span><span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span><span class="ident">::new</span>())<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">encrypted_data</span> <span class="op">=</span> <span class="ident">encrypt</span>(<span class="kw-2">&amp;</span><span class="ident">password</span>, <span class="ident">json</span>.<span class="ident">as_bytes</span>())<span class="question-mark">?</span>;
         <span class="ident">tokio::fs::write</span>(<span class="ident">path</span>, <span class="ident">encrypted_data</span>).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((<span class="ident">password</span>, <span class="ident">Map::default</span>()))

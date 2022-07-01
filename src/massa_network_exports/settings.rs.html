@@ -221,8 +221,8 @@
     <span class="kw">pub</span> <span class="ident">initial_peers_file</span>: <span class="ident">std::path::PathBuf</span>,
     <span class="doccomment">/// Path to the file containing known peers.</span>
     <span class="kw">pub</span> <span class="ident">peers_file</span>: <span class="ident">std::path::PathBuf</span>,
-    <span class="doccomment">/// Path to the file containing our private key</span>
-    <span class="kw">pub</span> <span class="ident">private_key_file</span>: <span class="ident">std::path::PathBuf</span>,
+    <span class="doccomment">/// Path to the file containing our keypair</span>
+    <span class="kw">pub</span> <span class="ident">keypair_file</span>: <span class="ident">std::path::PathBuf</span>,
     <span class="doccomment">/// Configuration for `PeerType` connections</span>
     <span class="kw">pub</span> <span class="ident">peer_types_config</span>: <span class="ident">EnumMap</span><span class="op">&lt;</span><span class="ident">PeerType</span>, <span class="ident">PeerTypeConnectionConfig</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Limit on the number of in connections per ip.</span>
@@ -269,7 +269,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::NetworkSettings</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">test_exports::tools::get_temp_private_key_file</span>, <span class="ident">PeerType</span>};
+    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">test_exports::tools::get_temp_keypair_file</span>, <span class="ident">PeerType</span>};
     <span class="kw">use</span> <span class="ident">enum_map::enum_map</span>;
     <span class="kw">use</span> <span class="ident">massa_models::constants</span>::{<span class="ident">BASE_NETWORK_CONTROLLER_IP</span>, <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>};
     <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
@@ -309,7 +309,7 @@
                 <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">10_000</span>),
                 <span class="ident">message_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">5000u64</span>),
                 <span class="ident">ask_peer_list_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">50000u64</span>),
-                <span class="ident">private_key_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
+                <span class="ident">keypair_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
                 <span class="ident">max_send_wait</span>: <span class="ident">MassaTime::from</span>(<span class="number">100</span>),
                 <span class="ident">ban_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">100_000_000</span>),
                 <span class="ident">initial_peers_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
@@ -368,7 +368,7 @@
                 <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">30000</span>),
                 <span class="ident">message_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">5000u64</span>),
                 <span class="ident">ask_peer_list_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">50000u64</span>),
-                <span class="ident">private_key_file</span>: <span class="ident">get_temp_private_key_file</span>().<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
+                <span class="ident">keypair_file</span>: <span class="ident">get_temp_keypair_file</span>().<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
                 <span class="ident">max_send_wait</span>: <span class="ident">MassaTime::from</span>(<span class="number">100</span>),
                 <span class="ident">ban_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">100_000_000</span>),
                 <span class="ident">initial_peers_file</span>: <span class="ident">peers_file</span>.<span class="ident">to_path_buf</span>(),

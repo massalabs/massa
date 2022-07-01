@@ -132,7 +132,7 @@
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">settings::GraphConfig</span>, <span class="ident">BlockGraph</span>, <span class="ident">BootstrapableGraph</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">prehash::Map</span>, <span class="ident">Address</span>};
 <span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports</span>::{<span class="ident">ExportProofOfStake</span>, <span class="ident">ProofOfStake</span>, <span class="ident">ProofOfStakeConfig</span>};
-<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 <span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>};
@@ -154,7 +154,7 @@
     <span class="ident">storage</span>: <span class="ident">Storage</span>,
     <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
     <span class="ident">password</span>: <span class="ident">String</span>,
-    <span class="ident">staking_keys</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
+    <span class="ident">staking_keys</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">KeyPair</span><span class="op">&gt;</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(
     <span class="ident">ConsensusCommandSender</span>,
     <span class="ident">ConsensusEventReceiver</span>,

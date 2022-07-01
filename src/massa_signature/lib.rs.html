@@ -17,7 +17,6 @@
 <span id="11">11</span>
 <span id="12">12</span>
 <span id="13">13</span>
-<span id="14">14</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Signature management</span>
 
@@ -28,8 +27,7 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::MassaSignatureError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">signature_impl</span>::{
-    <span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>, <span class="ident">sign</span>, <span class="ident">verify_signature</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>,
-    <span class="ident">PublicKeyDeserializer</span>, <span class="ident">Signature</span>, <span class="ident">SignatureDeserializer</span>, <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>,
+    <span class="ident">KeyPair</span>, <span class="ident">PublicKey</span>, <span class="ident">PublicKeyDeserializer</span>, <span class="ident">Signature</span>, <span class="ident">SignatureDeserializer</span>,
     <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>, <span class="ident">SIGNATURE_SIZE_BYTES</span>,
 };
 </code></pre></div>

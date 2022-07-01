@@ -300,7 +300,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
-<span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 <span class="kw">use</span> <span class="ident">serde::de::DeserializeOwned</span>;
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
@@ -379,10 +379,10 @@
             .<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// Add a vector of new private keys for the node to use to stake.</span>
+    <span class="doccomment">/// Add a vector of new keypair for the node to use to stake.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_staking_private_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">private_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;add_staking_private_keys&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">private_keys</span>])
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_staking_secret_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">keypairs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;add_staking_secret_keys&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">keypairs</span>])
             .<span class="kw">await</span>
     }
 

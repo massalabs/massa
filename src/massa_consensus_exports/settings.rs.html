@@ -690,8 +690,6 @@
 <span id="684">684</span>
 <span id="685">685</span>
 <span id="686">686</span>
-<span id="687">687</span>
-<span id="688">688</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::assertions_on_constants</span>)]</span>
 <span class="doccomment">//! Definition &amp; Implementation of the consensus settings</span>
@@ -744,7 +742,7 @@
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ProofOfStakeConfig</span>;
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolEventReceiver</span>};
-<span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
+<span class="kw">use</span> <span class="ident">massa_signature::KeyPair</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -760,7 +758,7 @@
 <span class="doccomment">/// Assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusSettings</span> {
-    <span class="doccomment">/// Staking private keys</span>
+    <span class="doccomment">/// Staking keys</span>
     <span class="kw">pub</span> <span class="ident">staking_keys_path</span>: <span class="ident">PathBuf</span>,
     <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.</span>
     <span class="kw">pub</span> <span class="ident">max_discarded_blocks</span>: <span class="ident">usize</span>,
@@ -818,9 +816,9 @@
     <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
     <span class="doccomment">/// Time between the periods in the same thread.</span>
     <span class="kw">pub</span> <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// `PrivateKey` to sign genesis blocks.</span>
-    <span class="kw">pub</span> <span class="ident">genesis_key</span>: <span class="ident">PrivateKey</span>,
-    <span class="doccomment">/// Staking private keys</span>
+    <span class="doccomment">/// `KeyPair` to sign genesis blocks.</span>
+    <span class="kw">pub</span> <span class="ident">genesis_key</span>: <span class="ident">KeyPair</span>,
+    <span class="doccomment">/// Staking keys</span>
     <span class="kw">pub</span> <span class="ident">staking_keys_path</span>: <span class="ident">PathBuf</span>,
     <span class="doccomment">/// Maximum number of blocks allowed in discarded blocks.</span>
     <span class="kw">pub</span> <span class="ident">max_discarded_blocks</span>: <span class="ident">usize</span>,
@@ -912,7 +910,7 @@
             <span class="ident">end_timestamp</span>: <span class="self">self</span>.<span class="ident">end_timestamp</span>,
             <span class="ident">thread_count</span>: <span class="self">self</span>.<span class="ident">thread_count</span>,
             <span class="ident">t0</span>: <span class="self">self</span>.<span class="ident">t0</span>,
-            <span class="ident">genesis_key</span>: <span class="self">self</span>.<span class="ident">genesis_key</span>,
+            <span class="ident">genesis_key</span>: <span class="self">self</span>.<span class="ident">genesis_key</span>.<span class="ident">clone</span>(),
             <span class="ident">staking_keys_path</span>: <span class="self">self</span>.<span class="ident">staking_keys_path</span>.<span class="ident">clone</span>(),
             <span class="ident">max_discarded_blocks</span>: <span class="self">self</span>.<span class="ident">max_discarded_blocks</span>,
             <span class="ident">future_block_processing_max_periods</span>: <span class="self">self</span>.<span class="ident">future_block_processing_max_periods</span>,
@@ -954,7 +952,7 @@
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">ConsensusConfig</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">GraphConfig</span> {
             <span class="ident">thread_count</span>: <span class="ident">cfg</span>.<span class="ident">thread_count</span>,
-            <span class="ident">genesis_key</span>: <span class="ident">cfg</span>.<span class="ident">genesis_key</span>,
+            <span class="ident">genesis_key</span>: <span class="ident">cfg</span>.<span class="ident">genesis_key</span>.<span class="ident">clone</span>(),
             <span class="ident">max_discarded_blocks</span>: <span class="ident">cfg</span>.<span class="ident">max_discarded_blocks</span>,
             <span class="ident">future_block_processing_max_periods</span>: <span class="ident">cfg</span>.<span class="ident">future_block_processing_max_periods</span>,
             <span class="ident">max_future_processing_blocks</span>: <span class="ident">cfg</span>.<span class="ident">max_future_processing_blocks</span>,
@@ -979,7 +977,7 @@
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">ConsensusConfig</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">ProofOfStakeConfig</span> {
             <span class="ident">thread_count</span>: <span class="ident">cfg</span>.<span class="ident">thread_count</span>,
-            <span class="ident">genesis_key</span>: <span class="ident">cfg</span>.<span class="ident">genesis_key</span>,
+            <span class="ident">genesis_key</span>: <span class="ident">cfg</span>.<span class="ident">genesis_key</span>.<span class="ident">clone</span>(),
             <span class="ident">periods_per_cycle</span>: <span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>,
             <span class="ident">pos_lookback_cycles</span>: <span class="ident">cfg</span>.<span class="ident">pos_lookback_cycles</span>,
             <span class="ident">pos_lock_cycles</span>: <span class="ident">cfg</span>.<span class="ident">pos_lock_cycles</span>,
@@ -1062,7 +1060,7 @@
             <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
             <span class="ident">thread_count</span>,
             <span class="ident">t0</span>,
-            <span class="ident">genesis_key</span>: <span class="kw-2">*</span><span class="ident">GENESIS_KEY</span>,
+            <span class="ident">genesis_key</span>: <span class="ident">GENESIS_KEY</span>.<span class="ident">clone</span>(),
             <span class="ident">staking_keys_path</span>: <span class="ident">settings</span>.<span class="ident">staking_keys_path</span>.<span class="ident">clone</span>(),
             <span class="ident">max_discarded_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_discarded_blocks</span>,
             <span class="ident">future_block_processing_max_periods</span>: <span class="ident">settings</span>.<span class="ident">future_block_processing_max_periods</span>,
@@ -1123,7 +1121,7 @@
             <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
             <span class="ident">thread_count</span>,
             <span class="ident">t0</span>,
-            <span class="ident">genesis_key</span>: <span class="kw-2">*</span><span class="ident">GENESIS_KEY</span>,
+            <span class="ident">genesis_key</span>: <span class="ident">GENESIS_KEY</span>.<span class="ident">clone</span>(),
             <span class="ident">staking_keys_path</span>: <span class="ident">settings</span>.<span class="ident">staking_keys_path</span>,
             <span class="ident">max_discarded_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_discarded_blocks</span>,
             <span class="ident">future_block_processing_max_periods</span>: <span class="ident">settings</span>.<span class="ident">future_block_processing_max_periods</span>,
@@ -1204,7 +1202,7 @@
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">initial_ledger_path</span>: <span class="kw-2">&amp;</span><span class="ident">std::path::Path</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">staking_keys</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">2</span> {
-            <span class="ident">staking_keys</span>.<span class="ident">push</span>(<span class="ident">massa_signature::generate_random_private_key</span>());
+            <span class="ident">staking_keys</span>.<span class="ident">push</span>(<span class="ident">KeyPair::generate</span>());
         }
         <span class="ident">massa_models::init_serialization_context</span>(<span class="ident">massa_models::SerializationContext::default</span>());
         <span class="ident">ConsensusSettings</span> {
@@ -1269,7 +1267,7 @@
             <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
             <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
             <span class="ident">t0</span>: <span class="ident">T0</span>,
-            <span class="ident">genesis_key</span>: <span class="kw-2">*</span><span class="ident">GENESIS_KEY</span>,
+            <span class="ident">genesis_key</span>: <span class="ident">GENESIS_KEY</span>.<span class="ident">clone</span>(),
             <span class="ident">staking_keys_path</span>: <span class="ident">Default::default</span>(),
             <span class="ident">max_discarded_blocks</span>: <span class="ident">MAX_DISCARDED_BLOCKS</span>,
             <span class="ident">future_block_processing_max_periods</span>: <span class="ident">FUTURE_BLOCK_PROCESSING_MAX_PERIODS</span>,
@@ -1320,9 +1318,7 @@
     <span class="doccomment">/// default consensus configuration</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default_with_paths</span>() -&gt; <span class="self">Self</span> {
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tools</span>::<span class="kw-2">*</span>;
-        <span class="kw">let</span> <span class="ident">staking_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">1</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">massa_signature::generate_random_private_key</span>())
-            .<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">staking_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPair</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">1</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">KeyPair::generate</span>()).<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">std::collections::HashMap::new</span>());
         <span class="kw">let</span> <span class="ident">staking_file</span> <span class="op">=</span> <span class="ident">generate_staking_keys_file</span>(<span class="kw-2">&amp;</span><span class="ident">staking_keys</span>);
         <span class="kw">let</span> <span class="ident">rolls_file</span> <span class="op">=</span> <span class="ident">generate_default_roll_counts_file</span>(<span class="ident">staking_keys</span>);
@@ -1338,8 +1334,8 @@
         }
     }
 
-    <span class="doccomment">/// Default consensus configuration from private staking keys</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default_with_staking_keys</span>(<span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span>[<span class="ident">PrivateKey</span>]) -&gt; <span class="self">Self</span> {
+    <span class="doccomment">/// Default consensus configuration from staking keypairs</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default_with_staking_keys</span>(<span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPair</span>]) -&gt; <span class="self">Self</span> {
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tools</span>::<span class="kw-2">*</span>;
         <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">std::collections::HashMap::new</span>());
         <span class="kw">let</span> <span class="ident">staking_file</span> <span class="op">=</span> <span class="ident">generate_staking_keys_file</span>(<span class="ident">staking_keys</span>);
@@ -1356,9 +1352,9 @@
         }
     }
 
-    <span class="doccomment">/// Default consensus configuration from staking private keys and ledger</span>
+    <span class="doccomment">/// Default consensus configuration from staking keys and ledger</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default_with_staking_keys_and_ledger</span>(
-        <span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span>[<span class="ident">PrivateKey</span>],
+        <span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPair</span>],
         <span class="ident">ledger</span>: <span class="kw-2">&amp;</span><span class="ident">std::collections::HashMap</span><span class="op">&lt;</span>
             <span class="ident">massa_models::Address</span>,
             <span class="ident">massa_models::ledger_models::LedgerData</span>,
