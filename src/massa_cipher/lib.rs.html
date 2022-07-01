@@ -26,23 +26,19 @@
 <span id="20">20</span>
 <span id="21">21</span>
 <span id="22">22</span>
-<span id="23">23</span>
-<span id="24">24</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">//! Cipher crate</span>
+<span class="doccomment">//! MASSA Cipher crate</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! `massa-cipher` uses AES-GCM-SIV ([RFC 8452](https://datatracker.ietf.org/doc/html/rfc8452)).</span>
+<span class="doccomment">//! `massa-cipher` uses AES-GCM</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! AES-GCM-SIV is a state-of-the-art high-performance Authenticated Encryption with Associated Data (AEAD)</span>
-<span class="doccomment">//! cipher which also provides nonce reuse misuse resistance.</span>
-<span class="doccomment">//! Suitable as a general purpose symmetric encryption cipher, AES-GCM-SIV also removes many of the sharp edges of AES-GCM.</span>
+<span class="doccomment">//! AES-GCM is a state-of-the-art high-performance Authenticated Encryption with Associated Data (AEAD)</span>
+<span class="doccomment">//! that provides confidentiality and authenticity.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! A nonce is a single-use value which enables securely encrypting multiple messages under the same key.</span>
-<span class="doccomment">//! Nonces need not be random: a counter can be used, so long as the values are never repeated under the same key.</span>
+<span class="doccomment">//! To hash the password before using it as a cipher key, we use the PBKDF2 key derivation function</span>
+<span class="doccomment">//! as specified in [RFC 2898](https://datatracker.ietf.org/doc/html/rfc2898).</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! No complete security audits of the crate we use has been performed.</span>
-<span class="doccomment">//! But some of this crate&#39;s dependencies were audited by by NCC Group as part of an audit of the AES-GCM crate</span>
+<span class="doccomment">//! The AES-GCM crate we use has received one security audit by NCC Group, with no significant findings.</span>
 
 <span class="kw">mod</span> <span class="ident">constants</span>;
 <span class="kw">mod</span> <span class="ident">decrypt</span>;

@@ -17,7 +17,13 @@
 <span id="11">11</span>
 <span id="12">12</span>
 <span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+
+<span class="doccomment">//! massa-cipher error module</span>
 
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
@@ -29,6 +35,8 @@
     <span class="ident">EncryptionError</span>(<span class="ident">String</span>),
     <span class="doccomment">/// Decryption error: {0}</span>
     <span class="ident">DecryptionError</span>(<span class="ident">String</span>),
+    <span class="doccomment">/// Utf8 error: {0}</span>
+    <span class="ident">Utf8Error</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::str::Utf8Error</span>),
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_cipher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (7425fb293 2022-06-30)" ></div>

@@ -31,30 +31,82 @@
 <span id="25">25</span>
 <span id="26">26</span>
 <span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident">aes_gcm_siv::aead</span>::{<span class="ident">Aead</span>, <span class="ident">NewAead</span>};
-<span class="kw">use</span> <span class="ident">aes_gcm_siv</span>::{<span class="ident">Aes256GcmSiv</span>, <span class="ident">Key</span>, <span class="ident">Nonce</span>};
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">thread_rng</span>, <span class="ident">RngCore</span>};
+<span class="doccomment">//! massa-cipher encryption module.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Read `lib.rs` module documentation for more information.</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::NONCE_SIZE</span>;
+<span class="kw">use</span> <span class="ident">aes_gcm::aead</span>::{<span class="ident">Aead</span>, <span class="ident">NewAead</span>};
+<span class="kw">use</span> <span class="ident">aes_gcm</span>::{<span class="ident">Aes256Gcm</span>, <span class="ident">Key</span>, <span class="ident">Nonce</span>};
+<span class="kw">use</span> <span class="ident">massa_models::SerializeVarInt</span>;
+<span class="kw">use</span> <span class="ident">pbkdf2::password_hash::Salt</span>;
+<span class="kw">use</span> <span class="ident">pbkdf2</span>::{<span class="ident">password_hash::PasswordHasher</span>, <span class="ident">Pbkdf2</span>};
+<span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">distributions::Alphanumeric</span>, <span class="ident">thread_rng</span>, <span class="ident">Rng</span>, <span class="ident">RngCore</span>};
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">HASH_PARAMS</span>, <span class="ident">NONCE_SIZE</span>, <span class="ident">SALT_SIZE</span>, <span class="ident">VERSION</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::CipherError</span>;
 
-<span class="doccomment">/// Encryption function using AES-GCM-SIV cipher.</span>
+<span class="doccomment">/// Encryption function using AES-GCM cipher.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Read `lib.rs` module documentation for more information.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">encrypt</span>(<span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CipherError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">cipher</span> <span class="op">=</span> <span class="ident">Aes256GcmSiv::new</span>(<span class="ident">Key::from_slice</span>(
-        <span class="ident">Hash::compute_from</span>(<span class="ident">password</span>.<span class="ident">as_bytes</span>()).<span class="ident">to_bytes</span>(),
-    ));
+    <span class="comment">// generate the PBKDF2 salt</span>
+    <span class="kw">let</span> <span class="ident">raw_salt</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">thread_rng</span>()
+        .<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">Alphanumeric</span>)
+        .<span class="ident">take</span>(<span class="ident">SALT_SIZE</span>)
+        .<span class="ident">map</span>(<span class="ident">char::from</span>)
+        .<span class="ident">collect</span>();
+    <span class="kw">let</span> <span class="ident">salt</span> <span class="op">=</span> <span class="ident">Salt::new</span>(<span class="kw-2">&amp;</span><span class="ident">raw_salt</span>).<span class="ident">expect</span>(<span class="string">&quot;salt creation failed&quot;</span>);
+
+    <span class="comment">// compute PBKDF2 password hash</span>
+    <span class="kw">let</span> <span class="ident">password_hash</span> <span class="op">=</span> <span class="ident">Pbkdf2</span>
+        .<span class="ident">hash_password_customized</span>(<span class="ident">password</span>.<span class="ident">as_bytes</span>(), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="ident">HASH_PARAMS</span>, <span class="ident">salt</span>)
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">CipherError::EncryptionError</span>(<span class="ident">e</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>
+        .<span class="ident">hash</span>
+        .<span class="ident">expect</span>(<span class="string">&quot;content is missing after a successful hash&quot;</span>);
+
+    <span class="comment">// generate the AES-GCM nonce</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nonce_bytes</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">NONCE_SIZE</span>];
     <span class="ident">thread_rng</span>().<span class="ident">fill_bytes</span>(<span class="kw-2">&amp;mut</span> <span class="ident">nonce_bytes</span>);
     <span class="kw">let</span> <span class="ident">nonce</span> <span class="op">=</span> <span class="ident">Nonce::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">nonce_bytes</span>);
+
+    <span class="comment">// encrypt the data</span>
+    <span class="kw">let</span> <span class="ident">cipher</span> <span class="op">=</span> <span class="ident">Aes256Gcm::new</span>(<span class="ident">Key::from_slice</span>(<span class="ident">password_hash</span>.<span class="ident">as_bytes</span>()));
     <span class="kw">let</span> <span class="ident">encrypted_bytes</span> <span class="op">=</span> <span class="ident">cipher</span>
         .<span class="ident">encrypt</span>(<span class="ident">nonce</span>, <span class="ident">data</span>.<span class="ident">as_ref</span>())
         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">CipherError::EncryptionError</span>(<span class="ident">e</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">content</span> <span class="op">=</span> <span class="ident">nonce_bytes</span>.<span class="ident">to_vec</span>();
+
+    <span class="comment">// build the encryption result</span>
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">content</span> <span class="op">=</span> <span class="ident">VERSION</span>.<span class="ident">to_varint_bytes</span>();
+    <span class="ident">content</span>.<span class="ident">extend</span>(<span class="ident">salt</span>.<span class="ident">as_bytes</span>());
+    <span class="ident">content</span>.<span class="ident">extend</span>(<span class="ident">nonce_bytes</span>);
     <span class="ident">content</span>.<span class="ident">extend</span>(<span class="ident">encrypted_bytes</span>);
     <span class="prelude-val">Ok</span>(<span class="ident">content</span>)
 }
