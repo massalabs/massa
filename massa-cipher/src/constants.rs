@@ -18,9 +18,6 @@ pub const NONCE_SIZE: usize = 12;
 /// PBKDF2 salt size.
 pub const SALT_SIZE: usize = 12;
 
-/// PBKDF2 base64 salt size.
-pub const B64_SALT_SIZE: usize = (SALT_SIZE / 3) * 4;
-
 /// PBKDF2 hash parameters.
 pub const HASH_PARAMS: Params = Params {
     rounds: 10_000,

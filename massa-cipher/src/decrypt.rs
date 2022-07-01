@@ -12,7 +12,7 @@ use pbkdf2::{
     Pbkdf2,
 };
 
-use crate::constants::{B64_SALT_SIZE, HASH_PARAMS, NONCE_SIZE};
+use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
 use crate::error::CipherError;
 
 /// Decryption function using AES-GCM cipher.
@@ -28,7 +28,7 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<(u32, Vec<u8>), CipherErro
         })?;
 
     // parse PBKDF2 salt
-    let salt_end_index = index + B64_SALT_SIZE;
+    let salt_end_index = index + SALT_SIZE;
     let salt_data = data.get(index..salt_end_index).ok_or_else(|| {
         CipherError::DecryptionError(
             "wallet file truncated: salt missing or incomplete".to_string(),
