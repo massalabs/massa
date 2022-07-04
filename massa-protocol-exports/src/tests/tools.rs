@@ -17,27 +17,27 @@ use massa_models::{
     BlockHeaderSerializer, Endorsement, EndorsementSerializer, Operation, OperationType,
 };
 use massa_network_exports::NetworkCommand;
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::collections::HashMap;
 use tokio::time::sleep;
 
 /// test utility structures
-/// keeps private key and associated node id
+/// keeps keypair and associated node id
 #[derive(Debug, Clone)]
 pub struct NodeInfo {
-    /// private key
-    pub private_key: PrivateKey,
+    /// key pair of the node
+    pub keypair: KeyPair,
     /// node id
     pub id: NodeId,
 }
 
 /// create node info
 pub fn create_node() -> NodeInfo {
-    let private_key = generate_random_private_key();
-    let id = NodeId(derive_public_key(&private_key));
-    NodeInfo { private_key, id }
+    let keypair = KeyPair::generate();
+    let id = NodeId(keypair.get_public_key());
+    NodeInfo { keypair, id }
 }
 
 /// create number of nodes and connect them with protocol
@@ -58,7 +58,7 @@ pub async fn create_and_connect_nodes(
 /// Creates a block for use in protocol,
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
-pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> WrappedBlock {
+pub fn create_block(keypair: &KeyPair) -> WrappedBlock {
     let header = BlockHeader::new_wrapped(
         BlockHeader {
             slot: Slot::new(1, 0),
@@ -70,8 +70,7 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Wrapped
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        private_key,
-        public_key,
+        keypair,
     )
     .unwrap();
 
@@ -81,21 +80,18 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Wrapped
             operations: Default::default(),
         },
         BlockSerializer::new(),
-        private_key,
-        public_key,
+        keypair,
     )
     .unwrap()
 }
 
 /// create a block with no endorsement
 ///
-/// * `private_key`: key that sign the block
-/// * `public_key`: creator's key TODO could be derived from the private key
+/// * `keypair`: key that sign the block
 /// * `slot`
 /// * `operations`
 pub fn create_block_with_operations(
-    private_key: &PrivateKey,
-    public_key: &PublicKey,
+    keypair: &KeyPair,
     slot: Slot,
     operations: Vec<WrappedOperation>,
     storage: Storage,
@@ -116,8 +112,7 @@ pub fn create_block_with_operations(
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),
-        private_key,
-        public_key,
+        keypair,
     )
     .unwrap();
 
@@ -135,21 +130,18 @@ pub fn create_block_with_operations(
             operations: op_ids,
         },
         BlockSerializer::new(),
-        private_key,
-        public_key,
+        keypair,
     )
     .unwrap()
 }
 
 /// create a block with no operation
 ///
-/// * `private_key`: key that sign the block
-/// * `public_key`: creator's key TODO could be derived from the private key
+/// * `keypair`: key that sign the block
 /// * `slot`
 /// * `endorsements`
 pub fn create_block_with_endorsements(
-    private_key: &PrivateKey,
-    public_key: &PublicKey,
+    keypair: &KeyPair,
     slot: Slot,
     endorsements: Vec<WrappedEndorsement>,
 ) -> WrappedBlock {
@@ -164,8 +156,7 @@ pub fn create_block_with_endorsements(
             endorsements,
         },
         BlockHeaderSerializer::new(),
-        private_key,
-        public_key,
+        keypair,
     )
     .unwrap();
 
@@ -175,8 +166,7 @@ pub fn create_block_with_endorsements(
             operations: Default::default(),
         },
         BlockSerializer::new(),
-        private_key,
-        public_key,
+        keypair,
     )
     .unwrap()
 }
@@ -215,35 +205,25 @@ pub async fn send_and_propagate_block(
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
 pub fn create_endorsement() -> WrappedEndorsement {
-    let sender_priv = generate_random_private_key();
-    let sender_public_key = derive_public_key(&sender_priv);
+    let keypair = KeyPair::generate();
 
     let content = Endorsement {
         slot: Slot::new(10, 1),
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    Endorsement::new_wrapped(
-        content,
-        EndorsementSerializer::new(),
-        &sender_priv,
-        &sender_public_key,
-    )
-    .unwrap()
+    Endorsement::new_wrapped(content, EndorsementSerializer::new(), &keypair).unwrap()
 }
 
 /// Create an operation, from a specific sender, and with a specific expire period.
 pub fn create_operation_with_expire_period(
-    sender_priv: &PrivateKey,
+    keypair: &KeyPair,
     expire_period: u64,
 ) -> WrappedOperation {
-    let sender_pub = derive_public_key(sender_priv);
-
-    let recv_priv = generate_random_private_key();
-    let recv_pub = derive_public_key(&recv_priv);
+    let recv_keypair = KeyPair::generate();
 
     let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&recv_pub),
+        recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
         amount: Amount::default(),
     };
     let content = Operation {
@@ -251,13 +231,7 @@ pub fn create_operation_with_expire_period(
         op,
         expire_period,
     };
-    Operation::new_wrapped(
-        content,
-        OperationSerializer::new(),
-        sender_priv,
-        &sender_pub,
-    )
-    .unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 lazy_static::lazy_static! {

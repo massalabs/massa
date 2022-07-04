@@ -4,7 +4,7 @@ use massa_models::{
     Address, Amount, Operation, OperationId, OperationSerializer, OperationType, Slot,
     WrappedOperation,
 };
-use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_signature::KeyPair;
 use serial_test::serial;
 use std::str::FromStr;
 
@@ -13,14 +13,12 @@ use crate::operation_pool::OperationPool;
 use super::settings::POOL_CONFIG;
 
 fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
-    let sender_priv = generate_random_private_key();
-    let sender_pub = derive_public_key(&sender_priv);
+    let sender_keypair = KeyPair::generate();
 
-    let recv_priv = generate_random_private_key();
-    let recv_pub = derive_public_key(&recv_priv);
+    let recv_keypair = KeyPair::generate();
 
     let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&recv_pub),
+        recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
         amount: Amount::default(),
     };
     let content = Operation {
@@ -28,13 +26,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
         op,
         expire_period,
     };
-    Operation::new_wrapped(
-        content,
-        OperationSerializer::new(),
-        &sender_priv,
-        &sender_pub,
-    )
-    .unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 #[test]

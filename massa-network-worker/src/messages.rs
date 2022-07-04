@@ -30,7 +30,7 @@ pub enum Message {
     HandshakeInitiation {
         /// Our `public_key`, so the peer can decode our reply.
         public_key: PublicKey,
-        /// Random data we expect the peer to sign with its `private_key`.
+        /// Random data we expect the peer to sign with its `keypair`.
         /// They should send us their handshake initiation message to
         /// let us know their public key.
         random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES],
@@ -38,7 +38,7 @@ pub enum Message {
     },
     /// Reply to a handshake initiation message.
     HandshakeReply {
-        /// Signature of the received random bytes with our `private_key`.
+        /// Signature of the received random bytes with our `keypair`.
         signature: Signature,
     },
     /// Info about the contents of a block.
@@ -338,7 +338,7 @@ impl DeserializeCompact for Message {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use massa_signature::KeyPair;
     use rand::{prelude::StdRng, RngCore, SeedableRng};
     use serial_test::serial;
     use std::str::FromStr;
@@ -374,10 +374,9 @@ mod tests {
         initialize_context();
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);
-        let priv_key = generate_random_private_key();
-        let public_key = derive_public_key(&priv_key);
+        let keypair = KeyPair::generate();
         let msg = Message::HandshakeInitiation {
-            public_key,
+            public_key: keypair.get_public_key(),
             random_bytes,
             version: Version::from_str("TEST.1.2").unwrap(),
         };

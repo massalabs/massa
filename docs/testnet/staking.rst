@@ -45,17 +45,17 @@ with:
 Telling your node to start staking with your rolls
 ==================================================
 
-Get the private key that has rolls in your wallet:
+Get the secret key that has rolls in your wallet:
 
 .. code-block::
 
     wallet_info
 
-Register your private key so that your node start to stake with it:
+Register your secret key so that your node start to stake with it:
 
 .. code-block::
 
-    node_add_staking_private_keys <your_private_key>
+    node_add_staking_secret_keys <your_secret_key>
 
 Now you should wait some time so that your rolls become active: 3 cycles
 of 128 periods (one period is 32 blocks - 16 sec), so about 1h40

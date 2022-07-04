@@ -26,7 +26,7 @@ use massa_models::{
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolCommand;
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::{collections::HashSet, future::Future, path::Path};
@@ -44,40 +44,32 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 
 pub struct AddressTest {
     pub address: Address,
-    pub private_key: PrivateKey,
-    pub public_key: PublicKey,
+    pub keypair: KeyPair,
 }
 
-impl From<AddressTest> for (Address, PrivateKey, PublicKey) {
+impl From<AddressTest> for (Address, KeyPair) {
     fn from(addr: AddressTest) -> Self {
-        (addr.address, addr.private_key, addr.public_key)
+        (addr.address, addr.keypair)
     }
 }
 
 /// Same as `random_address()` but force a specific thread
 pub fn random_address_on_thread(thread: u8, thread_count: u8) -> AddressTest {
     loop {
-        let private_key = generate_random_private_key();
-        let public_key = derive_public_key(&private_key);
-        let address = Address::from_public_key(&public_key);
+        let keypair = KeyPair::generate();
+        let address = Address::from_public_key(&keypair.get_public_key());
         if thread == address.get_thread(thread_count) {
-            return AddressTest {
-                address,
-                private_key,
-                public_key,
-            };
+            return AddressTest { address, keypair };
         }
     }
 }
 
 /// Generate a random address
 pub fn random_address() -> AddressTest {
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
+    let keypair = KeyPair::generate();
     AddressTest {
-        address: Address::from_public_key(&public_key),
-        public_key,
-        private_key,
+        address: Address::from_public_key(&keypair.get_public_key()),
+        keypair,
     }
 }
 
@@ -295,9 +287,9 @@ pub async fn create_and_test_block(
     best_parents: Vec<BlockId>,
     valid: bool,
     trace: bool,
-    creator: PrivateKey,
+    creator: &KeyPair,
 ) -> BlockId {
-    let (block, _) = create_block(cfg, slot, best_parents, creator);
+    let block = create_block(cfg, slot, best_parents, creator);
     let block_id = block.id;
     if trace {
         info!("create block:{}", block.id);
@@ -333,8 +325,7 @@ pub async fn propagate_block(
 }
 
 pub fn create_roll_transaction(
-    priv_key: PrivateKey,
-    sender_public_key: PublicKey,
+    keypair: &KeyPair,
     roll_count: u64,
     buy: bool,
     expire_period: u64,
@@ -351,13 +342,7 @@ pub fn create_roll_transaction(
         expire_period,
         op,
     };
-    Operation::new_wrapped(
-        content,
-        OperationSerializer::new(),
-        &priv_key,
-        &sender_public_key,
-    )
-    .unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
 }
 
 pub async fn wait_pool_slot(
@@ -382,8 +367,7 @@ pub async fn wait_pool_slot(
 }
 
 pub fn create_transaction(
-    priv_key: PrivateKey,
-    sender_public_key: PublicKey,
+    keypair: &KeyPair,
     recipient_address: Address,
     amount: u64,
     expire_period: u64,
@@ -399,19 +383,12 @@ pub fn create_transaction(
         expire_period,
         op,
     };
-    Operation::new_wrapped(
-        content,
-        OperationSerializer::new(),
-        &priv_key,
-        &sender_public_key,
-    )
-    .unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn create_executesc(
-    priv_key: PrivateKey,
-    sender_public_key: PublicKey,
+    keypair: &KeyPair,
     expire_period: u64,
     fee: u64,
     data: Vec<u8>,
@@ -431,57 +408,37 @@ pub fn create_executesc(
         expire_period,
         op,
     };
-    Operation::new_wrapped(
-        content,
-        OperationSerializer::new(),
-        &priv_key,
-        &sender_public_key,
-    )
-    .unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), keypair).unwrap()
 }
 
 pub fn create_roll_buy(
-    priv_key: PrivateKey,
+    keypair: &KeyPair,
     roll_count: u64,
     expire_period: u64,
     fee: u64,
 ) -> WrappedOperation {
     let op = OperationType::RollBuy { roll_count };
-    let sender_public_key = derive_public_key(&priv_key);
     let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Operation::new_wrapped(
-        content,
-        OperationSerializer::new(),
-        &priv_key,
-        &sender_public_key,
-    )
-    .unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
 }
 
 pub fn create_roll_sell(
-    priv_key: PrivateKey,
+    keypair: &KeyPair,
     roll_count: u64,
     expire_period: u64,
     fee: u64,
 ) -> WrappedOperation {
     let op = OperationType::RollSell { roll_count };
-    let sender_public_key = derive_public_key(&priv_key);
     let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    Operation::new_wrapped(
-        content,
-        OperationSerializer::new(),
-        &priv_key,
-        &sender_public_key,
-    )
-    .unwrap()
+    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
 }
 
 // returns hash and resulting discarded blocks
@@ -489,8 +446,8 @@ pub fn create_block(
     cfg: &ConsensusConfig,
     slot: Slot,
     best_parents: Vec<BlockId>,
-    creator: PrivateKey,
-) -> (WrappedBlock, PrivateKey) {
+    creator: &KeyPair,
+) -> WrappedBlock {
     create_block_with_merkle_root(
         cfg,
         Hash::compute_from("default_val".as_bytes()),
@@ -506,9 +463,8 @@ pub fn create_block_with_merkle_root(
     operation_merkle_root: Hash,
     slot: Slot,
     best_parents: Vec<BlockId>,
-    creator: PrivateKey,
-) -> (WrappedBlock, PrivateKey) {
-    let public_key = derive_public_key(&creator);
+    creator: &KeyPair,
+) -> WrappedBlock {
     let header = BlockHeader::new_wrapped(
         BlockHeader {
             slot,
@@ -518,7 +474,6 @@ pub fn create_block_with_merkle_root(
         },
         BlockHeaderSerializer::new(),
         &creator,
-        &public_key,
     )
     .unwrap();
 
@@ -529,45 +484,34 @@ pub fn create_block_with_merkle_root(
         },
         BlockSerializer::new(),
         &creator,
-        &public_key,
     )
     .unwrap();
 
-    (block, creator)
+    block
 }
 
 /// Creates an endorsement for use in consensus tests.
 pub fn create_endorsement(
-    sender_priv: PrivateKey,
+    sender_keypair: &KeyPair,
     slot: Slot,
     endorsed_block: BlockId,
     index: u32,
 ) -> WrappedEndorsement {
-    let sender_public_key = derive_public_key(&sender_priv);
-
     let content = Endorsement {
         slot,
         index,
         endorsed_block,
     };
-    Endorsement::new_wrapped(
-        content,
-        EndorsementSerializer::new(),
-        &sender_priv,
-        &sender_public_key,
-    )
-    .unwrap()
+    Endorsement::new_wrapped(content, EndorsementSerializer::new(), sender_keypair).unwrap()
 }
 
 pub fn get_export_active_test_block(
-    creator: PublicKey,
     parents: Vec<(BlockId, u64)>,
     operations: Vec<WrappedOperation>,
     slot: Slot,
     is_final: bool,
 ) -> ExportActiveBlock {
-    let private_key = &generate_random_private_key();
-    let public_key = creator;
+    let keypair = KeyPair::generate();
     let block = Block::new_wrapped(
         Block {
             header: BlockHeader::new_wrapped(
@@ -583,15 +527,13 @@ pub fn get_export_active_test_block(
                     endorsements: Vec::new(),
                 },
                 BlockHeaderSerializer::new(),
-                &private_key,
-                &public_key,
+                &keypair,
             )
             .unwrap(),
             operations: operations.clone(),
         },
         BlockSerializer::new(),
-        &private_key,
-        &public_key,
+        &keypair,
     )
     .unwrap();
 
@@ -612,11 +554,9 @@ pub fn create_block_with_operations(
     _cfg: &ConsensusConfig,
     slot: Slot,
     best_parents: &Vec<BlockId>,
-    creator: PrivateKey,
+    creator: &KeyPair,
     operations: Vec<WrappedOperation>,
-) -> (WrappedBlock, PrivateKey) {
-    let public_key = derive_public_key(&creator);
-
+) -> WrappedBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.id.hash().to_bytes().to_vec()].concat()
@@ -632,31 +572,27 @@ pub fn create_block_with_operations(
         },
         BlockHeaderSerializer::new(),
         &creator,
-        &public_key,
     )
     .unwrap();
 
     let block = Block::new_wrapped(
         Block { header, operations },
         BlockSerializer::new(),
-        &creator,
-        &public_key,
+        creator,
     )
     .unwrap();
 
-    (block, creator)
+    block
 }
 
 pub fn create_block_with_operations_and_endorsements(
     _cfg: &ConsensusConfig,
     slot: Slot,
     best_parents: &Vec<BlockId>,
-    creator: PrivateKey,
+    creator: &KeyPair,
     operations: Vec<WrappedOperation>,
     endorsements: Vec<WrappedEndorsement>,
-) -> (WrappedBlock, PrivateKey) {
-    let public_key = derive_public_key(&creator);
-
+) -> WrappedBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.id.hash().to_bytes().to_vec()].concat()
@@ -671,28 +607,25 @@ pub fn create_block_with_operations_and_endorsements(
             endorsements,
         },
         BlockHeaderSerializer::new(),
-        &creator,
-        &public_key,
+        creator,
     )
     .unwrap();
 
     let block = Block::new_wrapped(
         Block { header, operations },
         BlockSerializer::new(),
-        &creator,
-        &public_key,
+        creator,
     )
     .unwrap();
 
-    (block, creator)
+    block
 }
 
-pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateKey {
+pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<KeyPair>) -> KeyPair {
     for key in nodes.iter() {
-        let pub_key = derive_public_key(key);
-        let address = Address::from_public_key(&pub_key);
+        let address = Address::from_public_key(&key.get_public_key());
         if address == *draw {
-            return *key;
+            return key.clone();
         }
     }
     panic!("Matching key for draw not found.");
@@ -702,19 +635,14 @@ pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateK
 pub async fn load_initial_staking_keys(
     path: &Path,
     password: &str,
-) -> ConsensusResult<Map<Address, (PublicKey, PrivateKey)>> {
+) -> ConsensusResult<Map<Address, KeyPair>> {
     if !std::path::Path::is_file(path) {
         return Ok(Map::default());
     }
-    serde_json::from_slice::<Vec<PrivateKey>>(&decrypt(password, &tokio::fs::read(path).await?)?)?
-        .iter()
-        .map(|private_key| {
-            let public_key = derive_public_key(private_key);
-            Ok((
-                Address::from_public_key(&public_key),
-                (public_key, *private_key),
-            ))
-        })
+    let (_version, data) = decrypt(password, &tokio::fs::read(path).await?)?;
+    serde_json::from_slice::<Vec<KeyPair>>(&data)?
+        .into_iter()
+        .map(|key| Ok((Address::from_public_key(&key.get_public_key()), key)))
         .collect()
 }
 

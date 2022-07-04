@@ -14,14 +14,14 @@ use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
 use massa_models::prehash::Map;
 use massa_models::{BlockId, Slot};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_invalid_block_notified_as_attack_attempt() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -66,12 +66,12 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         .collect();
 
     // Block for a non-existent thread.
-    let (block, _) = create_block_with_merkle_root(
+    let block = create_block_with_merkle_root(
         &cfg,
         Hash::compute_from("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        staking_keys[0],
+        &staking_keys[0],
     );
     protocol_controller.receive_block(block.clone()).await;
 
@@ -90,7 +90,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
 #[tokio::test]
 #[serial]
 async fn test_invalid_header_notified_as_attack_attempt() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -134,12 +134,12 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         .collect();
 
     // Block for a non-existent thread.
-    let (block, _) = create_block_with_merkle_root(
+    let block = create_block_with_merkle_root(
         &cfg,
         Hash::compute_from("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        staking_keys[0],
+        &staking_keys[0],
     );
     protocol_controller
         .receive_header(block.content.header)

@@ -36,7 +36,7 @@ use massa_models::{
 };
 use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
 
@@ -85,7 +85,7 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<PubkeySig>()
     }
 
-    fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>> {
+    fn add_staking_secret_keys(&self, _: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
     }
 
@@ -109,7 +109,7 @@ impl Endpoints for API<Public> {
         {
             let address = address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&derive_public_key(&generate_random_private_key()))
+                Address::from_public_key(&KeyPair::generate().get_public_key())
             });
 
             // TODO:
@@ -172,7 +172,7 @@ impl Endpoints for API<Public> {
         {
             let caller_address = caller_address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&derive_public_key(&generate_random_private_key()))
+                Address::from_public_key(&KeyPair::generate().get_public_key())
             });
 
             // TODO:
@@ -704,17 +704,7 @@ impl Endpoints for API<Public> {
                     let mut op_serialized = Vec::new();
                     op_serialized.extend(op_input.signature.to_bytes());
                     op_serialized.extend(op_input.creator_public_key.to_bytes());
-                    op_serialized.extend(
-                        bs58::decode(op_input.serialized_content)
-                            .with_check(None)
-                            .into_vec()
-                            .map_err(|err| {
-                                ApiError::ModelsError(ModelsError::CheckedOperationError(format!(
-                                    "bs58 deserialization of content failed {}",
-                                    err
-                                )))
-                            })?,
-                    );
+                    op_serialized.extend(op_input.serialized_content);
                     let (rest, op): (&[u8], WrappedOperation) = operation_deserializer
                         .deserialize::<DeserializeError>(&op_serialized)
                         .map_err(|err| {

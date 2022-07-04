@@ -14,11 +14,11 @@ use massa_models::{
     Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot, WrappedBlock,
     WrappedEndorsement, WrappedOperation,
 };
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 
 pub struct BlockFactory {
     pub best_parents: Vec<BlockId>,
-    pub creator_priv_key: PrivateKey,
+    pub creator_keypair: KeyPair,
     pub slot: Slot,
     pub endorsements: Vec<WrappedEndorsement>,
     pub operations: Vec<WrappedOperation>,
@@ -32,7 +32,7 @@ impl BlockFactory {
     ) -> BlockFactory {
         BlockFactory {
             best_parents: genesis,
-            creator_priv_key: generate_random_private_key(),
+            creator_keypair: KeyPair::generate(),
             slot: Slot::new(1, 0),
             endorsements: Vec::new(),
             operations: Vec::new(),
@@ -41,7 +41,6 @@ impl BlockFactory {
     }
 
     pub async fn create_and_receive_block(&mut self, valid: bool) -> WrappedBlock {
-        let public_key = derive_public_key(&self.creator_priv_key);
         let header = BlockHeader::new_wrapped(
             BlockHeader {
                 slot: self.slot,
@@ -56,8 +55,7 @@ impl BlockFactory {
                 endorsements: self.endorsements.clone(),
             },
             BlockHeaderSerializer::new(),
-            &self.creator_priv_key,
-            &public_key,
+            &self.creator_keypair,
         )
         .unwrap();
 
@@ -67,8 +65,7 @@ impl BlockFactory {
                 operations: self.operations.clone(),
             },
             BlockSerializer::new(),
-            &self.creator_priv_key,
-            &public_key,
+            &self.creator_keypair,
         )
         .unwrap();
 
@@ -84,14 +81,9 @@ impl BlockFactory {
     }
 
     pub fn sign_header(&self, header: BlockHeader) -> WrappedBlock {
-        let public_key = derive_public_key(&self.creator_priv_key);
-        let header = BlockHeader::new_wrapped(
-            header,
-            BlockHeaderSerializer::new(),
-            &self.creator_priv_key,
-            &public_key,
-        )
-        .unwrap();
+        let header =
+            BlockHeader::new_wrapped(header, BlockHeaderSerializer::new(), &self.creator_keypair)
+                .unwrap();
 
         Block::new_wrapped(
             Block {
@@ -99,8 +91,7 @@ impl BlockFactory {
                 operations: self.operations.clone(),
             },
             BlockSerializer::new(),
-            &self.creator_priv_key,
-            &public_key,
+            &self.creator_keypair,
         )
         .unwrap()
     }

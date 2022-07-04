@@ -187,6 +187,7 @@ impl OperationPool {
                     self.ops_by_address.insert_op(*addr, *op_id);
                 });
             self.ops.insert(*op_id, wrapped_op);
+            self.storage.store_operation(op.clone());
         }
 
         // remove excess operations if pool is full
@@ -204,6 +205,7 @@ impl OperationPool {
                         self.ops_by_address
                             .remove_op_for_address(&addr, &removed_id);
                     }
+                    self.storage.remove_operations(vec![removed_id].as_slice());
                 }
                 operations.remove(&removed_id);
             }
@@ -214,11 +216,6 @@ impl OperationPool {
             .filter(|id| !removed.contains(id))
             .copied()
             .collect();
-
-        // Add newly added to shared storage.
-        for (_, op) in operations.into_iter() {
-            self.storage.store_operation(op);
-        }
 
         Ok(newly_added_ids)
     }
@@ -236,6 +233,8 @@ impl OperationPool {
                 }
             } // else final op wasn't in pool.
         }
+        self.storage
+            .remove_operations(ops.keys().cloned().collect::<Vec<OperationId>>().as_slice());
         self.final_operations.extend(ops);
         Ok(())
     }
@@ -284,7 +283,7 @@ impl OperationPool {
         self.storage.remove_operations(&op_ids);
 
         // Remove from internal structures.
-        for op_id in op_ids.into_iter() {
+        for &op_id in op_ids.iter() {
             if let Some(wrapped_op) = self.ops.remove(&op_id) {
                 // complexity: const
                 let interest = (std::cmp::Reverse(wrapped_op.fee_density), op_id);
@@ -296,6 +295,7 @@ impl OperationPool {
                 }
             }
         }
+        self.storage.remove_operations(&op_ids);
 
         Ok(())
     }

@@ -8,7 +8,7 @@ use massa_consensus_exports::ConsensusConfig;
 use massa_models::prehash::Set;
 use massa_models::timeslots;
 use massa_models::{BlockId, Slot};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashSet;
@@ -22,7 +22,7 @@ async fn test_unsorted_block() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -41,57 +41,57 @@ async fn test_unsorted_block() {
                 .genesis_blocks;
             // create test blocks
 
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1 + start_period, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t1s1, _) = create_block(
+            let t1s1 = create_block(
                 &cfg,
                 Slot::new(1 + start_period, 1),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t0s2, _) = create_block(
+            let t0s2 = create_block(
                 &cfg,
                 Slot::new(2 + start_period, 0),
                 vec![t0s1.id, t1s1.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let (t1s2, _) = create_block(
+            let t1s2 = create_block(
                 &cfg,
                 Slot::new(2 + start_period, 1),
                 vec![t0s1.id, t1s1.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t0s3, _) = create_block(
+            let t0s3 = create_block(
                 &cfg,
                 Slot::new(3 + start_period, 0),
                 vec![t0s2.id, t1s2.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let (t1s3, _) = create_block(
+            let t1s3 = create_block(
                 &cfg,
                 Slot::new(3 + start_period, 1),
                 vec![t0s2.id, t1s2.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t0s4, _) = create_block(
+            let t0s4 = create_block(
                 &cfg,
                 Slot::new(4 + start_period, 0),
                 vec![t0s3.id, t1s3.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let (t1s4, _) = create_block(
+            let t1s4 = create_block(
                 &cfg,
                 Slot::new(4 + start_period, 1),
                 vec![t0s3.id, t1s3.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             // send blocks  t0s1, t1s1,
@@ -145,7 +145,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         // slot 1 is in the past
@@ -166,11 +166,11 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 .genesis_blocks;
 
             // a block in the past must be propagated
-            let (block1, _) = create_block(
+            let block1 = create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
             protocol_controller.receive_block(block1.clone()).await;
             validate_propagate_block(&mut protocol_controller, block1.id, 2500).await;
@@ -184,11 +184,11 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             )
             .unwrap()
             .unwrap();
-            let (block2, _) = create_block(
+            let block2 = create_block(
                 &cfg,
                 Slot::new(slot.period + 2, slot.thread),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
             protocol_controller.receive_block(block2.clone()).await;
             assert!(!validate_notpropagate_block(&mut protocol_controller, block2.id, 500).await);
@@ -203,11 +203,11 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             )
             .unwrap()
             .unwrap();
-            let (block3, _) = create_block(
+            let block3 = create_block(
                 &cfg,
                 Slot::new(slot.period + 1000, slot.thread),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
             protocol_controller.receive_block(block3.clone()).await;
             assert!(!validate_notpropagate_block(&mut protocol_controller, block3.id, 2500).await);
@@ -237,7 +237,7 @@ async fn test_too_many_blocks_in_the_future() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         delta_f0: 1000,
         future_block_processing_max_periods: 100,
@@ -271,11 +271,11 @@ async fn test_too_many_blocks_in_the_future() {
             .unwrap();
             for period in 0..5 {
                 max_period = slot.period + 2 + period;
-                let (block, _) = create_block(
+                let block = create_block(
                     &cfg,
                     Slot::new(max_period, slot.thread),
                     genesis_hashes.clone(),
-                    staking_keys[0],
+                    &staking_keys[0],
                 );
                 protocol_controller.receive_block(block.clone()).await;
                 if period < 2 {
@@ -342,7 +342,7 @@ async fn test_dep_in_back_order() {
     .init()
     .unwrap();*/
 
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         genesis_timestamp: MassaTime::now()
             .unwrap()
@@ -360,57 +360,57 @@ async fn test_dep_in_back_order() {
                 .genesis_blocks;
 
             // create test blocks
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t1s1, _) = create_block(
+            let t1s1 = create_block(
                 &cfg,
                 Slot::new(1, 1),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t0s2, _) = create_block(
+            let t0s2 = create_block(
                 &cfg,
                 Slot::new(2, 0),
                 vec![t0s1.id, t1s1.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let (t1s2, _) = create_block(
+            let t1s2 = create_block(
                 &cfg,
                 Slot::new(2, 1),
                 vec![t0s1.id, t1s1.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t0s3, _) = create_block(
+            let t0s3 = create_block(
                 &cfg,
                 Slot::new(3, 0),
                 vec![t0s2.id, t1s2.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let (t1s3, _) = create_block(
+            let t1s3 = create_block(
                 &cfg,
                 Slot::new(3, 1),
                 vec![t0s2.id, t1s2.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t0s4, _) = create_block(
+            let t0s4 = create_block(
                 &cfg,
                 Slot::new(4, 0),
                 vec![t0s3.id, t1s3.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let (t1s4, _) = create_block(
+            let t1s4 = create_block(
                 &cfg,
                 Slot::new(4, 1),
                 vec![t0s3.id, t1s3.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
@@ -503,7 +503,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         genesis_timestamp: MassaTime::now()
             .unwrap()
@@ -525,44 +525,44 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
 
             // create test blocks
 
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t1s1, _) = create_block(
+            let t1s1 = create_block(
                 &cfg,
                 Slot::new(1, 1),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t0s2, _) = create_block(
+            let t0s2 = create_block(
                 &cfg,
                 Slot::new(2, 0),
                 vec![t0s1.id, t1s1.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let (t1s2, _) = create_block(
+            let t1s2 = create_block(
                 &cfg,
                 Slot::new(2, 1),
                 vec![t0s1.id, t1s1.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t0s3, _) = create_block(
+            let t0s3 = create_block(
                 &cfg,
                 Slot::new(3, 0),
                 vec![t0s2.id, t1s2.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let (t1s3, _) = create_block(
+            let t1s3 = create_block(
                 &cfg,
                 Slot::new(3, 1),
                 vec![t0s2.id, t1s2.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
@@ -633,7 +633,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         genesis_timestamp: MassaTime::now()
             .unwrap()
@@ -653,40 +653,40 @@ async fn test_add_block_that_depends_on_invalid_block() {
                 .genesis_blocks;
 
             // create test blocks
-            let (t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
-            let (t1s1, _) = create_block(
+            let t1s1 = create_block(
                 &cfg,
                 Slot::new(1, 1),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             // blocks t3s2 with wrong thread and (t0s1, t1s1) parents.
-            let (t3s2, _) = create_block(
+            let t3s2 = create_block(
                 &cfg,
                 Slot::new(2, 3),
                 vec![t0s1.id, t1s1.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             // blocks t0s3 and t1s3 with (t3s2, t1s2) parents.
-            let (t0s3, _) = create_block(
+            let t0s3 = create_block(
                 &cfg,
                 Slot::new(3, 0),
                 vec![t3s2.id, t1s1.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let (t1s3, _) = create_block(
+            let t1s3 = create_block(
                 &cfg,
                 Slot::new(3, 1),
                 vec![t3s2.id, t1s1.id],
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             // add block in this order t0s1, t1s1, t0s3, t1s3, t3s2

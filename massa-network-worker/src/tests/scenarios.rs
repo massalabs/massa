@@ -22,6 +22,7 @@ use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, Nod
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
 };
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -71,9 +72,8 @@ async fn test_node_worker_shutdown() {
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
-    let private_key = massa_signature::generate_random_private_key();
-    let public_key = massa_signature::derive_public_key(&private_key);
-    let mock_node_id = NodeId(public_key);
+    let keypair = KeyPair::generate();
+    let mock_node_id = NodeId(keypair.get_public_key());
     let storage: Storage = Default::default();
 
     let node_fn_handle = tokio::spawn(async move {
@@ -127,9 +127,8 @@ async fn test_node_worker_operations_message() {
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
-    let private_key = massa_signature::generate_random_private_key();
-    let public_key = massa_signature::derive_public_key(&private_key);
-    let mock_node_id = NodeId(public_key);
+    let keypair = KeyPair::generate();
+    let mock_node_id = NodeId(keypair.get_public_key());
     let storage: Storage = Default::default();
 
     // Create transaction.
@@ -1187,8 +1186,7 @@ async fn test_endorsements_messages() {
             .await;
             // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
-            let sender_priv = massa_signature::generate_random_private_key();
-            let sender_public_key = massa_signature::derive_public_key(&sender_priv);
+            let sender_keypair = KeyPair::generate();
 
             let content = Endorsement {
                 slot: Slot::new(10, 1),
@@ -1198,8 +1196,7 @@ async fn test_endorsements_messages() {
             let endorsement = Endorsement::new_wrapped(
                 content.clone(),
                 EndorsementSerializer::new(),
-                &sender_priv,
-                &sender_public_key,
+                &sender_keypair,
             )
             .unwrap();
             let ref_id = endorsement.id;
@@ -1231,8 +1228,7 @@ async fn test_endorsements_messages() {
                 panic!("Timeout while waiting for endorsement event.");
             }
 
-            let sender_priv = massa_signature::generate_random_private_key();
-            let sender_public_key = massa_signature::derive_public_key(&sender_priv);
+            let sender_keypair = KeyPair::generate();
 
             let content = Endorsement {
                 slot: Slot::new(11, 1),
@@ -1242,8 +1238,7 @@ async fn test_endorsements_messages() {
             let endorsement = Endorsement::new_wrapped(
                 content.clone(),
                 EndorsementSerializer::new(),
-                &sender_priv,
-                &sender_public_key,
+                &sender_keypair,
             )
             .unwrap();
             let ref_id = endorsement.id;

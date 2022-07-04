@@ -271,7 +271,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    /// Sign a message using the node's private key
+    /// Sign a message using the node's keypair
     pub async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0

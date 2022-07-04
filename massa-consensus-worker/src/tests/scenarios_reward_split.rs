@@ -22,13 +22,13 @@ async fn test_reward_split() {
     let thread_count = 2;
 
     // Create addresses
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, thread_count).into();
-    let (address_b, priv_b, pubkey_b) = random_address_on_thread(0, thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, thread_count).into();
+    let (address_b, keypair_b) = random_address_on_thread(0, thread_count).into();
 
     let mut ledger = HashMap::new();
     ledger.insert(address_a, LedgerData::new(Amount::from_str("10").unwrap()));
     ledger.insert(address_b, LedgerData::new(Amount::from_str("10").unwrap()));
-    let staking_keys = vec![priv_a, priv_b];
+    let staking_keys = vec![keypair_a.clone(), keypair_b.clone()];
     let init_time: MassaTime = 1000.into();
     let cfg = ConsensusConfig {
         endorsement_count: 5,
@@ -73,10 +73,10 @@ async fn test_reward_split() {
             let slot_one_block_addr = draws.get(&Slot::new(1, 0)).unwrap().0;
             let slot_one_endorsements_addrs = draws.get(&Slot::new(1, 0)).unwrap().1.clone();
 
-            let (slot_one_pub_key, slot_one_priv_key) = if slot_one_block_addr == address_a {
-                (pubkey_a, priv_a)
+            let slot_one_keypair = if slot_one_block_addr == address_a {
+                keypair_a.clone()
             } else {
-                (pubkey_b, priv_b)
+                keypair_b.clone()
             };
 
             // Create, and propagate, block 1.
@@ -89,7 +89,7 @@ async fn test_reward_split() {
                 .map(|(b, _p)| *b)
                 .collect();
 
-            let (b1, _) = create_block(&cfg, Slot::new(1, 0), parents, slot_one_priv_key);
+            let b1 = create_block(&cfg, Slot::new(1, 0), parents, &slot_one_keypair);
 
             propagate_block(
                 &mut protocol_controller,
@@ -103,10 +103,10 @@ async fn test_reward_split() {
 
             let slot_two_block_addr = draws.get(&Slot::new(2, 0)).unwrap().0;
 
-            let (slot_two_pub_key, slot_two_priv_key) = if slot_two_block_addr == address_a {
-                (pubkey_a, priv_a)
+            let slot_two_keypair = if slot_two_block_addr == address_a {
+                keypair_a.clone()
             } else {
-                (pubkey_b, priv_b)
+                keypair_b.clone()
             };
 
             // Create, and propagate, block 2.
@@ -120,14 +120,16 @@ async fn test_reward_split() {
                 .collect();
             assert!(parents.contains(&b1.id));
 
-            let (mut b2, _) = create_block(&cfg, Slot::new(2, 0), parents, slot_two_priv_key);
+            let mut b2 = create_block(&cfg, Slot::new(2, 0), parents, &slot_two_keypair);
 
             // Endorsements in block 2.
 
             // Creator of second block endorses the first.
             let index = slot_one_endorsements_addrs
                 .iter()
-                .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key))
+                .position(|&addr| {
+                    addr == Address::from_public_key(&slot_two_keypair.get_public_key())
+                })
                 .unwrap() as u32;
             let content = Endorsement {
                 slot: Slot::new(1, 0),
@@ -137,15 +139,16 @@ async fn test_reward_split() {
             let ed_1 = Endorsement::new_wrapped(
                 content.clone(),
                 EndorsementSerializer::new(),
-                &slot_two_priv_key,
-                &slot_two_pub_key,
+                &slot_two_keypair,
             )
             .unwrap();
 
             // Creator of first block endorses the first.
             let index = slot_one_endorsements_addrs
                 .iter()
-                .position(|&addr| addr == Address::from_public_key(&slot_one_pub_key))
+                .position(|&addr| {
+                    addr == Address::from_public_key(&slot_one_keypair.get_public_key())
+                })
                 .unwrap() as u32;
             let content = Endorsement {
                 slot: Slot::new(1, 0),
@@ -155,15 +158,16 @@ async fn test_reward_split() {
             let ed_2 = Endorsement::new_wrapped(
                 content.clone(),
                 EndorsementSerializer::new(),
-                &slot_one_priv_key,
-                &slot_one_pub_key,
+                &slot_one_keypair,
             )
             .unwrap();
 
             // Creator of second block endorses the first, again.
             let index = slot_one_endorsements_addrs
                 .iter()
-                .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key))
+                .position(|&addr| {
+                    addr == Address::from_public_key(&slot_two_keypair.get_public_key())
+                })
                 .unwrap() as u32;
             let content = Endorsement {
                 slot: Slot::new(1, 0),
@@ -173,8 +177,7 @@ async fn test_reward_split() {
             let ed_3 = Endorsement::new_wrapped(
                 content.clone(),
                 EndorsementSerializer::new(),
-                &slot_two_priv_key,
-                &slot_two_pub_key,
+                &slot_two_keypair,
             )
             .unwrap();
 
@@ -198,7 +201,7 @@ async fn test_reward_split() {
 
             let expected_a = Amount::from_str("10")
                 .unwrap() // initial ledger
-                .saturating_add(if pubkey_a == slot_one_pub_key {
+                .saturating_add(if keypair_a.to_bytes() == slot_one_keypair.to_bytes() {
                     // block 1 reward
                     cfg.block_reward
                         .checked_mul_u64(1)
@@ -216,7 +219,7 @@ async fn test_reward_split() {
                 } else {
                     Default::default()
                 })
-                .saturating_add(if pubkey_a == slot_two_pub_key {
+                .saturating_add(if keypair_a.to_bytes() == slot_two_keypair.to_bytes() {
                     // block 2 creation reward
                     cfg.block_reward
                         .checked_mul_u64(1 + 3)
@@ -235,7 +238,7 @@ async fn test_reward_split() {
 
             let expected_b = Amount::from_str("10")
                 .unwrap() // initial ledger
-                .saturating_add(if pubkey_b == slot_one_pub_key {
+                .saturating_add(if keypair_b.to_bytes() == slot_one_keypair.to_bytes() {
                     // block 1 reward
                     cfg.block_reward
                         .checked_mul_u64(1)
@@ -253,7 +256,7 @@ async fn test_reward_split() {
                 } else {
                     Default::default()
                 })
-                .saturating_add(if pubkey_b == slot_two_pub_key {
+                .saturating_add(if keypair_b.to_bytes() == slot_two_keypair.to_bytes() {
                     // block 2 creation reward
                     cfg.block_reward
                         .checked_mul_u64(1 + 3)

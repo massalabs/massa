@@ -7,7 +7,7 @@ use massa_consensus_exports::ConsensusConfig;
 
 use massa_hash::Hash;
 use massa_models::{BlockId, Slot};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 
@@ -22,7 +22,7 @@ async fn test_ti() {
     .init()
     .unwrap(); */
 
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         // to avoid timing problems for blocks in the future
@@ -51,7 +51,7 @@ async fn test_ti() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -63,7 +63,7 @@ async fn test_ti() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -79,12 +79,12 @@ async fn test_ti() {
             assert_eq!(block1_clic, block2_clic);
 
             // Create other clique bock T0S2
-            let (fork_block, _) = create_block_with_merkle_root(
+            let fork_block = create_block_with_merkle_root(
                 &cfg,
                 Hash::compute_from("Other hash!".as_bytes()),
                 Slot::new(2, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             protocol_controller.receive_block(fork_block.clone()).await;
@@ -116,7 +116,7 @@ async fn test_ti() {
                     vec![parentt0sn_hash, valid_hasht1s1],
                     true,
                     false,
-                    staking_keys[0],
+                    &staking_keys[0],
                 )
                 .await;
                 // validate the added block isn't in the forked block click.
@@ -132,11 +132,11 @@ async fn test_ti() {
             }
 
             // create new block in other clique
-            let (block, _) = create_block(
+            let block = create_block(
                 &cfg,
                 Slot::new(2, 1),
                 vec![fork_block.id, valid_hasht1s1],
-                staking_keys[0],
+                &staking_keys[0],
             );
             protocol_controller.receive_block(block.clone()).await;
             assert!(!validate_notpropagate_block(&mut protocol_controller, block.id, 1000,).await);
@@ -167,7 +167,7 @@ async fn test_gpi() {
     .init()
     .unwrap();*/
 
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         // to avoid timing problems for blocks in the future
@@ -195,7 +195,7 @@ async fn test_gpi() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -207,7 +207,7 @@ async fn test_gpi() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -231,7 +231,7 @@ async fn test_gpi() {
                 vec![valid_hasht0s1, genesis_hashes[1]],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
             // * create 1 block in t1s2 with parents of slots (t0s0, t1s1)
@@ -242,7 +242,7 @@ async fn test_gpi() {
                 vec![genesis_hashes[0], valid_hasht1s1],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -278,7 +278,7 @@ async fn test_gpi() {
                     vec![parentt0sn_hash, valid_hasht1s1],
                     true,
                     false,
-                    staking_keys[0],
+                    &staking_keys[0],
                 )
                 .await;
                 parentt0sn_hash = block_hash;
@@ -291,7 +291,7 @@ async fn test_gpi() {
                 vec![valid_hasht0s1, valid_hasht1s2],
                 false,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -327,7 +327,7 @@ async fn test_old_stale() {
     //     .init()
     //     .unwrap();
 
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         future_block_processing_max_periods: 50,
         // to avoid timing problems for blocks in the future
@@ -355,7 +355,7 @@ async fn test_old_stale() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -367,7 +367,7 @@ async fn test_old_stale() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -380,7 +380,7 @@ async fn test_old_stale() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0],
+                    &staking_keys[0],
                 )
                 .await;
 
@@ -392,7 +392,7 @@ async fn test_old_stale() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0],
+                    &staking_keys[0],
                 )
                 .await;
             }
@@ -405,7 +405,7 @@ async fn test_old_stale() {
                 genesis_hashes.clone(),
                 false,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
             (

@@ -299,8 +299,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let endorsement_id = endorsement.id;
 
             let block = tools::create_block_with_endorsements(
-                &nodes[0].private_key,
-                &nodes[0].id.0,
+                &nodes[0].keypair,
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
@@ -404,8 +403,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let endorsement_id = endorsement.id;
 
             let block = tools::create_block_with_endorsements(
-                &nodes[0].private_key,
-                &nodes[0].id.0,
+                &nodes[0].keypair,
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
@@ -511,8 +509,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let endorsement_id = endorsement.id;
 
             let block = tools::create_block_with_endorsements(
-                &nodes[0].private_key,
-                &nodes[0].id.0,
+                &nodes[0].keypair,
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
@@ -597,7 +594,7 @@ async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_ins
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 2. Create a block coming from node creator_node.
-            let mut block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let mut block = tools::create_block(&creator_node.keypair);
 
             // 3. Add endorsement to block
             block.content.header.content.endorsements = vec![endorsement.clone()];

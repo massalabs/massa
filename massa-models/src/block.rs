@@ -15,7 +15,7 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::{PublicKey, Signature};
+use massa_signature::{KeyPair, PublicKey, Signature};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::error::context;
@@ -137,12 +137,12 @@ impl WrappedContent for Block {
     fn new_wrapped<SC: Serializer<Self>, U: Id>(
         content: Self,
         content_serializer: SC,
-        _private_key: &massa_signature::PrivateKey,
-        public_key: &massa_signature::PublicKey,
+        keypair: &KeyPair,
     ) -> Result<Wrapped<Self, U>, ModelsError> {
+        let public_key = keypair.get_public_key();
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&content, &mut content_serialized)?;
-        let creator_address = Address::from_public_key(public_key);
+        let creator_address = Address::from_public_key(&public_key);
 
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
@@ -150,7 +150,7 @@ impl WrappedContent for Block {
         let thread_count = THREAD_COUNT;
         Ok(Wrapped {
             signature: content.header.signature,
-            creator_public_key: *public_key,
+            creator_public_key: public_key,
             creator_address,
             thread: creator_address.get_thread(thread_count),
             id: U::new(content.header.id.hash()),
@@ -558,14 +558,13 @@ mod test {
     use super::*;
     use crate::{endorsement::EndorsementSerializer, Endorsement};
     use massa_serialization::DeserializeError;
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use massa_signature::KeyPair;
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_block_serialization() {
-        let private_key = generate_random_private_key();
-        let public_key = derive_public_key(&private_key);
+        let keypair = KeyPair::generate();
         let parents = (0..THREAD_COUNT)
             .map(|i| BlockId(Hash::compute_from(&[i])))
             .collect();
@@ -584,8 +583,7 @@ mod test {
                             endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
                         },
                         EndorsementSerializer::new(),
-                        &private_key,
-                        &public_key,
+                        &keypair,
                     )
                     .unwrap(),
                     Endorsement::new_wrapped(
@@ -595,15 +593,13 @@ mod test {
                             endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
                         },
                         EndorsementSerializer::new(),
-                        &private_key,
-                        &public_key,
+                        &keypair,
                     )
                     .unwrap(),
                 ],
             },
             BlockHeaderSerializer::new(),
-            &private_key,
-            &public_key,
+            &keypair,
         )
         .unwrap();
 
@@ -614,13 +610,8 @@ mod test {
         };
 
         // serialize block
-        let wrapped_block: WrappedBlock = Block::new_wrapped(
-            orig_block.clone(),
-            BlockSerializer::new(),
-            &private_key,
-            &public_key,
-        )
-        .unwrap();
+        let wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         WrappedSerializer::new()
             .serialize(&wrapped_block, &mut ser_block)

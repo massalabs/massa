@@ -8,7 +8,7 @@ use massa_models::{
 };
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolEventReceiver;
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 
 use std::collections::VecDeque;
 
@@ -338,16 +338,10 @@ impl ConsensusCommandSender {
     }
 
     /// Add some staking keys
-    pub async fn register_staking_private_keys(
-        &self,
-        keys: Vec<PrivateKey>,
-    ) -> Result<(), ConsensusError> {
-        massa_trace!(
-            "consensus.consensus_controller.register_staking_private_keys",
-            {}
-        );
+    pub async fn register_staking_keys(&self, keys: Vec<KeyPair>) -> Result<(), ConsensusError> {
+        massa_trace!("consensus.consensus_controller.register_staking_keys", {});
         self.0
-            .send(ConsensusCommand::RegisterStakingPrivateKeys(keys))
+            .send(ConsensusCommand::RegisterStakingKeys(keys))
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError("send error consensus command".to_string())
