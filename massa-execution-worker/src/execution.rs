@@ -333,13 +333,10 @@ impl ExecutionState {
         // try to sell the rolls
         if let Err(err) = context.try_sell_rolls(&seller_addr, self.config.roll_price, *roll_count)
         {
+            // cancel the effects of the execution by resetting the context to the previously saved snapshot
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
-            debug!(
-                "{} failed to sell {} rolls: {}",
-                seller_addr, roll_count, err
-            );
-            return Ok(());
+            return Err(err);
         }
 
         // credit `roll_price` * `roll_count` sequential coins to the seller
@@ -351,10 +348,10 @@ impl ExecutionState {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
-            debug!(
-                "{} failed to transfer {} after selling {} rolls: {}",
+            return Err(ExecutionError::RollSellError(format!(
+                "{} failed to credit {} coins after selling {} rolls: {}",
                 seller_addr, amount, roll_count, err
-            );
+            )));
         }
         Ok(())
     }
@@ -402,7 +399,10 @@ impl ExecutionState {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
-            debug!("{} failed to buy {} rolls: {}", buyer_addr, roll_count, err);
+            return Err(ExecutionError::RollBuyError(format!(
+                "{} failed to buy {} rolls: {}",
+                buyer_addr, roll_count, err
+            )));
         }
         Ok(())
     }
