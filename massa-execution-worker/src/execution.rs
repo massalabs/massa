@@ -766,16 +766,20 @@ impl ExecutionState {
             }
         }
 
-        // check if there is a block at this slot
+        // Check if there is a block at this slot
         if let Some(block_id) = opt_block_id {
+            // Retrieve the block from storage
             let block = self
                 .storage
                 .retrieve_block(&block_id)
                 .expect("Missing block in storage.");
             let stored_block = block.read();
+            // Compute creator address
+            let addr = Address::from_public_key(&stored_block.block.header.content.creator);
+            // Update speculative rolls state production stats
+            context_guard!(self).update_production_stats(&addr, &slot, true);
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            let addr = Address::from_public_key(&stored_block.block.header.content.creator);
             for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
                 if let Err(err) = self.execute_operation(operation, addr) {
                     debug!(
@@ -784,6 +788,9 @@ impl ExecutionState {
                     );
                 }
             }
+        } else {
+            // Update speculative rolls state production stats
+            context_guard!(self).update_production_stats(&addr, &slot, false);
         }
 
         // finish slot and return the execution output
