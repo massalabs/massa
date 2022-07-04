@@ -12,7 +12,7 @@ use crate::worker::SelectorThread;
 
 struct Seed {
     hash: Vec<u8>,
-    cum_sum: Vec<(u64, Address)>,
+    cumulated_func: Vec<(u64, Address)>,
 }
 
 impl SelectorThread {
@@ -46,8 +46,8 @@ impl SelectorThread {
     /// - Tried to get an unavailable cycle or thread
     /// - Tried to get seed of a not finalized cycle
     fn get_seed_from_finals(&mut self, cycle_info: &CycleInfo) -> PosResult<Seed> {
-        let cum_sum = match self.cycle_states.get(&(cycle_info.cycle - 1)) {
-            Some(cum_sum) => cum_sum.clone(),
+        let cumulated_func = match self.cycle_states.get(&(cycle_info.cycle - 1)) {
+            Some(cumulated_func) => cumulated_func.clone(),
             _ => return Err(CycleUnavailable(cycle_info.cycle)),
         };
         self.cycle_states
@@ -56,7 +56,7 @@ impl SelectorThread {
             hash: Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
                 .to_bytes()
                 .to_vec(),
-            cum_sum,
+            cumulated_func,
         })
     }
 
@@ -66,13 +66,17 @@ impl SelectorThread {
             Some(init_rolls) => init_rolls,
             _ => return Err(InitCycleUnavailable),
         };
-        let cum_sum = cumulate_sum(init_rolls);
-        self.cycle_states.insert(cycle_info.cycle, cum_sum.clone());
+        let cumulated_func = cumulate_sum(init_rolls);
+        self.cycle_states
+            .insert(cycle_info.cycle, cumulated_func.clone());
         let hash = match self.initial_seeds.get(cycle_info.cycle as usize) {
             Some(hash) => hash.clone(),
             _ => return Err(InitCycleUnavailable),
         };
-        Ok(Seed { hash, cum_sum })
+        Ok(Seed {
+            hash,
+            cumulated_func,
+        })
     }
 
     /// Get seed to compute the draw for C+2. Fill the `cycle_states` variable
@@ -102,11 +106,11 @@ impl SelectorThread {
         &self,
         mut rng: Xoshiro256PlusPlus,
         cycle_info: &CycleInfo,
-        cum_sum: &[(u64, Address)],
-        cum_sum_max: u64,
+        cumulated_func: &[(u64, Address)],
+        cumulated_func_max: u64,
     ) -> HashMap<Slot, Selection> {
         // perform draws
-        let distribution = Uniform::new(0, cum_sum_max);
+        let distribution = Uniform::new(0, cumulated_func_max);
         let mut draws = HashMap::with_capacity(self.cfg.blocks_in_cycle);
         let mut cycle_first_period = cycle_info.cycle * self.cfg.periods_per_cycle;
         let cycle_last_period = (cycle_info.cycle + 1) * self.cfg.periods_per_cycle - 1;
@@ -131,13 +135,13 @@ impl SelectorThread {
                 // draw block creator and endorsers with the same probabilities
                 for _ in 0..(self.cfg.endorsement_count + 1) {
                     let sample = rng.sample(&distribution);
-                    // locate the draw in the cum_sum through binary search
+                    // locate the draw in the cumulated_func through binary search
                     let found_index =
-                        match cum_sum.binary_search_by_key(&sample, |(c_sum, _)| *c_sum) {
+                        match cumulated_func.binary_search_by_key(&sample, |(c_sum, _)| *c_sum) {
                             Ok(idx) => idx + 1,
                             Err(idx) => idx,
                         };
-                    let (_sum, found_addr) = cum_sum[found_index];
+                    let (_sum, found_addr) = cumulated_func[found_index];
                     res.push(found_addr)
                 }
                 draws.insert(
@@ -174,8 +178,11 @@ impl SelectorThread {
         let draws = self.perform(
             Xoshiro256PlusPlus::from_seed(seed.hash.try_into().map_err(|_| CannotComputeSeed)?),
             &cycle_info,
-            &seed.cum_sum,
-            seed.cum_sum.last().ok_or(EmptyContainerInconsistency)?.0,
+            &seed.cumulated_func,
+            seed.cumulated_func
+                .last()
+                .ok_or(EmptyContainerInconsistency)?
+                .0,
         );
         self.cache.write().insert(cycle_info.cycle + 2, draws);
         Ok(())
@@ -186,14 +193,14 @@ impl SelectorThread {
 /// `perform` function for the selection's probability related to the number
 /// of rolls by address.
 fn cumulate_sum(roll_counts: &Map<Address, u64>) -> Vec<(u64, Address)> {
-    let mut cum_sum_cursor = 0;
-    let mut cum_sum = Vec::with_capacity(roll_counts.len());
+    let mut cumulated_func_cursor = 0;
+    let mut cumulated_func = Vec::with_capacity(roll_counts.len());
     for (addr, &n_rolls) in roll_counts.iter() {
         if n_rolls == 0 {
             continue;
         }
-        cum_sum_cursor += n_rolls;
-        cum_sum.push((cum_sum_cursor, *addr));
+        cumulated_func_cursor += n_rolls;
+        cumulated_func.push((cumulated_func_cursor, *addr));
     }
-    cum_sum
+    cumulated_func
 }
