@@ -993,7 +993,7 @@ impl ProtocolWorker {
     ) -> Result<
         Option<(
             BlockId,
-            Map<OperationId, (usize, u64)>,
+            Map<OperationId, usize>,
             Map<EndorsementId, u32>,
         )>,
         ProtocolError,
@@ -1019,8 +1019,8 @@ impl ProtocolWorker {
 
         // Perform general checks on the operations, note them into caches and send them to pool
         // but do not propagate as they are already propagating within a block
-        let (seen_ops, received_operations_ids, has_duplicate_operations, total_gas) = self
-            .note_operations_from_node(operations.clone(), source_node_id, false)
+        let (seen_ops, received_operations_ids, total_gas) = self
+            .note_operations_ids_from_node(operations.clone(), source_node_id, false)
             .await?;
         if total_gas > self.max_block_gas {
             // Gas usage over limit => block invalid
@@ -1031,28 +1031,31 @@ impl ProtocolWorker {
 
         // Perform checks on the operations that relate to the block in which they have been included.
         // We perform those checks AFTER note_operations_from_node to allow otherwise valid operations to be noted
-        if has_duplicate_operations {
-            // Block contains duplicate operations.
-            return Ok(None);
-        }
-        for op in operations.iter() {
-            // check validity period
-            if !(op
-                .get_validity_range(self.operation_validity_periods)
-                .contains(&slot.period))
-            {
-                massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_period",
-                    { "node": source_node_id,"block_id":block_id, "op": op });
-                return Ok(None);
-            }
+        // TODO: TEMPORARY REMOVED CHECK
+        // if has_duplicate_operations {
+        //     // Block contains duplicate operations.
+        //     return Ok(None);
+        // }
 
-            // check thread
-            if op.thread != slot.thread {
-                massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_thread",
-                    { "node": source_node_id,"block_id":block_id, "op": op});
-                return Ok(None);
-            }
-        }
+        // TODO: TEMPORARY REMOVED CHECK
+        // for op in operations.iter() {
+        //     // check validity period
+        //     if !(op
+        //         .get_validity_range(self.operation_validity_periods)
+        //         .contains(&slot.period))
+        //     {
+        //         massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_period",
+        //             { "node": source_node_id,"block_id":block_id, "op": op });
+        //         return Ok(None);
+        //     }
+
+        //     // check thread
+        //     if op.thread != slot.thread {
+        //         massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_thread",
+        //             { "node": source_node_id,"block_id":block_id, "op": op});
+        //         return Ok(None);
+        //     }
+        // }
 
         // check root hash
         {
@@ -1096,7 +1099,7 @@ impl ProtocolWorker {
         operations: Operations,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, bool, u64), ProtocolError> {
+    ) -> Result<(Vec<OperationId>, Map<OperationId, usize>, bool, u64), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let mut total_gas = 0u64;
         let length = operations.len();
@@ -1111,7 +1114,7 @@ impl ProtocolWorker {
             // Note: we always want to update the node's view of known operations,
             // even if we cached the check previously.
             let was_present =
-                received_ids.insert(operation_id, (idx, operation.content.expire_period));
+                received_ids.insert(operation_id, idx);
 
             // There are duplicate operations in this batch.
             if was_present.is_some() {
@@ -1169,6 +1172,74 @@ impl ProtocolWorker {
         }
 
         Ok((seen_ops, received_ids, has_duplicate_operations, total_gas))
+    }
+
+    /// TODO:
+    /// Will be used in the future for the opid received from block.
+    pub(crate) async fn note_operations_ids_from_node(
+        &mut self,
+        op_ids: OperationIds,
+        source_node_id: &NodeId,
+        propagate: bool,
+    ) -> Result<(Vec<OperationId>, Map<OperationId, usize>, u64), ProtocolError> {
+        massa_trace!("protocol.protocol_worker.note_operations_ids_from_node", { "node": source_node_id, "operations": op_ids });
+        let mut total_gas = 0u64;
+        let length = op_ids.len();
+        let mut seen_ops = vec![];
+        //let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
+        let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
+        for (idx, operation_id) in op_ids.into_iter().enumerate() {
+            seen_ops.push(operation_id);
+
+            // Note: we always want to update the node's view of known operations,
+            // even if we cached the check previously.
+            let _was_present =
+                received_ids.insert(operation_id, idx);
+            
+            // TODO: TEMPORARY REMOVED CHECK
+            // // There are duplicate operations in this batch.
+            // if was_present.is_some() {
+            //     has_duplicate_operations = true;
+            // }
+
+            // TODO: TEMPORARY REMOVED CHECK
+            // Accumulate gas
+            //total_gas = total_gas.saturating_add(operation.get_gas_usage());
+
+            // TODO: TEMPORARY REMOVED CHECK
+            // Check operation signature only if not already checked.
+            // if self.checked_operations.insert(operation_id) {
+            //     // check signature
+            //     operation
+            //         .verify_signature(OperationSerializer::new(), &operation.creator_public_key)?;
+
+            //     new_operations.insert(operation_id, operation);
+            // };
+            self.checked_operations.insert(operation_id);
+        }
+
+        // add to known ops
+        if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
+            node_info.insert_known_ops(
+                received_ids.keys().copied().collect(),
+                self.protocol_settings.max_node_known_ops_size,
+            );
+        }
+
+            // TODO: TEMPORARY REMOVED CHECK
+            // if !new_operations.is_empty() {
+            // Add to pool, propagate when received outside of a header.
+            // self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
+            //     operations: new_operations,
+            //     propagate,
+            // })
+            // .await;
+
+            // prune checked operations cache
+            self.prune_checked_operations();
+ //       }
+
+        Ok((seen_ops, received_ids, total_gas))
     }
 
     /// Note endorsements coming from a given node,

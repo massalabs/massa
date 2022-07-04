@@ -636,9 +636,10 @@ impl ExecutionState {
             let stored_block = block.read();
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            for (op_idx, operation) in stored_block.content.operations.iter().enumerate() {
+            for (op_idx, op_id) in stored_block.content.operations.iter().enumerate() {
+                let operation = self.storage.retrieve_operation(op_id).unwrap();
                 if let Err(err) =
-                    self.execute_operation(operation, stored_block.content.header.creator_address)
+                    self.execute_operation(&operation, stored_block.content.header.creator_address)
                 {
                     debug!(
                         "failed executing operation index {} in block {}: {}",
