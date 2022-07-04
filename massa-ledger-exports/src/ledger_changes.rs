@@ -470,6 +470,53 @@ impl LedgerChanges {
         self.0.get(addr)
     }
 
+    /// Tries to return the sequential balance of an entry
+    /// or gets it from a function if the entry's status is unknown.
+    ///
+    /// This function is used as an optimization:
+    /// if the value can be deduced unambiguously from the `LedgerChanges`,
+    /// no need to dig further (for example in the `FinalLedger`).
+    ///
+    /// # Arguments
+    /// * `addr`: address for which to get the value
+    /// * `f`: fallback function with no arguments and returning `Option<Amount>`
+    ///
+    /// # Returns
+    /// * Some(v) if a value is present, where v is a copy of the value
+    /// * None if the value is absent
+    /// * f() if the value is unknown
+    pub fn get_sequential_balance_or_else<F: FnOnce() -> Option<Amount>>(
+        &self,
+        addr: &Address,
+        f: F,
+    ) -> Option<Amount> {
+        // Get the changes for the provided address
+        match self.0.get(addr) {
+            // This entry is being replaced by a new one: get the balance from the new entry
+            Some(SetUpdateOrDelete::Set(v)) => Some(v.sequential_balance),
+
+            // This entry is being updated
+            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                sequential_balance, ..
+            })) => match sequential_balance {
+                // The update sets a new balance: return it
+                SetOrKeep::Set(v) => Some(*v),
+                // The update keeps the old balance.
+                // We therefore have no info on the absolute value of the balance.
+                // We call the fallback function and return its output.
+                SetOrKeep::Keep => f(),
+            },
+
+            // This entry is being deleted: return None.
+            Some(SetUpdateOrDelete::Delete) => None,
+
+            // This entry is not being changed.
+            // We therefore have no info on the absolute value of the balance.
+            // We call the fallback function and return its output.
+            None => f(),
+        }
+    }
+
     /// Tries to return the parallel balance of an entry
     /// or gets it from a function if the entry's status is unknown.
     ///

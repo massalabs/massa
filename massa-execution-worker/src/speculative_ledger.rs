@@ -66,6 +66,30 @@ impl SpeculativeLedger {
         self.added_changes = snapshot;
     }
 
+    /// Gets the effective sequential balance of an address
+    ///
+    /// # Arguments:
+    /// `addr`: the address to query
+    ///
+    /// # Returns
+    /// Some(Amount) if the address was found, otherwise None
+    pub fn get_sequential_balance(&self, addr: &Address) -> Option<Amount> {
+        // try to read from added changes > history > final_state
+        self.added_changes.get_sequential_balance_or_else(addr, || {
+            match self
+                .active_history
+                .read()
+                .fetch_active_history_balance(addr)
+            {
+                HistorySearchResult::Present(active_balance) => Some(active_balance),
+                HistorySearchResult::NoInfo => {
+                    self.final_state.read().ledger.get_parallel_balance(addr)
+                }
+                HistorySearchResult::Absent => None,
+            }
+        })
+    }
+
     /// Gets the effective parallel balance of an address
     ///
     /// # Arguments:
