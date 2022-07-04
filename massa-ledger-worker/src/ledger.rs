@@ -86,7 +86,7 @@ impl LedgerController for FinalLedger {
     /// The parallel balance, or None if the ledger entry was not found
     fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::ParBalance)
             .map(|bytes| {
                 Amount::from_bytes_compact(&bytes)
                     .expect("critical: invalid balance format")
@@ -109,7 +109,7 @@ impl LedgerController for FinalLedger {
     /// true if it exists, false otherwise.
     fn entry_exists(&self, addr: &Address) -> bool {
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::SeqBalance)
             .is_some()
     }
 
