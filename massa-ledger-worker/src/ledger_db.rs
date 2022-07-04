@@ -174,12 +174,18 @@ impl LedgerDB {
     fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        // balance
-        // IMPORTANT TODO: ADD SEQUENTIAL BALANCE TO LEDGER ENTRY
+        // sequential balance
+        // note that Amount::to_bytes_compact() never fails
+        batch.put_cf(
+            handle,
+            seq_balance_key!(addr),
+            ledger_entry.sequential_balance.to_bytes_compact().unwrap(),
+        );
+
+        // parallel balance
         batch.put_cf(
             handle,
             par_balance_key!(addr),
-            // Amount::to_bytes_compact() never fails
             ledger_entry.parallel_balance.to_bytes_compact().unwrap(),
         );
 
@@ -288,12 +294,21 @@ impl LedgerDB {
     ) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        // balance
+        // sequential balance
+        // note that Amount::to_bytes_compact() never fails
+        if let SetOrKeep::Set(balance) = entry_update.sequential_balance {
+            batch.put_cf(
+                handle,
+                seq_balance_key!(addr),
+                balance.to_bytes_compact().unwrap(),
+            );
+        }
+
+        // parallel balance
         if let SetOrKeep::Set(balance) = entry_update.parallel_balance {
             batch.put_cf(
                 handle,
                 par_balance_key!(addr),
-                // Amount::to_bytes_compact() never fails
                 balance.to_bytes_compact().unwrap(),
             );
         }

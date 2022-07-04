@@ -26,6 +26,8 @@ use std::ops::Bound::Included;
 /// represents an update to one or more fields of a `LedgerEntry`
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LedgerEntryUpdate {
+    /// change the sequential balance
+    pub sequential_balance: SetOrKeep<Amount>,
     /// change the parallel balance
     pub parallel_balance: SetOrKeep<Amount>,
     /// change the executable bytecode
@@ -188,7 +190,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
 
 /// Deserializer for `LedgerEntryUpdate`
 pub struct LedgerEntryUpdateDeserializer {
-    parallel_balance_deserializer: SetOrKeepDeserializer<Amount, AmountDeserializer>,
+    amount_deserializer: SetOrKeepDeserializer<Amount, AmountDeserializer>,
     bytecode_deserializer: SetOrKeepDeserializer<Vec<u8>, VecU8Deserializer>,
     datastore_deserializer: DatastoreUpdateDeserializer,
 }
@@ -197,7 +199,7 @@ impl LedgerEntryUpdateDeserializer {
     /// Creates a new `LedgerEntryUpdateDeserializer`
     pub fn new() -> Self {
         Self {
-            parallel_balance_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new(
+            amount_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new(
                 Included(u64::MIN),
                 Included(u64::MAX),
             )),
@@ -249,8 +251,11 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
         context(
             "Failed LedgerEntryUpdate deserialization",
             tuple((
+                context("Failed sequential_balance deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
                 context("Failed parallel_balance deserialization", |input| {
-                    self.parallel_balance_deserializer.deserialize(input)
+                    self.amount_deserializer.deserialize(input)
                 }),
                 context("Failed bytecode deserialization", |input| {
                     self.bytecode_deserializer.deserialize(input)
@@ -261,7 +266,8 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
             )),
         )
         .map(
-            |(parallel_balance, bytecode, datastore)| LedgerEntryUpdate {
+            |(sequential_balance, parallel_balance, bytecode, datastore)| LedgerEntryUpdate {
+                sequential_balance,
                 parallel_balance,
                 bytecode,
                 datastore,
