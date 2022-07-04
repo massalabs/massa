@@ -111,9 +111,10 @@ impl SpeculativeRollState {
 
         // verify that the seller has enough rolls to sell
         if *count < roll_count {
-            return Err(ExecutionError::RollsError(
-                "not enough rolls to sell".to_string(),
-            ));
+            return Err(ExecutionError::RollSellError(format!(
+                "{} tried to sell {} rolls but only has {}",
+                seller_addr, roll_count, count
+            )));
         }
 
         // remove the rolls
