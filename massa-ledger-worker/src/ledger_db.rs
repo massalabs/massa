@@ -334,7 +334,10 @@ impl LedgerDB {
     fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        // balance
+        // sequential balance
+        batch.delete_cf(handle, seq_balance_key!(addr));
+
+        // parallel balance
         batch.delete_cf(handle, par_balance_key!(addr));
 
         // bytecode
