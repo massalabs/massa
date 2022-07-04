@@ -21,7 +21,7 @@ pub enum PosError {
     /** InitCycleUnavailable: trying to get PoS initial draw rolls/seed for
     negative cycle, which is unavailable */
     InitCycleUnavailable,
-    /// EmptyContainerInconsistency: draw cum_sum is empty
+    /// EmptyContainerInconsistency: draw cumulative distribution function is empty
     EmptyContainerInconsistency,
     /// CannotComputeSeed: could not seed RNG with computed seed
     CannotComputeSeed,
