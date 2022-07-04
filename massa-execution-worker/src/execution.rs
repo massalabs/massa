@@ -341,10 +341,7 @@ impl ExecutionState {
 
         // credit `roll_price` * `roll_count` sequential coins to the seller
         let amount = self.config.roll_price.saturating_mul_u64(*roll_count);
-        if let Err(err) =
-            // TODO: implement and use sequential coins transfer
-            context.transfer_parallel_coins(None, Some(seller_addr), amount)
-        {
+        if let Err(err) = context.transfer_sequential_coins(None, Some(seller_addr), amount) {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
@@ -388,14 +385,11 @@ impl ExecutionState {
         context.add_rolls(&buyer_addr, *roll_count);
 
         // burn `roll_price` * `roll_count` sequential coins from the buyer
-        if let Err(err) =
-            // TODO: implement and use sequential coins transfer
-            context.transfer_parallel_coins(
-                Some(buyer_addr),
-                None,
-                self.config.roll_price.saturating_mul_u64(*roll_count),
-            )
-        {
+        if let Err(err) = context.transfer_sequential_coins(
+            Some(buyer_addr),
+            None,
+            self.config.roll_price.saturating_mul_u64(*roll_count),
+        ) {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
@@ -878,10 +872,7 @@ impl ExecutionState {
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
         let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
-        let search_result = self
-            .active_history
-            .read()
-            .fetch_active_history_balance(address);
+        let search_result = self.active_history.read().fetch_parallel_balance(address);
         (
             final_balance,
             match search_result {
@@ -899,10 +890,7 @@ impl ExecutionState {
         key: &Hash,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
-        let search_result = self
-            .active_history
-            .read()
-            .fetch_active_history_data_entry(address, key);
+        let search_result = self.active_history.read().fetch_data_entry(address, key);
         (
             final_entry.clone(),
             match search_result {

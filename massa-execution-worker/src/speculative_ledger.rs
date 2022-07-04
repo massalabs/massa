@@ -76,14 +76,10 @@ impl SpeculativeLedger {
     pub fn get_sequential_balance(&self, addr: &Address) -> Option<Amount> {
         // try to read from added changes > history > final_state
         self.added_changes.get_sequential_balance_or_else(addr, || {
-            match self
-                .active_history
-                .read()
-                .fetch_active_history_balance(addr)
-            {
-                HistorySearchResult::Present(active_balance) => Some(active_balance),
+            match self.active_history.read().fetch_sequential_balance(addr) {
+                HistorySearchResult::Present(seq_balance) => Some(seq_balance),
                 HistorySearchResult::NoInfo => {
-                    self.final_state.read().ledger.get_parallel_balance(addr)
+                    self.final_state.read().ledger.get_sequential_balance(addr)
                 }
                 HistorySearchResult::Absent => None,
             }
@@ -100,12 +96,8 @@ impl SpeculativeLedger {
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
         // try to read from added changes > history > final_state
         self.added_changes.get_parallel_balance_or_else(addr, || {
-            match self
-                .active_history
-                .read()
-                .fetch_active_history_balance(addr)
-            {
-                HistorySearchResult::Present(active_balance) => Some(active_balance),
+            match self.active_history.read().fetch_parallel_balance(addr) {
+                HistorySearchResult::Present(par_balance) => Some(par_balance),
                 HistorySearchResult::NoInfo => {
                     self.final_state.read().ledger.get_parallel_balance(addr)
                 }
@@ -124,16 +116,33 @@ impl SpeculativeLedger {
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
         // try to read from added changes > history > final_state
         self.added_changes.get_bytecode_or_else(addr, || {
-            match self
-                .active_history
-                .read()
-                .fetch_active_history_bytecode(addr)
-            {
+            match self.active_history.read().fetch_bytecode(addr) {
                 HistorySearchResult::Present(bytecode) => Some(bytecode),
                 HistorySearchResult::NoInfo => self.final_state.read().ledger.get_bytecode(addr),
                 HistorySearchResult::Absent => None,
             }
         })
+    }
+
+    /// Transfers sequential coins from one address to another.
+    /// No changes are retained in case of failure.
+    /// The spending address, if defined, must exist.
+    ///
+    /// # Parameters:
+    /// * `from_addr`: optional spending address (use None for pure coin creation)
+    /// * `to_addr`: optional crediting address (use None for pure coin destruction)
+    /// * `amount`: amount of coins to transfer
+    pub fn transfer_sequential_coins(
+        &mut self,
+        from_addr: Option<Address>,
+        _to_addr: Option<Address>,
+        _amount: Amount,
+    ) -> Result<(), ExecutionError> {
+        // TODO: IMPLEMENT THIS
+        if let Some(addr) = from_addr {
+            let _ = self.get_sequential_balance(&addr);
+        }
+        Ok(())
     }
 
     /// Transfers parallel coins from one address to another.
@@ -194,11 +203,7 @@ impl SpeculativeLedger {
     pub fn entry_exists(&self, addr: &Address) -> bool {
         // try to read from added changes > history > final_state
         self.added_changes.entry_exists_or_else(addr, || {
-            match self
-                .active_history
-                .read()
-                .fetch_active_history_balance(addr)
-            {
+            match self.active_history.read().fetch_sequential_balance(addr) {
                 HistorySearchResult::Present(_balance) => true,
                 HistorySearchResult::NoInfo => self.final_state.read().ledger.entry_exists(addr),
                 HistorySearchResult::Absent => false,
@@ -257,11 +262,7 @@ impl SpeculativeLedger {
     pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         // try to read from added changes > history > final_state
         self.added_changes.get_data_entry_or_else(addr, key, || {
-            match self
-                .active_history
-                .read()
-                .fetch_active_history_data_entry(addr, key)
-            {
+            match self.active_history.read().fetch_data_entry(addr, key) {
                 HistorySearchResult::Present(entry) => Some(entry),
                 HistorySearchResult::NoInfo => {
                     self.final_state.read().ledger.get_data_entry(addr, key)
@@ -282,11 +283,7 @@ impl SpeculativeLedger {
     pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
         // try to read from added changes > history > final_state
         self.added_changes.has_data_entry_or_else(addr, key, || {
-            match self
-                .active_history
-                .read()
-                .fetch_active_history_data_entry(addr, key)
-            {
+            match self.active_history.read().fetch_data_entry(addr, key) {
                 HistorySearchResult::Present(_entry) => true,
                 HistorySearchResult::NoInfo => {
                     self.final_state.read().ledger.has_data_entry(addr, key)
