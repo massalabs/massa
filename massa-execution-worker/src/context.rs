@@ -491,6 +491,34 @@ impl ExecutionContext {
         self.speculative_ledger.delete_data_entry(address, key)
     }
 
+    /// Transfers sequential coins from one address to another.
+    /// No changes are retained in case of failure.
+    /// Spending is only allowed from existing addresses we have write access on
+    ///
+    /// # Arguments
+    /// * `from_addr`: optional spending address (use None for pure coin creation)
+    /// * `to_addr`: optional crediting address (use None for pure coin destruction)
+    /// * `amount`: amount of coins to transfer
+    pub fn transfer_sequential_coins(
+        &mut self,
+        from_addr: Option<Address>,
+        to_addr: Option<Address>,
+        amount: Amount,
+    ) -> Result<(), ExecutionError> {
+        // check access rights
+        if let Some(from_addr) = &from_addr {
+            if !self.has_write_rights_on(from_addr) {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "spending from address {} is not allowed in this context",
+                    from_addr
+                )));
+            }
+        }
+        // do the transfer
+        self.speculative_ledger
+            .transfer_sequential_coins(from_addr, to_addr, amount)
+    }
+
     /// Transfers parallel coins from one address to another.
     /// No changes are retained in case of failure.
     /// Spending is only allowed from existing addresses we have write access on
