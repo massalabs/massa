@@ -22,7 +22,7 @@ impl PoSFinalState {
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     pub fn apply_changes(&mut self, _changes: &PoSChanges, _slot: Slot) {}
 
-    /// TODO
+    /// Retrieves the amount of rolls a given address has
     pub fn get_rolls_for(&self, addr: &Address) -> u64 {
         self.cycle_history
             .back()
@@ -31,7 +31,7 @@ impl PoSFinalState {
             .unwrap_or_default()
     }
 
-    /// TODO
+    /// Retrives every deferred credit of the given slot
     pub fn get_deferred_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
         self.deferred_credits.get(slot).cloned().unwrap_or_default()
     }
