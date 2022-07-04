@@ -13,7 +13,6 @@ use massa_pos_exports::PoSFinalState;
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool)`
-#[derive(Debug)]
 pub struct FinalState {
     /// execution state configuration
     pub(crate) config: FinalStateConfig,
