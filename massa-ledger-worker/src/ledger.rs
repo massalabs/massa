@@ -146,16 +146,6 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.get_entire_datastore(addr)
     }
 
-    /// TODO: remove when API is updated
-    fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
-        self.get_parallel_balance(addr)
-            .map(|parallel_balance| LedgerEntry {
-                parallel_balance,
-                bytecode: self.get_bytecode(addr).unwrap_or_default(),
-                datastore: self.get_entire_datastore(addr),
-            })
-    }
-
     /// Get a part of the ledger
     /// Used for bootstrap
     /// Return: Tuple with data and last key
