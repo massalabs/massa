@@ -38,7 +38,6 @@ pub use settings::BootstrapSettings;
 pub mod tests;
 
 /// a collection of the bootstrap state snapshots of all relevant modules
-#[derive(Debug)]
 pub struct GlobalBootstrapState {
     /// state of the proof of stake state (distributions, seeds...)
     pub pos: Option<ExportProofOfStake>,

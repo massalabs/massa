@@ -339,6 +339,7 @@ impl ExecutionState {
                 "{} failed to sell {} rolls: {}",
                 seller_addr, roll_count, err
             );
+            return Ok(());
         }
 
         // credit `roll_price` * `roll_count` sequential coins to the seller
@@ -790,7 +791,11 @@ impl ExecutionState {
             }
         } else {
             // Update speculative rolls state production stats
-            context_guard!(self).update_production_stats(&addr, &slot, false);
+            if let Ok(addr) = self.selector.get_producer(slot) {
+                context_guard!(self).update_production_stats(&addr, &slot, false);
+            } else {
+                debug!("couldn't get the supposed block producer on a missing slot");
+            }
         }
 
         // finish slot and return the execution output
