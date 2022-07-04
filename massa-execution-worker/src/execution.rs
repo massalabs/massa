@@ -330,14 +330,21 @@ impl ExecutionState {
         // set the context origin operation id
         context.origin_operation_id = Some(operation_id);
 
-        // remove the rolls
-        context.try_sell_rolls(&seller_addr, self.config.roll_price, *roll_count)?;
+        // try to sell the rolls
+        if let Err(err) = context.try_sell_rolls(&seller_addr, self.config.roll_price, *roll_count)
+        {
+            context.origin_operation_id = None;
+            context.reset_to_snapshot(context_snapshot);
+            debug!(
+                "{} failed to sell {} rolls: {}",
+                seller_addr, roll_count, err
+            );
+        }
 
         // credit `roll_price` * `roll_count` sequential coins to the seller
         let amount = self.config.roll_price.saturating_mul_u64(*roll_count);
         if let Err(err) =
-            // TODO: implement sequential coins transfer (impl should not be too different from parallel transfer)
-            // TODO: this should transfer sequential coins
+            // TODO: implement and use sequential coins transfer
             context.transfer_parallel_coins(None, Some(seller_addr), amount)
         {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
@@ -384,8 +391,7 @@ impl ExecutionState {
 
         // burn `roll_price` * `roll_count` sequential coins from the buyer
         if let Err(err) =
-            // TODO: implement sequential coins transfer (impl should not be too different from parallel transfer)
-            // NOTE: this should transfer sequential coins
+            // TODO: implement and use sequential coins transfer
             context.transfer_parallel_coins(
                 Some(buyer_addr),
                 None,

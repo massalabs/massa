@@ -77,7 +77,7 @@ impl SpeculativeRollState {
         *count = count.saturating_add(roll_count);
     }
 
-    /// Try to sell `roll_count` rolls from the given
+    /// Try to sell `roll_count` rolls from the given address
     pub fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
