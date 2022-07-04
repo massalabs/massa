@@ -566,6 +566,22 @@ impl ExecutionContext {
             .try_sell_rolls(seller_addr, self.slot, roll_price, roll_count)
     }
 
+    /// Update production statistics of an address.
+    ///
+    /// # Arguments
+    /// * `creator`: the supposed creator
+    /// * `slot`: current slot
+    /// * `contains_block`: indicates whether or not `creator` produced the block
+    pub fn update_production_stats(
+        &mut self,
+        creator: &Address,
+        slot: &Slot,
+        contains_block: bool,
+    ) {
+        self.speculative_roll_state
+            .update_production_stats(creator, slot, contains_block);
+    }
+
     /// Finishes a slot and generates the execution output.
     /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
     /// Moves the output of the execution out of the context,

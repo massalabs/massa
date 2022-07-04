@@ -62,7 +62,12 @@ impl SpeculativeRollState {
         self.added_changes = snapshot;
     }
 
-    /// Add `roll_count` rolls to the given address
+    /// Add `roll_count` rolls to the buyer address.
+    /// Validity checks must be performed _outside_ of this function.
+    ///
+    /// # Arguments
+    /// * `buyer_addr`: address that will receive the rolls
+    /// * `roll_count`: number of rolls it will receive
     pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
         let count = self
             .added_changes
@@ -77,7 +82,11 @@ impl SpeculativeRollState {
         *count = count.saturating_add(roll_count);
     }
 
-    /// Try to sell `roll_count` rolls from the given address
+    /// Try to sell `roll_count` rolls from the seller address.
+    ///
+    /// # Arguments
+    /// * `seller_addr`: address to sell the rolls from
+    /// * `roll_count`: number of rolls to sell
     pub fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
@@ -130,10 +139,12 @@ impl SpeculativeRollState {
         Ok(())
     }
 
-    /// Update the production stats.
+    /// Update production statistics of an address.
     ///
-    /// This should not be used in readonly execution.
-    #[allow(dead_code)]
+    /// # Arguments
+    /// * `creator`: the supposed creator
+    /// * `slot`: current slot
+    /// * `contains_block`: indicates whether or not `creator` produced the block
     pub fn update_production_stats(
         &mut self,
         creator: &Address,
