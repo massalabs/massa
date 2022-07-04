@@ -27,7 +27,10 @@ use std::ops::Bound::Included;
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct LedgerEntry {
     /// The parallel balance of that entry.
-    /// See lib.rs for an explanation on parallel vs sequential balances.
+    /// See lib.rs for an explanation on sequential vs parallel balance.
+    pub sequential_balance: Amount,
+
+    /// The parallel balance of that entry.
     pub parallel_balance: Amount,
 
     /// Executable bytecode
@@ -229,6 +232,9 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
         context(
             "Failed LedgerEntry deserialization",
             tuple((
+                context("Failed sequential_balance deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
                 context("Failed parallel_balance deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
                 }),
@@ -240,11 +246,14 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
                 }),
             )),
         )
-        .map(|(parallel_balance, bytecode, datastore)| LedgerEntry {
-            parallel_balance,
-            bytecode,
-            datastore,
-        })
+        .map(
+            |(sequential_balance, parallel_balance, bytecode, datastore)| LedgerEntry {
+                sequential_balance,
+                parallel_balance,
+                bytecode,
+                datastore,
+            },
+        )
         .parse(buffer)
     }
 }
@@ -325,6 +334,10 @@ impl DeserializeCompact for LedgerEntry {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
         let mut cursor = 0usize;
 
+        // sequential balance
+        let (sequential_balance, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
+        cursor += delta;
+
         // parallel balance
         let (parallel_balance, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
@@ -387,6 +400,7 @@ impl DeserializeCompact for LedgerEntry {
 
         Ok((
             LedgerEntry {
+                sequential_balance,
                 parallel_balance,
                 bytecode,
                 datastore,
