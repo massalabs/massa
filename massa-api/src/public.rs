@@ -510,18 +510,22 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_datastore_entry(
+    fn get_datastore_entries(
         &self,
-        entry: DatastoreEntryInput,
-    ) -> BoxFuture<Result<DatastoreEntryOutput, ApiError>> {
+        entries: Vec<DatastoreEntryInput>,
+    ) -> BoxFuture<Result<Vec<DatastoreEntryOutput>, ApiError>> {
         let execution_controller = self.0.execution_controller.clone();
         let closure = async move || {
-            let data =
-                execution_controller.get_final_and_active_data_entry(&entry.address, &entry.key);
-            Ok(DatastoreEntryOutput {
-                final_value: data.0,
-                active_value: data.1,
-            })
+            let mut result = Vec::new();
+            for entry in entries {
+                let data = execution_controller
+                    .get_final_and_active_data_entry(&entry.address, &entry.key);
+                result.push(DatastoreEntryOutput {
+                    final_value: data.0,
+                    active_value: data.1,
+                });
+            }
+            Ok(result)
         };
         Box::pin(closure())
     }

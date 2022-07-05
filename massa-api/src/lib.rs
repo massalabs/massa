@@ -232,12 +232,12 @@ pub trait Endpoints {
     fn get_graph_interval(&self, _: TimeInterval)
         -> BoxFuture<Result<Vec<BlockSummary>, ApiError>>;
 
-    /// Get a datastore entry
-    #[rpc(name = "get_datastore_entry")]
-    fn get_datastore_entry(
+    /// Get a datastore entries
+    #[rpc(name = "get_datastore_entries")]
+    fn get_datastore_entries(
         &self,
-        _: DatastoreEntryInput,
-    ) -> BoxFuture<Result<DatastoreEntryOutput, ApiError>>;
+        _: Vec<DatastoreEntryInput>,
+    ) -> BoxFuture<Result<Vec<DatastoreEntryOutput>, ApiError>>;
 
     /// Get addresses.
     #[rpc(name = "get_addresses")]

@@ -169,10 +169,10 @@ impl Endpoints for API<Private> {
         crate::wrong_api::<Vec<BlockSummary>>()
     }
 
-    fn get_datastore_entry(
+    fn get_datastore_entries(
         &self,
-        _: DatastoreEntryInput,
-    ) -> BoxFuture<Result<DatastoreEntryOutput, ApiError>> {
+        _: Vec<DatastoreEntryInput>,
+    ) -> BoxFuture<Result<Vec<DatastoreEntryOutput>, ApiError>> {
         crate::wrong_api()
     }
 
