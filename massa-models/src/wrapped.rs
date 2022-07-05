@@ -32,6 +32,7 @@ where
     pub thread: u8,
     /// Id
     pub id: U,
+    #[serde(skip)]
     /// Content serialized
     pub serialized_data: Vec<u8>,
 }
