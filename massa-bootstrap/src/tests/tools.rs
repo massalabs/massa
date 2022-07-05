@@ -61,7 +61,7 @@ fn get_random_ledger_entry() -> LedgerEntry {
     let bytecode: Vec<u8> = get_some_random_bytes();
     let mut datastore = BTreeMap::new();
     for _ in 0usize..rng.gen_range(0..10) {
-        let key = Hash::compute_from(&get_some_random_bytes());
+        let key = get_some_random_bytes();
         let value = get_some_random_bytes();
         datastore.insert(key, value);
     }
