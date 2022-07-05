@@ -1283,16 +1283,11 @@ impl ConsensusWorker {
         for b_id in new_final_block_ids.into_iter() {
             if let Some(a_block) = self.block_db.get_active_block(&b_id) {
                 // List new final ops
-                new_final_ops.extend(
-                    a_block
-                        .operation_set
-                        .iter()
-                        .map(|(id, _)| {
-                            // TODO: Discuss this get
-                            let op = self.block_db.storage.retrieve_operation(id).unwrap();
-                            (*id, (op.content.expire_period, a_block.slot.thread))
-                        }),
-                );
+                new_final_ops.extend(a_block.operation_set.iter().map(|(id, _)| {
+                    // TODO: Discuss this get
+                    let op = self.block_db.storage.retrieve_operation(id).unwrap();
+                    (*id, (op.content.expire_period, a_block.slot.thread))
+                }));
                 // List final block
                 new_final_blocks.insert(b_id, a_block);
                 // add to stats

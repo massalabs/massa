@@ -112,14 +112,17 @@ struct BlockInfo {
     operations: Option<Vec<OperationId>>,
     /// Operation we are waiting for to be able to process the block.
     awaiting_operations: Set<OperationId>,
+    /// The header of the block.
+    header: WrappedHeader,
 }
 
 impl BlockInfo {
-    fn new(endorsements: Map<EndorsementId, u32>) -> Self {
+    fn new(endorsements: Map<EndorsementId, u32>, header: WrappedHeader) -> Self {
         BlockInfo {
             endorsements,
             operations: Default::default(),
             awaiting_operations: Set::default(),
+            header,
         }
     }
 }
@@ -927,7 +930,10 @@ impl ProtocolWorker {
 
         if self
             .checked_headers
-            .insert(block_id, BlockInfo::new(endorsement_ids.clone()))
+            .insert(
+                block_id,
+                BlockInfo::new(endorsement_ids.clone(), header.clone()),
+            )
             .is_none()
         {
             self.prune_checked_headers();
@@ -989,14 +995,8 @@ impl ProtocolWorker {
         &mut self,
         block: &WrappedBlock,
         source_node_id: &NodeId,
-    ) -> Result<
-        Option<(
-            BlockId,
-            Map<OperationId, usize>,
-            Map<EndorsementId, u32>,
-        )>,
-        ProtocolError,
-    > {
+    ) -> Result<Option<(BlockId, Map<OperationId, usize>, Map<EndorsementId, u32>)>, ProtocolError>
+    {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         let (header, operations, operation_merkle_root, slot) = {
@@ -1112,8 +1112,7 @@ impl ProtocolWorker {
 
             // Note: we always want to update the node's view of known operations,
             // even if we cached the check previously.
-            let was_present =
-                received_ids.insert(operation_id, idx);
+            let was_present = received_ids.insert(operation_id, idx);
 
             // There are duplicate operations in this batch.
             if was_present.is_some() {
@@ -1192,9 +1191,8 @@ impl ProtocolWorker {
 
             // Note: we always want to update the node's view of known operations,
             // even if we cached the check previously.
-            let _was_present =
-                received_ids.insert(operation_id, idx);
-            
+            let _was_present = received_ids.insert(operation_id, idx);
+
             // TODO: TEMPORARY REMOVED CHECK
             // // There are duplicate operations in this batch.
             // if was_present.is_some() {
@@ -1225,18 +1223,18 @@ impl ProtocolWorker {
             );
         }
 
-            // TODO: TEMPORARY REMOVED CHECK
-            // if !new_operations.is_empty() {
-            // Add to pool, propagate when received outside of a header.
-            // self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
-            //     operations: new_operations,
-            //     propagate,
-            // })
-            // .await;
+        // TODO: TEMPORARY REMOVED CHECK
+        // if !new_operations.is_empty() {
+        // Add to pool, propagate when received outside of a header.
+        // self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
+        //     operations: new_operations,
+        //     propagate,
+        // })
+        // .await;
 
-            // prune checked operations cache
-            self.prune_checked_operations();
- //       }
+        // prune checked operations cache
+        self.prune_checked_operations();
+        //       }
 
         Ok((seen_ops, received_ids, total_gas))
     }
