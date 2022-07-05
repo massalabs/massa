@@ -16,7 +16,7 @@ use massa_network_exports::{
     throw_handshake_error as throw, ConnectionId, HandshakeErrorType, NetworkError, ReadHalf,
     WriteHalf,
 };
-use massa_signature::{sign, verify_signature, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use tokio::{task::JoinHandle, time::timeout};
@@ -33,8 +33,8 @@ pub struct HandshakeWorker {
     writer: WriteBinder,
     /// Our node id.
     self_node_id: NodeId,
-    /// Our private key.
-    private_key: PrivateKey,
+    /// Our keypair.
+    keypair: KeyPair,
     /// After `timeout_duration` milliseconds, the handshake attempt is dropped.
     timeout_duration: MassaTime,
     version: Version,
@@ -53,7 +53,7 @@ impl HandshakeWorker {
     /// * `socket_reader`: receives data.
     /// * `socket_writer`: sends data.
     /// * `self_node_id`: our node id.
-    /// * `private_key`: our private key.
+    /// * `keypair`: our keypair.
     /// * `timeout_duration`: after `timeout_duration` milliseconds, the handshake attempt is dropped.
     /// * `connection_id`: Node we are trying to connect for debugging
     /// * `version`: Node version used in handshake initialization (check peers compatibility)
@@ -62,7 +62,7 @@ impl HandshakeWorker {
         socket_reader: ReadHalf,
         socket_writer: WriteHalf,
         self_node_id: NodeId,
-        private_key: PrivateKey,
+        keypair: KeyPair,
         timeout_duration: MassaTime,
         version: Version,
         connection_id: ConnectionId,
@@ -82,7 +82,7 @@ impl HandshakeWorker {
                     reader: ReadBinder::new(socket_reader, max_bytes_read),
                     writer: WriteBinder::new(socket_writer, max_bytes_write),
                     self_node_id,
-                    private_key,
+                    keypair,
                     timeout_duration,
                     version,
                 }
@@ -146,7 +146,7 @@ impl HandshakeWorker {
 
         // sign their random bytes
         let other_random_hash = Hash::compute_from(&other_random_bytes);
-        let self_signature = sign(&other_random_hash, &self.private_key)?;
+        let self_signature = self.keypair.sign(&other_random_hash)?;
 
         // send handshake reply future
         let send_reply_msg = Message::HandshakeReply {
@@ -175,9 +175,12 @@ impl HandshakeWorker {
         };
 
         // check their signature
-        verify_signature(&self_random_hash, &other_signature, &other_node_id.0).map_err(
-            |_err| NetworkError::HandshakeError(HandshakeErrorType::HandshakeInvalidSignature),
-        )?;
+        other_node_id
+            .0
+            .verify_signature(&self_random_hash, &other_signature)
+            .map_err(|_err| {
+                NetworkError::HandshakeError(HandshakeErrorType::HandshakeInvalidSignature)
+            })?;
 
         Ok((other_node_id, self.reader, self.writer))
     }

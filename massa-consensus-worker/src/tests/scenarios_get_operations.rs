@@ -9,7 +9,7 @@ use massa_models::{
     clique::Clique, ledger_models::LedgerData, Amount, BlockId, OperationSearchResult,
     OperationSearchResultStatus, Slot,
 };
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -24,7 +24,7 @@ async fn test_get_operation() {
     //     .timestamp(stderrlog::Timestamp::Millisecond)
     //     .init()
     //     .unwrap();
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         operation_validity_periods: 10,
@@ -37,15 +37,15 @@ async fn test_get_operation() {
     };
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
-    let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, _) = random_address_on_thread(0, cfg.thread_count).into();
     // to avoid timing pb for block in the future
 
-    let op1 = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
-    let op2 = create_transaction(priv_a, pubkey_a, address_b, 2, 10, 1);
-    let op3 = create_transaction(priv_a, pubkey_a, address_b, 3, 10, 1);
-    let op4 = create_transaction(priv_a, pubkey_a, address_b, 4, 10, 1);
-    let op5 = create_transaction(priv_a, pubkey_a, address_b, 5, 10, 1);
+    let op1 = create_transaction(&keypair_a, address_b, 1, 10, 1);
+    let op2 = create_transaction(&keypair_a, address_b, 2, 10, 1);
+    let op3 = create_transaction(&keypair_a, address_b, 3, 10, 1);
+    let op4 = create_transaction(&keypair_a, address_b, 4, 10, 1);
+    let op5 = create_transaction(&keypair_a, address_b, 5, 10, 1);
 
     let ops = [
         op1.clone(),
@@ -61,11 +61,7 @@ async fn test_get_operation() {
             .collect(),
     );
 
-    let (boot_graph, b1, b2) = get_bootgraph(
-        derive_public_key(&staking_keys[0]),
-        vec![op2.clone(), op3.clone()],
-        boot_ledger,
-    );
+    let (boot_graph, b1, b2) = get_bootgraph(vec![op2.clone(), op3.clone()], boot_ledger);
     // there is only one node so it should be drawn at every slot
 
     consensus_pool_test(
@@ -141,28 +137,24 @@ async fn test_get_operation() {
 }
 
 fn get_bootgraph(
-    creator: PublicKey,
     operations: Vec<WrappedOperation>,
     ledger: ConsensusLedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
-    let genesis_0 = get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);
-    let genesis_1 = get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
+    let genesis_0 = get_export_active_test_block(vec![], vec![], Slot::new(0, 0), true);
+    let genesis_1 = get_export_active_test_block(vec![], vec![], Slot::new(0, 1), true);
     let p1t0 = get_export_active_test_block(
-        creator,
         vec![(genesis_0.block_id, 0), (genesis_1.block_id, 0)],
         vec![operations[0].clone()],
         Slot::new(1, 0),
         true,
     );
     let p1t1 = get_export_active_test_block(
-        creator,
         vec![(genesis_0.block_id, 0), (genesis_1.block_id, 0)],
         vec![],
         Slot::new(1, 1),
         false,
     );
     let p2t0 = get_export_active_test_block(
-        creator,
         vec![(p1t0.block_id, 1), (p1t1.block_id, 1)],
         vec![operations[1].clone()],
         Slot::new(2, 0),

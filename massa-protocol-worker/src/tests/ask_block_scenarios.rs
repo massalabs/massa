@@ -36,7 +36,7 @@ async fn test_without_a_priori() {
                 .unwrap();
 
             // 2. Create a block coming from node 0.
-            let block = tools::create_block(&node_a.private_key, &node_a.id.0);
+            let block = tools::create_block(&node_a.keypair);
             let hash_1 = block.id;
             // end set up
 
@@ -108,7 +108,7 @@ async fn test_someone_knows_it() {
                 .unwrap();
 
             // 2. Create a block coming from node 0.
-            let block = tools::create_block(&node_a.private_key, &node_a.id.0);
+            let block = tools::create_block(&node_a.keypair);
             let hash_1 = block.id;
             // end set up
 
@@ -188,7 +188,7 @@ async fn test_dont_want_it_anymore() {
                 .unwrap();
 
             // 2. Create a block coming from node 0.
-            let block = tools::create_block(&node_a.private_key, &node_a.id.0);
+            let block = tools::create_block(&node_a.keypair);
             let hash_1 = block.id;
             // end set up
 
@@ -266,7 +266,7 @@ async fn test_no_one_has_it() {
                 .unwrap();
 
             // 2. Create a block coming from node 0.
-            let block = tools::create_block(&node_a.private_key, &node_a.id.0);
+            let block = tools::create_block(&node_a.keypair);
             let hash_1 = block.id;
             // end set up
 
@@ -345,10 +345,10 @@ async fn test_multiple_blocks_without_a_priori() {
                 .unwrap();
 
             // 2. Create two blocks coming from node 0.
-            let block_1 = tools::create_block(&node_a.private_key, &node_a.id.0);
+            let block_1 = tools::create_block(&node_a.keypair);
             let hash_1 = block_1.id;
 
-            let block_2 = tools::create_block(&node_a.private_key, &node_a.id.0);
+            let block_2 = tools::create_block(&node_a.keypair);
             let hash_2 = block_2.id;
 
             // node a is disconnected so no node knows about wanted blocks

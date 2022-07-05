@@ -41,7 +41,7 @@ pub enum BootstrapError {
     FinalStateError(#[from] FinalStateError),
     /// join error: {0}
     JoinError(#[from] tokio::task::JoinError),
-    /// missing private key file
+    /// missing keypair file
     MissingKeyError,
     /// incompatible version: {0}
     IncompatibleVersionError(String),

@@ -25,7 +25,7 @@ use massa_models::prehash::Set;
 use massa_models::{Address, BlockId, EndorsementId, Version};
 use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 use std::thread::JoinHandle;
@@ -136,10 +136,10 @@ pub trait Endpoints {
     #[rpc(name = "node_sign_message")]
     fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>>;
 
-    /// Add a vector of new private keys for the node to use to stake.
+    /// Add a vector of new keys for the node to use to stake.
     /// No confirmation to expect.
-    #[rpc(name = "add_staking_private_keys")]
-    fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>>;
+    #[rpc(name = "add_staking_secret_keys")]
+    fn add_staking_secret_keys(&self, _: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>>;
 
     /// Execute bytecode in read-only mode.
     #[rpc(name = "execute_read_only_bytecode")]

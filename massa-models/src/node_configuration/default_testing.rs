@@ -25,14 +25,14 @@
 //! };
 //! ```
 use crate::{Amount, Version};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use std::net::{IpAddr, Ipv4Addr};
 
 lazy_static::lazy_static! {
-    /// genesis private keys
-    pub static ref GENESIS_KEY: PrivateKey = generate_random_private_key();
+    /// genesis keypair
+    pub static ref GENESIS_KEY: KeyPair = KeyPair::generate();
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         MassaTime::now()

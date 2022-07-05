@@ -234,7 +234,7 @@ impl OperationPool {
             } // else final op wasn't in pool.
         }
         self.storage
-            .remove_operations(&ops.keys().cloned().collect::<Vec<OperationId>>());
+            .remove_operations(ops.keys().cloned().collect::<Vec<OperationId>>().as_slice());
         self.final_operations.extend(ops);
         Ok(())
     }

@@ -6,7 +6,7 @@ use massa_models::{BlockId, Slot};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
-use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_signature::KeyPair;
 use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;
@@ -28,7 +28,7 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from one node.
-            let mut block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let mut block = tools::create_block(&creator_node.keypair);
 
             // 2. Change the slot.
             block.content.header.content.slot = Slot::new(1, 1);
@@ -82,7 +82,7 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
 
             // 1. Create an operation
             let mut operation =
-                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+                tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
             // 2. Change the validity period.
             operation.content.expire_period += 10;
@@ -138,7 +138,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             let to_ban_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from one node.
-            let mut block = tools::create_block(&to_ban_node.private_key, &to_ban_node.id.0);
+            let mut block = tools::create_block(&to_ban_node.keypair);
 
             // 2. Change the slot.
             block.content.header.content.slot = Slot::new(1, 1);
@@ -172,7 +172,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 .expect("Node not created.");
 
             // Create a valid block from the other node.
-            let block = tools::create_block(&not_banned.private_key, &not_banned.id.0);
+            let block = tools::create_block(&not_banned.keypair);
 
             // 3. Send header to protocol, via the banned node.
             network_controller
@@ -225,7 +225,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from node creator_node.
-            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = tools::create_block(&creator_node.keypair);
 
             // 2. Send header to protocol.
             network_controller
@@ -252,10 +252,9 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             assert_eq!(expected_hash, received_hash);
 
             // 4. Get the node banned.
-            // New private key/public key to avoid getting same block id
-            let pv_key = generate_random_private_key();
-            let pb_key = derive_public_key(&pv_key);
-            let mut block = tools::create_block(&pv_key, &pb_key);
+            // New keypair to avoid getting same block id
+            let keypair = KeyPair::generate();
+            let mut block = tools::create_block(&keypair);
             block.content.header.content.slot = Slot::new(1, 1);
             network_controller
                 .send_header(creator_node.id, block.content.header)
@@ -317,7 +316,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
             network_controller.close_connection(nodes[2].id).await;
 
             // 2. Create a block coming from creator_node.
-            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = tools::create_block(&creator_node.keypair);
 
             let expected_hash = block.id;
 
@@ -349,7 +348,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
             }
 
             // Get one node banned.
-            let mut bad_block = tools::create_block(&nodes[1].private_key, &nodes[1].id.0);
+            let mut bad_block = tools::create_block(&nodes[1].keypair);
             bad_block.content.header.content.slot = Slot::new(1, 1);
             network_controller
                 .send_header(nodes[1].id, bad_block.content.header.clone())
@@ -423,7 +422,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             let nodes = tools::create_and_connect_nodes(4, &mut network_controller).await;
 
             // Create a block coming from one node.
-            let block = tools::create_block(&nodes[0].private_key, &nodes[0].id.0);
+            let block = tools::create_block(&nodes[0].keypair);
 
             let expected_hash = block.id;
 
@@ -531,7 +530,7 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // Get the node banned.
-            let mut block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let mut block = tools::create_block(&creator_node.keypair);
             block.content.header.content.slot = Slot::new(1, 1);
             network_controller
                 .send_header(creator_node.id, block.content.header)
@@ -545,7 +544,7 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
             network_controller.new_connection(creator_node.id).await;
 
             // The node is not banned anymore.
-            let block = tools::create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = tools::create_block(&creator_node.keypair);
             network_controller
                 .send_header(creator_node.id, block.content.header.clone())
                 .await;

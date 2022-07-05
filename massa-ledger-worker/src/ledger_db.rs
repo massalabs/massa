@@ -416,7 +416,7 @@ mod tests {
     use crate::ledger_db::LedgerSubEntry;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{Address, Amount, DeserializeCompact};
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use massa_signature::KeyPair;
     use rocksdb::WriteBatch;
     use std::collections::BTreeMap;
     use tempfile::TempDir;
@@ -455,8 +455,8 @@ mod tests {
     #[test]
     fn test_ledger_db() {
         // init addresses
-        let pub_a = derive_public_key(&generate_random_private_key());
-        let pub_b = derive_public_key(&generate_random_private_key());
+        let pub_a = KeyPair::generate().get_public_key();
+        let pub_b = KeyPair::generate().get_public_key();
         let a = Address::from_public_key(&pub_a);
         let b = Address::from_public_key(&pub_b);
         let (db, data) = init_test_ledger(a);
@@ -484,7 +484,7 @@ mod tests {
 
     #[test]
     fn test_ledger_parts() {
-        let pub_a = derive_public_key(&generate_random_private_key());
+        let pub_a = KeyPair::generate().get_public_key();
         let a = Address::from_public_key(&pub_a);
         let (db, _) = init_test_ledger(a);
         let res = db.get_ledger_part(&None).unwrap();

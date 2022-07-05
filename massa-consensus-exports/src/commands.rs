@@ -10,7 +10,7 @@ use massa_models::{
 };
 
 use massa_proof_of_stake_exports::ExportProofOfStake;
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 
 use massa_models::prehash::{Map, Set};
 use tokio::sync::oneshot;
@@ -81,8 +81,8 @@ pub enum ConsensusCommand {
     GetStats(oneshot::Sender<ConsensusStats>),
     /// Get all stakers
     GetActiveStakers(oneshot::Sender<Map<Address, u64>>),
-    /// Add private keys to use them for staking
-    RegisterStakingPrivateKeys(Vec<PrivateKey>),
+    /// Add keys to use them for staking
+    RegisterStakingKeys(Vec<KeyPair>),
     /// Remove associated staking keys
     RemoveStakingAddresses(Set<Address>),
     /// Get staking addresses

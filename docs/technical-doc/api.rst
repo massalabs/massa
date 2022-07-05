@@ -489,7 +489,7 @@ Here is an example of the content format :
         },
     }
 
-For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with blake3.
+For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with schnorr.
 
 -   Return:
 
@@ -671,10 +671,10 @@ Sign message with node's key.
 Where public_key is the public key used to sign the input and signature,
 the resulting signature.
 
-`node_add_staking_private_keys`
+`node_add_staking_secret_keys`
 --------------------------
 
-Add a vec of new private keys for the node to use to stake.
+Add a vec of new secret keys for the node to use to stake.
 
 -   Parameter:
 
@@ -682,7 +682,7 @@ Add a vec of new private keys for the node to use to stake.
 
     [String];
 
-The strings must be private keys.
+The strings must be secret keys.
 
 -   No return.
 

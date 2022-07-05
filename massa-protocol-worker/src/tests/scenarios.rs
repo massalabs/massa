@@ -38,7 +38,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
             network_controller.close_connection(nodes[0].id).await;
 
             // 2. Create a block coming from node creator_node.
-            let block = create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = create_block(&creator_node.keypair);
 
             // 3. Send header to protocol.
             network_controller
@@ -131,7 +131,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             network_controller.close_connection(nodes[2].id).await;
 
             // 2. Create a block coming from creator_node.
-            let block = create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = create_block(&creator_node.keypair);
 
             let expected_hash = block.id;
 
@@ -240,7 +240,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
             network_controller.close_connection(node_d.id).await;
 
             // 2. Create a block coming from one node.
-            let ref_block = create_block(&creator_node.private_key, &creator_node.id.0);
+            let ref_block = create_block(&creator_node.keypair);
 
             // 3. Send header to protocol.
             network_controller
@@ -365,7 +365,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from one node.
-            let block = create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = create_block(&creator_node.keypair);
 
             let expected_hash = block.id;
 
@@ -419,7 +419,7 @@ async fn test_protocol_block_not_found() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from one node.
-            let block = create_block(&creator_node.private_key, &creator_node.id.0);
+            let block = create_block(&creator_node.keypair);
 
             let expected_hash = block.id;
 

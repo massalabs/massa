@@ -15,7 +15,7 @@ use massa_models::{
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
     DeserializeCompact, Endorsement, EndorsementSerializer, SerializeCompact, Slot, WrappedBlock,
 };
-use massa_signature::{derive_public_key, generate_random_private_key, PublicKey};
+use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use serial_test::serial;
 use std::str::FromStr;
@@ -25,8 +25,7 @@ use tracing::warn;
 /// the data input to create the public keys was generated using the secp256k1 curve
 /// a test using this function is a regression test not an implementation test
 fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
-    let pk = generate_random_private_key();
-    let pb = derive_public_key(&pk);
+    let keypair = KeyPair::generate();
     let block = Block::new_wrapped(
         Block {
             header: BlockHeader::new_wrapped(
@@ -41,21 +40,18 @@ fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
                             slot: Slot::new(1, 0),
                         },
                         EndorsementSerializer::new(),
-                        &pk,
-                        &pb,
+                        &keypair,
                     )
                     .unwrap()],
                 },
                 BlockHeaderSerializer::new(),
-                &pk,
-                &pb,
+                &keypair,
             )
             .unwrap(),
             operations: vec![],
         },
         BlockSerializer::new(),
-        &pk,
-        &pb,
+        &keypair,
     )
     .unwrap();
 
@@ -145,27 +141,15 @@ pub async fn test_get_ledger_at_parents() {
     let mut cfg = ConsensusConfig::from(ledger_file.path());
     cfg.thread_count = thread_count;
     cfg.block_reward = Amount::from_str("1").unwrap();
-    // to generate address and public keys
-    /*        let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-
-    let add = Address::from_public_key(&public_key);
-
-    println!(
-        "public key:{}, address:{}, th:{}",
-        public_key.to_bs58_check(),
-        add.to_bs58_check(),
-        add.get_thread(thread_count)
-    ); */
 
     // define addresses use for the test
     let pubkey_a =
-        PublicKey::from_bs58_check("2Bnffv4cGZ5XVAYdV4kiC5L9Vu3f3NSyssJJswdfXYB93iJQrj").unwrap();
+        PublicKey::from_str("P123CaiaLgcKaiXVYz9zj89uV24LNGfX7VCte8m6Za97m76FCMeL").unwrap();
     let address_a = Address::from_public_key(&pubkey_a);
     assert_eq!(0, address_a.get_thread(thread_count));
 
     let pubkey_b =
-        PublicKey::from_bs58_check("2DTtxCs9xGeX9kZgc8BjosCmCxkKQuxx1a7KTxWxm68sgAh1pt").unwrap();
+        PublicKey::from_str("P12Z7uhQMECaaWR5AxPzccN9yjry7aqaphnMUiLknG1hZaeH6FR8").unwrap();
     let address_b = Address::from_public_key(&pubkey_b);
     assert_eq!(1, address_b.get_thread(thread_count));
 
