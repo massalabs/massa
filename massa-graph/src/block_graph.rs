@@ -594,29 +594,27 @@ impl BlockGraph {
             Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
         for b_id in required_active_blocks {
             if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
-                if a_block.is_final {
-                    let block = self.storage.retrieve_block(&b_id).ok_or_else(|| {
-                        GraphError::MissingBlock(format!(
-                            "missing block in export_bootstrap_graph: {}",
-                            b_id
-                        ))
-                    })?;
-                    let stored_block = block.read().clone();
-                    active_blocks.insert(
-                        b_id,
-                        ExportActiveBlock {
-                            block: stored_block,
-                            block_id: b_id,
-                            parents: a_block.parents.clone(),
-                            children: a_block.children.clone(),
-                            dependencies: a_block.dependencies.clone(),
-                            is_final: a_block.is_final,
-                            block_ledger_changes: a_block.block_ledger_changes.clone(),
-                            roll_updates: a_block.roll_updates.clone(),
-                            production_events: a_block.production_events.clone(),
-                        },
-                    );
-                }
+                let block = self.storage.retrieve_block(&b_id).ok_or_else(|| {
+                    GraphError::MissingBlock(format!(
+                        "missing block in export_bootstrap_graph: {}",
+                        b_id
+                    ))
+                })?;
+                let stored_block = block.read().clone();
+                active_blocks.insert(
+                    b_id,
+                    ExportActiveBlock {
+                        block: stored_block,
+                        block_id: b_id,
+                        parents: a_block.parents.clone(),
+                        children: a_block.children.clone(),
+                        dependencies: a_block.dependencies.clone(),
+                        is_final: a_block.is_final,
+                        block_ledger_changes: a_block.block_ledger_changes.clone(),
+                        roll_updates: a_block.roll_updates.clone(),
+                        production_events: a_block.production_events.clone(),
+                    },
+                );
             } else {
                 return Err(GraphError::ContainerInconsistency(format!(
                     "block {} was expected to be active but wasn't on bootstrap graph export",
