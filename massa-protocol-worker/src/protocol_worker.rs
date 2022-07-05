@@ -10,16 +10,18 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, OperationPrefixId, Operations},
     prehash::{BuildMap, Map, Set},
-    wrapped::Id,
-    BlockHeaderSerializer, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
+    wrapped::{Id, Wrapped},
+    BlockHeaderSerializer, BlockId, BlockSerializer, EndorsementId, OperationId,
+    WrappedEndorsement, WrappedHeader, THREAD_COUNT,
 };
-use massa_models::{EndorsementSerializer, OperationSerializer, WrappedBlock};
+use massa_models::{Block, EndorsementSerializer, OperationSerializer, WrappedBlock};
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
+use massa_serialization::Serializer;
 use massa_storage::Storage;
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
@@ -109,7 +111,7 @@ struct BlockInfo {
     endorsements: Map<EndorsementId, u32>,
     /// Operations contained in the block,
     /// if we've received them already, and none otherwise.
-    operations: Option<Vec<OperationId>>,
+    operations: Option<Set<OperationId>>,
     /// Operation we are waiting for to be able to process the block.
     awaiting_operations: Set<OperationId>,
     /// The header of the block.
@@ -1147,7 +1149,29 @@ impl ProtocolWorker {
                         info.awaiting_operations.remove(op_id);
                         self.awaiting_operations.remove(op_id);
                         if info.awaiting_operations.is_empty() {
-                            // TODO: re-constitute block and send it to graph.
+                            let block = Block {
+                                header: info.header.clone(),
+                                operations: info.operations.clone().unwrap().clone(),
+                            };
+                            let content_serializer = BlockSerializer::new();
+                            let mut content_serialized = Vec::new();
+                            content_serializer
+                                .serialize(&block, &mut content_serialized)
+                                .unwrap();
+                            #[cfg(feature = "sandbox")]
+                            let thread_count = *THREAD_COUNT;
+                            #[cfg(not(feature = "sandbox"))]
+                            let thread_count = THREAD_COUNT;
+                            let wrapped: WrappedBlock = Wrapped {
+                                signature: info.header.signature,
+                                creator_public_key: info.header.creator_public_key,
+                                creator_address: info.header.creator_address,
+                                thread: info.header.creator_address.get_thread(thread_count),
+                                id: BlockId::new(info.header.id.hash()),
+                                content: block,
+                                serialized_data: content_serialized,
+                            };
+                            // TODO: send block to graph. First check block?
                         }
                     } else {
                         warn!(
@@ -1386,6 +1410,13 @@ impl ProtocolWorker {
                             } else {
                                 warn!("Missing block info for {}", block_id);
                             }
+                        }
+
+                        // Store entire operation list
+                        if let Some(info) = self.checked_headers.get_mut(&block_id) {
+                            info.operations = Some(operation_list.clone());
+                        } else {
+                            warn!("Missing block info for {}", block_id);
                         }
 
                         // Ask for the operations.

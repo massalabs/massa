@@ -77,7 +77,7 @@ pub mod timeslots;
 mod version;
 /// trait for signed structure
 pub mod wrapped;
-pub use node_configuration::CompactConfig;
+pub use node_configuration::{CompactConfig, THREAD_COUNT};
 /// Expose constants
 pub mod constants {
     pub use crate::node_configuration::*;
