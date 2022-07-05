@@ -52,7 +52,8 @@ pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
         .ok()
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+// TODO: use an enum instead
 pub struct Key {
     pub address: Address,
     pub ident: u8,
@@ -98,7 +99,7 @@ impl Serializer<Key> for KeySerializer {
     ) -> Result<(), massa_serialization::SerializeError> {
         buffer.extend(key.address.to_bytes());
         buffer.extend([key.ident]);
-        if let Some(value) = &key.store_key {
+        if key.ident == DATASTORE_IDENT && let Some(value) = &key.store_key {
             self.vec_u8_serializer.serialize(value, buffer)?;
         }
         Ok(())
@@ -145,6 +146,7 @@ impl Deserializer<Key> for KeyDeserializer {
     ///     store_key,
     /// };
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
+    /// println!("{:?}", serialized);
     /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
@@ -179,10 +181,10 @@ impl Deserializer<Key> for KeyDeserializer {
                 DATASTORE_IDENT => {
                     let (rest, key) = self.vec_u8_deserializer.deserialize(&rest[1..])?;
                     Ok((
-                        &rest[1..],
+                        rest,
                         Key {
                             address,
-                            ident: BYTECODE_IDENT,
+                            ident: DATASTORE_IDENT,
                             store_key: Some(key),
                         },
                     ))

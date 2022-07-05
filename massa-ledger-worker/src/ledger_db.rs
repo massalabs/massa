@@ -337,7 +337,7 @@ impl LedgerDB {
         last_key: &Option<Vec<u8>>,
     ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
         let ser = VecU8Serializer::new();
-        let key_serializer = KeySerializer::new();
+        let _key_serializer = KeySerializer::new();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let mut part = Vec::new();
         let opt = ReadOptions::default();
@@ -357,7 +357,7 @@ impl LedgerDB {
         // Iterates over the whole database
         for (key, entry) in db_iterator {
             if (part.len() as u64) < (LEDGER_PART_SIZE_MESSAGE_BYTES) {
-                key_serializer.serialize(&key.to_vec(), &mut part)?;
+                part.extend(key.to_vec());
                 ser.serialize(&entry.to_vec(), &mut part)?;
                 last_key = Some(key.to_vec());
             } else {
@@ -381,6 +381,7 @@ impl LedgerDB {
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_deserializer = KeyDeserializer::new();
+        let key_serializer = KeySerializer::new();
         let mut last_key = Rc::new(None);
         let mut batch = WriteBatch::default();
 
@@ -393,7 +394,9 @@ impl LedgerDB {
             *Rc::get_mut(&mut last_key).ok_or_else(|| {
                 nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
             })? = Some(key.clone());
-            batch.put_cf(handle, key, value);
+            let mut ser_key = Vec::new();
+            key_serializer.serialize(&key, &mut ser_key).unwrap();
+            batch.put_cf(handle, ser_key, value);
             Ok((rest, ()))
         })(data)
         .map_err(|_| ModelsError::SerializeError("Error in deserialization".to_string()))?;
@@ -401,7 +404,12 @@ impl LedgerDB {
         // Every byte should have been read
         if rest.is_empty() {
             self.0.write(batch).expect(CRUD_ERROR);
-            Ok((*last_key).clone())
+            let result = (*last_key).as_ref().map(|value| {
+                let mut ser_key = Vec::new();
+                key_serializer.serialize(&value, &mut ser_key).unwrap();
+                ser_key
+            });
+            Ok(result)
         } else {
             Err(ModelsError::SerializeError(
                 "rest is not empty.".to_string(),
