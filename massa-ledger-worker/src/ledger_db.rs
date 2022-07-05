@@ -403,6 +403,7 @@ impl LedgerDB {
             self.0.write(batch).expect(CRUD_ERROR);
             Ok((*last_key).clone())
         } else {
+            println!("REST LEN = {}", rest.len());
             Err(ModelsError::SerializeError(
                 "rest is not empty.".to_string(),
             ))

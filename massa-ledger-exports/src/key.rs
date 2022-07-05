@@ -73,7 +73,7 @@ impl KeySerializer {
 impl Serializer<Vec<u8>> for KeySerializer {
     /// ```
     /// use massa_models::address::Address;
-    /// use massa_ledger_exports::KeySerializer;
+    /// use massa_ledger_exports::{KeySerializer, DATASTORE_IDENT};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
@@ -83,7 +83,7 @@ impl Serializer<Vec<u8>> for KeySerializer {
     /// let store_key = Hash::compute_from(b"test");
     /// let mut key = Vec::new();
     /// key.extend(address.to_bytes());
-    /// key.push(2u8);
+    /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
@@ -92,9 +92,20 @@ impl Serializer<Vec<u8>> for KeySerializer {
         value: &Vec<u8>,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        buffer.extend(&value[..(ADDRESS_SIZE_BYTES + 1)]);
-        self.vec_u8_serializer
-            .serialize(&value[(ADDRESS_SIZE_BYTES + 1)..].to_vec(), buffer)?;
+        let limit = ADDRESS_SIZE_BYTES + 1;
+        buffer.extend(&value[..limit]);
+        println!(
+            "IDENT = {} | LIMIT = {} | LEN = {}",
+            value[ADDRESS_SIZE_BYTES],
+            limit,
+            value.len()
+        );
+        if value.len() > limit {
+            println!("SERIALIZE DATASTORE KEY");
+            self.vec_u8_serializer
+                .serialize(&value[(ADDRESS_SIZE_BYTES + 1)..].to_vec(), buffer)?;
+        }
+        println!("OUT");
         Ok(())
     }
 }
@@ -125,18 +136,28 @@ impl KeyDeserializer {
 impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// ```
     /// use massa_models::address::Address;
-    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
     ///
-    /// let mut serialized = Vec::new();
     /// let address = Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     /// let store_key = Hash::compute_from(b"test");
+    ///
     /// let mut key = Vec::new();
+    /// let mut serialized = Vec::new();
     /// key.extend(address.to_bytes());
-    /// key.push(2u8);
+    /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
+    /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(key_deser, key);
+    ///
+    /// let mut key = Vec::new();
+    /// let mut serialized = Vec::new();
+    /// key.extend(address.to_bytes());
+    /// key.push(BALANCE_IDENT);
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -146,6 +167,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> nom::IResult<&'a [u8], Vec<u8>, E> {
+        println!("BUFF LEN = {}", buffer.len());
         let (rest, address) = self.address_deserializer.deserialize(buffer)?;
         let error = nom::Err::Error(ParseError::from_error_kind(
             buffer,
@@ -153,10 +175,17 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
         ));
         match rest.first() {
             Some(ident) => match *ident {
-                BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
-                BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
+                BALANCE_IDENT => {
+                    println!("A REST LEN = {}", rest.len());
+                    Ok((&rest[1..], balance_key!(address)))
+                }
+                BYTECODE_IDENT => {
+                    println!("B REST LEN = {}", rest.len());
+                    Ok((&rest[1..], bytecode_key!(address)))
+                }
                 DATASTORE_IDENT => {
                     let (rest, hash) = self.vec_u8_deserializer.deserialize(&rest[1..])?;
+                    println!("C REST LEN = {}", rest.len());
                     Ok((rest, data_key!(address, hash)))
                 }
                 _ => Err(error),
