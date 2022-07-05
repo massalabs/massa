@@ -1146,8 +1146,8 @@ impl ProtocolWorker {
                 if let Some(block_id) = self.awaiting_operations.get(op_id) {
                     if let Some(info) = self.checked_headers.get_mut(block_id) {
                         info.awaiting_operations.remove(op_id);
+                        self.awaiting_operations.remove(op_id);
                         if info.awaiting_operations.is_empty() {
-                            self.awaiting_operations.remove(op_id);
                             // TODO: re-constitute block and send it to graph.
                         }
                     } else {
