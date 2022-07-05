@@ -39,7 +39,7 @@ pub struct LedgerEntry {
 /// Serializer for `Datastore` field in `LedgerEntry`
 pub struct DatastoreSerializer {
     u64_serializer: U64VarIntSerializer,
-    value_serializer: VecU8Serializer,
+    vec_u8_serializer: VecU8Serializer,
 }
 
 impl DatastoreSerializer {
@@ -47,7 +47,7 @@ impl DatastoreSerializer {
     pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
-            value_serializer: VecU8Serializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(),
         }
     }
 }
@@ -66,8 +66,8 @@ impl Serializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreSerializer {
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;
         for (key, value) in value.iter() {
-            buffer.extend(key);
-            self.value_serializer.serialize(value, buffer)?;
+            self.vec_u8_serializer.serialize(key, buffer)?;
+            self.vec_u8_serializer.serialize(value, buffer)?;
         }
         Ok(())
     }

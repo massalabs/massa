@@ -1,4 +1,4 @@
-use massa_models::{address::AddressDeserializer, Address, VecU8Deserializer};
+use massa_models::{Address, AddressDeserializer, VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use nom::error::{ContextError, ParseError};
 use std::ops::Bound::Included;
@@ -52,40 +52,55 @@ pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
         .ok()
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct Key {
+    pub address: Address,
+    pub ident: u8,
+    pub store_key: Option<Vec<u8>>,
+}
+
 /// Basic key serializer
-#[derive(Default)]
-pub struct KeySerializer;
+pub struct KeySerializer {
+    vec_u8_serializer: VecU8Serializer,
+}
 
 impl KeySerializer {
     /// Creates a new `KeySerializer`
     pub fn new() -> Self {
-        Self
+        KeySerializer {
+            vec_u8_serializer: VecU8Serializer::new(),
+        }
     }
 }
 
-impl Serializer<Vec<u8>> for KeySerializer {
+impl Serializer<Key> for KeySerializer {
     /// ```
     /// use massa_models::address::Address;
-    /// use massa_ledger_exports::KeySerializer;
+    /// use massa_ledger_exports::{KeySerializer, Key};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
     ///
     /// let mut serialized = Vec::new();
     /// let address = Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
-    /// let store_key = Hash::compute_from(b"test");
-    /// let mut key = Vec::new();
-    /// key.extend(address.to_bytes());
-    /// key.push(2u8);
-    /// key.extend(store_key.to_bytes());
+    /// let store_key = Some(b"test".to_vec());
+    /// let key = Key {
+    ///     address,
+    ///     ident: 2u8,
+    ///     store_key,
+    /// };
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(
         &self,
-        value: &Vec<u8>,
+        key: &Key,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        buffer.extend(value);
+        buffer.extend(key.address.to_bytes());
+        buffer.extend([key.ident]);
+        if let Some(value) = &key.store_key {
+            self.vec_u8_serializer.serialize(value, buffer)?;
+        }
         Ok(())
     }
 }
@@ -113,21 +128,22 @@ impl KeyDeserializer {
 }
 
 // TODO: deserialize keys into a rust type
-impl Deserializer<Vec<u8>> for KeyDeserializer {
+impl Deserializer<Key> for KeyDeserializer {
     /// ```
     /// use massa_models::address::Address;
-    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, Key};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
     ///
     /// let mut serialized = Vec::new();
     /// let address = Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
-    /// let store_key = Hash::compute_from(b"test");
-    /// let mut key = Vec::new();
-    /// key.extend(address.to_bytes());
-    /// key.push(2u8);
-    /// key.extend(store_key.to_bytes());
+    /// let store_key = Some(b"test".to_vec());
+    /// let key = Key {
+    ///     address,
+    ///     ident: 2u8,
+    ///     store_key,
+    /// };
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -136,7 +152,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> nom::IResult<&'a [u8], Vec<u8>, E> {
+    ) -> nom::IResult<&'a [u8], Key, E> {
         let (rest, address) = self.address_deserializer.deserialize(buffer)?;
         let error = nom::Err::Error(ParseError::from_error_kind(
             buffer,
@@ -144,11 +160,32 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
         ));
         match rest.first() {
             Some(ident) => match *ident {
-                BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
-                BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
+                BALANCE_IDENT => Ok((
+                    &rest[1..],
+                    Key {
+                        address,
+                        ident: BALANCE_IDENT,
+                        store_key: None,
+                    },
+                )),
+                BYTECODE_IDENT => Ok((
+                    &rest[1..],
+                    Key {
+                        address,
+                        ident: BYTECODE_IDENT,
+                        store_key: None,
+                    },
+                )),
                 DATASTORE_IDENT => {
-                    let (rest, hash) = self.vec_u8_deserializer.deserialize(&rest[1..])?;
-                    Ok((rest, data_key!(address, hash)))
+                    let (rest, key) = self.vec_u8_deserializer.deserialize(&rest[1..])?;
+                    Ok((
+                        &rest[1..],
+                        Key {
+                            address,
+                            ident: BYTECODE_IDENT,
+                            store_key: Some(key),
+                        },
+                    ))
                 }
                 _ => Err(error),
             },
