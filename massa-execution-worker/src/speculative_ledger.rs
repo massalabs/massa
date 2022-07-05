@@ -7,7 +7,6 @@
 
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
-use massa_hash::Hash;
 use massa_ledger_exports::{Applicable, LedgerChanges};
 use massa_models::{Address, Amount};
 use parking_lot::RwLock;
@@ -255,7 +254,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// true if the key exists in the address datastore, false otherwise
-    pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
+    pub fn has_data_entry(&self, addr: &Address, key: &Vec<u8>) -> bool {
         // try to read from added changes > history > final_state
         self.added_changes.has_data_entry_or_else(addr, key, || {
             match self
@@ -283,7 +282,7 @@ impl SpeculativeLedger {
     pub fn set_data_entry(
         &mut self,
         addr: &Address,
-        key: Hash,
+        key: Vec<u8>,
         data: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check for address existence
@@ -306,17 +305,21 @@ impl SpeculativeLedger {
     /// # Arguments
     /// * `addr`: address
     /// * `key`: key of the entry to delete in the address' datastore
-    pub fn delete_data_entry(&mut self, addr: &Address, key: &Hash) -> Result<(), ExecutionError> {
+    pub fn delete_data_entry(
+        &mut self,
+        addr: &Address,
+        key: &Vec<u8>,
+    ) -> Result<(), ExecutionError> {
         // check if the entry exists
         if !self.has_data_entry(addr, key) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not delete data entry {} for address {}: entry does not exist",
+                "could not delete data entry {:?} for address {}: entry does not exist",
                 key, addr
             )));
         }
 
         // delete entry
-        self.added_changes.delete_data_entry(*addr, *key);
+        self.added_changes.delete_data_entry(*addr, key.to_owned());
 
         Ok(())
     }

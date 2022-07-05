@@ -10,7 +10,6 @@ use crate::WrappedOperation;
 use crate::{
     Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
-use massa_hash::Hash;
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
@@ -477,7 +476,7 @@ pub struct DatastoreEntryInput {
     /// associated address of the entry
     pub address: Address,
     /// datastore key
-    pub key: Hash,
+    pub key: Vec<u8>,
 }
 
 /// Datastore entry query output struct
