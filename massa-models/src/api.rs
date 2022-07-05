@@ -200,6 +200,8 @@ pub struct AddressInfo {
     pub final_balance_info: Option<Amount>,
     /// latest sequential balance
     pub candidate_balance_info: Option<Amount>,
+    /// every final datastore key
+    pub final_datastore_keys: Vec<Vec<u8>>,
     /// rolls
     pub rolls: RollsInfo,
     /// next slots this address will be selected to create a block

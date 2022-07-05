@@ -583,6 +583,8 @@ impl Endpoints for API<Public> {
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
             let mut candidate_balance_info: Map<Address, Option<Amount>> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut final_datastore_keys: Map<Address, Vec<Vec<u8>>> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
 
             let mut concurrent_getters = FuturesUnordered::new();
             for &address in addresses.iter() {
@@ -616,6 +618,7 @@ impl Endpoints for API<Public> {
 
                     let (final_balance, candidate_balance) =
                         exec_snd.get_final_and_active_parallel_balance(&address);
+                    let final_datastore_keys = exec_snd.get_every_final_datastore_key(&address);
                     Result::<
                         (
                             Address,
@@ -624,6 +627,7 @@ impl Endpoints for API<Public> {
                             Set<EndorsementId>,
                             Option<Amount>,
                             Option<Amount>,
+                            Vec<Vec<u8>>,
                         ),
                         ApiError,
                     >::Ok((
@@ -633,16 +637,18 @@ impl Endpoints for API<Public> {
                         gathered_ed,
                         final_balance,
                         candidate_balance,
+                        final_datastore_keys,
                     ))
                 });
             }
             while let Some(res) = concurrent_getters.next().await {
-                let (a, bl_set, op_set, ed_set, final_balance, candidate_balance) = res?;
-                operations.insert(a, op_set);
-                blocks.insert(a, bl_set);
-                endorsements.insert(a, ed_set);
-                final_balance_info.insert(a, final_balance);
-                candidate_balance_info.insert(a, candidate_balance);
+                let (adrr, bl_set, op_set, ed_set, final_balance, candidate_balance, keys) = res?;
+                operations.insert(adrr, op_set);
+                blocks.insert(adrr, bl_set);
+                endorsements.insert(adrr, ed_set);
+                final_balance_info.insert(adrr, final_balance);
+                candidate_balance_info.insert(adrr, candidate_balance);
+                final_datastore_keys.insert(adrr, keys);
             }
 
             // compile everything per address
@@ -682,6 +688,9 @@ impl Endpoints for API<Public> {
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                     candidate_balance_info: candidate_balance_info
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
+                    final_datastore_keys: final_datastore_keys
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                 })
