@@ -560,8 +560,9 @@ impl Deserializer<PublicKey> for PublicKeyDeserializer {
     /// use massa_hash::Hash;
     ///
     /// let keypair = KeyPair::generate();
-    /// let serialized = keypair.get_public_key().to_bytes();
-    /// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let public_key = keypair.get_public_key();
+    /// let serialized = public_key.to_bytes();
+    /// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::<DeserializeError>(serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(keypair.get_public_key(), deser_public_key);
     /// ```
