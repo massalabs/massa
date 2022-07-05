@@ -364,12 +364,12 @@ impl ExecutionContext {
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
-    pub fn get_data_entry(&self, address: &Address, key: &Vec<u8>) -> Option<Vec<u8>> {
+    pub fn get_data_entry(&self, address: &Address, key: &[u8]) -> Option<Vec<u8>> {
         self.speculative_ledger.get_data_entry(address, key)
     }
 
     /// checks if a datastore entry exists in the speculative ledger
-    pub fn has_data_entry(&self, address: &Address, key: &Vec<u8>) -> bool {
+    pub fn has_data_entry(&self, address: &Address, key: &[u8]) -> bool {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
@@ -454,7 +454,7 @@ impl ExecutionContext {
     pub fn delete_data_entry(
         &mut self,
         address: &Address,
-        key: &Vec<u8>,
+        key: &[u8],
     ) -> Result<(), ExecutionError> {
         // check access right
         if !self.has_write_rights_on(address) {

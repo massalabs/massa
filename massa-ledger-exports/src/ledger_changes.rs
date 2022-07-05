@@ -693,7 +693,7 @@ impl LedgerChanges {
     pub fn get_data_entry_or_else<F: FnOnce() -> Option<Vec<u8>>>(
         &self,
         addr: &Address,
-        key: &Vec<u8>,
+        key: &[u8],
         f: F,
     ) -> Option<Vec<u8>> {
         // Get the current changes being applied to the ledger entry associated to that address
@@ -748,7 +748,7 @@ impl LedgerChanges {
     pub fn has_data_entry_or_else<F: FnOnce() -> bool>(
         &self,
         addr: &Address,
-        key: &Vec<u8>,
+        key: &[u8],
         f: F,
     ) -> bool {
         // Get the current changes being applied to the ledger entry associated to that address

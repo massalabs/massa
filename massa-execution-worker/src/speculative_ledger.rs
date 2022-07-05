@@ -229,7 +229,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// `Some(Vec<u8>)` if the value was found, `None` if the address does not exist or if the key is not in its datastore.
-    pub fn get_data_entry(&self, addr: &Address, key: &Vec<u8>) -> Option<Vec<u8>> {
+    pub fn get_data_entry(&self, addr: &Address, key: &[u8]) -> Option<Vec<u8>> {
         // try to read from added changes > history > final_state
         self.added_changes.get_data_entry_or_else(addr, key, || {
             match self
@@ -254,7 +254,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// true if the key exists in the address datastore, false otherwise
-    pub fn has_data_entry(&self, addr: &Address, key: &Vec<u8>) -> bool {
+    pub fn has_data_entry(&self, addr: &Address, key: &[u8]) -> bool {
         // try to read from added changes > history > final_state
         self.added_changes.has_data_entry_or_else(addr, key, || {
             match self
@@ -314,11 +314,7 @@ impl SpeculativeLedger {
     /// # Arguments
     /// * `addr`: address
     /// * `key`: key of the entry to delete in the address' datastore
-    pub fn delete_data_entry(
-        &mut self,
-        addr: &Address,
-        key: &Vec<u8>,
-    ) -> Result<(), ExecutionError> {
+    pub fn delete_data_entry(&mut self, addr: &Address, key: &[u8]) -> Result<(), ExecutionError> {
         // check if the entry exists
         if !self.has_data_entry(addr, key) {
             return Err(ExecutionError::RuntimeError(format!(
