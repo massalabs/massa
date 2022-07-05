@@ -642,13 +642,13 @@ impl Endpoints for API<Public> {
                 });
             }
             while let Some(res) = concurrent_getters.next().await {
-                let (adrr, bl_set, op_set, ed_set, final_balance, candidate_balance, keys) = res?;
-                operations.insert(adrr, op_set);
-                blocks.insert(adrr, bl_set);
-                endorsements.insert(adrr, ed_set);
-                final_balance_info.insert(adrr, final_balance);
-                candidate_balance_info.insert(adrr, candidate_balance);
-                final_datastore_keys.insert(adrr, keys);
+                let (addr, bl_set, op_set, ed_set, final_balance, candidate_balance, keys) = res?;
+                operations.insert(addr, op_set);
+                blocks.insert(addr, bl_set);
+                endorsements.insert(addr, ed_set);
+                final_balance_info.insert(addr, final_balance);
+                candidate_balance_info.insert(addr, candidate_balance);
+                final_datastore_keys.insert(addr, keys);
             }
 
             // compile everything per address
