@@ -169,14 +169,14 @@
 [bootstrap]
     # list of bootstrap (ip, node id)
     bootstrap_list = [
-        ["149.202.86.103:31245", "P12NfnM6fP6AnVg9jJJyLjxY91Q9dpjP5EA397dJ4oRYQPyFRaNi"],
-        ["149.202.89.125:31245", "P1HDsH2wgt2AqDn5i4uug3dSqCeLTdRdMjekLgCbpKzmoMyPTa6"],
-        ["158.69.120.215:31245", "P1iqdww9BKajY3i7JTUbitdmNVtH7FvvdUHfVCoC94iuSjjoLxb"],
-        ["158.69.23.120:31245", "P1BwFPBeicJGHBbd5TtMeWbkwANgHW6bwer2XvG2zzqoMCtWWNZ"],
-        ["198.27.74.5:31245", "P1YoQGMTthTZjWqxTFL7uAzV7TJL6kduoXEtZ5TYntTz6xp5GfT"],
-        ["198.27.74.52:31245", "P18JLoPXGZ8HCTWFATvGtzPYzT1oVBMZPeosBW6FGCMpHVaDKea"],
-        ["54.36.174.177:31245", "P12B4VUcwjWy9UbCpPTQ3pzcvGS4qCgdDkkm1KRMWQxseYtrhbgB"],
-        ["51.75.60.228:31245", "P12PN8X16zhVQPdCmxgeApfsYMD1mCQQJe2o4D5BHZSfKdy9Ry9w"]
+        ["149.202.86.103:31245", "P12CVCDV3hitAzh6ZQrSCykQDbC4X3ARtTcu8Ls1iwha6z7BWB9d"],
+        ["149.202.89.125:31245", "P121ouGj9GCRMWuyNvVavMXQvaiS7DNCebi5oNiS8abs2YDYWHgX"],
+        ["158.69.120.215:31245", "P12LuiBkteWyRUtt1jTS4Cj74x61NpjV8cBBwDauXbuVMuXoMra2"],
+        ["158.69.23.120:31245", "P12BAwTG3hPDvygv2X9CDBzaujCMX9RGZBBo3vxrtPbqpF4edjrH"],
+        ["198.27.74.5:31245", "P1Eqp4kRwMZHmoSX5VRRW8KFpjbk7cYk4aURAj5WU3K8oeFfa5z"],
+        ["198.27.74.52:31245", "P1247tLFRtCRQ1Ta9Lry3ARjrcRjExu4thVanoxTjRGr5NDb9QwW"],
+        ["54.36.174.177:31245", "P1fr2z1bWo4Ya6cyhyMQQzZejwPJeW8tMKoXDvEjGupVCuCM1s2"],
+        ["51.75.60.228:31245", "P12nH89vhad7NH1xhRfkST5M6tokLyFWbNa5wQuheMWZ9b6fZQDB"]
     ]
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
