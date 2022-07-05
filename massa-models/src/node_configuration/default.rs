@@ -116,6 +116,8 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
 pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum length of a datastore key
+pub const MAX_DATASTORE_KEY_LENGTH: u8 = 32;
 
 // ***********************
 // Bootstrap constants

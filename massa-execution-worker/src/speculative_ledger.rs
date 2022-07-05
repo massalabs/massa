@@ -8,7 +8,7 @@
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges};
-use massa_models::{Address, Amount};
+use massa_models::{constants::default::MAX_DATASTORE_KEY_LENGTH, Address, Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -290,6 +290,15 @@ impl SpeculativeLedger {
             return Err(ExecutionError::RuntimeError(format!(
                 "could not set data for address {}: entry does not exist",
                 addr
+            )));
+        }
+
+        // check key correctness
+        let key_length = key.len();
+        if key_length > MAX_DATASTORE_KEY_LENGTH as usize {
+            return Err(ExecutionError::RuntimeError(format!(
+                "key length is {}, maximum is {}",
+                key_length, MAX_DATASTORE_KEY_LENGTH
             )));
         }
 
