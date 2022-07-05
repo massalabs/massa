@@ -186,7 +186,7 @@ impl Interface for InterfaceImpl {
     fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
         let addr = &massa_models::Address::from_str(address)?;
         let context = context_guard!(self);
-        match context.get_data_entry(addr, &key.as_bytes().to_vec()) {
+        match context.get_data_entry(addr, key.as_bytes()) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -228,7 +228,7 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry to delete
     fn raw_delete_data_for(&self, address: &str, key: &str) -> Result<()> {
         let addr = &massa_models::Address::from_str(address)?;
-        context_guard!(self).delete_data_entry(addr, &key.as_bytes().to_vec())?;
+        context_guard!(self).delete_data_entry(addr, key.as_bytes())?;
         Ok(())
     }
 
@@ -243,7 +243,7 @@ impl Interface for InterfaceImpl {
     fn has_data_for(&self, address: &str, key: &str) -> Result<bool> {
         let addr = massa_models::Address::from_str(address)?;
         let context = context_guard!(self);
-        Ok(context.has_data_entry(&addr, &key.as_bytes().to_vec()))
+        Ok(context.has_data_entry(&addr, key.as_bytes()))
     }
 
     /// Gets a datastore value by key for the current address (top of the call stack).
@@ -256,7 +256,7 @@ impl Interface for InterfaceImpl {
     fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match context.get_data_entry(&addr, &key.as_bytes().to_vec()) {
+        match context.get_data_entry(&addr, key.as_bytes()) {
             Some(data) => Ok(data),
             _ => bail!("data entry not found"),
         }
@@ -299,7 +299,7 @@ impl Interface for InterfaceImpl {
     fn raw_delete_data(&self, key: &str) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.delete_data_entry(&addr, &key.as_bytes().to_vec())?;
+        context.delete_data_entry(&addr, key.as_bytes())?;
         Ok(())
     }
 
@@ -313,7 +313,7 @@ impl Interface for InterfaceImpl {
     fn has_data(&self, key: &str) -> Result<bool> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        Ok(context.has_data_entry(&addr, &key.as_bytes().to_vec()))
+        Ok(context.has_data_entry(&addr, key.as_bytes()))
     }
 
     /// Hashes arbitrary data

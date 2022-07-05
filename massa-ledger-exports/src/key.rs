@@ -1,4 +1,7 @@
-use massa_models::{address::AddressDeserializer, Address, VecU8Deserializer};
+use massa_models::{
+    address::AddressDeserializer, constants::ADDRESS_SIZE_BYTES, Address, VecU8Deserializer,
+    VecU8Serializer,
+};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use nom::error::{ContextError, ParseError};
 use std::ops::Bound::Included;
@@ -54,12 +57,16 @@ pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
 
 /// Basic key serializer
 #[derive(Default)]
-pub struct KeySerializer;
+pub struct KeySerializer {
+    vec_u8_serializer: VecU8Serializer,
+}
 
 impl KeySerializer {
     /// Creates a new `KeySerializer`
     pub fn new() -> Self {
-        Self
+        Self {
+            vec_u8_serializer: VecU8Serializer::new(),
+        }
     }
 }
 
@@ -85,7 +92,9 @@ impl Serializer<Vec<u8>> for KeySerializer {
         value: &Vec<u8>,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        buffer.extend(value);
+        buffer.extend(&value[..(ADDRESS_SIZE_BYTES + 1)]);
+        self.vec_u8_serializer
+            .serialize(&value[(ADDRESS_SIZE_BYTES + 1)..].to_vec(), buffer)?;
         Ok(())
     }
 }
@@ -94,6 +103,12 @@ impl Serializer<Vec<u8>> for KeySerializer {
 pub struct KeyDeserializer {
     address_deserializer: AddressDeserializer,
     vec_u8_deserializer: VecU8Deserializer,
+}
+
+impl Default for KeyDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl KeyDeserializer {
