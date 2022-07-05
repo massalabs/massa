@@ -142,11 +142,10 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// use std::str::FromStr;
     /// use massa_models::Amount;
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
-    /// store.insert(hash, vec![1, 2, 3]);
+    /// store.insert(key, vec![1, 2, 3]);
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
@@ -199,11 +198,10 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// use std::str::FromStr;
     /// use massa_models::Amount;
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
-    /// store.insert(hash, vec![1, 2, 3]);
+    /// store.insert(key, vec![1, 2, 3]);
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {

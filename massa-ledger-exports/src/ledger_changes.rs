@@ -144,12 +144,12 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// use massa_serialization::Serializer;
     /// use massa_models::{prehash::Map, Address, Amount};
     /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
-    /// let mut store = Map::default();
-    /// store.insert(hash, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let key = "hello world".as_bytes().to_vec();
+    /// let mut store = BTreeMap::default();
+    /// store.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
@@ -211,12 +211,12 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_models::{prehash::Map, Address, Amount};
     /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
-    /// let mut store = Map::default();
-    /// store.insert(hash, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let key = "hello world".as_bytes().to_vec();
+    /// let mut store = BTreeMap::default();
+    /// store.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
@@ -311,11 +311,10 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_models::{Amount, Address};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
-    /// store.insert(hash, vec![1, 2, 3]);
+    /// store.insert(key, vec![1, 2, 3]);
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
@@ -383,11 +382,10 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_models::{Amount, Address};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
-    /// store.insert(hash, vec![1, 2, 3]);
+    /// store.insert(key, vec![1, 2, 3]);
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
