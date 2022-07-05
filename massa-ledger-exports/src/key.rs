@@ -1,7 +1,7 @@
-use massa_hash::HashDeserializer;
-use massa_models::{address::AddressDeserializer, Address};
+use massa_models::{address::AddressDeserializer, Address, VecU8Deserializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use nom::error::{ContextError, ParseError};
+use std::ops::Bound::Included;
 
 pub const BALANCE_IDENT: u8 = 0u8;
 pub const BYTECODE_IDENT: u8 = 1u8;
@@ -31,12 +31,7 @@ macro_rules! bytecode_key {
 #[macro_export]
 macro_rules! data_key {
     ($addr:expr, $key:expr) => {
-        [
-            &$addr.to_bytes()[..],
-            &[DATASTORE_IDENT],
-            &$key.to_bytes()[..],
-        ]
-        .concat()
+        [&$addr.to_bytes()[..], &[DATASTORE_IDENT], &$key].concat()
     };
 }
 
@@ -96,10 +91,9 @@ impl Serializer<Vec<u8>> for KeySerializer {
 }
 
 /// Basic key deserializer
-#[derive(Default)]
 pub struct KeyDeserializer {
     address_deserializer: AddressDeserializer,
-    hash_deserializer: HashDeserializer,
+    vec_u8_deserializer: VecU8Deserializer,
 }
 
 impl KeyDeserializer {
@@ -107,7 +101,7 @@ impl KeyDeserializer {
     pub fn new() -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
-            hash_deserializer: HashDeserializer::new(),
+            vec_u8_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
     }
 }
@@ -147,7 +141,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
                 BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
                 BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
                 DATASTORE_IDENT => {
-                    let (rest, hash) = self.hash_deserializer.deserialize(&rest[1..])?;
+                    let (rest, hash) = self.vec_u8_deserializer.deserialize(&rest[1..])?;
                     Ok((rest, data_key!(address, hash)))
                 }
                 _ => Err(error),

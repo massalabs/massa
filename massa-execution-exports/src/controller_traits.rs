@@ -5,7 +5,6 @@
 use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
-use massa_hash::Hash;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
@@ -51,7 +50,7 @@ pub trait ExecutionController: Send + Sync {
     fn get_final_and_active_data_entry(
         &self,
         addr: &Address,
-        key: &Hash,
+        key: &Vec<u8>,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>);
 
     /// Execute read-only SC function call without causing modifications to the consensus state

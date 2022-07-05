@@ -230,7 +230,7 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// `Some(Vec<u8>)` if the value was found, `None` if the address does not exist or if the key is not in its datastore.
-    pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
+    pub fn get_data_entry(&self, addr: &Address, key: &Vec<u8>) -> Option<Vec<u8>> {
         // try to read from added changes > history > final_state
         self.added_changes.get_data_entry_or_else(addr, key, || {
             match self

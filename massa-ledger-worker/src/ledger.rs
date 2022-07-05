@@ -3,7 +3,6 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
@@ -121,9 +120,9 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
-    fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
+    fn get_data_entry(&self, addr: &Address, key: &Vec<u8>) -> Option<Vec<u8>> {
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Datastore(*key))
+            .get_sub_entry(addr, LedgerSubEntry::Datastore(key.to_owned()))
     }
 
     /// Checks for the existence of a datastore entry for a given address.
@@ -134,15 +133,15 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
-    fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
+    fn has_data_entry(&self, addr: &Address, key: &Vec<u8>) -> bool {
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Datastore(*key))
+            .get_sub_entry(addr, LedgerSubEntry::Datastore(key.to_owned()))
             .is_some()
     }
 
     /// # Returns
     /// A copy of the datastore sorted by key
-    fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+    fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Vec<u8>, Vec<u8>> {
         self.sorted_ledger.get_entire_datastore(addr)
     }
 

@@ -9,7 +9,6 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
-use massa_hash::Hash;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::{Address, Amount};
@@ -114,7 +113,7 @@ impl ExecutionController for ExecutionControllerImpl {
     fn get_final_and_active_data_entry(
         &self,
         addr: &Address,
-        key: &Hash,
+        key: &Vec<u8>,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         self.execution_state
             .read()

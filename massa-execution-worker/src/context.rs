@@ -365,7 +365,7 @@ impl ExecutionContext {
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
-    pub fn get_data_entry(&self, address: &Address, key: &Hash) -> Option<Vec<u8>> {
+    pub fn get_data_entry(&self, address: &Address, key: &Vec<u8>) -> Option<Vec<u8>> {
         self.speculative_ledger.get_data_entry(address, key)
     }
 

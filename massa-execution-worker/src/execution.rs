@@ -17,7 +17,6 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
-use massa_hash::Hash;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
@@ -745,7 +744,7 @@ impl ExecutionState {
     pub fn get_final_and_active_data_entry(
         &self,
         address: &Address,
-        key: &Hash,
+        key: &Vec<u8>,
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
         let search_result = self

@@ -1,5 +1,4 @@
 use massa_execution_exports::ExecutionOutput;
-use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
@@ -65,7 +64,7 @@ impl ActiveHistory {
     pub fn fetch_active_history_data_entry(
         &self,
         addr: &Address,
-        key: &Hash,
+        key: &Vec<u8>,
     ) -> HistorySearchResult<Vec<u8>> {
         for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {
