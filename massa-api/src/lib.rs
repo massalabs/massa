@@ -232,7 +232,7 @@ pub trait Endpoints {
     fn get_graph_interval(&self, _: TimeInterval)
         -> BoxFuture<Result<Vec<BlockSummary>, ApiError>>;
 
-    /// Get a datastore entries
+    /// Get multiple datastore entries.
     #[rpc(name = "get_datastore_entries")]
     fn get_datastore_entries(
         &self,

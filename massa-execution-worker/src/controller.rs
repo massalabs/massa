@@ -120,6 +120,16 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_final_and_active_data_entry(addr, key)
     }
 
+    /// Get every datastore key of the given address.
+    ///
+    /// # Returns
+    /// A vector containing all the keys
+    fn get_every_final_datastore_key(&self, addr: &Address) -> Vec<Vec<u8>> {
+        self.execution_state
+            .read()
+            .get_every_final_datastore_key(addr)
+    }
+
     /// Executes a read-only request
     /// Read-only requests do not modify consensus state
     fn execute_readonly_request(

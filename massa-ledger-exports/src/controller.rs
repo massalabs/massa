@@ -2,7 +2,7 @@ use massa_models::{Address, Amount, ModelsError, Slot};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 
-use crate::{LedgerChanges, LedgerEntry};
+use crate::LedgerChanges;
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Allows applying `LedgerChanges` to the final ledger
@@ -49,9 +49,6 @@ pub trait LedgerController: Send + Sync + Debug {
     /// # Returns
     /// A copy of the datastore sorted by key
     fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Vec<u8>, Vec<u8>>;
-
-    /// TODO: remove when API is updated
-    fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry>;
 
     /// Get a part of the ledger
     /// Used for bootstrap

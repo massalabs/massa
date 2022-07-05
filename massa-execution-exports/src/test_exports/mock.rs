@@ -121,6 +121,10 @@ impl ExecutionController for MockExecutionController {
         (None, None)
     }
 
+    fn get_every_final_datastore_key(&self, _addr: &Address) -> Vec<Vec<u8>> {
+        Vec::default()
+    }
+
     fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,

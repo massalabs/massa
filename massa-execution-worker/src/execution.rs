@@ -761,6 +761,17 @@ impl ExecutionState {
         )
     }
 
+    /// Get every datastore key of the given address.
+    pub fn get_every_final_datastore_key(&self, addr: &Address) -> Vec<Vec<u8>> {
+        self.final_state
+            .read()
+            .ledger
+            .get_entire_datastore(addr)
+            .into_iter()
+            .map(|v| v.0)
+            .collect()
+    }
+
     /// Gets execution events optionally filtered by:
     /// * start slot
     /// * end slot

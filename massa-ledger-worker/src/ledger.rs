@@ -139,25 +139,20 @@ impl LedgerController for FinalLedger {
             .is_some()
     }
 
+    /// Retrieve the entire datastore of a given address
+    ///
     /// # Returns
     /// A copy of the datastore sorted by key
     fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Vec<u8>, Vec<u8>> {
         self.sorted_ledger.get_entire_datastore(addr)
     }
 
-    /// TODO: remove when API is updated
-    fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
-        self.get_parallel_balance(addr)
-            .map(|parallel_balance| LedgerEntry {
-                parallel_balance,
-                bytecode: self.get_bytecode(addr).unwrap_or_default(),
-                datastore: self.get_entire_datastore(addr),
-            })
-    }
-
-    /// Get a part of the ledger
-    /// Used for bootstrap
-    /// Return: Tuple with data and last key
+    /// Get a part of the disk ledger.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// A tuple containing the data and the last returned key
     fn get_ledger_part(
         &self,
         last_key: &Option<Vec<u8>>,
@@ -165,9 +160,12 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.get_ledger_part(last_key)
     }
 
-    /// Set a part of the ledger
-    /// Used for bootstrap
-    /// Return: Last key inserted
+    /// Set a part of the disk ledger.
+    ///
+    /// Solely used by the bootstrap.
+    ///
+    /// # Returns
+    /// The last key inserted
     fn set_ledger_part(&self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError> {
         self.sorted_ledger.set_ledger_part(data.as_bytes())
     }

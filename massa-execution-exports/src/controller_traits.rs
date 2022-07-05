@@ -53,6 +53,12 @@ pub trait ExecutionController: Send + Sync {
         key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>);
 
+    /// Get every datastore key of the given address.
+    ///
+    /// # Returns
+    /// A vector containing all the keys
+    fn get_every_final_datastore_key(&self, addr: &Address) -> Vec<Vec<u8>>;
+
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///
     /// # arguments
