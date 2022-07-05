@@ -96,6 +96,12 @@ pub struct KeyDeserializer {
     vec_u8_deserializer: VecU8Deserializer,
 }
 
+impl Default for KeyDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KeyDeserializer {
     /// Creates a new `KeyDeserializer`
     pub fn new() -> Self {

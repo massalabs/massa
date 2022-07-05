@@ -116,7 +116,7 @@ impl ExecutionController for MockExecutionController {
     fn get_final_and_active_data_entry(
         &self,
         _addr: &Address,
-        _key: &Vec<u8>,
+        _key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         (None, None)
     }

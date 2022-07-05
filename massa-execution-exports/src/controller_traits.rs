@@ -50,7 +50,7 @@ pub trait ExecutionController: Send + Sync {
     fn get_final_and_active_data_entry(
         &self,
         addr: &Address,
-        key: &Vec<u8>,
+        key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>);
 
     /// Execute read-only SC function call without causing modifications to the consensus state

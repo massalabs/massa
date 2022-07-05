@@ -34,7 +34,7 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
-    fn get_data_entry(&self, addr: &Address, key: &Vec<u8>) -> Option<Vec<u8>>;
+    fn get_data_entry(&self, addr: &Address, key: &[u8]) -> Option<Vec<u8>>;
 
     /// Checks for the existence of a datastore entry for a given address.
     ///
@@ -44,7 +44,7 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
-    fn has_data_entry(&self, addr: &Address, key: &Vec<u8>) -> bool;
+    fn has_data_entry(&self, addr: &Address, key: &[u8]) -> bool;
 
     /// # Returns
     /// A copy of the datastore sorted by key

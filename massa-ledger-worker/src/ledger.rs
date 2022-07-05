@@ -120,7 +120,7 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
-    fn get_data_entry(&self, addr: &Address, key: &Vec<u8>) -> Option<Vec<u8>> {
+    fn get_data_entry(&self, addr: &Address, key: &[u8]) -> Option<Vec<u8>> {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Datastore(key.to_owned()))
     }
@@ -133,7 +133,7 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
-    fn has_data_entry(&self, addr: &Address, key: &Vec<u8>) -> bool {
+    fn has_data_entry(&self, addr: &Address, key: &[u8]) -> bool {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Datastore(key.to_owned()))
             .is_some()

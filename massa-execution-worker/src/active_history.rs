@@ -64,7 +64,7 @@ impl ActiveHistory {
     pub fn fetch_active_history_data_entry(
         &self,
         addr: &Address,
-        key: &Vec<u8>,
+        key: &[u8],
     ) -> HistorySearchResult<Vec<u8>> {
         for output in self.0.iter().rev() {
             match output.state_changes.ledger_changes.0.get(addr) {

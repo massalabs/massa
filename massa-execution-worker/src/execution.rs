@@ -744,7 +744,7 @@ impl ExecutionState {
     pub fn get_final_and_active_data_entry(
         &self,
         address: &Address,
-        key: &Vec<u8>,
+        key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
         let search_result = self
