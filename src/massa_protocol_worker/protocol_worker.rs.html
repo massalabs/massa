@@ -2046,7 +2046,7 @@
                 <span class="kw">for</span> (<span class="ident">node</span>, <span class="ident">node_info</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">iter_mut</span>() {
                     <span class="kw">let</span> <span class="ident">new_ops</span>: <span class="ident">OperationIds</span> <span class="op">=</span> <span class="ident">operation_ids</span>
                         .<span class="ident">iter</span>()
-                        .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="op">!</span><span class="ident">node_info</span>.<span class="ident">knows_op</span>(<span class="kw-2">*</span><span class="ident">id</span>))
+                        .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="op">!</span><span class="ident">node_info</span>.<span class="ident">knows_op</span>(<span class="ident">id</span>))
                         .<span class="ident">copied</span>()
                         .<span class="ident">collect</span>();
                     <span class="ident">node_info</span>.<span class="ident">insert_known_ops</span>(
@@ -2071,7 +2071,7 @@
                 <span class="kw">for</span> (<span class="ident">node</span>, <span class="ident">node_info</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">iter_mut</span>() {
                     <span class="kw">let</span> <span class="ident">new_endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">WrappedEndorsement</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">endorsements</span>
                         .<span class="ident">iter</span>()
-                        .<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="op">!</span><span class="ident">node_info</span>.<span class="ident">knows_endorsement</span>(<span class="kw-2">*</span><span class="ident">id</span>))
+                        .<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="op">!</span><span class="ident">node_info</span>.<span class="ident">knows_endorsement</span>(<span class="ident">id</span>))
                         .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">k</span>, <span class="ident">v</span>.<span class="ident">clone</span>()))
                         .<span class="ident">collect</span>();
                     <span class="ident">node_info</span>.<span class="ident">insert_known_endorsements</span>(
@@ -3039,5 +3039,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (7425fb293 2022-06-30)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (27eb6d701 2022-07-04)" ></div>
 </body></html>

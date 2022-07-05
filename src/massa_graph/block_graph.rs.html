@@ -3860,8 +3860,6 @@
 <span id="3854">3854</span>
 <span id="3855">3855</span>
 <span id="3856">3856</span>
-<span id="3857">3857</span>
-<span id="3858">3858</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! All information concerning blocks, the block graph and cliques is managed here.</span>
@@ -4458,29 +4456,27 @@
             <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">required_active_blocks</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
         <span class="kw">for</span> <span class="ident">b_id</span> <span class="kw">in</span> <span class="ident">required_active_blocks</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">a_block</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">b_id</span>) {
-                <span class="kw">if</span> <span class="ident">a_block</span>.<span class="ident">is_final</span> {
-                    <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">retrieve_block</span>(<span class="kw-2">&amp;</span><span class="ident">b_id</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                        <span class="ident">GraphError::MissingBlock</span>(<span class="macro">format!</span>(
-                            <span class="string">&quot;missing block in export_bootstrap_graph: {}&quot;</span>,
-                            <span class="ident">b_id</span>
-                        ))
-                    })<span class="question-mark">?</span>;
-                    <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">read</span>().<span class="ident">clone</span>();
-                    <span class="ident">active_blocks</span>.<span class="ident">insert</span>(
-                        <span class="ident">b_id</span>,
-                        <span class="ident">ExportActiveBlock</span> {
-                            <span class="ident">block</span>: <span class="ident">stored_block</span>,
-                            <span class="ident">block_id</span>: <span class="ident">b_id</span>,
-                            <span class="ident">parents</span>: <span class="ident">a_block</span>.<span class="ident">parents</span>.<span class="ident">clone</span>(),
-                            <span class="ident">children</span>: <span class="ident">a_block</span>.<span class="ident">children</span>.<span class="ident">clone</span>(),
-                            <span class="ident">dependencies</span>: <span class="ident">a_block</span>.<span class="ident">dependencies</span>.<span class="ident">clone</span>(),
-                            <span class="ident">is_final</span>: <span class="ident">a_block</span>.<span class="ident">is_final</span>,
-                            <span class="ident">block_ledger_changes</span>: <span class="ident">a_block</span>.<span class="ident">block_ledger_changes</span>.<span class="ident">clone</span>(),
-                            <span class="ident">roll_updates</span>: <span class="ident">a_block</span>.<span class="ident">roll_updates</span>.<span class="ident">clone</span>(),
-                            <span class="ident">production_events</span>: <span class="ident">a_block</span>.<span class="ident">production_events</span>.<span class="ident">clone</span>(),
-                        },
-                    );
-                }
+                <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">retrieve_block</span>(<span class="kw-2">&amp;</span><span class="ident">b_id</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">GraphError::MissingBlock</span>(<span class="macro">format!</span>(
+                        <span class="string">&quot;missing block in export_bootstrap_graph: {}&quot;</span>,
+                        <span class="ident">b_id</span>
+                    ))
+                })<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">read</span>().<span class="ident">clone</span>();
+                <span class="ident">active_blocks</span>.<span class="ident">insert</span>(
+                    <span class="ident">b_id</span>,
+                    <span class="ident">ExportActiveBlock</span> {
+                        <span class="ident">block</span>: <span class="ident">stored_block</span>,
+                        <span class="ident">block_id</span>: <span class="ident">b_id</span>,
+                        <span class="ident">parents</span>: <span class="ident">a_block</span>.<span class="ident">parents</span>.<span class="ident">clone</span>(),
+                        <span class="ident">children</span>: <span class="ident">a_block</span>.<span class="ident">children</span>.<span class="ident">clone</span>(),
+                        <span class="ident">dependencies</span>: <span class="ident">a_block</span>.<span class="ident">dependencies</span>.<span class="ident">clone</span>(),
+                        <span class="ident">is_final</span>: <span class="ident">a_block</span>.<span class="ident">is_final</span>,
+                        <span class="ident">block_ledger_changes</span>: <span class="ident">a_block</span>.<span class="ident">block_ledger_changes</span>.<span class="ident">clone</span>(),
+                        <span class="ident">roll_updates</span>: <span class="ident">a_block</span>.<span class="ident">roll_updates</span>.<span class="ident">clone</span>(),
+                        <span class="ident">production_events</span>: <span class="ident">a_block</span>.<span class="ident">production_events</span>.<span class="ident">clone</span>(),
+                    },
+                );
             } <span class="kw">else</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GraphError::ContainerInconsistency</span>(<span class="macro">format!</span>(
                     <span class="string">&quot;block {} was expected to be active but wasn&#39;t on bootstrap graph export&quot;</span>,
@@ -7721,5 +7717,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (7425fb293 2022-06-30)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (27eb6d701 2022-07-04)" ></div>
 </body></html>
