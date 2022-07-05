@@ -1214,7 +1214,7 @@ impl ProtocolWorker {
 
             //     new_operations.insert(operation_id, operation);
             // };
-            self.checked_operations.insert(operation_id);
+            self.checked_operations.insert(&operation_id);
         }
 
         // add to known ops
