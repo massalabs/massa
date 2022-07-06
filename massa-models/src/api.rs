@@ -497,8 +497,8 @@ pub struct DatastoreEntryInput {
 pub struct DatastoreEntryOutput {
     /// final datastore entry value
     pub final_value: Option<Vec<u8>>,
-    /// active datastore entry value
-    pub active_value: Option<Vec<u8>>,
+    /// candidate datastore entry value
+    pub candidate_value: Option<Vec<u8>>,
 }
 
 /// filter used when retrieving SC output events

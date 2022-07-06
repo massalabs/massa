@@ -522,7 +522,7 @@ impl Endpoints for API<Public> {
                     .get_final_and_active_data_entry(&entry.address, &entry.key);
                 result.push(DatastoreEntryOutput {
                     final_value: data.0,
-                    active_value: data.1,
+                    candidate_value: data.1,
                 });
             }
             Ok(result)

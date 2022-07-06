@@ -10,6 +10,7 @@ use crate::types::{
 };
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
+use massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{prehash::Map, Address, Amount};
 use massa_models::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
@@ -84,7 +85,10 @@ impl DatastoreUpdateDeserializer {
     pub fn new() -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            key_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            key_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(MAX_DATASTORE_KEY_LENGTH as u64),
+            ),
             value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new(
                 Included(u64::MIN),
                 Included(u64::MAX),
