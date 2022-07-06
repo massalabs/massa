@@ -431,6 +431,7 @@ Get addresses.
             thread: Number,
             final_balance_info: null OR Number,
             candidate_balance_info: null OR Number,
+            final_datastore_keys: [Byte array],
         },
     ];
 
