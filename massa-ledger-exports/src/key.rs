@@ -2,7 +2,7 @@ use massa_models::{
     address::AddressDeserializer, constants::ADDRESS_SIZE_BYTES, Address, VecU8Deserializer,
     VecU8Serializer,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use nom::error::{ContextError, ParseError};
 use std::ops::Bound::Included;
 
@@ -87,25 +87,19 @@ impl Serializer<Vec<u8>> for KeySerializer {
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
-    fn serialize(
-        &self,
-        value: &Vec<u8>,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), massa_serialization::SerializeError> {
+    fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let limit = ADDRESS_SIZE_BYTES + 1;
         buffer.extend(&value[..limit]);
-        println!(
-            "IDENT = {} | LIMIT = {} | LEN = {}",
-            value[ADDRESS_SIZE_BYTES],
-            limit,
-            value.len()
-        );
-        if value.len() > limit {
-            println!("SERIALIZE DATASTORE KEY");
-            self.vec_u8_serializer
-                .serialize(&value[(ADDRESS_SIZE_BYTES + 1)..].to_vec(), buffer)?;
+        if value[ADDRESS_SIZE_BYTES] == DATASTORE_IDENT {
+            if value.len() > limit {
+                self.vec_u8_serializer
+                    .serialize(&value[(ADDRESS_SIZE_BYTES + 1)..].to_vec(), buffer)?;
+            } else {
+                return Err(SerializeError::GeneralError(
+                    "datastore keys can not be empty".to_string(),
+                ));
+            }
         }
-        println!("OUT");
         Ok(())
     }
 }
@@ -167,7 +161,6 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> nom::IResult<&'a [u8], Vec<u8>, E> {
-        println!("BUFF LEN = {}", buffer.len());
         let (rest, address) = self.address_deserializer.deserialize(buffer)?;
         let error = nom::Err::Error(ParseError::from_error_kind(
             buffer,
@@ -175,17 +168,10 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
         ));
         match rest.first() {
             Some(ident) => match *ident {
-                BALANCE_IDENT => {
-                    println!("A REST LEN = {}", rest.len());
-                    Ok((&rest[1..], balance_key!(address)))
-                }
-                BYTECODE_IDENT => {
-                    println!("B REST LEN = {}", rest.len());
-                    Ok((&rest[1..], bytecode_key!(address)))
-                }
+                BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
+                BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
                 DATASTORE_IDENT => {
                     let (rest, hash) = self.vec_u8_deserializer.deserialize(&rest[1..])?;
-                    println!("C REST LEN = {}", rest.len());
                     Ok((rest, data_key!(address, hash)))
                 }
                 _ => Err(error),
