@@ -295,9 +295,9 @@ impl SpeculativeLedger {
 
         // check key correctness
         let key_length = key.len();
-        if key_length > MAX_DATASTORE_KEY_LENGTH as usize {
+        if key_length == 0 || key_length > MAX_DATASTORE_KEY_LENGTH as usize {
             return Err(ExecutionError::RuntimeError(format!(
-                "key length is {}, maximum is {}",
+                "key length is {}, but it must be in [0..{}]",
                 key_length, MAX_DATASTORE_KEY_LENGTH
             )));
         }

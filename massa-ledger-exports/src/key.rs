@@ -93,7 +93,7 @@ impl Serializer<Vec<u8>> for KeySerializer {
         if value[ADDRESS_SIZE_BYTES] == DATASTORE_IDENT {
             if value.len() > limit {
                 self.vec_u8_serializer
-                    .serialize(&value[(ADDRESS_SIZE_BYTES + 1)..].to_vec(), buffer)?;
+                    .serialize(&value[limit..].to_vec(), buffer)?;
             } else {
                 return Err(SerializeError::GeneralError(
                     "datastore keys can not be empty".to_string(),
