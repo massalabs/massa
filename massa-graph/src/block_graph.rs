@@ -591,7 +591,7 @@ impl BlockGraph {
     pub fn export_bootstrap_graph(&self) -> Result<BootstrapableGraph> {
         let mut required_final_blocks: Set<_> = self.list_required_active_blocks()?;
         required_final_blocks.retain(|b_id| {
-            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
+            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(b_id) {
                 if a_block.is_final {
                     // filter only final actives
                     return true;
@@ -602,8 +602,8 @@ impl BlockGraph {
         let mut active_blocks: Map<BlockId, ExportActiveBlock> =
             Map::with_capacity_and_hasher(required_final_blocks.len(), BuildMap::default());
         for b_id in &required_final_blocks {
-            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
-                let block = self.storage.retrieve_block(&b_id).ok_or_else(|| {
+            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(b_id) {
+                let block = self.storage.retrieve_block(b_id).ok_or_else(|| {
                     GraphError::MissingBlock(format!(
                         "missing block in export_bootstrap_graph: {}",
                         b_id
