@@ -993,42 +993,26 @@ impl ProtocolWorker {
     ///     - Address matches that of the block.
     ///     - Thread matches that of the block.
     /// - Check root hash.
-    async fn note_block_from_node(
+    async fn process_block(
         &mut self,
         block: &WrappedBlock,
-        source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, Map<OperationId, usize>, Map<EndorsementId, u32>)>, ProtocolError>
+        seen_ops: Vec<OperationId>,
+        received_operations_ids: Map<OperationId, usize>, 
+        has_duplicate_operations: bool,
+        total_gas: u64
+    ) -> Result<Option<(BlockId, Map<OperationId, usize>)>, ProtocolError>
     {
-        massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
+        massa_trace!("protocol.protocol_worker.process_block", { "block": block });
 
-        let (header, operations, operation_merkle_root, slot) = {
+        let (header, operations, operation_merkle_root, slot, block_id) = {
             (
                 block.content.header.clone(),
                 block.content.operations.clone(),
                 block.content.header.content.operation_merkle_root,
                 block.content.header.content.slot,
+                block.id,
             )
         };
-
-        // check header
-        let (block_id, endorsement_ids, _is_header_new) =
-            match self.note_header_from_node(&header, source_node_id).await {
-                Ok(Some(v)) => v,
-                Ok(None) => return Ok(None),
-                Err(err) => return Err(err),
-            };
-
-        // Perform general checks on the operations, note them into caches and send them to pool
-        // but do not propagate as they are already propagating within a block
-        let (seen_ops, received_operations_ids, total_gas) = self
-            .note_operations_ids_from_node(operations.clone(), source_node_id, false)
-            .await?;
-        if total_gas > self.max_block_gas {
-            // Gas usage over limit => block invalid
-            // TODO remove this check in the single-ledger version,
-            //      this is only here to prevent SC operations from spending gas fees while the block is unable to execute their op
-            return Ok(None);
-        }
 
         // Perform checks on the operations that relate to the block in which they have been included.
         // We perform those checks AFTER note_operations_from_node to allow otherwise valid operations to be noted
@@ -1038,25 +1022,24 @@ impl ProtocolWorker {
         //     return Ok(None);
         // }
 
-        // TODO: TEMPORARY REMOVED CHECK
-        // for op in operations.iter() {
-        //     // check validity period
-        //     if !(op
-        //         .get_validity_range(self.operation_validity_periods)
-        //         .contains(&slot.period))
-        //     {
-        //         massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_period",
-        //             { "node": source_node_id,"block_id":block_id, "op": op });
-        //         return Ok(None);
-        //     }
+        for op_id in operations.iter() {
+            let op = self.storage.retrieve_operation(op_id).unwrap();
+            
+             // check validity period
+             if !(op
+                 .get_validity_range(self.operation_validity_periods)
+                 .contains(&slot.period))
+             {
+                 return Ok(None);
+             }
 
-        //     // check thread
-        //     if op.thread != slot.thread {
-        //         massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_thread",
-        //             { "node": source_node_id,"block_id":block_id, "op": op});
-        //         return Ok(None);
-        //     }
-        // }
+             // check thread
+             if op.thread != slot.thread {
+                 massa_trace!("protocol.protocol_worker.process_block.err_op_thread",
+                     {"block_id":block_id, "op": op});
+                 return Ok(None);
+             }
+        }
 
         // check root hash
         {
@@ -1065,8 +1048,8 @@ impl ProtocolWorker {
                 .map(|op_id| op_id.to_bytes().to_vec())
                 .concat();
             if operation_merkle_root != Hash::compute_from(&concat_bytes) {
-                massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_root_hash",
-                    { "node": source_node_id,"block_id":block_id});
+                massa_trace!("protocol.protocol_worker.process_block.err_op_root_hash",
+                    {"block_id":block_id});
                 return Ok(None);
             }
         }
@@ -1080,7 +1063,7 @@ impl ProtocolWorker {
 
         // Note: block already added to node's view in `note_header_from_node`.
 
-        Ok(Some((block_id, received_operations_ids, endorsement_ids)))
+        Ok(Some((block_id, received_operations_ids)))
     }
 
     /// Checks operations, caching knowledge of valid ones.
@@ -1149,6 +1132,7 @@ impl ProtocolWorker {
                         info.awaiting_operations.remove(op_id);
                         self.awaiting_operations.remove(op_id);
                         if info.awaiting_operations.is_empty() {
+                            let endorsement_ids = info.endorsements.clone();
                             let block = Block {
                                 header: info.header.clone(),
                                 operations: info.operations.clone().unwrap().clone(),
@@ -1171,7 +1155,24 @@ impl ProtocolWorker {
                                 content: block,
                                 serialized_data: content_serialized,
                             };
-                            // TODO: send block to graph. First check block?
+                            
+                            if let Some((block_id, operation_set)) =
+                                self.process_block(&wrapped, seen_ops.clone(), received_ids.clone(), has_duplicate_operations, total_gas).await?
+                            {
+                                let slot = wrapped.content.header.content.slot;
+
+                                let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
+                                set.insert(block_id);
+                                self.stop_asking_blocks(set)?;
+                                self.send_protocol_event(ProtocolEvent::ReceivedBlock {
+                                    block: wrapped,
+                                    slot,
+                                    operation_set,
+                                    endorsement_ids,
+                                })
+                                .await;
+                                //self.update_ask_block(block_ask_timer).await?;
+                            }
                         }
                     } else {
                         warn!(
@@ -1362,26 +1363,6 @@ impl ProtocolWorker {
                 block,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
-                if let Some((block_id, operation_set, endorsement_ids)) =
-                    self.note_block_from_node(&block, &from_node_id).await?
-                {
-                    let slot = block.content.header.content.slot;
-
-                    let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
-                    set.insert(block_id);
-                    self.stop_asking_blocks(set)?;
-                    self.send_protocol_event(ProtocolEvent::ReceivedBlock {
-                        block,
-                        slot,
-                        operation_set,
-                        endorsement_ids,
-                    })
-                    .await;
-                    self.update_ask_block(block_ask_timer).await?;
-                } else {
-                    warn!("node {} sent us critically incorrect block, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", from_node_id);
-                    let _ = self.ban_node(&from_node_id).await;
-                }
             }
             NetworkEvent::ReceivedBlockInfo {
                 node: from_node_id,
