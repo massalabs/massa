@@ -17,7 +17,6 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
-use massa_hash::Hash;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
@@ -745,7 +744,7 @@ impl ExecutionState {
     pub fn get_final_and_active_data_entry(
         &self,
         address: &Address,
-        key: &Hash,
+        key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
         let search_result = self
@@ -760,6 +759,17 @@ impl ExecutionState {
                 HistorySearchResult::Absent => None,
             },
         )
+    }
+
+    /// Get every datastore key of the given address.
+    pub fn get_every_final_datastore_key(&self, addr: &Address) -> Vec<Vec<u8>> {
+        self.final_state
+            .read()
+            .ledger
+            .get_entire_datastore(addr)
+            .into_iter()
+            .map(|v| v.0)
+            .collect()
     }
 
     /// Gets execution events optionally filtered by:

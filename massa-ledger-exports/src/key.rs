@@ -1,7 +1,11 @@
-use massa_hash::HashDeserializer;
-use massa_models::{address::AddressDeserializer, Address};
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_models::{
+    address::AddressDeserializer,
+    constants::{default::MAX_DATASTORE_KEY_LENGTH, ADDRESS_SIZE_BYTES},
+    Address, VecU8Deserializer, VecU8Serializer,
+};
+use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use nom::error::{ContextError, ParseError};
+use std::ops::Bound::Included;
 
 pub const BALANCE_IDENT: u8 = 0u8;
 pub const BYTECODE_IDENT: u8 = 1u8;
@@ -31,12 +35,7 @@ macro_rules! bytecode_key {
 #[macro_export]
 macro_rules! data_key {
     ($addr:expr, $key:expr) => {
-        [
-            &$addr.to_bytes()[..],
-            &[DATASTORE_IDENT],
-            &$key.to_bytes()[..],
-        ]
-        .concat()
+        [&$addr.to_bytes()[..], &[DATASTORE_IDENT], &$key].concat()
     };
 }
 
@@ -59,19 +58,23 @@ pub fn get_address_from_key(key: &[u8]) -> Option<Address> {
 
 /// Basic key serializer
 #[derive(Default)]
-pub struct KeySerializer;
+pub struct KeySerializer {
+    vec_u8_serializer: VecU8Serializer,
+}
 
 impl KeySerializer {
     /// Creates a new `KeySerializer`
     pub fn new() -> Self {
-        Self
+        Self {
+            vec_u8_serializer: VecU8Serializer::new(),
+        }
     }
 }
 
 impl Serializer<Vec<u8>> for KeySerializer {
     /// ```
     /// use massa_models::address::Address;
-    /// use massa_ledger_exports::KeySerializer;
+    /// use massa_ledger_exports::{KeySerializer, DATASTORE_IDENT};
     /// use massa_serialization::Serializer;
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
@@ -81,25 +84,37 @@ impl Serializer<Vec<u8>> for KeySerializer {
     /// let store_key = Hash::compute_from(b"test");
     /// let mut key = Vec::new();
     /// key.extend(address.to_bytes());
-    /// key.push(2u8);
+    /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// ```
-    fn serialize(
-        &self,
-        value: &Vec<u8>,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), massa_serialization::SerializeError> {
-        buffer.extend(value);
+    fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        let limit = ADDRESS_SIZE_BYTES + 1;
+        buffer.extend(&value[..limit]);
+        if value[ADDRESS_SIZE_BYTES] == DATASTORE_IDENT {
+            if value.len() > limit {
+                self.vec_u8_serializer
+                    .serialize(&value[limit..].to_vec(), buffer)?;
+            } else {
+                return Err(SerializeError::GeneralError(
+                    "datastore keys can not be empty".to_string(),
+                ));
+            }
+        }
         Ok(())
     }
 }
 
 /// Basic key deserializer
-#[derive(Default)]
 pub struct KeyDeserializer {
     address_deserializer: AddressDeserializer,
-    hash_deserializer: HashDeserializer,
+    vec_u8_deserializer: VecU8Deserializer,
+}
+
+impl Default for KeyDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl KeyDeserializer {
@@ -107,7 +122,10 @@ impl KeyDeserializer {
     pub fn new() -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
-            hash_deserializer: HashDeserializer::new(),
+            vec_u8_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(MAX_DATASTORE_KEY_LENGTH as u64),
+            ),
         }
     }
 }
@@ -116,18 +134,28 @@ impl KeyDeserializer {
 impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// ```
     /// use massa_models::address::Address;
-    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer};
+    /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT};
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_hash::Hash;
     /// use std::str::FromStr;
     ///
-    /// let mut serialized = Vec::new();
     /// let address = Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap();
     /// let store_key = Hash::compute_from(b"test");
+    ///
     /// let mut key = Vec::new();
+    /// let mut serialized = Vec::new();
     /// key.extend(address.to_bytes());
-    /// key.push(2u8);
+    /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
+    /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(key_deser, key);
+    ///
+    /// let mut key = Vec::new();
+    /// let mut serialized = Vec::new();
+    /// key.extend(address.to_bytes());
+    /// key.push(BALANCE_IDENT);
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
     /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -147,7 +175,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
                 BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
                 BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
                 DATASTORE_IDENT => {
-                    let (rest, hash) = self.hash_deserializer.deserialize(&rest[1..])?;
+                    let (rest, hash) = self.vec_u8_deserializer.deserialize(&rest[1..])?;
                     Ok((rest, data_key!(address, hash)))
                 }
                 _ => Err(error),

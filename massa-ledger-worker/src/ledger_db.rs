@@ -2,7 +2,7 @@
 
 //! Module to interact with the disk ledger
 
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::HASH_SIZE_BYTES;
 use massa_ledger_exports::*;
 use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
 use massa_models::{
@@ -39,7 +39,7 @@ pub enum LedgerSubEntry {
     /// Bytecode
     Bytecode,
     /// Datastore entry
-    Datastore(Hash),
+    Datastore(Vec<u8>),
 }
 
 /// Disk ledger DB module
@@ -244,7 +244,7 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A BTreeMap with the entry hash as key and the data bytes as value
-    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Vec<u8>, Vec<u8>> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
@@ -256,12 +256,7 @@ impl LedgerDB {
                 opt,
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
-            .map(|(key, data)| {
-                (
-                    Hash::from_bytes(key.split_at(HASH_SIZE_BYTES + 1).1.try_into().unwrap()),
-                    data.to_vec(),
-                )
-            })
+            .map(|(key, data)| (key.split_at(HASH_SIZE_BYTES + 1).1.to_vec(), data.to_vec()))
             .collect()
     }
 
@@ -408,6 +403,7 @@ impl LedgerDB {
             self.0.write(batch).expect(CRUD_ERROR);
             Ok((*last_key).clone())
         } else {
+            println!("REST LEN = {}", rest.len());
             Err(ModelsError::SerializeError(
                 "rest is not empty.".to_string(),
             ))
@@ -419,7 +415,6 @@ impl LedgerDB {
 mod tests {
     use super::LedgerDB;
     use crate::ledger_db::LedgerSubEntry;
-    use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{Address, Amount, DeserializeCompact};
     use massa_signature::KeyPair;
@@ -428,12 +423,12 @@ mod tests {
     use tempfile::TempDir;
 
     #[cfg(test)]
-    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Hash, Vec<u8>>) {
+    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
         let mut data = BTreeMap::new();
-        data.insert(Hash::compute_from(b"1"), b"a".to_vec());
-        data.insert(Hash::compute_from(b"2"), b"b".to_vec());
-        data.insert(Hash::compute_from(b"3"), b"c".to_vec());
+        data.insert(b"1".to_vec(), b"a".to_vec());
+        data.insert(b"2".to_vec(), b"b".to_vec());
+        data.insert(b"3".to_vec(), b"c".to_vec());
         let entry = LedgerEntry {
             parallel_balance: Amount::from_raw(42),
             datastore: data.clone(),
