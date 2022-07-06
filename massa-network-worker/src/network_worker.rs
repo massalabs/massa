@@ -7,18 +7,19 @@ use super::{
 use crate::{
     binders::{ReadBinder, WriteBinder},
     handshake_worker::HandshakeWorker,
-    messages::Message,
+    messages::{Message, MessageSerializer},
     network_event::EventSender,
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, SerializeCompact, Version};
+use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
     NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
     NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
     WriteHalf,
 };
+use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use std::{
@@ -707,12 +708,13 @@ impl NetworkWorker {
                 .push(tokio::spawn(async move {
                     let mut writer = WriteBinder::new(writer, max_bytes_read);
                     let mut reader = ReadBinder::new(reader, max_bytes_write);
+                    let mut serialized_message = Vec::new();
+                    MessageSerializer::new()
+                        .serialize(&msg, &mut serialized_message)
+                        .unwrap();
                     match tokio::time::timeout(
                         timeout,
-                        futures::future::try_join(
-                            writer.send(&msg.to_bytes_compact().unwrap()),
-                            reader.next(),
-                        ),
+                        futures::future::try_join(writer.send(&serialized_message), reader.next()),
                     )
                     .await
                     {

@@ -1,25 +1,37 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_hash::HashDeserializer;
 use massa_models::{
     array_from_slice,
-    constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
+    constants::{
+        ENDORSEMENT_COUNT, HANDSHAKE_RANDOMNESS_SIZE_BYTES, MAX_ADVERTISE_LENGTH,
+        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE,
+    },
     operation::OperationPrefixIds,
     operation::{
         OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, Operations,
         OperationsDeserializer, OperationsSerializer,
     },
-    with_serialization_context,
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    BlockDeserializer, BlockHeaderDeserializer, BlockId, DeserializeCompact, DeserializeVarInt,
-    EndorsementDeserializer, IpAddrDeserializer, IpAddrSerializer, ModelsError, SerializeCompact,
-    SerializeVarInt, Version, VersionDeserializer, VersionSerializer, WrappedBlock,
-    WrappedEndorsement, WrappedHeader,
+    Block, BlockDeserializer, BlockHeader, BlockHeaderDeserializer, BlockId, Endorsement,
+    EndorsementDeserializer, IpAddrDeserializer, IpAddrSerializer, Version, VersionDeserializer,
+    VersionSerializer, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+};
+use massa_signature::{PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer};
+use nom::{
+    bytes::complete::take,
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::{convert::TryInto, net::IpAddr};
+use std::net::IpAddr;
+use std::ops::Bound::{Excluded, Included};
 
 /// All messages that can be sent or received.
 #[allow(clippy::large_enum_variant)]
@@ -82,230 +94,306 @@ pub(crate) enum MessageTypeId {
     OperationsAnnouncement = 11,
 }
 
+/// Basic serializer for `Message`.
+pub struct MessageSerializer {
+    version_serializer: VersionSerializer,
+    u32_serializer: U32VarIntSerializer,
+    wrapped_serializer: WrappedSerializer,
+    operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
+    operations_serializer: OperationsSerializer,
+    ip_addr_serializer: IpAddrSerializer,
+}
+
+impl MessageSerializer {
+    /// Creates a new `MessageSerializer`.
+    pub fn new() -> Self {
+        MessageSerializer {
+            version_serializer: VersionSerializer::new(),
+            u32_serializer: U32VarIntSerializer::new(),
+            wrapped_serializer: WrappedSerializer::new(),
+            operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
+            operations_serializer: OperationsSerializer::new(),
+            ip_addr_serializer: IpAddrSerializer::new(),
+        }
+    }
+}
+
+impl Default for MessageSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// For more details on how incoming objects are checked for validity at this stage,
-/// see their implementation of `to_bytes_compact` in `models`.
-impl SerializeCompact for Message {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-        match self {
+/// see their serializer in `massa-models`.
+impl Serializer<Message> for MessageSerializer {
+    fn serialize(&self, value: &Message, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        match &value {
             Message::HandshakeInitiation {
                 public_key,
                 random_bytes,
                 version,
             } => {
-                let version_serializer = VersionSerializer::new();
-                res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
-                res.extend(public_key.to_bytes());
-                res.extend(random_bytes);
-                version_serializer.serialize(version, &mut res)?;
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::HandshakeInitiation as u32), buffer)?;
+                buffer.extend(public_key.to_bytes());
+                buffer.extend(random_bytes);
+                self.version_serializer.serialize(version, buffer)?;
             }
             Message::HandshakeReply { signature } => {
-                res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
-                res.extend(signature.to_bytes());
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::HandshakeReply as u32), buffer)?;
+                buffer.extend(signature.to_bytes());
             }
             Message::Block(block) => {
-                res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
-                WrappedSerializer::new().serialize(block, &mut res)?;
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::Block as u32), buffer)?;
+                self.wrapped_serializer.serialize(block, buffer)?;
             }
             Message::BlockHeader(header) => {
-                res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
-                WrappedSerializer::new().serialize(header, &mut res)?;
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::BlockHeader as u32), buffer)?;
+                self.wrapped_serializer.serialize(header, buffer)?;
             }
-            Message::AskForBlocks(list) => {
-                res.extend(u32::from(MessageTypeId::AskForBlocks).to_varint_bytes());
-                let list_len: u32 = list.len().try_into().map_err(|_| {
-                    ModelsError::SerializeError(
-                        "could not encode AskForBlocks list length as u32".into(),
-                    )
-                })?;
-                res.extend(list_len.to_varint_bytes());
-                for hash in list {
-                    res.extend(hash.to_bytes());
+            Message::AskForBlocks(block_ids) => {
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::AskForBlocks as u32), buffer)?;
+                self.u32_serializer
+                    .serialize(&(block_ids.len() as u32), buffer)?;
+                for block_id in block_ids {
+                    buffer.extend(block_id.0.to_bytes());
                 }
             }
             Message::AskPeerList => {
-                res.extend(u32::from(MessageTypeId::AskPeerList).to_varint_bytes());
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::AskPeerList as u32), buffer)?;
             }
-            Message::PeerList(ip_vec) => {
-                res.extend(u32::from(MessageTypeId::PeerList).to_varint_bytes());
-                res.extend((ip_vec.len() as u64).to_varint_bytes());
-                let ip_serializer = IpAddrSerializer::new();
-                for ip in ip_vec {
-                    ip_serializer.serialize(ip, &mut res)?
+            Message::PeerList(peers) => {
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::PeerList as u32), buffer)?;
+                self.u32_serializer
+                    .serialize(&(peers.len() as u32), buffer)?;
+                for peer in peers {
+                    self.ip_addr_serializer.serialize(peer, buffer)?;
                 }
             }
-            Message::BlockNotFound(hash) => {
-                res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
-                res.extend(hash.to_bytes());
+            Message::BlockNotFound(block_id) => {
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::BlockNotFound as u32), buffer)?;
+                buffer.extend(block_id.0.to_bytes());
             }
-            Message::AskForOperations(operation_ids) => {
-                res.extend(u32::from(MessageTypeId::AskForOperations).to_varint_bytes());
-                OperationPrefixIdsSerializer::new().serialize(operation_ids, &mut res)?;
+            Message::OperationsAnnouncement(operation_prefix_ids) => {
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::OperationsAnnouncement as u32), buffer)?;
+                self.operation_prefix_ids_serializer
+                    .serialize(operation_prefix_ids, buffer)?;
             }
-            Message::OperationsAnnouncement(operation_ids) => {
-                res.extend(u32::from(MessageTypeId::OperationsAnnouncement).to_varint_bytes());
-                OperationPrefixIdsSerializer::new().serialize(operation_ids, &mut res)?;
+            Message::AskForOperations(operation_prefix_ids) => {
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::AskForOperations as u32), buffer)?;
+                self.operation_prefix_ids_serializer
+                    .serialize(operation_prefix_ids, buffer)?;
             }
             Message::Operations(operations) => {
-                res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
-                OperationsSerializer::new().serialize(operations, &mut res)?;
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::Operations as u32), buffer)?;
+                self.operations_serializer.serialize(operations, buffer)?;
             }
             Message::Endorsements(endorsements) => {
-                res.extend(u32::from(MessageTypeId::Endorsements).to_varint_bytes());
-                res.extend((endorsements.len() as u32).to_varint_bytes());
-                let endorsement_serializer = WrappedSerializer::new();
-                for endorsement in endorsements.iter() {
-                    endorsement_serializer.serialize(endorsement, &mut res)?;
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::Endorsements as u32), buffer)?;
+                self.u32_serializer
+                    .serialize(&(endorsements.len() as u32), buffer)?;
+                for endorsement in endorsements {
+                    self.wrapped_serializer.serialize(endorsement, buffer)?;
                 }
             }
         }
-        Ok(res)
+        Ok(())
     }
 }
 
-/// For more details on how incoming objects are checked for validity at this stage,
-/// see their implementation of `from_bytes_compact` in `models`.
-impl DeserializeCompact for Message {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0usize;
+/// Basic deserializer for `Message`.
+pub struct MessageDeserializer {
+    public_key_deserializer: PublicKeyDeserializer,
+    signature_deserializer: SignatureDeserializer,
+    version_deserializer: VersionDeserializer,
+    id_deserializer: U32VarIntDeserializer,
+    ask_block_number_deserializer: U32VarIntDeserializer,
+    peer_list_length_deserializer: U32VarIntDeserializer,
+    operations_deserializer: OperationsDeserializer,
+    hash_deserializer: HashDeserializer,
+    block_header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
+    block_deserializer: WrappedDeserializer<Block, BlockDeserializer>,
+    endorsements_length_deserializer: U32VarIntDeserializer,
+    endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
+    operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
+    ip_addr_deserializer: IpAddrDeserializer,
+}
 
-        let (max_ask_blocks_per_message, max_peer_list_length, max_endorsements_per_message) =
-            with_serialization_context(|context| {
-                (
-                    context.max_ask_blocks_per_message,
-                    context.max_advertise_length,
-                    context.max_endorsements_per_message,
+impl MessageDeserializer {
+    /// Creates a new `MessageDeserializer`.
+    pub fn new() -> Self {
+        MessageDeserializer {
+            public_key_deserializer: PublicKeyDeserializer::new(),
+            signature_deserializer: SignatureDeserializer::new(),
+            version_deserializer: VersionDeserializer::new(),
+            id_deserializer: U32VarIntDeserializer::new(Included(0), Included(200)),
+            ask_block_number_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Excluded(MAX_ASK_BLOCKS_PER_MESSAGE),
+            ),
+            peer_list_length_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Excluded(MAX_ADVERTISE_LENGTH),
+            ),
+            operations_deserializer: OperationsDeserializer::new(),
+            hash_deserializer: HashDeserializer::new(),
+            block_deserializer: WrappedDeserializer::new(BlockDeserializer::new()),
+            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
+            endorsements_length_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Excluded(MAX_ENDORSEMENTS_PER_MESSAGE),
+            ),
+            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
+                ENDORSEMENT_COUNT,
+            )),
+            operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(),
+            ip_addr_deserializer: IpAddrDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<Message> for MessageDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Message, E> {
+        context("Failed Message deserialization", |buffer| {
+            let (input, id) = self.id_deserializer.deserialize(buffer)?;
+            let id = MessageTypeId::try_from(id).map_err(|_| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    buffer,
+                    nom::error::ErrorKind::Eof,
+                ))
+            })?;
+            match id {
+                MessageTypeId::HandshakeInitiation => context(
+                    "Failed HandshakeInitiation deserialization",
+                    tuple((
+                        context("Failed public_key deserialization", |input| {
+                            self.public_key_deserializer.deserialize(input)
+                        }),
+                        context(
+                            "Failed random_bytes deserialization",
+                            take(HANDSHAKE_RANDOMNESS_SIZE_BYTES),
+                        ),
+                        context("Failed version deserialization", |input| {
+                            self.version_deserializer.deserialize(input)
+                        }),
+                    ))
+                    .map(|(public_key, random_bytes, version)| {
+                        // Unwrap safety: we checked above that we took enough bytes
+                        Message::HandshakeInitiation {
+                            public_key,
+                            random_bytes: array_from_slice(random_bytes).unwrap(),
+                            version,
+                        }
+                    }),
                 )
-            });
-
-        let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-
-        let type_id: MessageTypeId = type_id_raw
-            .try_into()
-            .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
-
-        let res = match type_id {
-            MessageTypeId::HandshakeInitiation => {
-                let version_deserializer = VersionDeserializer::new();
-                // public key
-                let public_key = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += PUBLIC_KEY_SIZE_BYTES;
-                // random bytes
-                let random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES] =
-                    array_from_slice(&buffer[cursor..])?;
-                cursor += HANDSHAKE_RANDOMNESS_SIZE_BYTES;
-
-                // version
-                let (rest, version) = version_deserializer.deserialize(&buffer[cursor..])?;
-                cursor += buffer[cursor..].len() - rest.len();
-
-                // return message
-                Message::HandshakeInitiation {
-                    public_key,
-                    random_bytes,
-                    version,
+                .parse(input),
+                MessageTypeId::HandshakeReply => {
+                    context("Failed HandshakeReply deserialization", |input| {
+                        self.signature_deserializer.deserialize(input)
+                    })
+                    .map(|signature| Message::HandshakeReply { signature })
+                    .parse(input)
                 }
-            }
-            MessageTypeId::HandshakeReply => {
-                let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                cursor += SIGNATURE_SIZE_BYTES;
-                Message::HandshakeReply { signature }
-            }
-            MessageTypeId::Block => {
-                let (rest, block): (&[u8], WrappedBlock) =
-                    WrappedDeserializer::new(BlockDeserializer::new())
-                        .deserialize(&buffer[cursor..])?;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::Block(block)
-            }
-            MessageTypeId::BlockHeader => {
-                let (rest, header): (&[u8], WrappedHeader) =
-                    WrappedDeserializer::new(BlockHeaderDeserializer::new())
-                        .deserialize(&buffer[cursor..])?;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::BlockHeader(header)
-            }
-            MessageTypeId::AskForBlocks => {
-                let (length, delta) =
-                    u32::from_varint_bytes_bounded(&buffer[cursor..], max_ask_blocks_per_message)?;
-                cursor += delta;
-                // hash list
-                let mut list: Vec<BlockId> = Vec::with_capacity(length as usize);
-                for _ in 0..length {
-                    let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-                    cursor += BLOCK_ID_SIZE_BYTES;
-                    list.push(b_id);
+                MessageTypeId::Block => context("Failed Block deserialization", |input| {
+                    self.block_deserializer.deserialize(input)
+                })
+                .map(Message::Block)
+                .parse(input),
+                MessageTypeId::BlockHeader => {
+                    context("Failed BlockHeader deserialization", |input| {
+                        self.block_header_deserializer.deserialize(input)
+                    })
+                    .map(Message::BlockHeader)
+                    .parse(input)
                 }
-                Message::AskForBlocks(list)
-            }
-            MessageTypeId::AskPeerList => Message::AskPeerList,
-            MessageTypeId::PeerList => {
-                // length
-                let (length, delta) =
-                    u32::from_varint_bytes_bounded(&buffer[cursor..], max_peer_list_length)?;
-                cursor += delta;
-                // peer list
-                let mut peers: Vec<IpAddr> = Vec::with_capacity(length as usize);
-                let ip_deserializer = IpAddrDeserializer::new();
-                for _ in 0..length {
-                    let (rest, ip) = ip_deserializer
-                        .deserialize::<DeserializeError>(&buffer[cursor..])
-                        .map_err(|_| {
-                            ModelsError::DeserializeError(
-                                "Failed to deserialize IpAddr".to_string(),
-                            )
-                        })?;
-                    cursor += buffer[cursor..].len() - rest.len();
-                    peers.push(ip);
+                MessageTypeId::AskForBlocks => context(
+                    "Failed AskForBlocks deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.ask_block_number_deserializer.deserialize(input)
+                        }),
+                        context("Failed blockId deserialization", |input| {
+                            self.hash_deserializer
+                                .deserialize(input)
+                                .map(|(rest, id)| (rest, BlockId(id)))
+                        }),
+                    ),
+                )
+                .map(Message::AskForBlocks)
+                .parse(input),
+                MessageTypeId::AskPeerList => Ok((input, Message::AskPeerList)),
+                MessageTypeId::PeerList => context(
+                    "Failed PeerList deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.peer_list_length_deserializer.deserialize(input)
+                        }),
+                        context("Failed peer deserialization", |input| {
+                            self.ip_addr_deserializer.deserialize(input)
+                        }),
+                    ),
+                )
+                .map(Message::PeerList)
+                .parse(input),
+                MessageTypeId::BlockNotFound => {
+                    context("Failed BlockNotFound deserialization", |input| {
+                        self.hash_deserializer.deserialize(input)
+                    })
+                    .map(|block_id| Message::BlockNotFound(BlockId(block_id)))
+                    .parse(input)
                 }
-                Message::PeerList(peers)
-            }
-            MessageTypeId::BlockNotFound => {
-                let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-                cursor += BLOCK_ID_SIZE_BYTES;
-                Message::BlockNotFound(b_id)
-            }
-            MessageTypeId::Operations => {
-                let (rest, operations) =
-                    OperationsDeserializer::new().deserialize(&buffer[cursor..])?;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::Operations(operations)
-            }
-            MessageTypeId::AskForOperations => {
-                let (rest, operation_prefix_ids) =
-                    OperationPrefixIdsDeserializer::new().deserialize(&buffer[cursor..])?;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::AskForOperations(operation_prefix_ids)
-            }
-            MessageTypeId::OperationsAnnouncement => {
-                let (rest, operation_prefix_ids) =
-                    OperationPrefixIdsDeserializer::new().deserialize(&buffer[cursor..])?;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::OperationsAnnouncement(operation_prefix_ids)
-            }
-            MessageTypeId::Endorsements => {
-                // length
-                let (length, delta) = u32::from_varint_bytes_bounded(
-                    &buffer[cursor..],
-                    max_endorsements_per_message,
-                )?;
-                cursor += delta;
-                // operations
-                let mut endorsements = Vec::with_capacity(length as usize);
-                let endorsement_deserializer = WrappedDeserializer::new(
-                    EndorsementDeserializer::new(max_endorsements_per_message),
-                );
-                for _ in 0..length {
-                    let (rest, endorsement) =
-                        endorsement_deserializer.deserialize(&buffer[cursor..])?;
-                    cursor += buffer[cursor..].len() - rest.len();
-                    endorsements.push(endorsement);
+                MessageTypeId::Operations => {
+                    context("Failed Operations deserialization", |input| {
+                        self.operations_deserializer.deserialize(input)
+                    })
+                    .map(Message::Operations)
+                    .parse(input)
                 }
-                Message::Endorsements(endorsements)
+                MessageTypeId::AskForOperations => {
+                    context("Failed AskForOperations deserialization", |input| {
+                        self.operation_prefix_ids_deserializer.deserialize(input)
+                    })
+                    .map(Message::AskForOperations)
+                    .parse(input)
+                }
+                MessageTypeId::OperationsAnnouncement => {
+                    context("Failed OperationsAnnouncement deserialization", |input| {
+                        self.operation_prefix_ids_deserializer.deserialize(input)
+                    })
+                    .map(Message::OperationsAnnouncement)
+                    .parse(input)
+                }
+                MessageTypeId::Endorsements => context(
+                    "Failed Endorsements deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.endorsements_length_deserializer.deserialize(input)
+                        }),
+                        context("Failed endorsement deserialization", |input| {
+                            self.endorsement_deserializer.deserialize(input)
+                        }),
+                    ),
+                )
+                .map(Message::Endorsements)
+                .parse(input),
             }
-        };
-        Ok((res, cursor))
+        })
+        .parse(buffer)
     }
 }
 

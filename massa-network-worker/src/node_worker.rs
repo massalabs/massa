@@ -2,7 +2,7 @@
 
 use super::{
     binders::{ReadBinder, WriteBinder},
-    messages::{Message, MessageTypeId},
+    messages::{Message, MessageSerializer, MessageTypeId},
 };
 use itertools::Itertools;
 use massa_logging::massa_trace;
@@ -11,7 +11,7 @@ use massa_models::{
     node::NodeId,
     wrapped::{Id, WrappedSerializer},
 };
-use massa_models::{BlockId, OperationId, SerializeCompact, SerializeVarInt};
+use massa_models::{BlockId, OperationId, SerializeVarInt};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
 };
@@ -151,7 +151,11 @@ impl NodeWorker {
                 match writer_command_rx.recv().await {
                     Some(to_send) => {
                         let bytes_vec: Vec<u8> = match to_send {
-                            ToSend::Msg(msg) => msg.to_bytes_compact().unwrap(),
+                            ToSend::Msg(msg) => {
+                                let mut res = Vec::new();
+                                MessageSerializer::new().serialize(&msg, &mut res)?;
+                                res
+                            }
                             ToSend::Block(block_id) => {
                                 // Construct the message,
                                 // using the serialized block retrieved from shared storage.
