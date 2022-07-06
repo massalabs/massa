@@ -229,6 +229,11 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,
+            "Final datastore keys:\n{:?}\n",
+            self.final_datastore_keys
+        )?;
+        writeln!(
+            f,
             "Block draws: {}",
             self.block_draws
                 .iter()
