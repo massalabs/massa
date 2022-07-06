@@ -550,6 +550,12 @@
 <span id="544">544</span>
 <span id="545">545</span>
 <span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::address::AddressCycleProductionStats</span>;
@@ -562,7 +568,6 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">CompactConfig</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -753,6 +758,8 @@
     <span class="kw">pub</span> <span class="ident">final_balance_info</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>,
     <span class="doccomment">/// latest sequential balance</span>
     <span class="kw">pub</span> <span class="ident">candidate_balance_info</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// every final datastore key</span>
+    <span class="kw">pub</span> <span class="ident">final_datastore_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// rolls</span>
     <span class="kw">pub</span> <span class="ident">rolls</span>: <span class="ident">RollsInfo</span>,
     <span class="doccomment">/// next slots this address will be selected to create a block</span>
@@ -778,6 +785,11 @@
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tFinal: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">final_balance_info</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tCandidate: {:?}\n&quot;</span>, <span class="self">self</span>.<span class="ident">candidate_balance_info</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Rolls:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">rolls</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(
+            <span class="ident">f</span>,
+            <span class="string">&quot;Final datastore keys:\n{:?}\n&quot;</span>,
+            <span class="self">self</span>.<span class="ident">final_datastore_keys</span>
+        )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             <span class="ident">f</span>,
             <span class="string">&quot;Block draws: {}&quot;</span>,
@@ -1040,7 +1052,7 @@
     <span class="doccomment">/// associated address of the entry</span>
     <span class="kw">pub</span> <span class="ident">address</span>: <span class="ident">Address</span>,
     <span class="doccomment">/// datastore key</span>
-    <span class="kw">pub</span> <span class="ident">key</span>: <span class="ident">Hash</span>,
+    <span class="kw">pub</span> <span class="ident">key</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// Datastore entry query output struct</span>
@@ -1048,8 +1060,8 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DatastoreEntryOutput</span> {
     <span class="doccomment">/// final datastore entry value</span>
     <span class="kw">pub</span> <span class="ident">final_value</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// active datastore entry value</span>
-    <span class="kw">pub</span> <span class="ident">active_value</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// candidate datastore entry value</span>
+    <span class="kw">pub</span> <span class="ident">candidate_value</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// filter used when retrieving SC output events</span>

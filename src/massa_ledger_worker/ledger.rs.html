@@ -187,15 +187,11 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ledger_db</span>::{<span class="ident">LedgerDB</span>, <span class="ident">LedgerSubEntry</span>};
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_ledger_exports</span>::{
     <span class="ident">LedgerChanges</span>, <span class="ident">LedgerConfig</span>, <span class="ident">LedgerController</span>, <span class="ident">LedgerEntry</span>, <span class="ident">LedgerError</span>,
 };
@@ -313,9 +309,9 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found</span>
-    <span class="kw">fn</span> <span class="ident">get_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">sorted_ledger</span>
-            .<span class="ident">get_sub_entry</span>(<span class="ident">addr</span>, <span class="ident">LedgerSubEntry::Datastore</span>(<span class="kw-2">*</span><span class="ident">key</span>))
+            .<span class="ident">get_sub_entry</span>(<span class="ident">addr</span>, <span class="ident">LedgerSubEntry::Datastore</span>(<span class="ident">key</span>.<span class="ident">to_owned</span>()))
     }
 
     <span class="doccomment">/// Checks for the existence of a datastore entry for a given address.</span>
@@ -326,31 +322,26 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found</span>
-    <span class="kw">fn</span> <span class="ident">has_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>) -&gt; <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">has_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">sorted_ledger</span>
-            .<span class="ident">get_sub_entry</span>(<span class="ident">addr</span>, <span class="ident">LedgerSubEntry::Datastore</span>(<span class="kw-2">*</span><span class="ident">key</span>))
+            .<span class="ident">get_sub_entry</span>(<span class="ident">addr</span>, <span class="ident">LedgerSubEntry::Datastore</span>(<span class="ident">key</span>.<span class="ident">to_owned</span>()))
             .<span class="ident">is_some</span>()
     }
 
+    <span class="doccomment">/// Retrieve the entire datastore of a given address</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// A copy of the datastore sorted by key</span>
-    <span class="kw">fn</span> <span class="ident">get_entire_datastore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_entire_datastore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">sorted_ledger</span>.<span class="ident">get_entire_datastore</span>(<span class="ident">addr</span>)
     }
 
-    <span class="doccomment">/// TODO: remove when API is updated</span>
-    <span class="kw">fn</span> <span class="ident">get_full_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_parallel_balance</span>(<span class="ident">addr</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">parallel_balance</span><span class="op">|</span> <span class="ident">LedgerEntry</span> {
-                <span class="ident">parallel_balance</span>,
-                <span class="ident">bytecode</span>: <span class="self">self</span>.<span class="ident">get_bytecode</span>(<span class="ident">addr</span>).<span class="ident">unwrap_or_default</span>(),
-                <span class="ident">datastore</span>: <span class="self">self</span>.<span class="ident">get_entire_datastore</span>(<span class="ident">addr</span>),
-            })
-    }
-
-    <span class="doccomment">/// Get a part of the ledger</span>
-    <span class="doccomment">/// Used for bootstrap</span>
-    <span class="doccomment">/// Return: Tuple with data and last key</span>
+    <span class="doccomment">/// Get a part of the disk ledger.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Solely used by the bootstrap.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Returns</span>
+    <span class="doccomment">/// A tuple containing the data and the last returned key</span>
     <span class="kw">fn</span> <span class="ident">get_ledger_part</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">last_key</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -358,9 +349,12 @@
         <span class="self">self</span>.<span class="ident">sorted_ledger</span>.<span class="ident">get_ledger_part</span>(<span class="ident">last_key</span>)
     }
 
-    <span class="doccomment">/// Set a part of the ledger</span>
-    <span class="doccomment">/// Used for bootstrap</span>
-    <span class="doccomment">/// Return: Last key inserted</span>
+    <span class="doccomment">/// Set a part of the disk ledger.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Solely used by the bootstrap.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Returns</span>
+    <span class="doccomment">/// The last key inserted</span>
     <span class="kw">fn</span> <span class="ident">set_ledger_part</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">sorted_ledger</span>.<span class="ident">set_ledger_part</span>(<span class="ident">data</span>.<span class="ident">as_bytes</span>())
     }

@@ -199,6 +199,8 @@
 <span id="193">193</span>
 <span id="194">194</span>
 <span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file provides structures representing changes to the final state</span>
@@ -248,9 +250,10 @@
 <span class="kw">impl</span> <span class="ident">Serializer</span><span class="op">&lt;</span><span class="ident">StateChanges</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">StateChangesSerializer</span> {
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// use massa_serialization::Serializer;</span>
-    <span class="doccomment">/// use massa_models::{Address, prehash::Map, Amount, Slot};</span>
+    <span class="doccomment">/// use massa_models::{Address, Amount, Slot};</span>
     <span class="doccomment">/// use massa_final_state::{StateChanges, StateChangesSerializer};</span>
     <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::collections::BTreeMap;</span>
     <span class="doccomment">/// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};</span>
     <span class="doccomment">/// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};</span>
     <span class="doccomment">///</span>
@@ -276,7 +279,7 @@
     <span class="doccomment">/// let ledger_entry = LedgerEntryUpdate {</span>
     <span class="doccomment">///    parallel_balance: SetOrKeep::Set(amount),</span>
     <span class="doccomment">///    bytecode: SetOrKeep::Set(bytecode),</span>
-    <span class="doccomment">///    datastore: Map::default(),</span>
+    <span class="doccomment">///    datastore: BTreeMap::default(),</span>
     <span class="doccomment">/// };</span>
     <span class="doccomment">/// let mut ledger_changes = LedgerChanges::default();</span>
     <span class="doccomment">/// ledger_changes.0.insert(</span>
@@ -324,6 +327,7 @@
     <span class="doccomment">/// use massa_models::{Address, prehash::Map, Amount, Slot};</span>
     <span class="doccomment">/// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};</span>
     <span class="doccomment">/// use std::str::FromStr;</span>
+    <span class="doccomment">/// use std::collections::BTreeMap;</span>
     <span class="doccomment">/// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};</span>
     <span class="doccomment">/// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};</span>
     <span class="doccomment">///</span>
@@ -349,7 +353,7 @@
     <span class="doccomment">/// let ledger_entry = LedgerEntryUpdate {</span>
     <span class="doccomment">///    parallel_balance: SetOrKeep::Set(amount),</span>
     <span class="doccomment">///    bytecode: SetOrKeep::Set(bytecode),</span>
-    <span class="doccomment">///    datastore: Map::default(),</span>
+    <span class="doccomment">///    datastore: BTreeMap::default(),</span>
     <span class="doccomment">/// };</span>
     <span class="doccomment">/// let mut ledger_changes = LedgerChanges::default();</span>
     <span class="doccomment">/// ledger_changes.0.insert(</span>

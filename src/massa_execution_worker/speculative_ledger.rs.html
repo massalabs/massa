@@ -327,6 +327,14 @@
 <span id="321">321</span>
 <span id="322">322</span>
 <span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The speculative ledger represents, in a compressed way,</span>
@@ -336,9 +344,8 @@
 
 <span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident">massa_final_state::FinalState</span>;
-<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_ledger_exports</span>::{<span class="ident">Applicable</span>, <span class="ident">LedgerChanges</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::default::MAX_DATASTORE_KEY_LENGTH</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>};
 <span class="kw">use</span> <span class="ident">parking_lot::RwLock</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
@@ -559,7 +566,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// `Some(Vec&lt;u8&gt;)` if the value was found, `None` if the address does not exist or if the key is not in its datastore.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// try to read from added changes &gt; history &gt; final_state</span>
         <span class="self">self</span>.<span class="ident">added_changes</span>.<span class="ident">get_data_entry_or_else</span>(<span class="ident">addr</span>, <span class="ident">key</span>, <span class="op">|</span><span class="op">|</span> {
             <span class="kw">match</span> <span class="self">self</span>
@@ -584,7 +591,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// true if the key exists in the address datastore, false otherwise</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">has_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>) -&gt; <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">has_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">bool</span> {
         <span class="comment">// try to read from added changes &gt; history &gt; final_state</span>
         <span class="self">self</span>.<span class="ident">added_changes</span>.<span class="ident">has_data_entry_or_else</span>(<span class="ident">addr</span>, <span class="ident">key</span>, <span class="op">|</span><span class="op">|</span> {
             <span class="kw">match</span> <span class="self">self</span>
@@ -612,7 +619,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_data_entry</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
-        <span class="ident">key</span>: <span class="ident">Hash</span>,
+        <span class="ident">key</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
         <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
         <span class="comment">// check for address existence</span>
@@ -620,6 +627,15 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(
                 <span class="string">&quot;could not set data for address {}: entry does not exist&quot;</span>,
                 <span class="ident">addr</span>
+            )));
+        }
+
+        <span class="comment">// check key correctness</span>
+        <span class="kw">let</span> <span class="ident">key_length</span> <span class="op">=</span> <span class="ident">key</span>.<span class="ident">len</span>();
+        <span class="kw">if</span> <span class="ident">key_length</span> <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">key_length</span> <span class="op">&gt;</span> <span class="ident">MAX_DATASTORE_KEY_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(
+                <span class="string">&quot;key length is {}, but it must be in [0..{}]&quot;</span>,
+                <span class="ident">key_length</span>, <span class="ident">MAX_DATASTORE_KEY_LENGTH</span>
             )));
         }
 
@@ -635,17 +651,17 @@
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * `addr`: address</span>
     <span class="doccomment">/// * `key`: key of the entry to delete in the address&#39; datastore</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_data_entry</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_data_entry</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
         <span class="comment">// check if the entry exists</span>
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">has_data_entry</span>(<span class="ident">addr</span>, <span class="ident">key</span>) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(
-                <span class="string">&quot;could not delete data entry {} for address {}: entry does not exist&quot;</span>,
+                <span class="string">&quot;could not delete data entry {:?} for address {}: entry does not exist&quot;</span>,
                 <span class="ident">key</span>, <span class="ident">addr</span>
             )));
         }
 
         <span class="comment">// delete entry</span>
-        <span class="self">self</span>.<span class="ident">added_changes</span>.<span class="ident">delete_data_entry</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="kw-2">*</span><span class="ident">key</span>);
+        <span class="self">self</span>.<span class="ident">added_changes</span>.<span class="ident">delete_data_entry</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">key</span>.<span class="ident">to_owned</span>());
 
         <span class="prelude-val">Ok</span>(())
     }
