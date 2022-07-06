@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::MassaSignatureError;
+use ed25519_dalek::{Signer, Verifier};
 use massa_hash::Hash;
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -9,30 +10,35 @@ use nom::{
     error::{ContextError, ParseError},
     IResult,
 };
+use rand::rngs::OsRng;
 use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::SerializeStruct,
     Deserialize,
 };
-use std::{borrow::Cow, ops::Bound::Included};
+use std::{borrow::Cow, cmp::Ordering, hash::Hasher, ops::Bound::Included};
 use std::{convert::TryInto, str::FromStr};
 
 /// Size of a public key
-pub const PUBLIC_KEY_SIZE_BYTES: usize = schnorrkel::PUBLIC_KEY_LENGTH;
+pub const PUBLIC_KEY_SIZE_BYTES: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
 /// Size of a keypair
-pub const SECRET_KEY_SIZE_BYTES: usize = schnorrkel::SECRET_KEY_LENGTH;
+pub const SECRET_KEY_BYTES_SIZE: usize = ed25519_dalek::SECRET_KEY_LENGTH;
 /// Size of a signature
-pub const SIGNATURE_SIZE_BYTES: usize = schnorrkel::SIGNATURE_LENGTH;
+pub const SIGNATURE_SIZE_BYTES: usize = ed25519_dalek::SIGNATURE_LENGTH;
 
 const SIGNATURE_STRING_PREFIX: &str = "SIG";
-
-lazy_static::lazy_static! {
-    pub static ref SIGNATURE_CONTEXT: schnorrkel::context::SigningContext = schnorrkel::signing_context("massa protocol".as_bytes());
-}
-
 /// `KeyPair` is used for signature and decrypting
-#[derive(Clone)]
-pub struct KeyPair(schnorrkel::Keypair);
+pub struct KeyPair(ed25519_dalek::Keypair);
+
+impl Clone for KeyPair {
+    fn clone(&self) -> Self {
+        KeyPair(ed25519_dalek::Keypair {
+            // This will never error since self is a valid keypair
+            secret: ed25519_dalek::SecretKey::from_bytes(self.0.secret.as_bytes()).unwrap(),
+            public: self.0.public,
+        })
+    }
+}
 
 const SECRET_PREFIX: char = 'S';
 const KEYPAIR_VERSION: u64 = 0;
@@ -102,8 +108,9 @@ impl KeyPair {
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// ```
-    pub fn generate() -> KeyPair {
-        KeyPair(schnorrkel::Keypair::generate_with(&mut rand::rngs::OsRng))
+    pub fn generate() -> Self {
+        let mut rng = OsRng::default();
+        KeyPair(ed25519_dalek::Keypair::generate(&mut rng))
     }
 
     /// Returns the Signature produced by signing
@@ -118,9 +125,7 @@ impl KeyPair {
     /// let signature = keypair.sign(&data).unwrap();
     /// ```
     pub fn sign(&self, hash: &Hash) -> Result<Signature, MassaSignatureError> {
-        Ok(Signature(
-            self.0.sign(SIGNATURE_CONTEXT.bytes(hash.to_bytes())),
-        ))
+        Ok(Signature(self.0.sign(hash.to_bytes())))
     }
 
     /// Return the bytes representing the keypair (should be a reference in the future)
@@ -131,8 +136,8 @@ impl KeyPair {
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> [u8; SECRET_KEY_SIZE_BYTES] {
-        self.0.secret.to_ed25519_bytes()
+    pub fn to_bytes(&self) -> &[u8; SECRET_KEY_BYTES_SIZE] {
+        self.0.secret.as_bytes()
     }
 
     /// Return the bytes representing the keypair
@@ -143,11 +148,11 @@ impl KeyPair {
     /// let keypair = KeyPair::generate();
     /// let bytes = keypair.into_bytes();
     /// ```
-    pub fn into_bytes(&self) -> [u8; SECRET_KEY_SIZE_BYTES] {
-        self.0.secret.to_ed25519_bytes()
+    pub fn into_bytes(&self) -> [u8; SECRET_KEY_BYTES_SIZE] {
+        self.0.secret.to_bytes()
     }
 
-    /// Convert a byte array of size `SECRET_KEY_SIZE_BYTES` to a `KeyPair`
+    /// Convert a byte array of size `SECRET_KEY_BYTES_SIZE` to a `KeyPair`
     ///
     /// # Example
     /// ```
@@ -156,11 +161,14 @@ impl KeyPair {
     /// let bytes = keypair.into_bytes();
     /// let keypair2 = KeyPair::from_bytes(&bytes).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; SECRET_KEY_SIZE_BYTES]) -> Result<Self, MassaSignatureError> {
-        let secret = schnorrkel::SecretKey::from_ed25519_bytes(&data[..]).map_err(|err| {
+    pub fn from_bytes(data: &[u8; SECRET_KEY_BYTES_SIZE]) -> Result<Self, MassaSignatureError> {
+        let secret = ed25519_dalek::SecretKey::from_bytes(&data[..]).map_err(|err| {
             MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
         })?;
-        Ok(KeyPair(schnorrkel::Keypair::from(secret)))
+        Ok(KeyPair(ed25519_dalek::Keypair {
+            public: ed25519_dalek::PublicKey::from(&secret),
+            secret,
+        }))
     }
 
     /// Get the public key of the keypair
@@ -352,10 +360,29 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
 /// Public key used to check if a message was encoded
 /// by the corresponding `PublicKey`.
 /// Generated from the `KeyPair` using `SignatureEngine`
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct PublicKey(schnorrkel::PublicKey);
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct PublicKey(ed25519_dalek::PublicKey);
 
 const PUBLIC_PREFIX: char = 'P';
+
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for PublicKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.as_bytes().hash(state);
+    }
+}
+
+impl PartialOrd for PublicKey {
+    fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
+        self.0.as_bytes().partial_cmp(other.0.as_bytes())
+    }
+}
+
+impl Ord for PublicKey {
+    fn cmp(&self, other: &PublicKey) -> Ordering {
+        self.0.as_bytes().cmp(other.0.as_bytes())
+    }
+}
 
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -417,11 +444,9 @@ impl PublicKey {
         hash: &Hash,
         signature: &Signature,
     ) -> Result<(), MassaSignatureError> {
-        self.0
-            .verify(SIGNATURE_CONTEXT.bytes(hash.to_bytes()), &signature.0)
-            .map_err(|err| {
-                MassaSignatureError::SignatureError(format!("Signature failed: {}", err))
-            })
+        self.0.verify(hash.to_bytes(), &signature.0).map_err(|err| {
+            MassaSignatureError::SignatureError(format!("Signature failed: {}", err))
+        })
     }
 
     /// Serialize a `PublicKey` using `bs58` encoding with checksum.
@@ -448,8 +473,8 @@ impl PublicKey {
     ///
     /// let serialize = keypair.get_public_key().to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> [u8; PUBLIC_KEY_SIZE_BYTES] {
-        self.0.to_bytes()
+    pub fn to_bytes(&self) -> &[u8; PUBLIC_KEY_SIZE_BYTES] {
+        self.0.as_bytes()
     }
 
     /// Serialize into bytes.
@@ -511,7 +536,7 @@ impl PublicKey {
     pub fn from_bytes(
         data: &[u8; PUBLIC_KEY_SIZE_BYTES],
     ) -> Result<PublicKey, MassaSignatureError> {
-        schnorrkel::PublicKey::from_bytes(data)
+        ed25519_dalek::PublicKey::from_bytes(data)
             .map(Self)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
     }
@@ -535,8 +560,9 @@ impl Deserializer<PublicKey> for PublicKeyDeserializer {
     /// use massa_hash::Hash;
     ///
     /// let keypair = KeyPair::generate();
-    /// let serialized = keypair.get_public_key().to_bytes();
-    /// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let public_key = keypair.get_public_key();
+    /// let serialized = public_key.to_bytes();
+    /// let (rest, deser_public_key) = PublicKeyDeserializer::new().deserialize::<DeserializeError>(serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(keypair.get_public_key(), deser_public_key);
     /// ```
@@ -642,7 +668,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
 
 /// Signature generated from a message and a `KeyPair`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Signature(schnorrkel::Signature);
+pub struct Signature(ed25519_dalek::Signature);
 
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -777,7 +803,7 @@ impl Signature {
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, MassaSignatureError> {
-        schnorrkel::Signature::from_bytes(&data[..])
+        ed25519_dalek::Signature::from_bytes(&data[..])
             .map(Self)
             .map_err(|err| {
                 MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))

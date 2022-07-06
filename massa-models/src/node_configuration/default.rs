@@ -55,7 +55,7 @@ lazy_static::lazy_static! {
         Some(1656626400000.into())
     };
     /// `KeyPair` to sign genesis blocks.
-    pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S17LtHapbr3mtTuNwU3woyS7upSD8BaxayRqhSXKj7MtUfRXjvxkhTDzGEg2AW4adYwcUPvrKNzkGoHGiPXbG2tFjPmcGhd")
+    pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
         .unwrap();
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);

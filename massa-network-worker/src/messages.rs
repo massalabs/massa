@@ -95,7 +95,7 @@ impl SerializeCompact for Message {
             } => {
                 let version_serializer = VersionSerializer::new();
                 res.extend(u32::from(MessageTypeId::HandshakeInitiation).to_varint_bytes());
-                res.extend(&public_key.to_bytes());
+                res.extend(public_key.to_bytes());
                 res.extend(random_bytes);
                 version_serializer.serialize(version, &mut res)?;
             }
