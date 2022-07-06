@@ -108,17 +108,16 @@ impl ExecutionController for MockExecutionController {
 
     fn get_final_and_active_parallel_balance(
         &self,
-        _address: &Address,
-    ) -> (Option<Amount>, Option<Amount>) {
-        (None, None)
+        _address: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)> {
+        Vec::default()
     }
 
     fn get_final_and_active_data_entry(
         &self,
-        _addr: &Address,
-        _key: &[u8],
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        (None, None)
+        _: Vec<(Address, Vec<u8>)>,
+    ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+        Vec::default()
     }
 
     fn get_every_final_datastore_key(&self, _addr: &Address) -> Vec<Vec<u8>> {

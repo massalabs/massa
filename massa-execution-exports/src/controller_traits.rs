@@ -40,18 +40,18 @@ pub trait ExecutionController: Send + Sync {
     /// * `(final_balance, active_balance)`
     fn get_final_and_active_parallel_balance(
         &self,
-        address: &Address,
-    ) -> (Option<Amount>, Option<Amount>);
+        addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)>;
 
     /// Get a copy of a single datastore entry with its final and active values
     ///
     /// # Return value
     /// * `(final_data_entry, active_data_entry)`
+    #[allow(clippy::type_complexity)]
     fn get_final_and_active_data_entry(
         &self,
-        addr: &Address,
-        key: &[u8],
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>);
+        input: Vec<(Address, Vec<u8>)>,
+    ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)>;
 
     /// Get every datastore key of the given address.
     ///

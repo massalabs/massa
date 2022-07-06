@@ -516,16 +516,19 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<DatastoreEntryOutput>, ApiError>> {
         let execution_controller = self.0.execution_controller.clone();
         let closure = async move || {
-            let mut result = Vec::new();
-            for entry in entries {
-                let data = execution_controller
-                    .get_final_and_active_data_entry(&entry.address, &entry.key);
-                result.push(DatastoreEntryOutput {
-                    final_value: data.0,
-                    candidate_value: data.1,
-                });
-            }
-            Ok(result)
+            Ok(execution_controller
+                .get_final_and_active_data_entry(
+                    entries
+                        .into_iter()
+                        .map(|input| (input.address, input.key))
+                        .collect::<Vec<_>>(),
+                )
+                .into_iter()
+                .map(|output| DatastoreEntryOutput {
+                    final_value: output.0,
+                    candidate_value: output.1,
+                })
+                .collect())
         };
         Box::pin(closure())
     }
@@ -616,9 +619,10 @@ impl Endpoints for API<Public> {
                         .chain(get_consensus_eds?.into_keys())
                         .collect();
 
-                    let (final_balance, candidate_balance) =
-                        exec_snd.get_final_and_active_parallel_balance(&address);
+                    let balances = exec_snd.get_final_and_active_parallel_balance(vec![address]);
+                    let balances_result = balances.first().unwrap();
                     let final_datastore_keys = exec_snd.get_every_final_datastore_key(&address);
+
                     Result::<
                         (
                             Address,
@@ -635,8 +639,8 @@ impl Endpoints for API<Public> {
                         blocks,
                         gathered,
                         gathered_ed,
-                        final_balance,
-                        candidate_balance,
+                        balances_result.0,
+                        balances_result.1,
                         final_datastore_keys,
                     ))
                 });
