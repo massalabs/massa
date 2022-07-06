@@ -129,6 +129,16 @@
 <span id="123">123</span>
 <span id="124">124</span>
 <span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">core::usize</span>;
@@ -153,6 +163,16 @@
     <span class="kw">pub</span> <span class="ident">fitness</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// True if it is the clique of higher fitness</span>
     <span class="kw">pub</span> <span class="ident">is_blockclique</span>: <span class="ident">bool</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Clique</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident">Clique</span> {
+            <span class="ident">block_ids</span>: <span class="ident">Default::default</span>(),
+            <span class="ident">fitness</span>: <span class="number">0</span>,
+            <span class="ident">is_blockclique</span>: <span class="bool-val">true</span>,
+        }
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">Clique</span> {
@@ -255,5 +275,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (27eb6d701 2022-07-04)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (7b46aa594 2022-07-05)" ></div>
 </body></html>
