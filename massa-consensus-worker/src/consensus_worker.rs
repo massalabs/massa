@@ -631,10 +631,9 @@ impl ConsensusWorker {
         let slot = block.content.header.content.slot;
         massa_trace!("create block", { "block": block });
         let block_id = block.id;
-
+        println!("AURELIEN: serialized header = {:#?}", block.content.header.serialized_data);
         // Add to shared storage
         self.block_db.storage.store_block(block);
-
         info!(
             "Staked block {} with address {}, at cycle {}, period {}, thread {}",
             block_id,
@@ -1220,6 +1219,7 @@ impl ConsensusWorker {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
                 "block_id": block_id
             });
+            println!("AURELIEN: propagate {:#?}", block_id);
             self.channels
                 .protocol_command_sender
                 .integrated_block(block_id, op_ids, endo_ids)

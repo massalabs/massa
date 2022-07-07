@@ -128,6 +128,7 @@ impl ReadBinder {
 
             // once we have all the message size bytes, deserialize it
             let res_size = u32::from_be_bytes_min(&self.buf, max_message_size)?.0;
+            println!("AURELIEN: Received message size {:#?}", res_size);
             // set self.msg_size to indicate that we are now in the process of reading the message contents (and not the size anymore).
             self.msg_size = Some(res_size);
             // allocate the buffer to match the message length
@@ -157,7 +158,15 @@ impl ReadBinder {
                 }
             }
         }
-        let (res_msg, _) = Message::from_bytes_compact(&self.buf)?;
+        let (res_msg, _) = match Message::from_bytes_compact(&self.buf) {
+            Ok(res) => res,
+            Err(err) => {
+                println!("AURELIEN: err deserialization: {:#?}", err);
+                return Err(err.into());
+            }
+        };
+
+        println!("AURELIEN: Received message {:#?}", res_msg);
 
         // now the message readout is over, we reset the state to start reading the next message's size field again at the next run
         self.cursor = 0;

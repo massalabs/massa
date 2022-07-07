@@ -379,6 +379,7 @@ impl ProtocolWorker {
                             self.protocol_settings.max_node_known_ops_size,
                         );
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id });
+                        println!("AURELIEN: send entire block id: {:#?}", block_id);
                         self.network_command_sender
                             .send_block(*node_id, block_id)
                             .await
@@ -393,6 +394,7 @@ impl ProtocolWorker {
                         // if we don't know if that node knows that hash or if we know it doesn't
                         if !cond.map_or_else(|| false, |v| v.0) {
                             massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id});
+                            println!("AURELIEN: send header block id: {:#?}", block_id);
                             self.network_command_sender
                                 .send_block_header(*node_id, block_id)
                                 .await
@@ -804,6 +806,7 @@ impl ProtocolWorker {
         header: &WrappedHeader,
         source_node_id: &NodeId,
     ) -> Result<Option<(BlockId, Map<EndorsementId, u32>, bool)>, ProtocolError> {
+        println!("AURELIEN: note_header_from_node");
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
@@ -880,6 +883,7 @@ impl ProtocolWorker {
         if let Err(err) =
             header.verify_signature(BlockHeaderSerializer::new(), &header.creator_public_key)
         {
+            println!("AURELIEN: error check signature");
             massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{}", err)});
             return Ok(None);
         };
@@ -1287,6 +1291,7 @@ impl ProtocolWorker {
                 if let Some((block_id, _endorsement_ids, is_new)) =
                     self.note_header_from_node(&header, &source_node_id).await?
                 {
+                    println!("AURELIEN header {:#?} processed and is new = {}", block_id, is_new);
                     if is_new {
                         self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader {
                             block_id,

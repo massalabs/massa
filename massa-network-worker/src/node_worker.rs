@@ -174,7 +174,9 @@ impl NodeWorker {
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
                                 let stored_block = block.read();
+                                println!("AURELIEN: Retrieved header {:#?}", stored_block.id);
                                 res.extend(&stored_block.content.header.serialized_data);
+                                println!("AURELIEN: Serialized header {:#?}", stored_block.content.header.serialized_data);
                                 res
                             }
                             ToSend::Operations(operation_ids) => {

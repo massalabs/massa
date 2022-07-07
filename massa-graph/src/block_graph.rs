@@ -1494,9 +1494,12 @@ impl BlockGraph {
             },
         }
 
+        println!("AURELIEN: Process block id {}", block_id);
         // process
-        self.rec_process(to_ack, pos, current_slot)?;
-
+        let res = self.rec_process(to_ack, pos, current_slot);
+        if let Err(err) = res {
+            println!("AURELIEN: error {:#?}", err);
+        }
         Ok(())
     }
 
@@ -1675,6 +1678,7 @@ impl BlockGraph {
                 massa_trace!("consensus.block_graph.process.incoming_block", {
                     "block_id": block_id
                 });
+                println!("AURELIEN: incoming block");
                 let block = self.storage.retrieve_block(&block_id).ok_or_else(|| {
                     GraphError::MissingBlock(format!(
                         "missing block in processing incoming block: {}",
@@ -1712,6 +1716,7 @@ impl BlockGraph {
                         massa_trace!("consensus.block_graph.process.incoming_block.valid", {
                             "block_id": block_id
                         });
+                        println!("AURELIEN: block is valid");
                         (
                             stored_block.involved_addresses(&operation_set)?,
                             stored_block.addresses_to_endorsements()?,
@@ -1897,6 +1902,7 @@ impl BlockGraph {
                     active.endorsement_ids.keys().copied().collect(),
                 ),
             );
+            println!("AURELIEN to propagate {:#?}", self.to_propagate);
             for itm_block_id in self.waiting_for_dependencies_index.iter() {
                 if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -3236,6 +3242,7 @@ impl BlockGraph {
                 self.latest_final_blocks_periods[changed_thread as usize].1,
             )?;
         }
+        println!("AURELIEN: added block to graph");
 
         massa_trace!("consensus.block_graph.add_block_to_graph.end", {});
         Ok(())
