@@ -161,7 +161,7 @@ impl NodeWorker {
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
                                 let stored_block = block.read();
-                                res.extend(&stored_block.serialized_data);
+                                WrappedSerializer::new().serialize(&stored_block, &mut res)?;
                                 res
                             }
                             ToSend::Header(block_id) => {
@@ -174,7 +174,8 @@ impl NodeWorker {
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
                                 let stored_block = block.read();
-                                res.extend(&stored_block.content.header.serialized_data);
+                                WrappedSerializer::new()
+                                    .serialize(&stored_block.content.header, &mut res)?;
                                 res
                             }
                             ToSend::Operations(operation_ids) => {
