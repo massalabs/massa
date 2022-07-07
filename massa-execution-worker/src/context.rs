@@ -600,14 +600,26 @@ impl ExecutionContext {
     /// * `creator`: the supposed creator
     /// * `slot`: current slot
     /// * `contains_block`: indicates whether or not `creator` produced the block
-    pub fn update_production_stats(
-        &mut self,
-        creator: &Address,
-        slot: &Slot,
-        contains_block: bool,
-    ) {
+    pub fn update_production_stats(&mut self, creator: &Address, slot: Slot, contains_block: bool) {
         self.speculative_roll_state
             .update_production_stats(creator, slot, contains_block);
+    }
+
+    /// Execute the deferred credits of `slot`.
+    ///
+    /// # Arguments
+    /// * `slot`: assiciated slot of the deferred credits to be executed
+    /// * `credits`: deferred to be executed
+    pub fn execute_deferred_credits(&mut self, slot: Slot) {
+        let credits = self.speculative_roll_state.get_deferred_credits(slot);
+        for (addr, amount) in credits {
+            if let Err(e) = self.transfer_parallel_coins(None, Some(addr), amount) {
+                debug!(
+                    "could not transfer {} deferred credits to {} at slot {}: {}",
+                    amount, addr, slot, e
+                );
+            }
+        }
     }
 
     /// Finishes a slot and generates the execution output.
@@ -623,6 +635,9 @@ impl ExecutionContext {
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
         }
+
+        // execute the deferred credites comming from roll sells
+        self.execute_deferred_credits(self.slot);
 
         // generate the execution output
         let state_changes = StateChanges {
