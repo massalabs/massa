@@ -7,8 +7,8 @@ use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
+use massa_models::Slot;
 use massa_models::{Address, Amount, ModelsError};
-use massa_models::{DeserializeCompact, Slot};
 use nom::AsBytes;
 use std::collections::{BTreeMap, HashMap};
 

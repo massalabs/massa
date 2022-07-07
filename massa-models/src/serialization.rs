@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ModelsError;
-use crate::Amount;
 use integer_encoding::VarInt;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -331,21 +330,6 @@ impl Deserializer<IpAddr> for IpAddrDeserializer {
                 },
             ),
         ))(buffer)
-    }
-}
-
-impl SerializeCompact for Amount {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        Ok(self.to_raw().to_varint_bytes())
-    }
-}
-
-/// Checks performed:
-/// - Buffer contains a valid `u8`.
-impl DeserializeCompact for Amount {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
-        Ok((Amount::from_raw(res_u64), delta))
     }
 }
 

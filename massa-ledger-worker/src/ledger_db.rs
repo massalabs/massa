@@ -5,9 +5,7 @@
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::*;
 use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
-use massa_models::{
-    Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
-};
+use massa_models::{Address, ModelsError, Slot, VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
@@ -20,7 +18,7 @@ use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
 
 #[cfg(feature = "testing")]
-use massa_models::{address::AddressDeserializer, Amount, DeserializeCompact};
+use massa_models::{address::AddressDeserializer, Amount};
 
 #[cfg(feature = "testing")]
 use massa_serialization::DeserializeError;
