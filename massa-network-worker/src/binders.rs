@@ -166,7 +166,9 @@ impl ReadBinder {
             }
         };
 
-        println!("AURELIEN: Received message {:#?}", res_msg);
+        if let Message::BlockHeader(header) = &res_msg {
+            println!("AURELIEN: block header {:#?}", header.id);
+        }
 
         // now the message readout is over, we reset the state to start reading the next message's size field again at the next run
         self.cursor = 0;
