@@ -631,7 +631,10 @@ impl ConsensusWorker {
         let slot = block.content.header.content.slot;
         massa_trace!("create block", { "block": block });
         let block_id = block.id;
-        println!("AURELIEN: serialized header = {:#?}", block.content.header.serialized_data);
+        println!(
+            "AURELIEN: serialized header = {:#?}",
+            block.content.header.serialized_data
+        );
         // Add to shared storage
         self.block_db.storage.store_block(block);
         info!(
