@@ -1,12 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::sync::Arc;
-
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
-use massa_models::{Address, Amount, Slot};
+use massa_models::{prehash::Map, Address, Amount, Slot};
 use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
+use std::sync::Arc;
 
 use crate::active_history::ActiveHistory;
 
@@ -120,22 +119,13 @@ impl SpeculativeRollState {
         // remove the rolls
         *count = count.saturating_sub(roll_count);
 
-        // fetch the deferred credits from: current changes > active history > final state
-        let credits = self
-            .added_changes
+        // add deferred reimbursement corresponding to the sold rolls value
+        self.added_changes
             .deferred_credits
             .entry(slot)
-            .or_insert_with(|| {
-                self.active_history
-                    .read()
-                    .fetch_all_deferred_credits_at(&slot)
-                    .into_iter()
-                    .chain(final_lock.pos_state.get_deferred_credits_at(&slot))
-                    .collect()
+            .and_modify(|credit| {
+                credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
             });
-
-        // add deferred reimbursement corresponding to the sold rolls value
-        credits.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
 
         Ok(())
     }
@@ -146,12 +136,7 @@ impl SpeculativeRollState {
     /// * `creator`: the supposed creator
     /// * `slot`: current slot
     /// * `contains_block`: indicates whether or not `creator` produced the block
-    pub fn update_production_stats(
-        &mut self,
-        creator: &Address,
-        slot: &Slot,
-        contains_block: bool,
-    ) {
+    pub fn update_production_stats(&mut self, creator: &Address, slot: Slot, contains_block: bool) {
         if let Some(production_stats) = self.added_changes.production_stats.get_mut(creator) {
             if contains_block {
                 production_stats.block_success_count =
@@ -162,5 +147,23 @@ impl SpeculativeRollState {
                     production_stats.block_failure_count.saturating_add(1);
             }
         }
+    }
+
+    /// Get the deferred credits of `slot`.
+    ///
+    /// NOTE: this probably shouldn't be done here but there is no alternative for now
+    ///
+    /// # Arguments
+    /// * `slot`: associated slot of the deferred credits to be executed
+    pub fn get_deferred_credits(&mut self, slot: Slot) -> Map<Address, Amount> {
+        let final_lock = self.final_state.read();
+        let credits = self
+            .active_history
+            .read()
+            .fetch_all_deferred_credits_at(&slot)
+            .into_iter()
+            .chain(final_lock.pos_state.get_deferred_credits_at(&slot))
+            .collect();
+        credits
     }
 }

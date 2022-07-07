@@ -772,7 +772,7 @@ impl ExecutionState {
             // Compute creator address
             let addr = Address::from_public_key(&stored_block.block.header.content.creator);
             // Update speculative rolls state production stats
-            context_guard!(self).update_production_stats(&addr, &slot, true);
+            context_guard!(self).update_production_stats(&addr, slot, true);
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
             for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
@@ -786,7 +786,7 @@ impl ExecutionState {
         } else {
             // Update speculative rolls state production stats
             if let Ok(addr) = self.selector.get_producer(slot) {
-                context_guard!(self).update_production_stats(&addr, &slot, false);
+                context_guard!(self).update_production_stats(&addr, slot, false);
             } else {
                 debug!("couldn't get the supposed block producer on a missing slot");
             }
