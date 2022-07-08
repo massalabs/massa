@@ -6,11 +6,11 @@ use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Statu
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
-    Address, BlockId, OperationSearchResult, SignedEndorsement, Slot, StakersCycleProductionStats,
+    Address, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats, WrappedEndorsement,
 };
 
 use massa_proof_of_stake_exports::ExportProofOfStake;
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 
 use massa_models::prehash::{Map, Set};
 use tokio::sync::oneshot;
@@ -81,8 +81,8 @@ pub enum ConsensusCommand {
     GetStats(oneshot::Sender<ConsensusStats>),
     /// Get all stakers
     GetActiveStakers(oneshot::Sender<Map<Address, u64>>),
-    /// Add private keys to use them for staking
-    RegisterStakingPrivateKeys(Vec<PrivateKey>),
+    /// Add keys to use them for staking
+    RegisterStakingKeys(Vec<KeyPair>),
     /// Remove associated staking keys
     RemoveStakingAddresses(Set<Address>),
     /// Get staking addresses
@@ -106,7 +106,7 @@ pub enum ConsensusCommand {
         /// wanted address
         address: Address,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, WrappedEndorsement>>,
     },
     /// get endorsements by id
     GetEndorsementsById {

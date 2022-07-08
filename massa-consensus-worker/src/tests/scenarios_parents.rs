@@ -3,13 +3,13 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::Slot;
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_parent_in_the_future() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -26,21 +26,21 @@ async fn test_parent_in_the_future() {
                 .genesis_blocks;
 
             // Parent, in the future.
-            let (hasht0s1, _, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(4, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             let _ = create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
                 Slot::new(5, 0),
-                vec![hasht0s1],
+                vec![t0s1.id],
                 false,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
             (
@@ -56,7 +56,7 @@ async fn test_parent_in_the_future() {
 #[tokio::test]
 #[serial]
 async fn test_parents() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -80,7 +80,7 @@ async fn test_parents() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -91,7 +91,7 @@ async fn test_parents() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -102,7 +102,7 @@ async fn test_parents() {
                 vec![hasht1s1, genesis_hashes[0]],
                 false,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
             (
@@ -118,7 +118,7 @@ async fn test_parents() {
 #[tokio::test]
 #[serial]
 async fn test_parents_in_incompatible_cliques() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -141,7 +141,7 @@ async fn test_parents_in_incompatible_cliques() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -152,7 +152,7 @@ async fn test_parents_in_incompatible_cliques() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -165,7 +165,7 @@ async fn test_parents_in_incompatible_cliques() {
                 vec![hasht0s1, genesis_hashes[1]],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -177,7 +177,7 @@ async fn test_parents_in_incompatible_cliques() {
                 vec![hasht0s1, hasht0s2],
                 false,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
             (

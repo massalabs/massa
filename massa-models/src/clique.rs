@@ -24,6 +24,16 @@ pub struct Clique {
     pub is_blockclique: bool,
 }
 
+impl Default for Clique {
+    fn default() -> Self {
+        Clique {
+            block_ids: Default::default(),
+            fitness: 0,
+            is_blockclique: true,
+        }
+    }
+}
+
 impl SerializeCompact for Clique {
     /// ## Example
     /// ```rust

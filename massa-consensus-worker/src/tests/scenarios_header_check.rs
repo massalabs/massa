@@ -6,14 +6,14 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::{init_serialization_context, Slot};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_consensus_asks_for_block() {
     init_serialization_context(massa_models::SerializationContext::default());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 500.into(),
         future_block_processing_max_periods: 50,
@@ -30,18 +30,18 @@ async fn test_consensus_asks_for_block() {
                 .genesis_blocks;
 
             // create test blocks
-            let (hasht0s1, t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
             // send header for block t0s1
             protocol_controller
-                .receive_header(t0s1.header.clone())
+                .receive_header(t0s1.content.header.clone())
                 .await;
 
-            validate_ask_for_block(&mut protocol_controller, hasht0s1, 1000).await;
+            validate_ask_for_block(&mut protocol_controller, t0s1.id, 1000).await;
             (
                 protocol_controller,
                 consensus_command_sender,
@@ -56,7 +56,7 @@ async fn test_consensus_asks_for_block() {
 #[serial]
 async fn test_consensus_does_not_ask_for_block() {
     init_serialization_context(massa_models::SerializationContext::default());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -74,19 +74,19 @@ async fn test_consensus_does_not_ask_for_block() {
                 .genesis_blocks;
 
             // create test blocks
-            let (hasht0s1, t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1 + start_slot, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
-            let header = t0s1.header.clone();
+            let header = t0s1.content.header.clone();
 
             // Send the actual block.
-            protocol_controller.receive_block(t0s1).await;
+            protocol_controller.receive_block(t0s1.clone()).await;
 
             // block t0s1 is propagated
-            let hash_list = vec![hasht0s1];
+            let hash_list = vec![t0s1.id];
             validate_propagate_block_in_list(
                 &mut protocol_controller,
                 &hash_list,
@@ -98,7 +98,7 @@ async fn test_consensus_does_not_ask_for_block() {
             protocol_controller.receive_header(header).await;
 
             // Consensus should not ask for the block, so the time-out should be hit.
-            validate_does_not_ask_for_block(&mut protocol_controller, &hasht0s1, 10).await;
+            validate_does_not_ask_for_block(&mut protocol_controller, &t0s1.id, 10).await;
             (
                 protocol_controller,
                 consensus_command_sender,

@@ -3,19 +3,30 @@
 use crate::address::AddressCycleProductionStats;
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
-use crate::prehash::Map;
 use crate::prehash::Set;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
-use crate::SignedEndorsement;
-use crate::SignedOperation;
+use crate::WrappedEndorsement;
+use crate::WrappedOperation;
 use crate::{
     Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
-use massa_hash::Hash;
+use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
+use std::str::FromStr;
+
+/// operation input
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OperationInput {
+    /// The public key of the creator of the TX
+    pub creator_public_key: PublicKey,
+    /// The signature of the operation
+    pub signature: Signature,
+    /// The serialized version of the content base58 encoded
+    pub serialized_content: Vec<u8>,
+}
 
 /// node status
 #[derive(Debug, Deserialize, Serialize)]
@@ -101,7 +112,7 @@ pub struct OperationInfo {
     /// true if the operation is final (for example in a final block)
     pub is_final: bool,
     /// the operation itself
-    pub operation: SignedOperation,
+    pub operation: WrappedOperation,
 }
 
 impl OperationInfo {
@@ -176,25 +187,6 @@ impl std::fmt::Display for RollsInfo {
     }
 }
 
-/// Sequential balance state (really same as `SCELedgerEntry`)
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct SCELedgerInfo {
-    /// sequential coins
-    pub balance: Amount,
-    /// stored bytes
-    pub module: Vec<u8>,
-    /// datastore
-    pub datastore: Map<Hash, Vec<u8>>,
-}
-
-impl std::fmt::Display for SCELedgerInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "\tBalance: {}", self.balance)?;
-        // I choose not to display neither the module nor the datastore because bytes
-        Ok(())
-    }
-}
-
 /// All you ever dream to know about an address
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AddressInfo {
@@ -205,9 +197,11 @@ pub struct AddressInfo {
     /// parallel balance info
     pub ledger_info: LedgerInfo,
     /// final sequential balance
-    pub final_sce_ledger_info: SCELedgerInfo,
+    pub final_balance_info: Option<Amount>,
     /// latest sequential balance
-    pub candidate_sce_ledger_info: SCELedgerInfo,
+    pub candidate_balance_info: Option<Amount>,
+    /// every final datastore key
+    pub final_datastore_keys: Vec<Vec<u8>>,
     /// rolls
     pub rolls: RollsInfo,
     /// next slots this address will be selected to create a block
@@ -229,13 +223,15 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Sequential balance:\n{}", self.ledger_info)?;
-        writeln!(f, "Final Parallel balance:\n{}", self.final_sce_ledger_info)?;
+        writeln!(f, "Parallel balance:",)?;
+        writeln!(f, "\tFinal: {:?}", self.final_balance_info)?;
+        writeln!(f, "\tCandidate: {:?}\n", self.candidate_balance_info)?;
+        writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,
-            "Candidate Parallel balance:\n{}",
-            self.candidate_sce_ledger_info
+            "Final datastore keys:\n{:?}\n",
+            self.final_datastore_keys
         )?;
-        writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,
             "Block draws: {}",
@@ -301,8 +297,8 @@ impl AddressInfo {
             thread: self.thread,
             balance: self.ledger_info,
             rolls: self.rolls,
-            final_sce_balance: self.final_sce_ledger_info.clone(),
-            candidate_sce_balance: self.candidate_sce_ledger_info.clone(),
+            final_balance: self.final_balance_info,
+            candidate_balance: self.candidate_balance_info,
         }
     }
 }
@@ -334,9 +330,9 @@ pub struct CompactAddressInfo {
     /// rolls
     pub rolls: RollsInfo,
     /// final sequential balance
-    pub final_sce_balance: SCELedgerInfo,
+    pub final_balance: Option<Amount>,
     /// latest sequential balance
-    pub candidate_sce_balance: SCELedgerInfo,
+    pub candidate_balance: Option<Amount>,
 }
 
 impl std::fmt::Display for CompactAddressInfo {
@@ -344,8 +340,18 @@ impl std::fmt::Display for CompactAddressInfo {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Parallel balance:",)?;
-        writeln!(f, "\tFinal: {}", self.final_sce_balance)?;
-        writeln!(f, "\tCandidate: {}\n", self.candidate_sce_balance)?;
+        writeln!(
+            f,
+            "\tFinal: {:?}",
+            self.final_balance
+                .unwrap_or(Amount::from_str("0").map_err(|_| std::fmt::Error)?)
+        )?;
+        writeln!(
+            f,
+            "\tCandidate: {:?}\n",
+            self.candidate_balance
+                .unwrap_or(Amount::from_str("0").map_err(|_| std::fmt::Error)?)
+        )?;
         writeln!(f, "Sequential balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         Ok(())
@@ -364,7 +370,7 @@ pub struct EndorsementInfo {
     /// true included in a final block
     pub is_final: bool,
     /// The full endorsement
-    pub endorsement: SignedEndorsement,
+    pub endorsement: WrappedEndorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {
@@ -488,7 +494,7 @@ pub struct DatastoreEntryInput {
     /// associated address of the entry
     pub address: Address,
     /// datastore key
-    pub key: Hash,
+    pub key: Vec<u8>,
 }
 
 /// Datastore entry query output struct
@@ -496,8 +502,8 @@ pub struct DatastoreEntryInput {
 pub struct DatastoreEntryOutput {
     /// final datastore entry value
     pub final_value: Option<Vec<u8>>,
-    /// active datastore entry value
-    pub active_value: Option<Vec<u8>>,
+    /// candidate datastore entry value
+    pub candidate_value: Option<Vec<u8>>,
 }
 
 /// filter used when retrieving SC output events

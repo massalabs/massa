@@ -7,13 +7,13 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
+use crate::active_history::ActiveHistory;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
 use massa_final_state::{FinalState, StateChanges};
-use massa_hash::Hash;
-use massa_ledger::LedgerChanges;
+use massa_ledger_exports::LedgerChanges;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     Address, Amount, BlockId, OperationId, Slot,
@@ -106,23 +106,16 @@ impl ExecutionContext {
     ///
     /// # arguments
     /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
-    /// * `previous_changes`: list of ledger changes that happened since the final ledger state and before the current execution
     ///
     /// # returns
     /// A new (empty) `ExecutionContext` instance
     pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
-        previous_changes: StateChanges,
+        active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         ExecutionContext {
-            speculative_ledger: SpeculativeLedger::new(
-                final_state.clone(),
-                previous_changes.ledger_changes,
-            ),
-            speculative_async_pool: SpeculativeAsyncPool::new(
-                final_state.read().async_pool.clone(),
-                previous_changes.async_pool_changes,
-            ),
+            speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history.clone()),
+            speculative_async_pool: SpeculativeAsyncPool::new(final_state, active_history),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
@@ -172,7 +165,6 @@ impl ExecutionContext {
     /// # arguments
     /// * `slot`: slot at which the execution will happen
     /// * `req`: parameters of the read only execution
-    /// * `previous_changes`: list of state changes that happened since the `final_state` state and before this execution
     /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
@@ -182,8 +174,8 @@ impl ExecutionContext {
         max_gas: u64,
         gas_price: Amount,
         call_stack: Vec<ExecutionStackElement>,
-        previous_changes: StateChanges,
         final_state: Arc<RwLock<FinalState>>,
+        active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -208,7 +200,7 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, previous_changes)
+            ..ExecutionContext::new(final_state, active_history)
         }
     }
 
@@ -238,7 +230,6 @@ impl ExecutionContext {
     /// # arguments
     /// * `slot`: slot at which the execution will happen
     /// * `opt_block_id`: optional ID of the block at that slot
-    /// * `previous_changes`: list of state changes that happened since the final state state and before this execution
     /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
@@ -246,8 +237,8 @@ impl ExecutionContext {
     pub(crate) fn active_slot(
         slot: Slot,
         opt_block_id: Option<BlockId>,
-        previous_changes: StateChanges,
         final_state: Arc<RwLock<FinalState>>,
+        active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -269,7 +260,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, previous_changes)
+            ..ExecutionContext::new(final_state, active_history)
         }
     }
 
@@ -373,12 +364,12 @@ impl ExecutionContext {
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
-    pub fn get_data_entry(&self, address: &Address, key: &Hash) -> Option<Vec<u8>> {
+    pub fn get_data_entry(&self, address: &Address, key: &[u8]) -> Option<Vec<u8>> {
         self.speculative_ledger.get_data_entry(address, key)
     }
 
     /// checks if a datastore entry exists in the speculative ledger
-    pub fn has_data_entry(&self, address: &Address, key: &Hash) -> bool {
+    pub fn has_data_entry(&self, address: &Address, key: &[u8]) -> bool {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
@@ -398,7 +389,7 @@ impl ExecutionContext {
     pub fn set_data_entry(
         &mut self,
         address: &Address,
-        key: Hash,
+        key: Vec<u8>,
         data: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check access right
@@ -424,7 +415,7 @@ impl ExecutionContext {
     pub fn append_data_entry(
         &mut self,
         address: &Address,
-        key: Hash,
+        key: Vec<u8>,
         data: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check access right
@@ -441,7 +432,7 @@ impl ExecutionContext {
             .get_data_entry(address, &key)
             .ok_or_else(|| {
                 ExecutionError::RuntimeError(format!(
-                    "appending to the datastore of address {} failed: entry {} not found",
+                    "appending to the datastore of address {} failed: entry {:?} not found",
                     address, key
                 ))
             })?;
@@ -463,7 +454,7 @@ impl ExecutionContext {
     pub fn delete_data_entry(
         &mut self,
         address: &Address,
-        key: &Hash,
+        key: &[u8],
     ) -> Result<(), ExecutionError> {
         // check access right
         if !self.has_write_rights_on(address) {

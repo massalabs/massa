@@ -6,15 +6,15 @@ use super::{
     },
     with_serialization_context,
 };
+use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
-use crate::{constants::SLOT_KEY_SIZE, U64VarIntDeserializer, U64VarIntSerializer};
 use massa_hash::Hash;
-use massa_serialization::{Deserializer, SerializeError, Serializer};
-use serde::{Deserialize, Serialize};
-use std::ops::{
-    Bound::{self, Included},
-    RangeBounds,
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+use nom::error::{context, ContextError, ParseError};
+use serde::{Deserialize, Serialize};
+use std::ops::{Bound, RangeBounds};
 use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
 
@@ -30,50 +30,44 @@ pub struct Slot {
 /// Basic serializer for `Slot`
 pub struct SlotSerializer {
     u64_serializer: U64VarIntSerializer,
-    range_period: (Bound<u64>, Bound<u64>),
-    range_thread: (Bound<u8>, Bound<u8>),
 }
 
 impl SlotSerializer {
     /// Creates a `SlotSerializer`
-    pub fn new(
-        range_period: (Bound<u64>, Bound<u64>),
-        range_thread: (Bound<u8>, Bound<u8>),
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
-            range_period,
-            range_thread,
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }
 
+impl Default for SlotSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<Slot> for SlotSerializer {
-    fn serialize(&self, value: &Slot) -> Result<Vec<u8>, SerializeError> {
-        if !self.range_period.contains(&value.period) {
-            return Err(SerializeError::NumberTooBig(format!(
-                "Period must be in range {:#?} but his value is {:#?}",
-                self.range_period, value.period
-            )));
-        }
-        if !self.range_thread.contains(&value.thread) {
-            return Err(SerializeError::NumberTooBig(format!(
-                "Thread must be in range {:#?} but his value is {:#?}",
-                self.range_thread, value.thread
-            )));
-        }
-        let period = self.u64_serializer.serialize(&value.period)?;
-        let mut res = Vec::with_capacity(period.len() + 1);
-        res.extend(period);
-        res.push(value.thread);
-        Ok(res)
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{Slot, SlotSerializer};
+    ///
+    /// let slot: Slot = Slot::new(1, 3);
+    /// let mut serialized = Vec::new();
+    /// let serializer = SlotSerializer::new();
+    /// serializer.serialize(&slot, &mut serialized).unwrap();
+    /// ```
+    fn serialize(&self, value: &Slot, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.u64_serializer.serialize(&value.period, buffer)?;
+        buffer.push(value.thread);
+        Ok(())
     }
 }
 
 /// Basic `Slot` Deserializer
 pub struct SlotDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    range_period: (Bound<u64>, Bound<u64>),
+    period_deserializer: U64VarIntDeserializer,
     range_thread: (Bound<u8>, Bound<u8>),
 }
 
@@ -84,36 +78,48 @@ impl SlotDeserializer {
         range_thread: (Bound<u8>, Bound<u8>),
     ) -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            range_period,
+            period_deserializer: U64VarIntDeserializer::new(range_period.0, range_period.1),
             range_thread,
         }
     }
 }
 
 impl Deserializer<Slot> for SlotDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> nom::IResult<&'a [u8], Slot> {
-        let (rest, period) = self.u64_deserializer.deserialize(buffer)?;
-        let thread = *rest.first().ok_or_else(|| {
-            nom::Err::Error(nom::error::Error::new(
-                buffer,
-                nom::error::ErrorKind::LengthValue,
-            ))
-        })?;
-        if !self.range_period.contains(&period) {
-            return Err(nom::Err::Error(nom::error::Error::new(
-                buffer,
-                nom::error::ErrorKind::Digit,
-            )));
-        }
-        if !self.range_thread.contains(&thread) {
-            return Err(nom::Err::Error(nom::error::Error::new(
-                buffer,
-                nom::error::ErrorKind::Digit,
-            )));
-        }
-        // Safe because we throw just above if there is no character.
-        Ok((&rest[1..], Slot { period, thread }))
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{Slot, SlotSerializer, SlotDeserializer};
+    ///
+    /// let slot: Slot = Slot::new(1, 3);
+    /// let mut serialized = Vec::new();
+    /// let serializer = SlotSerializer::new();
+    /// let deserializer = SlotDeserializer::new((Included(u64::MIN), Included(u64::MAX)), (Included(u8::MIN), Included(u8::MAX.into())));
+    /// serializer.serialize(&slot, &mut serialized).unwrap();
+    /// let (rest, slot_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(slot, slot_deser);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> nom::IResult<&'a [u8], Slot, E> {
+        context("Failed Slot deserialization", |input: &'a [u8]| {
+            let (rest, period) = self.period_deserializer.deserialize(input)?;
+            let thread = *rest.first().ok_or_else(|| {
+                nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    nom::error::ErrorKind::LengthValue,
+                ))
+            })?;
+            if !self.range_thread.contains(&thread) {
+                return Err(nom::Err::Error(ParseError::from_error_kind(
+                    &rest[0..1],
+                    nom::error::ErrorKind::Digit,
+                )));
+            }
+            // Safe because we throw just above if there is no character.
+            Ok((&rest[1..], Slot { period, thread }))
+        })(buffer)
     }
 }
 

@@ -6,10 +6,11 @@ use crate::{endorsement_pool::EndorsementPool, settings::PoolConfig};
 use massa_models::prehash::{Map, Set};
 use massa_models::stats::PoolStats;
 use massa_models::{
-    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, SignedEndorsement,
-    SignedOperation, Slot,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, Slot, WrappedEndorsement,
+    WrappedOperation,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
+use massa_storage::Storage;
 use tokio::sync::{mpsc, oneshot};
 use tracing::warn;
 
@@ -17,7 +18,7 @@ use tracing::warn;
 #[derive(Debug)]
 pub enum PoolCommand {
     /// Add operations to the pool
-    AddOperations(Map<OperationId, SignedOperation>),
+    AddOperations(Map<OperationId, WrappedOperation>),
     /// current slot update
     UpdateCurrentSlot(Slot),
     /// Latest final periods update
@@ -33,14 +34,14 @@ pub enum PoolCommand {
         /// max size of an operation in bytes
         max_size: u64,
         /// response channel
-        response_tx: oneshot::Sender<Vec<(OperationId, SignedOperation, u64)>>,
+        response_tx: oneshot::Sender<Vec<(WrappedOperation, u64)>>,
     },
     /// get operations by id
     GetOperations {
         /// ids
         operation_ids: Set<OperationId>,
         /// response channel
-        response_tx: oneshot::Sender<Map<OperationId, SignedOperation>>,
+        response_tx: oneshot::Sender<Map<OperationId, WrappedOperation>>,
     },
     /// Get operations by involved address
     GetRecentOperations {
@@ -61,10 +62,10 @@ pub enum PoolCommand {
         /// expected creators
         creators: Vec<Address>,
         /// response channel
-        response_tx: oneshot::Sender<Vec<(EndorsementId, SignedEndorsement)>>,
+        response_tx: oneshot::Sender<Vec<WrappedEndorsement>>,
     },
     /// add endorsements to pool
-    AddEndorsements(Map<EndorsementId, SignedEndorsement>),
+    AddEndorsements(Map<EndorsementId, WrappedEndorsement>),
     /// get pool stats
     GetStats(oneshot::Sender<PoolStats>),
     /// get endorsements by address
@@ -72,14 +73,14 @@ pub enum PoolCommand {
         /// address
         address: Address,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, WrappedEndorsement>>,
     },
     /// get endorsements by id
     GetEndorsementsById {
         /// ids
         endorsements: Set<EndorsementId>,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, WrappedEndorsement>>,
     },
 }
 
@@ -121,6 +122,7 @@ impl PoolWorker {
         protocol_pool_event_receiver: ProtocolPoolEventReceiver,
         controller_command_rx: mpsc::Receiver<PoolCommand>,
         controller_manager_rx: mpsc::Receiver<PoolManagementCommand>,
+        storage: Storage,
     ) -> Result<PoolWorker, PoolError> {
         massa_trace!("pool.pool_worker.new", {});
         Ok(PoolWorker {
@@ -128,7 +130,7 @@ impl PoolWorker {
             protocol_pool_event_receiver,
             controller_command_rx,
             controller_manager_rx,
-            operation_pool: OperationPool::new(cfg),
+            operation_pool: OperationPool::new(cfg, storage),
             endorsement_pool: EndorsementPool::new(cfg),
         })
     }
@@ -182,12 +184,11 @@ impl PoolWorker {
     /// * `cmd`: consensus command to process
     async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
-            PoolCommand::AddOperations(mut operations) => {
-                let newly_added = self.operation_pool.add_operations(operations.clone())?;
-                operations.retain(|op_id, _op| newly_added.contains(op_id));
-                if !operations.is_empty() {
+            PoolCommand::AddOperations(operations) => {
+                let newly_added = self.operation_pool.process_operations(operations)?;
+                if !newly_added.is_empty() {
                     self.protocol_command_sender
-                        .propagate_operations(operations.keys().cloned().collect())
+                        .propagate_operations(newly_added)
                         .await?;
                 }
             }
@@ -319,19 +320,18 @@ impl PoolWorker {
     ) -> Result<(), PoolError> {
         match event {
             ProtocolPoolEvent::ReceivedOperations {
-                mut operations,
+                operations,
                 propagate,
             } => {
                 if propagate {
-                    let newly_added = self.operation_pool.add_operations(operations.clone())?;
-                    operations.retain(|op_id, _op| newly_added.contains(op_id));
-                    if !operations.is_empty() {
+                    let newly_added = self.operation_pool.process_operations(operations)?;
+                    if !newly_added.is_empty() {
                         self.protocol_command_sender
-                            .propagate_operations(operations.keys().cloned().collect())
+                            .propagate_operations(newly_added)
                             .await?;
                     }
                 } else {
-                    self.operation_pool.add_operations(operations)?;
+                    self.operation_pool.process_operations(operations)?;
                 }
             }
             ProtocolPoolEvent::ReceivedEndorsements {
@@ -351,12 +351,6 @@ impl PoolWorker {
                 } else {
                     self.endorsement_pool.add_endorsements(endorsements)?;
                 }
-            }
-            ProtocolPoolEvent::GetOperations((node_id, operation_ids)) => {
-                let operations = self.operation_pool.get_operations(&operation_ids);
-                self.protocol_command_sender
-                    .send_get_operations_results(node_id, operations.into_values().collect())
-                    .await?;
             }
         }
         Ok(())

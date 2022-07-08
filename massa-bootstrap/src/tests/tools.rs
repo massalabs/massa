@@ -11,22 +11,25 @@ use massa_graph::{
     export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset, BootstrapableGraph,
 };
 use massa_hash::Hash;
-use massa_ledger::test_exports::create_final_ledger;
-use massa_ledger::LedgerEntry;
-use massa_models::signed::Signable;
+use massa_ledger_exports::LedgerEntry;
+use massa_ledger_worker::test_exports::create_final_ledger;
+use massa_models::operation::OperationSerializer;
+use massa_models::wrapped::WrappedContent;
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
-    rolls::{RollCounts, RollUpdate, RollUpdates},
-    signed::Signed,
-    Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement, Operation,
-    SerializeCompact, Slot,
+    rolls::{RollCounts, RollUpdate, RollUpdateSerializer, RollUpdates},
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, DeserializeCompact,
+    Endorsement, Operation, SerializeCompact, Slot,
 };
+use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
-use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
-use massa_signature::{
-    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
+use massa_proof_of_stake_exports::{
+    ExportProofOfStake, ExportProofOfStakeDeserializer, ExportProofOfStakeSerializer,
+    ThreadCycleState,
 };
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
@@ -44,7 +47,7 @@ pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10))
 /// generates a small random number of bytes
 fn get_some_random_bytes() -> Vec<u8> {
     let mut rng = rand::thread_rng();
-    (0usize..rng.gen_range(0..10))
+    (0usize..rng.gen_range(1..10))
         .map(|_| rand::random::<u8>())
         .collect()
 }
@@ -56,7 +59,7 @@ fn get_random_ledger_entry() -> LedgerEntry {
     let bytecode: Vec<u8> = get_some_random_bytes();
     let mut datastore = BTreeMap::new();
     for _ in 0usize..rng.gen_range(0..10) {
-        let key = Hash::compute_from(&get_some_random_bytes());
+        let key = get_some_random_bytes();
         let value = get_some_random_bytes();
         datastore.insert(key, value);
     }
@@ -87,7 +90,7 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
     create_final_state(
         Default::default(),
         slot,
-        final_ledger,
+        Box::new(final_ledger),
         async_pool,
         VecDeque::new(),
     )
@@ -98,19 +101,18 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 pub fn get_random_public_key() -> PublicKey {
-    let priv_key = generate_random_private_key();
-    derive_public_key(&priv_key)
+    let priv_key = KeyPair::generate();
+    priv_key.get_public_key()
 }
 
 pub fn get_random_address() -> Address {
-    let priv_key = generate_random_private_key();
-    let pub_key = derive_public_key(&priv_key);
-    Address::from_public_key(&pub_key)
+    let priv_key = KeyPair::generate();
+    Address::from_public_key(&priv_key.get_public_key())
 }
 
 pub fn get_dummy_signature(s: &str) -> Signature {
-    let priv_key = generate_random_private_key();
-    sign(&Hash::compute_from(s.as_bytes()), &priv_key).unwrap()
+    let priv_key = KeyPair::generate();
+    priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
 pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSettings {
@@ -150,13 +152,8 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         max_simultaneous_bootstraps: 2,
         ip_list_max_size: 10,
         per_ip_min_interval: 10000.into(),
+        max_bytes_read_write: std::f64::INFINITY,
     }
-}
-
-pub fn get_keys() -> (PrivateKey, PublicKey) {
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    (private_key, public_key)
 }
 
 pub async fn wait_consensus_command<F, T>(
@@ -232,13 +229,21 @@ pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOf
                 itm2.cycle_updates.0.len(),
                 "ThreadCycleState.cycle_updates.len() mismatch between sent and received pos"
             );
+            let roll_update_serializer = RollUpdateSerializer::new();
             for (a1, itm1) in itm1.cycle_updates.0.iter() {
                 let itm2 = itm2.cycle_updates.0.get(a1).expect(
                     "ThreadCycleState.cycle_updates element miss between sent and received pos",
                 );
+                let mut itm1_bytes = Vec::new();
+                roll_update_serializer
+                    .serialize(itm1, &mut itm1_bytes)
+                    .unwrap();
+                let mut itm2_bytes = Vec::new();
+                roll_update_serializer
+                    .serialize(itm2, &mut itm2_bytes)
+                    .unwrap();
                 assert_eq!(
-                    itm1.to_bytes_compact().unwrap(),
-                    itm2.to_bytes_compact().unwrap(),
+                    itm1_bytes, itm2_bytes,
                     "ThreadCycleState.cycle_updates item mismatch between sent and received pos"
                 );
             }
@@ -264,8 +269,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
     for (id1, itm1) in v1.active_blocks.iter() {
         let itm2 = v2.active_blocks.get(id1).unwrap();
         assert_eq!(
-            itm1.block.to_bytes_compact().unwrap(),
-            itm2.block.to_bytes_compact().unwrap(),
+            itm1.block.serialized_data, itm2.block.serialized_data,
             "block mismatch"
         );
         assert_eq!(
@@ -336,9 +340,8 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 }
 
 pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let keypair = KeyPair::generate();
+    let address = Address::from_public_key(&keypair.get_public_key());
 
     let mut ledger_subset = ConsensusLedgerSubset::default();
     ledger_subset.0.insert(
@@ -376,7 +379,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             .into_iter()
             .collect(),
         ),
-        rng_seed: bitvec![Lsb0, u8 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+        rng_seed: bitvec![u8, Lsb0 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
         production_stats: vec![
             (get_random_address(), (1, 2)),
             (get_random_address(), (3, 4)),
@@ -391,89 +394,86 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
-    let block = Block {
-        header: Signed::new_signed(
-            BlockHeader {
-                creator: get_random_public_key(),
-                slot: Slot::new(1, 1),
-                parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
-                operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
-                endorsements: vec![
-                    Signed::new_signed(
-                        Endorsement {
-                            sender_public_key: get_random_public_key(),
-                            slot: Slot::new(1, 0),
-                            index: 1,
-                            endorsed_block: get_dummy_block_id("p1"),
-                        },
-                        &generate_random_private_key(),
-                    )
-                    .unwrap()
-                    .1,
-                    Signed::new_signed(
-                        Endorsement {
-                            sender_public_key: get_random_public_key(),
-                            slot: Slot::new(4, 1),
-                            index: 3,
-                            endorsed_block: get_dummy_block_id("p1"),
-                        },
-                        &generate_random_private_key(),
-                    )
-                    .unwrap()
-                    .1,
-                ],
-            },
-            &generate_random_private_key(),
-        )
-        .unwrap()
-        .1,
-        operations: vec![
-            Signed::new_signed(
-                Operation {
-                    sender_public_key: get_random_public_key(),
-                    fee: Amount::from_str("1524878").unwrap(),
-                    expire_period: 5787899,
-                    op: massa_models::OperationType::Transaction {
-                        recipient_address: get_random_address(),
-                        amount: Amount::from_str("1259787").unwrap(),
-                    },
-                },
-                &generate_random_private_key(),
-            )
-            .unwrap()
-            .1,
-            Signed::new_signed(
-                Operation {
-                    sender_public_key: get_random_public_key(),
-                    fee: Amount::from_str("878763222").unwrap(),
-                    expire_period: 4557887,
-                    op: massa_models::OperationType::RollBuy { roll_count: 45544 },
-                },
-                &generate_random_private_key(),
-            )
-            .unwrap()
-            .1,
-            Signed::new_signed(
-                Operation {
-                    sender_public_key: get_random_public_key(),
-                    fee: Amount::from_str("4545").unwrap(),
-                    expire_period: 452524,
-                    op: massa_models::OperationType::RollSell {
-                        roll_count: 4888787,
-                    },
-                },
-                &generate_random_private_key(),
-            )
-            .unwrap()
-            .1,
-        ],
-    };
+    let keypair = KeyPair::generate();
 
-    let block_id = block
-        .header
-        .content
-        .compute_id()
-        .expect("Fail to compute block id");
+    let block = Block::new_wrapped(
+        Block {
+            header: BlockHeader::new_wrapped(
+                BlockHeader {
+                    slot: Slot::new(1, 1),
+                    parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
+                    operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
+                    endorsements: vec![
+                        Endorsement::new_wrapped(
+                            Endorsement {
+                                slot: Slot::new(1, 0),
+                                index: 1,
+                                endorsed_block: get_dummy_block_id("p1"),
+                            },
+                            EndorsementSerializer::new(),
+                            &keypair,
+                        )
+                        .unwrap(),
+                        Endorsement::new_wrapped(
+                            Endorsement {
+                                slot: Slot::new(4, 1),
+                                index: 3,
+                                endorsed_block: get_dummy_block_id("p1"),
+                            },
+                            EndorsementSerializer::new(),
+                            &keypair,
+                        )
+                        .unwrap(),
+                    ],
+                },
+                BlockHeaderSerializer::new(),
+                &keypair,
+            )
+            .unwrap(),
+            operations: vec![
+                Operation::new_wrapped(
+                    Operation {
+                        fee: Amount::from_str("1524878").unwrap(),
+                        expire_period: 5787899,
+                        op: massa_models::OperationType::Transaction {
+                            recipient_address: get_random_address(),
+                            amount: Amount::from_str("1259787").unwrap(),
+                        },
+                    },
+                    OperationSerializer::new(),
+                    &keypair,
+                )
+                .unwrap(),
+                Operation::new_wrapped(
+                    Operation {
+                        fee: Amount::from_str("878763222").unwrap(),
+                        expire_period: 4557887,
+                        op: massa_models::OperationType::RollBuy { roll_count: 45544 },
+                    },
+                    OperationSerializer::new(),
+                    &keypair,
+                )
+                .unwrap(),
+                Operation::new_wrapped(
+                    Operation {
+                        fee: Amount::from_str("4545").unwrap(),
+                        expire_period: 452524,
+                        op: massa_models::OperationType::RollSell {
+                            roll_count: 4888787,
+                        },
+                    },
+                    OperationSerializer::new(),
+                    &keypair,
+                )
+                .unwrap(),
+            ],
+        },
+        BlockSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
+
+    let block_id = block.id;
 
     //TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
@@ -551,13 +551,19 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
+    let export_pos_deserializer = ExportProofOfStakeDeserializer::new();
+    let export_pos_serializer = ExportProofOfStakeSerializer::new();
+    let mut export_pos_bytes = Vec::new();
+
+    export_pos_serializer
+        .serialize(&boot_pos, &mut export_pos_bytes)
+        .unwrap();
+    let (_, pos_deser) = export_pos_deserializer
+        .deserialize::<DeserializeError>(&export_pos_bytes)
+        .unwrap();
+
     // check re-serialization
-    assert_eq_thread_cycle_states(
-        &ExportProofOfStake::from_bytes_compact(&boot_pos.to_bytes_compact().unwrap())
-            .unwrap()
-            .0,
-        &boot_pos,
-    );
+    assert_eq_thread_cycle_states(&pos_deser, &boot_pos);
 
     let boot_graph = BootstrapableGraph {
         active_blocks: vec![(get_dummy_block_id("block1"), block1)]

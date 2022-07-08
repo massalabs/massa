@@ -79,11 +79,9 @@ impl EventSender {
 pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
-    use massa_models::signed::Signable;
     use massa_models::{
-        node::NodeId,
-        operation::{OperationIds, Operations},
-        Block, BlockId, SignedEndorsement, SignedHeader,
+        node::NodeId, operation::OperationPrefixIds, operation::Operations, wrapped::Id, BlockId,
+        WrappedBlock, WrappedEndorsement, WrappedHeader,
     };
     use massa_network_exports::NodeCommand;
     use massa_network_exports::{NetworkError, NetworkEvent};
@@ -113,20 +111,15 @@ pub mod event_impl {
     pub async fn on_received_block(
         worker: &mut NetworkWorker,
         from: NodeId,
-        block: Block,
-        serialized: Vec<u8>,
+        block: WrappedBlock,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-            {"block_id": block.header.content.compute_id()?, "block": block, "node": from}
+            {"block_id": block.id, "block": block, "node": from}
         );
         if let Err(err) = worker
             .event
-            .send(NetworkEvent::ReceivedBlock {
-                node: from,
-                block,
-                serialized,
-            })
+            .send(NetworkEvent::ReceivedBlock { node: from, block })
             .await
         {
             evt_failed!(err)
@@ -151,11 +144,11 @@ pub mod event_impl {
     pub async fn on_received_block_header(
         worker: &mut NetworkWorker,
         from: NodeId,
-        header: SignedHeader,
+        header: WrappedHeader,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
-            {"hash": header.content.compute_hash()?, "header": header, "node": from}
+            {"hash": header.id.hash(), "header": header, "node": from}
         );
         if let Err(err) = worker
             .event
@@ -243,17 +236,17 @@ pub mod event_impl {
     pub async fn on_received_operations_annoncement(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operation_ids: OperationIds,
+        operation_prefix_ids: OperationPrefixIds,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperationAnnouncements",
-            { "operations": operation_ids }
+            { "operations": operation_prefix_ids }
         );
         if let Err(err) = worker
             .event
             .send(NetworkEvent::ReceivedOperationAnnouncements {
                 node: from,
-                operation_ids,
+                operation_prefix_ids,
             })
             .await
         {
@@ -266,17 +259,17 @@ pub mod event_impl {
     pub async fn on_received_ask_for_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operation_ids: OperationIds,
+        operation_prefix_ids: OperationPrefixIds,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceiveAskForOperations",
-            { "operations": operation_ids }
+            { "operations": operation_prefix_ids }
         );
         if let Err(err) = worker
             .event
             .send(NetworkEvent::ReceiveAskForOperations {
                 node: from,
-                operation_ids,
+                operation_prefix_ids,
             })
             .await
         {
@@ -287,7 +280,7 @@ pub mod event_impl {
     pub async fn on_received_endorsements(
         worker: &mut NetworkWorker,
         from: NodeId,
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedEndorsements",

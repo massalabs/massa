@@ -13,8 +13,10 @@
 //!
 //! A parallel file with the same constant definitions exist for the testing case.
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
+use std::str::FromStr;
+
 use crate::{Amount, Version};
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
@@ -43,18 +45,17 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from(1000 * 10))
         )
     } else {
-        1654704000000.into()
+        1657317600000.into()  // Friday, July 8, 2022 22:00:00 UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1656626400000.into())
+        Some(1659304800000.into())  //  Sunday, July 31, 2022 22:00:00 UTC
     };
-    /// `PrivateKey` to sign genesis blocks.
-    pub static ref GENESIS_KEY: PrivateKey = "2Rmcp5w4MjcTQvPJeCV14UQf75XjKwDVJF14F2V1o5Kr3i9LZL"
-        .parse()
+    /// `KeyPair` to sign genesis blocks.
+    pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
         .unwrap();
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
@@ -63,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.11.3"
+            "TEST.12.0"
         }
         .parse()
         .unwrap()
@@ -116,6 +117,8 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
 pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum length of a datastore key
+pub const MAX_DATASTORE_KEY_LENGTH: u8 = 32;
 
 // ***********************
 // Bootstrap constants
@@ -174,6 +177,8 @@ pub const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 /// operation id size
 pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+/// operation id prefix size
+pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 /// slot as a key size
 pub const SLOT_KEY_SIZE: usize = 9;
 

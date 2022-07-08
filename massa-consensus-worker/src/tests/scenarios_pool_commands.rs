@@ -6,10 +6,9 @@ use massa_consensus_exports::ConsensusConfig;
 use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
 use massa_models::clique::Clique;
 use massa_models::ledger_models::LedgerData;
-use massa_models::signed::Signable;
-use massa_models::{Amount, BlockId, SignedOperation, Slot};
+use massa_models::{Amount, BlockId, Slot, WrappedOperation};
 use massa_pool::PoolCommand;
-use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
@@ -148,7 +147,7 @@ async fn test_update_latest_final_block_cmd_notification() {
 #[tokio::test]
 #[serial]
 async fn test_new_final_ops() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         delta_f0: 2,
@@ -159,16 +158,16 @@ async fn test_new_final_ops() {
     // define addresses use for the test
     // addresses a and b both in thread 0
 
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
-    let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, _) = random_address_on_thread(0, cfg.thread_count).into();
 
     let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
     );
-    let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
-    let (boot_graph, mut p0, mut p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);
+    let op = create_transaction(&keypair_a, address_b, 1, 10, 1);
+    let (boot_graph, mut p0, mut p1) = get_bootgraph(op.clone(), boot_ledger);
 
     consensus_pool_test(
         cfg.clone(),
@@ -185,7 +184,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -196,7 +195,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -207,7 +206,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
             // UpdateLatestFinalPeriods pool command filter
@@ -221,11 +220,8 @@ async fn test_new_final_ops() {
                 .wait_command(300.into(), new_final_ops_filter)
                 .await;
             if let Some(finals) = final_ops {
-                assert!(finals.contains_key(&op.content.compute_id().unwrap()));
-                assert_eq!(
-                    finals.get(&op.content.compute_id().unwrap()),
-                    Some(&(10, 0))
-                )
+                assert!(finals.contains_key(&op.id));
+                assert_eq!(finals.get(&op.id), Some(&(10, 0)))
             } else {
                 panic!("no final ops")
             }
@@ -253,16 +249,16 @@ async fn test_max_attempts_get_operations() {
     };
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
-    let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, _) = random_address_on_thread(0, cfg.thread_count).into();
 
     let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
     );
-    let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
-    let (boot_graph, _p0, _p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);
+    let op = create_transaction(&keypair_a, address_b, 1, 10, 1);
+    let (boot_graph, _p0, _p1) = get_bootgraph(op.clone(), boot_ledger);
 
     consensus_pool_test(
         cfg.clone(),
@@ -304,11 +300,7 @@ async fn test_max_attempts_get_operations() {
 
                 // Send a full batch back.
                 response_tx
-                    .send(vec![(
-                        op.clone().content.compute_id().unwrap(),
-                        op.clone(),
-                        10,
-                    )])
+                    .send(vec![(op.clone(), 10)])
                     .expect("Failed to send empty batch.");
                 attempts += 1;
             }
@@ -348,16 +340,16 @@ async fn test_max_batch_size_get_operations() {
     };
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
-    let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, _) = random_address_on_thread(0, cfg.thread_count).into();
 
     let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
     );
-    let op = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
-    let (boot_graph, _p0, _p1) = get_bootgraph(pubkey_a, op.clone(), boot_ledger);
+    let op = create_transaction(&keypair_a, address_b, 1, 10, 1);
+    let (boot_graph, _p0, _p1) = get_bootgraph(op.clone(), boot_ledger);
 
     consensus_pool_test(
         cfg.clone(),
@@ -389,11 +381,7 @@ async fn test_max_batch_size_get_operations() {
 
             // Send a non-full batch back.
             response_tx
-                .send(vec![(
-                    op.clone().content.compute_id().unwrap(),
-                    op.clone(),
-                    10,
-                )])
+                .send(vec![(op.clone(), 10)])
                 .expect("Failed to send non-full batch.");
 
             // The next command should be a slot update.
@@ -422,17 +410,13 @@ async fn test_max_batch_size_get_operations() {
 }
 
 fn get_bootgraph(
-    creator: PublicKey,
-    operation: SignedOperation,
+    operation: WrappedOperation,
     ledger: ConsensusLedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
-    let (genesis_0_id, genesis_0) =
-        get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);
-    let (genesis_1_id, genesis_1) =
-        get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
-    let (p1t0_id, p1t0) = get_export_active_test_block(
-        creator,
-        vec![(genesis_0_id, 0), (genesis_1_id, 0)],
+    let genesis_0 = get_export_active_test_block(vec![], vec![], Slot::new(0, 0), true);
+    let genesis_1 = get_export_active_test_block(vec![], vec![], Slot::new(0, 1), true);
+    let p1t0 = get_export_active_test_block(
+        vec![(genesis_0.block_id, 0), (genesis_1.block_id, 0)],
         vec![operation],
         Slot::new(1, 0),
         false,
@@ -441,28 +425,31 @@ fn get_bootgraph(
         BootstrapableGraph {
             /// Map of active blocks, where blocks are in their exported version.
             active_blocks: vec![
-                (genesis_0_id, genesis_0.clone()),
-                (genesis_1_id, genesis_1.clone()),
-                (p1t0_id, p1t0.clone()),
+                (genesis_0.block_id, genesis_0.clone()),
+                (genesis_1.block_id, genesis_1.clone()),
+                (p1t0.block_id, p1t0.clone()),
             ]
             .into_iter()
             .collect(),
             /// Best parents hash in each thread.
-            best_parents: vec![(p1t0_id, 1), (genesis_1_id, 0)],
+            best_parents: vec![(p1t0.block_id, 1), (genesis_1.block_id, 0)],
             /// Latest final period and block hash in each thread.
-            latest_final_blocks_periods: vec![(genesis_0_id, 0u64), (genesis_1_id, 0u64)],
+            latest_final_blocks_periods: vec![
+                (genesis_0.block_id, 0u64),
+                (genesis_1.block_id, 0u64),
+            ],
             /// Head of the incompatibility graph.
             gi_head: vec![
-                (genesis_0_id, Default::default()),
-                (p1t0_id, Default::default()),
-                (genesis_1_id, Default::default()),
+                (genesis_0.block_id, Default::default()),
+                (p1t0.block_id, Default::default()),
+                (genesis_1.block_id, Default::default()),
             ]
             .into_iter()
             .collect(),
 
             /// List of maximal cliques of compatible blocks.
             max_cliques: vec![Clique {
-                block_ids: vec![genesis_0_id, p1t0_id, genesis_1_id]
+                block_ids: vec![genesis_0.block_id, p1t0.block_id, genesis_1.block_id]
                     .into_iter()
                     .collect(),
                 fitness: 1111,
@@ -470,7 +457,7 @@ fn get_bootgraph(
             }],
             ledger,
         },
-        p1t0_id,
-        genesis_1_id,
+        p1t0.block_id,
+        genesis_1.block_id,
     )
 }

@@ -19,7 +19,7 @@ use massa_network_exports::{
     NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
     WriteHalf,
 };
-use massa_signature::{derive_public_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use std::{
     collections::{hash_map, HashMap, HashSet},
@@ -33,8 +33,8 @@ use tracing::{debug, trace, warn};
 pub struct NetworkWorker {
     /// Network configuration.
     cfg: NetworkSettings,
-    /// Our private key.
-    pub(crate) private_key: PrivateKey,
+    /// Our keypair.
+    pub(crate) keypair: KeyPair,
     /// Our node id.
     pub(crate) self_node_id: NodeId,
     /// Listener part of the establisher.
@@ -90,7 +90,7 @@ impl NetworkWorker {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         cfg: NetworkSettings,
-        private_key: PrivateKey,
+        keypair: KeyPair,
         listener: Listener,
         establisher: Establisher,
         peer_info_db: PeerInfoDatabase,
@@ -102,15 +102,14 @@ impl NetworkWorker {
         storage: Storage,
         version: Version,
     ) -> NetworkWorker {
-        let public_key = derive_public_key(&private_key);
-        let self_node_id = NodeId(public_key);
+        let self_node_id = NodeId(keypair.get_public_key());
 
         let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
         let max_wait_event = cfg.max_send_wait.to_duration();
         NetworkWorker {
             cfg,
             self_node_id,
-            private_key,
+            keypair,
             listener,
             establisher,
             peer_info_db,
@@ -702,10 +701,12 @@ impl NetworkWorker {
         if self.cfg.max_in_connection_overflow > self.handshake_peer_list_futures.len() {
             let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
             let timeout = self.cfg.peer_list_send_timeout.to_duration();
+            let max_bytes_read = self.cfg.max_bytes_read;
+            let max_bytes_write = self.cfg.max_bytes_write;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
-                    let mut writer = WriteBinder::new(writer);
-                    let mut reader = ReadBinder::new(reader);
+                    let mut writer = WriteBinder::new(writer, max_bytes_read);
+                    let mut reader = ReadBinder::new(reader, max_bytes_write);
                     match tokio::time::timeout(
                         timeout,
                         futures::future::try_join(
@@ -748,10 +749,12 @@ impl NetworkWorker {
             reader,
             writer,
             self.self_node_id,
-            self.private_key,
+            self.keypair.clone(),
             self.cfg.connect_timeout,
             self.version,
             connection_id,
+            self.cfg.max_bytes_read,
+            self.cfg.max_bytes_write,
         ));
         Ok(())
     }
@@ -768,8 +771,8 @@ impl NetworkWorker {
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
                 event_impl::on_received_peer_list(self, from_node_id, &lst)?
             }
-            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block, serialized)) => {
-                event_impl::on_received_block(self, from_node_id, block, serialized).await?
+            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block)) => {
+                event_impl::on_received_block(self, from_node_id, block).await?
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) => {
                 event_impl::on_received_ask_for_blocks(self, from_node_id, list).await

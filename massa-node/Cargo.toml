@@ -3,29 +3,38 @@ name = "massa-node"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
-build = "../build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lazy_static = "1.4.0"
+anyhow = "1.0"
+lazy_static = "1.4"
 parking_lot = "0.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.15", features = ["full"] }
-tracing = { version = "0.1", features = ["max_level_debug", "release_max_level_debug"] }
+tokio = { version = "1.19", features = ["full"] }
+tracing = { version = "0.1", features = [
+    "max_level_debug",
+    "release_max_level_debug",
+] }
 tracing-subscriber = "0.3"
+paw = "1.0"
+structopt = { version = "0.3", features = ["paw"] }
+dialoguer = "0.10"
 # custom modules
 massa_api = { path = "../massa-api" }
 massa_async_pool = { path = "../massa-async-pool" }
 massa_bootstrap = { path = "../massa-bootstrap" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_consensus_worker = { path = "../massa-consensus-worker" }
+massa_cipher = { path = "../massa-cipher" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_execution_worker = { path = "../massa-execution-worker" }
+massa_signature = { path = "../massa-signature" }
 massa_logging = { path = "../massa-logging" }
 massa_final_state = { path = "../massa-final-state" }
-massa_ledger = { path = "../massa-ledger" }
+massa_ledger_exports = { path = "../massa-ledger-exports" }
+massa_ledger_worker = { path = "../massa-ledger-worker" }
 massa_models = { path = "../massa-models" }
 massa_network_exports = { path = "../massa-network-exports" }
 massa_network_worker = { path = "../massa-network-worker" }
@@ -36,13 +45,30 @@ massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time" }
 
 
-
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 beta = []
-instrument = ["tokio/tracing", "massa_api/instrument", "massa_bootstrap/instrument", "massa_consensus_exports/instrument", "massa_consensus_worker/instrument", "massa_network_exports/instrument", "massa_pool/instrument", "massa_protocol_exports/instrument", "massa_protocol_worker/instrument","massa_network_worker/instrument"]
-sandbox = ["massa_bootstrap/sandbox", "massa_consensus_exports/sandbox", "massa_consensus_worker/sandbox", "massa_models/sandbox", "massa_async_pool/sandbox"]
+instrument = [
+    "tokio/tracing",
+    "massa_api/instrument",
+    "massa_bootstrap/instrument",
+    "massa_consensus_exports/instrument",
+    "massa_consensus_worker/instrument",
+    "massa_network_exports/instrument",
+    "massa_pool/instrument",
+    "massa_protocol_exports/instrument",
+    "massa_protocol_worker/instrument",
+    "massa_network_worker/instrument",
+]
+sandbox = [
+    "massa_async_pool/sandbox",
+    "massa_bootstrap/sandbox",
+    "massa_consensus_exports/sandbox",
+    "massa_consensus_worker/sandbox",
+    "massa_execution_worker/sandbox",
+    "massa_final_state/sandbox",
+    "massa_models/sandbox",
+]
 
 [build]
 rustflags = ["--cfg", "tokio_unstable"]
-

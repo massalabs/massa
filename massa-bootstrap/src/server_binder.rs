@@ -2,16 +2,23 @@
 
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
-use crate::messages::BootstrapClientMessage;
-use crate::messages::BootstrapServerMessage;
+use crate::messages::{
+    BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
+    BootstrapServerMessageSerializer,
+};
+use async_speed_limit::clock::StandardClock;
+use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::Version;
+use massa_models::VersionDeserializer;
+use massa_models::VersionSerializer;
 use massa_models::{
-    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
-    DeserializeMinBEInt, SerializeCompact, SerializeMinBEInt,
+    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeMinBEInt,
+    SerializeMinBEInt,
 };
-use massa_signature::{sign, PrivateKey};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_signature::KeyPair;
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -19,9 +26,11 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 pub struct BootstrapServerBinder {
     max_bootstrap_message_size: u32,
     size_field_len: usize,
-    local_privkey: PrivateKey,
-    duplex: Duplex,
+    local_keypair: KeyPair,
+    duplex: Resource<Duplex, StandardClock>,
     prev_message: Option<Hash>,
+    version_serializer: VersionSerializer,
+    version_deserializer: VersionDeserializer,
 }
 
 impl BootstrapServerBinder {
@@ -29,16 +38,20 @@ impl BootstrapServerBinder {
     ///
     /// # Argument
     /// * duplex: duplex stream.
-    pub fn new(duplex: Duplex, local_privkey: PrivateKey) -> Self {
+    /// * local_keypair: local node user keypair
+    /// * limit: limit max bytes per second (up and down)
+    pub fn new(duplex: Duplex, local_keypair: KeyPair, limit: f64) -> Self {
         let max_bootstrap_message_size =
             with_serialization_context(|context| context.max_bootstrap_message_size);
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,
             size_field_len,
-            local_privkey,
-            duplex,
+            local_keypair,
+            duplex: <Limiter>::new(limit).limit(duplex),
             prev_message: None,
+            version_serializer: VersionSerializer::new(),
+            version_deserializer: VersionDeserializer::new(),
         }
     }
 }
@@ -50,12 +63,17 @@ impl BootstrapServerBinder {
     pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // read version and random bytes, send signature
         let msg_hash = {
-            let version_bytes = version.to_bytes_compact()?;
+            let mut version_bytes = Vec::new();
+            self.version_serializer
+                .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
             self.duplex.read_exact(&mut msg_bytes).await?;
-            let received_version = Version::from_bytes_compact(&msg_bytes[..version_bytes.len()])?;
-            if !received_version.0.is_compatible(&version) {
-                return Err(BootstrapError::IncompatibleVersionError(format!("Received a bad incompatible version in handshake. (excepted: {}, received: {})", version, received_version.0)));
+            let (_, received_version) = self
+                .version_deserializer
+                .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
+                .map_err(|err| BootstrapError::GeneralError(format!("{}", &err)))?;
+            if !received_version.is_compatible(&version) {
+                return Err(BootstrapError::IncompatibleVersionError(format!("Received a bad incompatible version in handshake. (excepted: {}, received: {})", version, received_version)));
             }
             Hash::compute_from(&msg_bytes)
         };
@@ -69,7 +87,8 @@ impl BootstrapServerBinder {
     /// Writes the next message. NOT cancel-safe
     pub async fn send(&mut self, msg: BootstrapServerMessage) -> Result<(), BootstrapError> {
         // serialize message
-        let msg_bytes = msg.to_bytes_compact()?;
+        let mut msg_bytes = Vec::new();
+        BootstrapServerMessageSerializer::new().serialize(&msg, &mut msg_bytes)?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
@@ -82,15 +101,15 @@ impl BootstrapServerBinder {
                     Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_len as usize));
                 signed_data.extend(prev_message.to_bytes());
                 signed_data.extend(&msg_bytes);
-                sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
+                self.local_keypair.sign(&Hash::compute_from(&signed_data))?
             } else {
                 // there was no previous message: sign(msg)
-                sign(&Hash::compute_from(&msg_bytes), &self.local_privkey)?
+                self.local_keypair.sign(&Hash::compute_from(&msg_bytes))?
             }
         };
 
         // send signature
-        self.duplex.write_all(sig.to_bytes()).await?;
+        self.duplex.write_all(&sig.to_bytes()).await?;
 
         // send message length
         {
@@ -102,7 +121,7 @@ impl BootstrapServerBinder {
         self.duplex.write_all(&msg_bytes).await?;
 
         // save prev sig
-        self.prev_message = Some(Hash::compute_from(sig.to_bytes()));
+        self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
         Ok(())
     }
@@ -153,7 +172,9 @@ impl BootstrapServerBinder {
         }
 
         // deserialize message
-        let (msg, _len) = BootstrapClientMessage::from_bytes_compact(&msg_bytes)?;
+        let (_, msg) = BootstrapClientMessageDeserializer::new()
+            .deserialize::<DeserializeError>(&msg_bytes)
+            .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)
     }

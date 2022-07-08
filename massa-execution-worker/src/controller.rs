@@ -9,11 +9,9 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
-use massa_hash::Hash;
-use massa_ledger::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::Address;
+use massa_models::{Address, Amount};
 use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::HashMap;
@@ -95,31 +93,46 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_filtered_sc_output_event(filter)
     }
 
+    /// Get a balance final and active values
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    fn get_final_and_active_parallel_balance(
+        &self,
+        addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)> {
+        let lock = self.execution_state.read();
+        let mut result = Vec::new();
+        for addr in addresses {
+            result.push(lock.get_final_and_active_parallel_balance(&addr));
+        }
+        result
+    }
+
     /// Get a copy of a single datastore entry with its final and active values
     ///
     /// # Return value
     /// * `(final_data_entry, active_data_entry)`
     fn get_final_and_active_data_entry(
         &self,
-        addr: &Address,
-        key: &Hash,
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        self.execution_state
-            .read()
-            .get_final_and_active_data_entry(addr, key)
+        input: Vec<(Address, Vec<u8>)>,
+    ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+        let lock = self.execution_state.read();
+        let mut result = Vec::new();
+        for (addr, key) in input {
+            result.push(lock.get_final_and_active_data_entry(&addr, &key));
+        }
+        result
     }
 
-    /// Get a copy of a full ledger entry with its final and active values
+    /// Get every datastore key of the given address.
     ///
-    /// # Return value
-    /// * `(final_entry, active_entry)`
-    fn get_final_and_active_ledger_entry(
-        &self,
-        addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+    /// # Returns
+    /// A vector containing all the keys
+    fn get_every_final_datastore_key(&self, addr: &Address) -> Vec<Vec<u8>> {
         self.execution_state
             .read()
-            .get_final_and_active_ledger_entry(addr)
+            .get_every_final_datastore_key(addr)
     }
 
     /// Executes a read-only request

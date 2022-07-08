@@ -62,6 +62,8 @@ pub enum ConsensusError {
     ProofOfStakeError(#[from] ProofOfStakeError),
     /// slot overflow
     SlotOverflowError,
+    /// `MassaCipher` error: {0}
+    MassaCipherError(#[from] massa_cipher::CipherError),
 }
 
 impl std::convert::From<massa_protocol_exports::ProtocolError> for ConsensusError {

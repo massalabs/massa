@@ -9,6 +9,7 @@ use crate::{DeserializeVarInt, ModelsError, SerializeVarInt};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::Deserializer;
 use massa_signature::PublicKey;
+use nom::error::{context, ContextError, ParseError};
 use nom::IResult;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -132,10 +133,10 @@ impl FromStr for Address {
 
 #[test]
 fn test_address_str_format() {
-    use massa_signature::{derive_public_key, generate_random_private_key};
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    use massa_signature::KeyPair;
+
+    let keypair = KeyPair::generate();
+    let address = Address::from_public_key(&keypair.get_public_key());
     let a = address.to_string();
     let b = Address::from_str(&a).unwrap();
     assert!(address == b);
@@ -153,20 +154,18 @@ impl Address {
 
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Address(Hash::compute_from(&public_key.to_bytes()))
+        Address(Hash::compute_from(public_key.to_bytes()))
     }
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
-    /// let bytes = address.to_bytes();
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
+    /// let bytes = address.into_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
@@ -176,15 +175,13 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
-    /// let bytes = address.clone().into_bytes();
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
+    /// let bytes = address.into_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
     /// ```
@@ -194,14 +191,12 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let bytes = address.to_bytes();
     /// let res_addr = Address::from_bytes(&bytes);
     /// assert_eq!(address, res_addr);
@@ -212,14 +207,12 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_bs58_check();
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();
     /// assert_eq!(address, res_addr);
@@ -232,14 +225,12 @@ impl Address {
 
     /// ## Example
     /// ```rust
-    /// # use massa_signature::{PublicKey, PrivateKey, Signature,
-    /// #       generate_random_private_key, derive_public_key};
+    /// # use massa_signature::{PublicKey, KeyPair, Signature};
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
-    /// # let private_key = generate_random_private_key();
-    /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key);
+    /// # let keypair = KeyPair::generate();
+    /// # let address = Address::from_public_key(&keypair.get_public_key());
     /// let ser = address.to_bs58_check();
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();
     /// assert_eq!(address, res_addr);
@@ -265,9 +256,14 @@ impl AddressDeserializer {
 }
 
 impl Deserializer<Address> for AddressDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Address> {
-        let (rest, hash) = self.hash_deserializer.deserialize(buffer)?;
-        Ok((rest, Address(hash)))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Address, E> {
+        context("Failed Address deserialization", |input| {
+            let (rest, hash) = self.hash_deserializer.deserialize(input)?;
+            Ok((rest, Address(hash)))
+        })(buffer)
     }
 }
 

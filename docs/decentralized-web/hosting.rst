@@ -54,6 +54,6 @@ To claim a DNS address for you smart-contract you can use the following smart-co
         return 0;
     }
 
-For now DNS addresses can only be claimed using the following address: `9mvJfA4761u1qT8QwSWcJ4gTDaFP5iSgjQzKMaqTbrWCFo1QM` (and its associated private key).
+For now DNS addresses can only be claimed using the following address: `9mvJfA4761u1qT8QwSWcJ4gTDaFP5iSgjQzKMaqTbrWCFo1QM` (and its associated secret key).
 
 Once you've done this step, you should be able to access to your website using `Massa's browser plugin <https://github.com/massalabs/massa-wallet>`_ at `massa://flappy`.

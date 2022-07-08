@@ -3,7 +3,10 @@
 //! Provides various tools to manipulate ledger entries and changes happening on them.
 
 use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::IResult;
+use nom::{
+    error::{ContextError, ParseError},
+    IResult,
+};
 
 /// Trait marking a structure that supports another one (V) being applied to it
 pub trait Applicable<V> {
@@ -12,7 +15,7 @@ pub trait Applicable<V> {
 }
 
 /// Enumeration representing set/update/delete change on a value T
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SetUpdateOrDelete<T: Default + Applicable<V>, V: Applicable<V> + Clone> {
     /// Sets the value T a new absolute value T
     Set(T),
@@ -64,7 +67,10 @@ impl<
         DV: Deserializer<V>,
     > Deserializer<SetUpdateOrDelete<T, V>> for SetUpdateOrDeleteDeserializer<T, V, DT, DV>
 {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], SetUpdateOrDelete<T, V>> {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], SetUpdateOrDelete<T, V>, E> {
         match buffer[0] {
             0 => {
                 let (rest, value) = self.inner_deserializer_set.deserialize(&buffer[1..])?;
@@ -75,7 +81,7 @@ impl<
                 Ok((rest, SetUpdateOrDelete::Update(value)))
             }
             2 => Ok((&buffer[1..], SetUpdateOrDelete::Delete)),
-            _ => Err(nom::Err::Error(nom::error::Error::new(
+            _ => Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,
             ))),
@@ -119,23 +125,25 @@ impl<
         SV: Serializer<V>,
     > Serializer<SetUpdateOrDelete<T, V>> for SetUpdateOrDeleteSerializer<T, V, ST, SV>
 {
-    fn serialize(&self, value: &SetUpdateOrDelete<T, V>) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-
+    fn serialize(
+        &self,
+        value: &SetUpdateOrDelete<T, V>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         match value {
             SetUpdateOrDelete::Set(value) => {
-                res.push(0);
-                res.extend(self.inner_serializer_set.serialize(value)?);
-                Ok(res)
+                buffer.push(0);
+                self.inner_serializer_set.serialize(value, buffer)?;
+                Ok(())
             }
             SetUpdateOrDelete::Update(value) => {
-                res.push(1);
-                res.extend(self.inner_serializer_update.serialize(value)?);
-                Ok(res)
+                buffer.push(1);
+                self.inner_serializer_update.serialize(value, buffer)?;
+                Ok(())
             }
             SetUpdateOrDelete::Delete => {
-                res.push(2);
-                Ok(res)
+                buffer.push(2);
+                Ok(())
             }
         }
     }
@@ -176,7 +184,7 @@ where
 }
 
 /// `Enum` representing a set/delete change on a value T
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SetOrDelete<T: Clone> {
     /// sets a new absolute value T
     Set(T),
@@ -202,14 +210,17 @@ impl<T: Clone, DT: Deserializer<T>> SetOrDeleteDeserializer<T, DT> {
 impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrDelete<T>>
     for SetOrDeleteDeserializer<T, DT>
 {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], SetOrDelete<T>> {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], SetOrDelete<T>, E> {
         match buffer[0] {
             0 => {
                 let (rest, value) = self.inner_deserializer.deserialize(&buffer[1..])?;
                 Ok((rest, SetOrDelete::Set(value)))
             }
             1 => Ok((&buffer[1..], SetOrDelete::Delete)),
-            _ => Err(nom::Err::Error(nom::error::Error::new(
+            _ => Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,
             ))),
@@ -232,18 +243,20 @@ impl<T: Clone, ST: Serializer<T>> SetOrDeleteSerializer<T, ST> {
 }
 
 impl<T: Clone, ST: Serializer<T>> Serializer<SetOrDelete<T>> for SetOrDeleteSerializer<T, ST> {
-    fn serialize(&self, value: &SetOrDelete<T>) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-
+    fn serialize(
+        &self,
+        value: &SetOrDelete<T>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         match value {
             SetOrDelete::Set(value) => {
-                res.push(0);
-                res.extend(self.inner_serializer.serialize(value)?);
-                Ok(res)
+                buffer.push(0);
+                self.inner_serializer.serialize(value, buffer)?;
+                Ok(())
             }
             SetOrDelete::Delete => {
-                res.push(1);
-                Ok(res)
+                buffer.push(1);
+                Ok(())
             }
         }
     }
@@ -257,7 +270,7 @@ impl<T: Clone> Applicable<SetOrDelete<T>> for SetOrDelete<T> {
 }
 
 /// represents a set/keep change
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SetOrKeep<T: Clone> {
     /// sets a new absolute value T
     Set(T),
@@ -281,14 +294,17 @@ impl<T: Clone, DT: Deserializer<T>> SetOrKeepDeserializer<T, DT> {
 }
 
 impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrKeep<T>> for SetOrKeepDeserializer<T, DT> {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], SetOrKeep<T>> {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], SetOrKeep<T>, E> {
         match buffer[0] {
             0 => {
                 let (rest, value) = self.inner_deserializer.deserialize(&buffer[1..])?;
                 Ok((rest, SetOrKeep::Set(value)))
             }
             1 => Ok((&buffer[1..], SetOrKeep::Keep)),
-            _ => Err(nom::Err::Error(nom::error::Error::new(
+            _ => Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,
             ))),
@@ -311,18 +327,16 @@ impl<T: Clone, ST: Serializer<T>> SetOrKeepSerializer<T, ST> {
 }
 
 impl<T: Clone, ST: Serializer<T>> Serializer<SetOrKeep<T>> for SetOrKeepSerializer<T, ST> {
-    fn serialize(&self, value: &SetOrKeep<T>) -> Result<Vec<u8>, SerializeError> {
-        let mut res = Vec::new();
-
+    fn serialize(&self, value: &SetOrKeep<T>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         match value {
             SetOrKeep::Set(value) => {
-                res.push(0);
-                res.extend(self.inner_serializer.serialize(value)?);
-                Ok(res)
+                buffer.push(0);
+                self.inner_serializer.serialize(value, buffer)?;
+                Ok(())
             }
             SetOrKeep::Keep => {
-                res.push(1);
-                Ok(res)
+                buffer.push(1);
+                Ok(())
             }
         }
     }

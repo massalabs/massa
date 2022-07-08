@@ -2,14 +2,20 @@
 
 use crate::error::BootstrapError;
 use crate::establisher::types::Duplex;
-use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
-use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_models::{
-    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
-    DeserializeMinBEInt, SerializeMinBEInt,
+use crate::messages::{
+    BootstrapClientMessage, BootstrapClientMessageSerializer, BootstrapServerMessage,
+    BootstrapServerMessageDeserializer,
 };
-use massa_models::{SerializeCompact, Version};
-use massa_signature::{verify_signature, PublicKey, Signature, SIGNATURE_SIZE_BYTES};
+use async_speed_limit::clock::StandardClock;
+use async_speed_limit::{Limiter, Resource};
+use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_models::Version;
+use massa_models::{
+    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeMinBEInt,
+    SerializeMinBEInt, VersionSerializer,
+};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
@@ -19,8 +25,9 @@ pub struct BootstrapClientBinder {
     max_bootstrap_message_size: u32,
     size_field_len: usize,
     remote_pubkey: PublicKey,
-    duplex: Duplex,
+    duplex: Resource<Duplex, StandardClock>,
     prev_message: Option<Hash>,
+    version_serializer: VersionSerializer,
 }
 
 impl BootstrapClientBinder {
@@ -28,7 +35,8 @@ impl BootstrapClientBinder {
     ///
     /// # Argument
     /// * duplex: duplex stream.
-    pub fn new(duplex: Duplex, remote_pubkey: PublicKey) -> Self {
+    /// * limit: limit max bytes per second (up and down)
+    pub fn new(duplex: Duplex, remote_pubkey: PublicKey, limit: f64) -> Self {
         let max_bootstrap_message_size =
             with_serialization_context(|context| context.max_bootstrap_message_size);
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
@@ -36,8 +44,9 @@ impl BootstrapClientBinder {
             max_bootstrap_message_size,
             size_field_len,
             remote_pubkey,
-            duplex,
+            duplex: <Limiter>::new(limit).limit(duplex),
             prev_message: None,
+            version_serializer: VersionSerializer::new(),
         }
     }
 }
@@ -48,11 +57,13 @@ impl BootstrapClientBinder {
     pub async fn handshake(&mut self, version: Version) -> Result<(), BootstrapError> {
         // send version and randomn bytes
         let msg_hash = {
-            let version = version.to_bytes_compact()?;
+            let mut version_ser = Vec::new();
+            self.version_serializer
+                .serialize(&version, &mut version_ser)?;
             let mut version_random_bytes =
-                vec![0u8; version.len() + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
-            version_random_bytes[..version.len()].clone_from_slice(&version);
-            StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version.len()..]);
+                vec![0u8; version_ser.len() + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
+            version_random_bytes[..version_ser.len()].clone_from_slice(&version_ser);
+            StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version_ser.len()..]);
             self.duplex.write_all(&version_random_bytes).await?;
             Hash::compute_from(&version_random_bytes)
         };
@@ -79,26 +90,30 @@ impl BootstrapClientBinder {
         };
 
         // read message, check signature and check signature of the message sent just before then deserialize it
+        let message_deserializer = BootstrapServerMessageDeserializer::new();
         let message = {
             if let Some(prev_message) = self.prev_message {
-                self.prev_message = Some(Hash::compute_from(sig.to_bytes()));
+                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
                 let mut sig_msg_bytes = vec![0u8; HASH_SIZE_BYTES + (msg_len as usize)];
                 sig_msg_bytes[..HASH_SIZE_BYTES].copy_from_slice(prev_message.to_bytes());
                 self.duplex
                     .read_exact(&mut sig_msg_bytes[HASH_SIZE_BYTES..])
                     .await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
-                verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
-                let (msg, _len) =
-                    BootstrapServerMessage::from_bytes_compact(&sig_msg_bytes[HASH_SIZE_BYTES..])?;
+                self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
+                let (_, msg) = message_deserializer
+                    .deserialize::<DeserializeError>(&sig_msg_bytes[HASH_SIZE_BYTES..])
+                    .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
                 msg
             } else {
-                self.prev_message = Some(Hash::compute_from(sig.to_bytes()));
+                self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
                 let mut sig_msg_bytes = vec![0u8; msg_len as usize];
                 self.duplex.read_exact(&mut sig_msg_bytes[..]).await?;
                 let msg_hash = Hash::compute_from(&sig_msg_bytes);
-                verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
-                let (msg, _len) = BootstrapServerMessage::from_bytes_compact(&sig_msg_bytes[..])?;
+                self.remote_pubkey.verify_signature(&msg_hash, &sig)?;
+                let (_, msg) = message_deserializer
+                    .deserialize::<DeserializeError>(&sig_msg_bytes[..])
+                    .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
                 msg
             }
         };
@@ -108,7 +123,9 @@ impl BootstrapClientBinder {
     #[allow(dead_code)]
     /// Send a message to the bootstrap server
     pub async fn send(&mut self, msg: &BootstrapClientMessage) -> Result<(), BootstrapError> {
-        let msg_bytes = msg.to_bytes_compact()?;
+        let mut msg_bytes = Vec::new();
+        let message_serializer = BootstrapClientMessageSerializer::new();
+        message_serializer.serialize(msg, &mut msg_bytes)?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
