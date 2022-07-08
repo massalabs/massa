@@ -38,6 +38,7 @@ Launch the node, on Ubuntu:
     RUST_BACKTRACE=full cargo run --release > logs.txt 2>&1
 
 You should leave the window opened.
+Enter a password that you will need to keep to restart your node
 
 **Start the client**
 
@@ -54,6 +55,7 @@ Then:
     cargo run --release
 
 Please wait until the directories are built before moving to the next step.
+Enter a password that you will need to keep to restart your client and unlock your wallet
 
 On Windows
 ----------
@@ -66,6 +68,7 @@ On Windows
     - Type: :code:`cargo run --release`
 
 You should leave the window opened.
+Enter a password that you will need to keep to restart your node
 
 **Start the Client**
 
@@ -75,3 +78,4 @@ You should leave the window opened.
     - Type: :code:`cargo run --release`
 
 Please wait until the directories are built before moving to the next step.
+Enter a password that you will need to keep to restart your node
