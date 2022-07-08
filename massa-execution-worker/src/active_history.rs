@@ -166,12 +166,25 @@ impl ActiveHistory {
             .collect()
     }
 
-    /// Retrieve the production stats of `addr` as they are in the last element of the history.
+    /// Retrieve the production statistics of every address as they are in the last element of the history.
+    pub fn fetch_production_stats(&self) -> Map<Address, ProductionStats> {
+        if let Some(output) = self.0.back() {
+            output
+                .state_changes
+                .roll_state_changes
+                .production_stats
+                .clone()
+        } else {
+            Map::default()
+        }
+    }
+
+    /// Retrieve the production statistics of `addr` as they are in the last element of the history.
     ///
     /// # Arguments
     /// * `addr`:  address to fetch the production stats from
     #[allow(dead_code)]
-    pub fn fetch_production_stats(&self, addr: &Address) -> Option<ProductionStats> {
+    pub fn fetch_production_stats_for(&self, addr: &Address) -> Option<ProductionStats> {
         self.0.back().and_then(|output| {
             output
                 .state_changes

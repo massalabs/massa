@@ -2,7 +2,11 @@
 
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_models::{
+    constants::{default::POS_SELL_CYCLES, PERIODS_PER_CYCLE},
+    prehash::Map,
+    Address, Amount, Slot,
+};
 use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -120,12 +124,14 @@ impl SpeculativeRollState {
         *count = count.saturating_sub(roll_count);
 
         // add deferred reimbursement corresponding to the sold rolls value
-        self.added_changes
+        let credit = self
+            .added_changes
             .deferred_credits
-            .entry(slot)
-            .and_modify(|credit| {
-                credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
-            });
+            .entry(Slot::last(
+                slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
+            ))
+            .or_insert_with(Map::default);
+        credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
 
         Ok(())
     }
@@ -150,7 +156,21 @@ impl SpeculativeRollState {
     }
 
     // TODO
-    pub fn settle_production_stats(&mut self, slot: Slot) {}
+    pub fn settle_production_stats(&mut self, slot: Slot) {
+        let credits = self.added_changes.deferred_credits.entry(Slot::last(
+            slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
+        ));
+        for (addr, stats) in self.active_history.read().fetch_production_stats() {
+            if !stats.satisfying() {
+                let rolls = self
+                    .added_changes
+                    .roll_changes
+                    .entry(addr)
+                    .or_insert_with(u64::default);
+                *rolls = 0;
+            }
+        }
+    }
 
     /// Get the deferred credits of `slot`.
     ///
