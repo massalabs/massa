@@ -251,10 +251,9 @@ impl ExecutionState {
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
         // filter out only transactions operations
-        match &operation.content.op {
-            OperationType::Transaction { .. } => return Ok(()),
-            _ => (),
-        };
+        if let OperationType::Transaction { .. } = &operation.content.op {
+            return Ok(());
+        }
 
         // get the operation's sender address
         let sender_addr = Address::from_public_key(&operation.content.sender_public_key);

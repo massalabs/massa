@@ -131,7 +131,7 @@ impl ExecutionContext {
             ),
             speculative_roll_state: SpeculativeRollState::new(
                 final_state,
-                active_history.clone(),
+                active_history,
                 selector,
             ),
             max_gas: Default::default(),

@@ -26,8 +26,7 @@ impl PoSFinalState {
     pub fn get_rolls_for(&self, addr: &Address) -> u64 {
         self.cycle_history
             .back()
-            .map(|info| info.roll_counts.get(addr).cloned())
-            .flatten()
+            .and_then(|info| info.roll_counts.get(addr).cloned())
             .unwrap_or_default()
     }
 
