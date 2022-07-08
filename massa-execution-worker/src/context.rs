@@ -587,11 +587,10 @@ impl ExecutionContext {
     pub fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
-        roll_price: Amount,
         roll_count: u64,
     ) -> Result<(), ExecutionError> {
         self.speculative_roll_state
-            .try_sell_rolls(seller_addr, self.slot, roll_price, roll_count)
+            .try_sell_rolls(seller_addr, self.slot, roll_count)
     }
 
     /// Update production statistics of an address.
