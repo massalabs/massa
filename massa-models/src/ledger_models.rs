@@ -65,6 +65,12 @@ impl LedgerDataDeserializer {
     }
 }
 
+impl Default for LedgerDataDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<LedgerData> for LedgerDataDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
@@ -136,6 +142,7 @@ impl Default for LedgerChange {
 }
 
 /// Basic serializer for `LedgerChange`
+#[derive(Default)]
 pub struct LedgerChangeSerializer {
     amount_serializer: AmountSerializer,
 }
@@ -169,6 +176,12 @@ impl LedgerChangeDeserializer {
         Self {
             amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
         }
+    }
+}
+
+impl Default for LedgerChangeDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -300,7 +313,7 @@ impl Default for LedgerChangesDeserializer {
 impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// ## Example
     /// ```rust
-    /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount, ledger_models::{LedgerChangesSerializer, LedgerChangesDeserializer, LedgerChangeSerializer, LedgerChangeDeserializer}};
+    /// # use massa_models::{Address, Amount, ledger_models::{LedgerChangesSerializer, LedgerChangesDeserializer, LedgerChangeSerializer, LedgerChangeDeserializer}};
     /// # use std::str::FromStr;
     /// # use massa_models::ledger_models::{LedgerChanges, LedgerChange};
     /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};

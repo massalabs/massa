@@ -6,10 +6,7 @@ use massa_graph::BootstrapableGraph;
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
 use massa_models::constants::MAX_ADVERTISE_LENGTH;
 use massa_models::slot::SlotDeserializer;
-use massa_models::{
-    constants::THREAD_COUNT, slot::SlotSerializer, DeserializeCompact, SerializeCompact, Slot,
-    Version,
-};
+use massa_models::{constants::THREAD_COUNT, slot::SlotSerializer, Slot, Version};
 use massa_models::{VecU8Deserializer, VecU8Serializer, VersionDeserializer, VersionSerializer};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_proof_of_stake_exports::{

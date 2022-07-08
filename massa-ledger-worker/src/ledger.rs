@@ -7,10 +7,12 @@ use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
-use massa_models::Slot;
 use massa_models::{Address, Amount, ModelsError};
+use massa_models::{AmountDeserializer, Slot};
+use massa_serialization::{DeserializeError, Deserializer};
 use nom::AsBytes;
 use std::collections::{BTreeMap, HashMap};
+use std::ops::Bound::Included;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -85,12 +87,14 @@ impl LedgerController for FinalLedger {
     /// # Returns
     /// The parallel balance, or None if the ledger entry was not found
     fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
+        let amount_deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Balance)
             .map(|bytes| {
-                Amount::from_bytes_compact(&bytes)
+                amount_deserializer
+                    .deserialize::<DeserializeError>(&bytes)
                     .expect("critical: invalid balance format")
-                    .0
+                    .1
             })
     }
 

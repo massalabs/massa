@@ -5,7 +5,10 @@
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::*;
 use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
-use massa_models::{Address, ModelsError, Slot, VecU8Deserializer, VecU8Serializer};
+use massa_models::{
+    Address, AmountSerializer, ModelsError, Slot, SlotSerializer, VecU8Deserializer,
+    VecU8Serializer,
+};
 use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
 use nom::sequence::tuple;
@@ -13,12 +16,13 @@ use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::ops::Bound;
 use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
 
 #[cfg(feature = "testing")]
-use massa_models::{address::AddressDeserializer, Amount};
+use massa_models::{address::AddressDeserializer, Amount, AmountDeserializer};
 
 #[cfg(feature = "testing")]
 use massa_serialization::DeserializeError;
@@ -43,8 +47,19 @@ pub enum LedgerSubEntry {
 /// Disk ledger DB module
 ///
 /// Contains a RocksDB DB instance
-#[derive(Debug)]
-pub(crate) struct LedgerDB(DB);
+pub(crate) struct LedgerDB {
+    db: DB,
+    amount_serializer: AmountSerializer,
+    slot_serializer: SlotSerializer,
+    #[cfg(feature = "testing")]
+    amount_deserializer: AmountDeserializer,
+}
+
+impl Debug for LedgerDB {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#?}", self.db)
+    }
+}
 
 /// For a given start prefix (inclusive), returns the correct end prefix (non-inclusive).
 /// This assumes the key bytes are ordered in lexicographical order.
@@ -90,7 +105,16 @@ impl LedgerDB {
         )
         .expect(OPEN_ERROR);
 
-        LedgerDB(db)
+        LedgerDB {
+            db,
+            amount_serializer: AmountSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
+            #[cfg(feature = "testing")]
+            amount_deserializer: AmountDeserializer::new(
+                Bound::Included(0),
+                Bound::Included(u64::MAX),
+            ),
+        }
     }
 
     /// Set the initial disk ledger
@@ -144,7 +168,7 @@ impl LedgerDB {
     ///
     /// NOTE: the batch is not saved within the object because it cannot be shared between threads safely
     fn write_batch(&self, batch: WriteBatch) {
-        self.0.write(batch).expect(CRUD_ERROR);
+        self.db.write(batch).expect(CRUD_ERROR);
     }
 
     /// Set the disk ledger metadata
@@ -155,10 +179,11 @@ impl LedgerDB {
     ///
     /// NOTE: right now the metadata is only a Slot, use a struct in the future
     fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch) {
-        let handle = self.0.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        // Slot::to_bytes_compact() never fails
-        batch.put_cf(handle, SLOT_KEY, slot.to_bytes_compact().unwrap());
+        let handle = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let mut bytes = Vec::new();
+        // Slot serialization never fails
+        self.slot_serializer.serialize(&slot, &mut bytes).unwrap();
+        batch.put_cf(handle, SLOT_KEY, bytes);
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -168,15 +193,15 @@ impl LedgerDB {
     /// * ledger_entry: complete entry to be added
     /// * batch: the given operation batch to update
     fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut WriteBatch) {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
+        let mut bytes = Vec::new();
+        // Amount serialization never fails
+        self.amount_serializer
+            .serialize(&ledger_entry.parallel_balance, &mut bytes)
+            .unwrap();
         // balance
-        batch.put_cf(
-            handle,
-            balance_key!(addr),
-            // Amount::to_bytes_compact() never fails
-            ledger_entry.parallel_balance.to_bytes_compact().unwrap(),
-        );
+        batch.put_cf(handle, balance_key!(addr), bytes);
 
         // bytecode
         batch.put_cf(handle, bytecode_key!(addr), ledger_entry.bytecode);
@@ -196,16 +221,19 @@ impl LedgerDB {
     /// # Returns
     /// An Option of the sub-entry value as bytes
     pub fn get_sub_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         match ty {
-            LedgerSubEntry::Balance => self.0.get_cf(handle, balance_key!(addr)).expect(CRUD_ERROR),
+            LedgerSubEntry::Balance => self
+                .db
+                .get_cf(handle, balance_key!(addr))
+                .expect(CRUD_ERROR),
             LedgerSubEntry::Bytecode => self
-                .0
+                .db
                 .get_cf(handle, bytecode_key!(addr))
                 .expect(CRUD_ERROR),
             LedgerSubEntry::Datastore(hash) => self
-                .0
+                .db
                 .get_cf(handle, data_key!(addr, hash))
                 .expect(CRUD_ERROR),
         }
@@ -218,10 +246,10 @@ impl LedgerDB {
     /// A BTreeMap with the address as key and the balance as value
     #[cfg(feature = "testing")]
     pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let ledger = self
-            .0
+            .db
             .iterator_cf(handle, IteratorMode::Start)
             .collect::<Vec<_>>();
 
@@ -232,7 +260,13 @@ impl LedgerDB {
                 .deserialize::<DeserializeError>(&key[..])
                 .unwrap();
             if rest.first() == Some(&BALANCE_IDENT) {
-                addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
+                addresses.insert(
+                    address,
+                    self.amount_deserializer
+                        .deserialize::<DeserializeError>(&entry)
+                        .unwrap()
+                        .1,
+                );
             }
         }
         addresses
@@ -243,12 +277,12 @@ impl LedgerDB {
     /// # Returns
     /// A BTreeMap with the entry hash as key and the data bytes as value
     pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
 
-        self.0
+        self.db
             .iterator_cf_opt(
                 handle,
                 opt,
@@ -274,16 +308,16 @@ impl LedgerDB {
         entry_update: LedgerEntryUpdate,
         batch: &mut WriteBatch,
     ) {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance
         if let SetOrKeep::Set(balance) = entry_update.parallel_balance {
-            batch.put_cf(
-                handle,
-                balance_key!(addr),
-                // Amount::to_bytes_compact() never fails
-                balance.to_bytes_compact().unwrap(),
-            );
+            let mut bytes = Vec::new();
+            // Amount serialization never fails
+            self.amount_serializer
+                .serialize(&balance, &mut bytes)
+                .unwrap();
+            batch.put_cf(handle, balance_key!(addr), bytes);
         }
 
         // bytecode
@@ -305,7 +339,7 @@ impl LedgerDB {
     /// # Arguments
     /// * batch: the given operation batch to update
     fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         // balance
         batch.delete_cf(handle, balance_key!(addr));
@@ -316,7 +350,7 @@ impl LedgerDB {
         // datastore
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
-        for (key, _) in self.0.iterator_cf_opt(
+        for (key, _) in self.db.iterator_cf_opt(
             handle,
             opt,
             IteratorMode::From(data_prefix!(addr), Direction::Forward),
@@ -341,19 +375,19 @@ impl LedgerDB {
     ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
         let ser = VecU8Serializer::new();
         let key_serializer = KeySerializer::new();
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let mut part = Vec::new();
         let opt = ReadOptions::default();
 
         // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key of the ledger.
         let db_iterator = if let Some(key) = last_key {
             let mut iter =
-                self.0
+                self.db
                     .iterator_cf_opt(handle, opt, IteratorMode::From(key, Direction::Forward));
             iter.next();
             iter
         } else {
-            self.0.iterator_cf_opt(handle, opt, IteratorMode::Start)
+            self.db.iterator_cf_opt(handle, opt, IteratorMode::Start)
         };
         let mut last_key = None;
 
@@ -380,7 +414,7 @@ impl LedgerDB {
     /// # Returns
     /// The last key of the inserted entry (this is an optimization to easily keep a reference to the last key)
     pub fn set_ledger_part<'a>(&self, data: &'a [u8]) -> Result<Option<Vec<u8>>, ModelsError> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
         let key_deserializer = KeyDeserializer::new();
@@ -403,7 +437,7 @@ impl LedgerDB {
 
         // Every byte should have been read
         if rest.is_empty() {
-            self.0.write(batch).expect(CRUD_ERROR);
+            self.db.write(batch).expect(CRUD_ERROR);
             Ok((*last_key).clone())
         } else {
             Err(ModelsError::SerializeError(
@@ -419,10 +453,12 @@ mod tests {
     use crate::ledger_db::LedgerSubEntry;
     use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
-    use massa_models::{Address, Amount, DeserializeCompact};
+    use massa_models::{Address, Amount, AmountDeserializer};
+    use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;
     use rocksdb::WriteBatch;
     use std::collections::BTreeMap;
+    use std::ops::Bound::Included;
     use tempfile::TempDir;
 
     #[cfg(test)]
@@ -464,13 +500,16 @@ mod tests {
         let a = Address::from_public_key(&pub_a);
         let b = Address::from_public_key(&pub_b);
         let (db, data) = init_test_ledger(a);
-
+        let amount_deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));
         // first assert
         assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
         assert_eq!(
-            Amount::from_bytes_compact(&db.get_sub_entry(&a, LedgerSubEntry::Balance).unwrap())
+            amount_deserializer
+                .deserialize::<DeserializeError>(
+                    &db.get_sub_entry(&a, LedgerSubEntry::Balance).unwrap()
+                )
                 .unwrap()
-                .0,
+                .1,
             Amount::from_raw(21)
         );
         assert!(db.get_sub_entry(&b, LedgerSubEntry::Balance).is_none());
