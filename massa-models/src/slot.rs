@@ -186,6 +186,14 @@ impl Slot {
         Slot { period, thread }
     }
 
+    /// first slot of the given cycle
+    pub fn last(cycle: u64) -> Slot {
+        Slot {
+            period: ((cycle + 1) * PERIODS_PER_CYCLE) - 1,
+            thread: THREAD_COUNT,
+        }
+    }
+
     /// returns the minimal slot
     pub const fn min() -> Slot {
         Slot {
@@ -213,7 +221,7 @@ impl Slot {
     }
 
     /// check if the slot is last in the cycle
-    pub fn is_last_in_cycle(&self) -> bool {
+    pub fn last_in_cycle(&self) -> bool {
         self.period % PERIODS_PER_CYCLE == 0 && self.thread == THREAD_COUNT
     }
 

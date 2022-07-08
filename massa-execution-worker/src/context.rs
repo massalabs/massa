@@ -640,8 +640,9 @@ impl ExecutionContext {
         self.execute_deferred_credits(self.slot);
 
         // if the current slot is last in cycle check the production stats and act accordingly
-        if self.slot.is_last_in_cycle() {
-            self.speculative_roll_state.settle_production_stats(slot);
+        if self.slot.last_in_cycle() {
+            self.speculative_roll_state
+                .settle_production_stats(self.slot);
         }
 
         // generate the execution output
