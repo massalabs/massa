@@ -997,11 +997,10 @@ impl ProtocolWorker {
         &mut self,
         block: &WrappedBlock,
         seen_ops: Vec<OperationId>,
-        received_operations_ids: Map<OperationId, usize>, 
+        received_operations_ids: Map<OperationId, usize>,
         has_duplicate_operations: bool,
-        total_gas: u64
-    ) -> Result<Option<(BlockId, Map<OperationId, usize>)>, ProtocolError>
-    {
+        total_gas: u64,
+    ) -> Result<Option<(BlockId, Map<OperationId, usize>)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.process_block", { "block": block });
 
         let (header, operations, operation_merkle_root, slot, block_id) = {
@@ -1024,21 +1023,21 @@ impl ProtocolWorker {
 
         for op_id in operations.iter() {
             let op = self.storage.retrieve_operation(op_id).unwrap();
-            
-             // check validity period
-             if !(op
-                 .get_validity_range(self.operation_validity_periods)
-                 .contains(&slot.period))
-             {
-                 return Ok(None);
-             }
 
-             // check thread
-             if op.thread != slot.thread {
-                 massa_trace!("protocol.protocol_worker.process_block.err_op_thread",
+            // check validity period
+            if !(op
+                .get_validity_range(self.operation_validity_periods)
+                .contains(&slot.period))
+            {
+                return Ok(None);
+            }
+
+            // check thread
+            if op.thread != slot.thread {
+                massa_trace!("protocol.protocol_worker.process_block.err_op_thread",
                      {"block_id":block_id, "op": op});
-                 return Ok(None);
-             }
+                return Ok(None);
+            }
         }
 
         // check root hash
@@ -1048,8 +1047,9 @@ impl ProtocolWorker {
                 .map(|op_id| op_id.to_bytes().to_vec())
                 .concat();
             if operation_merkle_root != Hash::compute_from(&concat_bytes) {
-                massa_trace!("protocol.protocol_worker.process_block.err_op_root_hash",
-                    {"block_id":block_id});
+                massa_trace!("protocol.protocol_worker.process_block.err_op_root_hash", {
+                    "block_id": block_id
+                });
                 return Ok(None);
             }
         }
@@ -1155,13 +1155,23 @@ impl ProtocolWorker {
                                 content: block,
                                 serialized_data: content_serialized,
                             };
-                            
-                            if let Some((block_id, operation_set)) =
-                                self.process_block(&wrapped, seen_ops.clone(), received_ids.clone(), has_duplicate_operations, total_gas).await?
+
+                            if let Some((block_id, operation_set)) = self
+                                .process_block(
+                                    &wrapped,
+                                    seen_ops.clone(),
+                                    received_ids.clone(),
+                                    has_duplicate_operations,
+                                    total_gas,
+                                )
+                                .await?
                             {
                                 let slot = wrapped.content.header.content.slot;
 
-                                let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
+                                let mut set = Set::<BlockId>::with_capacity_and_hasher(
+                                    1,
+                                    BuildMap::default(),
+                                );
                                 set.insert(block_id);
                                 self.stop_asking_blocks(set)?;
                                 self.send_protocol_event(ProtocolEvent::ReceivedBlock {
@@ -1332,6 +1342,12 @@ impl ProtocolWorker {
                         } else {
                             warn!("Missing block info for {}", block_id);
                         }
+
+                        // Stop asking for info about this block.
+                        let mut set =
+                            Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
+                        set.insert(block_id);
+                        self.stop_asking_blocks(set)?;
 
                         // Ask for the operations.
                         self.on_operations_announcements_received(
