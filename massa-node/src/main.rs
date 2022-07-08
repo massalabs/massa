@@ -185,12 +185,19 @@ async fn launch(
     .expect("could not start pool controller");
 
     // launch selector worker
-    let (selector_manager, selector_controller) =
-        start_selector_worker(4096, SelectorConfig::default());
+    let (selector_manager, selector_controller) = start_selector_worker(
+        4096,
+        SelectorConfig {
+            max_draw_cache: SETTINGS.selector.max_draw_cache,
+            ..SelectorConfig::default()
+        },
+    );
+
     // give the controller to final state in order for it to feed the cycles
     final_state
         .write()
         .give_selector_controller(selector_controller.clone());
+
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,

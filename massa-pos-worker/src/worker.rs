@@ -148,7 +148,7 @@ fn get_initial_rolls(cfg: &SelectorConfig) -> PosResult<Vec<Map<Address, u64>>> 
     let rolls_per_cycle = serde_json::from_str::<Vec<Map<Address, u64>>>(
         &std::fs::read_to_string(&cfg.initial_rolls_path)?,
     )?;
-    if rolls_per_cycle.len() < cfg.lookback_cycles {
+    if rolls_per_cycle.len() < cfg.lookback_cycles as usize {
         return Err(InvalidInitialRolls(
             cfg.lookback_cycles,
             rolls_per_cycle.len(),
