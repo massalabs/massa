@@ -149,6 +149,9 @@ impl SpeculativeRollState {
         }
     }
 
+    // TODO
+    pub fn settle_production_stats(&mut self, slot: Slot) {}
+
     /// Get the deferred credits of `slot`.
     ///
     /// NOTE: this probably shouldn't be done here but there is no alternative for now
