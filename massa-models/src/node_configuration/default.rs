@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.11.3"
+            "TEST.12.0"
         }
         .parse()
         .unwrap()
