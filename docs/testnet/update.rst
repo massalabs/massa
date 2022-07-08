@@ -2,6 +2,8 @@
 Update a node
 ==============
 
+IF YOU ARE HERE TO UPDATE FROM TESTNET 11 TO TESTNET 12, THERE IS BREAKING CHANGES SO YOU CAN'T UPDATE. PLEASE RE-INSTALL A NODE FROM SCRATCH FOLLOW THE INSTALL SECTION.
+
 If you use the binaries, simply download the latest binaries, and make sure you use the latest nightly version of rust.
 
 Set the latest nightly as default:
