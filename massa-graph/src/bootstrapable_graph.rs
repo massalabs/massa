@@ -1,14 +1,28 @@
+use massa_hash::HashDeserializer;
 use massa_models::{
-    array_from_slice,
-    clique::Clique,
-    constants::BLOCK_ID_SIZE_BYTES,
-    prehash::{BuildMap, Map, Set},
-    with_serialization_context, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt,
+    clique::{Clique, CliqueDeserializer, CliqueSerializer},
+    constants::{MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CLIQUES, THREAD_COUNT},
+    prehash::{Map, Set},
+    BlockId, DeserializeCompact, SerializeCompact,
+};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::{error::context, multi::length_count, sequence::tuple, IResult, Parser};
+use nom::{
+    error::{ContextError, ParseError},
+    multi::count,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset};
+use crate::{
+    export_active_block::{
+        ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer,
+    },
+    ledger::ConsensusLedgerSubset,
+};
+use std::ops::Bound::Included;
 
 /// Bootstrap graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,193 +41,226 @@ pub struct BootstrapableGraph {
     pub ledger: ConsensusLedgerSubset,
 }
 
-impl SerializeCompact for BootstrapableGraph {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-        let (max_bootstrap_blocks, max_bootstrap_cliques) = with_serialization_context(|context| {
-            (context.max_bootstrap_blocks, context.max_bootstrap_cliques)
-        });
+/// Basic serializer for `BootstrapableGraph`
+#[derive(Default)]
+pub struct BootstrapableGraphSerializer {
+    length_serializer: U32VarIntSerializer,
+    export_active_block_serializer: ExportActiveBlockSerializer,
+    period_serializer: U64VarIntSerializer,
+    clique_serializer: CliqueSerializer,
+}
 
-        // active_blocks
-        let blocks_count: u32 = self.active_blocks.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
-                "too many active blocks in BootstrapableGraph: {}",
-                err
-            ))
-        })?;
-        if blocks_count > max_bootstrap_blocks {
-            return Err(ModelsError::SerializeError(format!("too many blocks in active_blocks for serialization context in BootstrapableGraph: {}", blocks_count)));
+impl BootstrapableGraphSerializer {
+    /// Creates a `BootstrapableGraphSerializer`
+    pub fn new() -> Self {
+        Self {
+            length_serializer: U32VarIntSerializer::new(),
+            export_active_block_serializer: ExportActiveBlockSerializer::new(),
+            period_serializer: U64VarIntSerializer::new(),
+            clique_serializer: CliqueSerializer::new(),
         }
-        res.extend(blocks_count.to_varint_bytes());
-        for (hash, block) in self.active_blocks.iter() {
-            res.extend(hash.to_bytes());
-            res.extend(block.to_bytes_compact()?);
-        }
-
-        // best_parents
-        for (parent_h, parent_period) in self.best_parents.iter() {
-            res.extend(parent_h.to_bytes());
-            res.extend(&parent_period.to_varint_bytes());
-        }
-
-        // latest_final_blocks_periods
-        for (hash, period) in self.latest_final_blocks_periods.iter() {
-            res.extend(hash.to_bytes());
-            res.extend(period.to_varint_bytes());
-        }
-
-        // gi_head
-        let gi_head_count: u32 = self.gi_head.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many gi_head in BootstrapableGraph: {}", err))
-        })?;
-        res.extend(gi_head_count.to_varint_bytes());
-        for (gihash, set) in self.gi_head.iter() {
-            res.extend(gihash.to_bytes());
-            let set_count: u32 = set.len().try_into().map_err(|err| {
-                ModelsError::SerializeError(format!(
-                    "too many entry in gi_head set in BootstrapableGraph: {}",
-                    err
-                ))
-            })?;
-            res.extend(set_count.to_varint_bytes());
-            for hash in set {
-                res.extend(hash.to_bytes());
-            }
-        }
-
-        // max_cliques
-        let max_cliques_count: u32 = self.max_cliques.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
-                "too many max_cliques in BootstrapableGraph (format): {}",
-                err
-            ))
-        })?;
-        if max_cliques_count > max_bootstrap_cliques {
-            return Err(ModelsError::SerializeError(format!(
-                "too many max_cliques for serialization context in BootstrapableGraph: {}",
-                max_cliques_count
-            )));
-        }
-        res.extend(max_cliques_count.to_varint_bytes());
-        for e_clique in self.max_cliques.iter() {
-            res.extend(e_clique.to_bytes_compact()?);
-        }
-
-        // ledger
-        res.extend(self.ledger.to_bytes_compact()?);
-
-        Ok(res)
     }
 }
 
-impl DeserializeCompact for BootstrapableGraph {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
-        let mut cursor = 0usize;
-        let (max_bootstrap_blocks, parent_count, max_bootstrap_cliques) =
-            with_serialization_context(|context| {
-                (
-                    context.max_bootstrap_blocks,
-                    context.thread_count,
-                    context.max_bootstrap_cliques,
-                )
-            });
-
-        // active_blocks
-        let (active_blocks_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if active_blocks_count > max_bootstrap_blocks {
-            return Err(ModelsError::DeserializeError(format!("too many blocks in active_blocks for deserialization context in BootstrapableGraph: {}", active_blocks_count)));
+impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
+    fn serialize(
+        &self,
+        value: &BootstrapableGraph,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        self.length_serializer.serialize(
+            &value
+                .active_blocks
+                .len()
+                .try_into()
+                .map_err(|_| SerializeError::NumberTooBig("Too much active_block".to_string()))?,
+            buffer,
+        )?;
+        for (block_id, export_active_block) in &value.active_blocks {
+            self.export_active_block_serializer
+                .serialize(export_active_block, buffer)?;
         }
-        cursor += delta;
-        let mut active_blocks =
-            Map::with_capacity_and_hasher(active_blocks_count as usize, BuildMap::default());
-        for _ in 0..(active_blocks_count as usize) {
-            let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += BLOCK_ID_SIZE_BYTES;
-            let (block, delta) = ExportActiveBlock::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            active_blocks.insert(hash, block);
+        for (parent_h, parent_period) in value.best_parents.iter() {
+            buffer.extend(parent_h.0.to_bytes());
+            self.period_serializer.serialize(parent_period, buffer)?;
         }
-
-        // best_parents
-        let mut best_parents: Vec<(BlockId, u64)> = Vec::with_capacity(parent_count as usize);
-        for _ in 0..parent_count {
-            let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += BLOCK_ID_SIZE_BYTES;
-            let (parent_period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-            cursor += delta;
-            best_parents.push((parent_h, parent_period));
+        for (hash, period) in value.latest_final_blocks_periods.iter() {
+            buffer.extend(hash.0.to_bytes());
+            self.period_serializer.serialize(period, buffer)?;
         }
-
-        // latest_final_blocks_periods
-        let mut latest_final_blocks_periods: Vec<(BlockId, u64)> =
-            Vec::with_capacity(parent_count as usize);
-        for _ in 0..parent_count {
-            let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += BLOCK_ID_SIZE_BYTES;
-            let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-            cursor += delta;
-            latest_final_blocks_periods.push((hash, period));
-        }
-
-        // gi_head
-        let (gi_head_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if gi_head_count > max_bootstrap_blocks {
-            return Err(ModelsError::DeserializeError(format!(
-                "too many blocks in gi_head for deserialization context in BootstrapableGraph: {}",
-                gi_head_count
-            )));
-        }
-        cursor += delta;
-        let mut gi_head =
-            Map::with_capacity_and_hasher(gi_head_count as usize, BuildMap::default());
-        for _ in 0..(gi_head_count as usize) {
-            let gihash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += BLOCK_ID_SIZE_BYTES;
-            let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-            if set_count > max_bootstrap_blocks {
-                return Err(ModelsError::DeserializeError(format!("too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {}", set_count)));
+        self.length_serializer.serialize(
+            &value
+                .gi_head
+                .len()
+                .try_into()
+                .map_err(|_| SerializeError::NumberTooBig("Too much gi_head".to_string()))?,
+            buffer,
+        )?;
+        for (block_id, gi_head) in &value.gi_head {
+            buffer.extend(block_id.0.to_bytes());
+            self.length_serializer.serialize(
+                &gi_head.len().try_into().map_err(|_| {
+                    SerializeError::NumberTooBig("Too much entry in gi_head".to_string())
+                })?,
+                buffer,
+            )?;
+            for gi_head_block_id in gi_head.iter() {
+                buffer.extend(gi_head_block_id.0.to_bytes());
             }
-            cursor += delta;
-            let mut set =
-                Set::<BlockId>::with_capacity_and_hasher(set_count as usize, BuildMap::default());
-            for _ in 0..(set_count as usize) {
-                let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-                cursor += BLOCK_ID_SIZE_BYTES;
-                set.insert(hash);
-            }
-            gi_head.insert(gihash, set);
         }
-
-        // max_cliques
-        let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if max_cliques_count > max_bootstrap_cliques {
-            return Err(ModelsError::DeserializeError(format!(
-                "too many for deserialization context in BootstrapableGraph: {}",
-                max_cliques_count
-            )));
+        self.length_serializer.serialize(
+            &value
+                .max_cliques
+                .len()
+                .try_into()
+                .map_err(|_| SerializeError::NumberTooBig("Too much max_cliques".to_string()))?,
+            buffer,
+        )?;
+        for clique in &value.max_cliques {
+            self.clique_serializer.serialize(clique, buffer)?;
         }
-        cursor += delta;
-        let mut max_cliques: Vec<Clique> = Vec::with_capacity(max_cliques_count as usize);
-        for _ in 0..max_cliques_count {
-            let (c, delta) = Clique::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            max_cliques.push(c);
+        buffer.extend(value.ledger.to_bytes_compact().unwrap());
+        Ok(())
+    }
+}
+
+/// Basic deserializer for `BootstrapableGraph`
+pub struct BootstrapableGraphDeserializer {
+    blocks_length_deserializer: U32VarIntDeserializer,
+    export_active_block_deserializer: ExportActiveBlockDeserializer,
+    period_deserializer: U64VarIntDeserializer,
+    set_length_deserializer: U32VarIntDeserializer,
+    clique_length_deserializer: U32VarIntDeserializer,
+    clique_deserializer: CliqueDeserializer,
+    hash_deserializer: HashDeserializer,
+}
+
+impl BootstrapableGraphDeserializer {
+    /// Creates a `BootstrapableGraphDeserializer`
+    pub fn new() -> Self {
+        Self {
+            blocks_length_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(MAX_BOOTSTRAP_BLOCKS),
+            ),
+            export_active_block_deserializer: ExportActiveBlockDeserializer::new(),
+            period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            set_length_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
+            clique_length_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(MAX_BOOTSTRAP_CLIQUES),
+            ),
+            clique_deserializer: CliqueDeserializer::new(),
+            hash_deserializer: HashDeserializer::new(),
         }
+    }
+}
 
-        // ledger
-        let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
+impl Default for BootstrapableGraphDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-        Ok((
-            BootstrapableGraph {
+impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BootstrapableGraph, E> {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        context(
+            "Failed BootstrapableGraph deserialization",
+            tuple((
+                length_count(
+                    |input| self.blocks_length_deserializer.deserialize(input),
+                    |input| self.export_active_block_deserializer.deserialize(input),
+                ),
+                count(
+                    tuple((
+                        |input| {
+                            self.hash_deserializer
+                                .deserialize(input)
+                                .map(|(rest, hash)| (rest, BlockId(hash)))
+                        },
+                        |input| self.period_deserializer.deserialize(input),
+                    )),
+                    thread_count as usize,
+                ),
+                count(
+                    tuple((
+                        |input| {
+                            self.hash_deserializer
+                                .deserialize(input)
+                                .map(|(rest, hash)| (rest, BlockId(hash)))
+                        },
+                        |input| self.period_deserializer.deserialize(input),
+                    )),
+                    thread_count as usize,
+                ),
+                length_count(
+                    |input| self.blocks_length_deserializer.deserialize(input),
+                    tuple((
+                        |input| {
+                            self.hash_deserializer
+                                .deserialize(input)
+                                .map(|(rest, hash)| (rest, BlockId(hash)))
+                        },
+                        length_count(
+                            |input| self.set_length_deserializer.deserialize(input),
+                            |input| {
+                                self.hash_deserializer
+                                    .deserialize(input)
+                                    .map(|(rest, hash)| (rest, BlockId(hash)))
+                            },
+                        ),
+                    )),
+                ),
+                length_count(
+                    |input| self.clique_length_deserializer.deserialize(input),
+                    |input| self.clique_deserializer.deserialize(input),
+                ),
+                |input| {
+                    let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(input)
+                        .map_err(|_| {
+                            nom::Err::Error(ParseError::from_error_kind(
+                                input,
+                                nom::error::ErrorKind::Fail,
+                            ))
+                        })?;
+                    Ok((&input[delta..], ledger))
+                },
+            )),
+        )
+        .map(
+            |(
                 active_blocks,
                 best_parents,
                 latest_final_blocks_periods,
                 gi_head,
                 max_cliques,
                 ledger,
+            )| {
+                BootstrapableGraph {
+                    active_blocks: active_blocks
+                        .into_iter()
+                        .map(|export_active_block| {
+                            (export_active_block.block_id, export_active_block)
+                        })
+                        .collect(),
+                    best_parents,
+                    latest_final_blocks_periods,
+                    gi_head: gi_head
+                        .into_iter()
+                        .map(|(id, set)| (id, set.into_iter().collect()))
+                        .collect(),
+                    max_cliques,
+                    ledger,
+                }
             },
-            cursor,
-        ))
+        )
+        .parse(buffer)
     }
 }
