@@ -613,7 +613,7 @@ impl ExecutionContext {
     pub fn execute_deferred_credits(&mut self, slot: Slot) {
         let credits = self.speculative_roll_state.get_deferred_credits(slot);
         for (addr, amount) in credits {
-            if let Err(e) = self.transfer_parallel_coins(None, Some(addr), amount) {
+            if let Err(e) = self.transfer_sequential_coins(None, Some(addr), amount) {
                 debug!(
                     "could not transfer {} deferred credits to {} at slot {}: {}",
                     amount, addr, slot, e
@@ -638,6 +638,11 @@ impl ExecutionContext {
 
         // execute the deferred credites comming from roll sells
         self.execute_deferred_credits(self.slot);
+
+        // if the current slot is last in cycle check the production stats and act accordingly
+        if self.slot.is_last_in_cycle() {
+            self.speculative_roll_state.settle_production_stats(slot);
+        }
 
         // generate the execution output
         let state_changes = StateChanges {

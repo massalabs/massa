@@ -270,7 +270,7 @@ impl ExecutionState {
         // transfer the fee from sender to block creator
         {
             let mut context = context_guard!(self);
-            context.transfer_parallel_coins(
+            context.transfer_sequential_coins(
                 Some(sender_addr),
                 Some(block_creator_addr),
                 operation.content.fee,
