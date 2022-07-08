@@ -31,7 +31,7 @@ Start the interactive client and load a wallet file:
 
     cargo run
 
-It ask you your password to loads the wallet file `wallet.dat`. If it does not exist, it will ask you to set a password and it will create the file.
+It will ask your wallet password in order to load `wallet.dat`. If the file does not exist, you will be asked to set a password and it will be created.
 
 If your client is running
 -------------------------
