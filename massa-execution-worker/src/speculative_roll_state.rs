@@ -3,7 +3,7 @@
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_models::{
-    constants::{default::POS_SELL_CYCLES, PERIODS_PER_CYCLE},
+    constants::{default::POS_SELL_CYCLES, PERIODS_PER_CYCLE, ROLL_PRICE},
     prehash::Map,
     Address, Amount, Slot,
 };
@@ -94,7 +94,6 @@ impl SpeculativeRollState {
         &mut self,
         seller_addr: &Address,
         slot: Slot,
-        roll_price: Amount,
         roll_count: u64,
     ) -> Result<(), ExecutionError> {
         // take a read lock on the final state
@@ -131,7 +130,7 @@ impl SpeculativeRollState {
                 slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
             ))
             .or_insert_with(Map::default);
-        credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
+        credit.insert(*seller_addr, ROLL_PRICE.saturating_mul_u64(roll_count));
 
         Ok(())
     }
@@ -155,19 +154,31 @@ impl SpeculativeRollState {
         }
     }
 
-    // TODO
+    /// Settle the production statistics at `slot`.
+    ///
+    /// This function should only be used at the end of a cycle.
+    ///
+    /// # Arguments:
+    /// `slot`: the final slot of the cycle to compute
     pub fn settle_production_stats(&mut self, slot: Slot) {
-        let credits = self.added_changes.deferred_credits.entry(Slot::last(
-            slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
-        ));
-        for (addr, stats) in self.active_history.read().fetch_production_stats() {
+        let credits = self
+            .added_changes
+            .deferred_credits
+            .entry(Slot::last(
+                slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
+            ))
+            .or_insert_with(Map::default);
+        for (addr, stats) in self.added_changes.production_stats.iter() {
             if !stats.satisfying() {
                 let rolls = self
                     .added_changes
                     .roll_changes
-                    .entry(addr)
+                    .entry(*addr)
                     .or_insert_with(u64::default);
-                *rolls = 0;
+                if let Some(amount) = ROLL_PRICE.checked_mul_u64(*rolls) {
+                    credits.insert(*addr, amount);
+                    *rolls = 0;
+                }
             }
         }
     }

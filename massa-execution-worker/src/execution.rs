@@ -330,8 +330,7 @@ impl ExecutionState {
         context.origin_operation_id = Some(operation_id);
 
         // try to sell the rolls
-        if let Err(err) = context.try_sell_rolls(&seller_addr, self.config.roll_price, *roll_count)
-        {
+        if let Err(err) = context.try_sell_rolls(&seller_addr, *roll_count) {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
