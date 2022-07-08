@@ -645,6 +645,53 @@ impl LedgerChanges {
         }
     }
 
+    /// Set the sequential balance of an address.
+    /// If the address doesn't exist, its ledger entry is created.
+    ///
+    /// # Arguments
+    /// * `addr`: target address
+    /// * `balance`: sequential balance to set for the provided address
+    pub fn set_sequential_balance(&mut self, addr: Address, balance: Amount) {
+        // Get the changes for the entry associated to the provided address
+        match self.0.entry(addr) {
+            // That entry is being changed
+            hash_map::Entry::Occupied(mut occ) => {
+                match occ.get_mut() {
+                    // The entry is being replaced by a new one
+                    SetUpdateOrDelete::Set(v) => {
+                        // update the sequential_balance of the replacement entry
+                        v.sequential_balance = balance;
+                    }
+
+                    // The entry is being updated
+                    SetUpdateOrDelete::Update(u) => {
+                        // Make sure the update sets the sequential balance of the entry to its new value
+                        u.sequential_balance = SetOrKeep::Set(balance);
+                    }
+
+                    // The entry is being deleted
+                    d @ SetUpdateOrDelete::Delete => {
+                        // Replace that deletion with a replacement by a new default entry
+                        // for which the sequential balance was properly set
+                        *d = SetUpdateOrDelete::Set(LedgerEntry {
+                            sequential_balance: balance,
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+
+            // This entry is not being changed
+            hash_map::Entry::Vacant(vac) => {
+                // Induce an Update to the entry that sets the balance to its new value
+                vac.insert(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    sequential_balance: SetOrKeep::Set(balance),
+                    ..Default::default()
+                }));
+            }
+        }
+    }
+
     /// Set the parallel balance of an address.
     /// If the address doesn't exist, its ledger entry is created.
     ///

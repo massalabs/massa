@@ -9,7 +9,7 @@ use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_hash::Hash;
 use massa_ledger_exports::{Applicable, LedgerChanges};
-use massa_models::{Address, Amount};
+use massa_models::{constants::THREAD_COUNT, Address, Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -135,13 +135,47 @@ impl SpeculativeLedger {
     pub fn transfer_sequential_coins(
         &mut self,
         from_addr: Option<Address>,
-        _to_addr: Option<Address>,
-        _amount: Amount,
+        to_addr: Option<Address>,
+        amount: Amount,
     ) -> Result<(), ExecutionError> {
-        // TODO: IMPLEMENT THIS
-        if let Some(addr) = from_addr {
-            let _ = self.get_sequential_balance(&addr);
+        // init empty ledger changes
+        let mut changes = LedgerChanges::default();
+
+        // check that the two addresses belong to the same thread (if any)
+        if let (Some(from), Some(to)) = (from_addr, to_addr) {
+            if from.get_thread(THREAD_COUNT) != to.get_thread(THREAD_COUNT) {
+                return Err(ExecutionError::RuntimeError("can't execute a sequential coins transfer between two addresses that do not belong to the same thread".into()));
+            }
         }
+
+        // simulate spending coins from sender address (if any)
+        if let Some(from_addr) = from_addr {
+            let new_balance = self
+                .get_sequential_balance(&from_addr)
+                .ok_or_else(|| ExecutionError::RuntimeError("source address not found".into()))?
+                .checked_sub(amount)
+                .ok_or_else(|| {
+                    ExecutionError::RuntimeError("insufficient from_addr balance".into())
+                })?;
+            changes.set_sequential_balance(from_addr, new_balance);
+        }
+
+        // simulate crediting coins to destination address (if any)
+        // note that to_addr can be the same as from_addr
+        if let Some(to_addr) = to_addr {
+            let new_balance = changes
+                .get_sequential_balance_or_else(&to_addr, || self.get_sequential_balance(&to_addr))
+                .unwrap_or_default()
+                .checked_add(amount)
+                .ok_or_else(|| {
+                    ExecutionError::RuntimeError("overflow in to_addr balance".into())
+                })?;
+            changes.set_sequential_balance(to_addr, new_balance);
+        }
+
+        // apply the simulated changes to the speculative ledger
+        self.added_changes.apply(changes);
+
         Ok(())
     }
 

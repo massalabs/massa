@@ -172,16 +172,13 @@ impl ActiveHistory {
     /// * `addr`:  address to fetch the production stats from
     #[allow(dead_code)]
     pub fn fetch_production_stats(&self, addr: &Address) -> Option<ProductionStats> {
-        self.0
-            .back()
-            .map(|output| {
-                output
-                    .state_changes
-                    .roll_state_changes
-                    .production_stats
-                    .get(addr)
-                    .cloned()
-            })
-            .flatten()
+        self.0.back().and_then(|output| {
+            output
+                .state_changes
+                .roll_state_changes
+                .production_stats
+                .get(addr)
+                .cloned()
+        })
     }
 }
