@@ -90,7 +90,7 @@ impl SelectorThread {
     /// Otherwise, we use the given `cycle_info` for the seed and the roll
     /// distribution stored in `cycle_states` at index `cycle_info.cycle - 1`.
     fn get_seed(&mut self, cycle_info: &CycleInfo) -> PosResult<Seed> {
-        if cycle_info.cycle as usize > self.cfg.lookback_cycles {
+        if cycle_info.cycle > self.cfg.lookback_cycles {
             self.get_seed_from_finals(cycle_info)
         } else {
             self.get_seed_from_initials(cycle_info)
@@ -118,7 +118,7 @@ impl SelectorThread {
                     Slot::new(0, draw_thread),
                     Selection {
                         producer: genesis_addr,
-                        endorsments: vec![genesis_addr; self.cfg.endorsement_count],
+                        endorsments: vec![genesis_addr; self.cfg.endorsement_count as usize],
                     },
                 );
             }
@@ -127,7 +127,7 @@ impl SelectorThread {
         }
         for draw_period in cycle_first_period..=cycle_last_period {
             for draw_thread in 0..self.cfg.thread_count {
-                let mut res = Vec::with_capacity(self.cfg.endorsement_count + 1);
+                let mut res = Vec::with_capacity(self.cfg.endorsement_count as usize + 1);
                 // draw block creator and endorsers with the same probabilities
                 for _ in 0..(self.cfg.endorsement_count + 1) {
                     let sample = rng.sample(&distribution);
