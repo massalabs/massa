@@ -41,11 +41,19 @@ impl SpeculativeRollState {
         active_history: Arc<RwLock<ActiveHistory>>,
         selector: Box<dyn SelectorController>,
     ) -> Self {
+        let added_changes = PoSChanges {
+            production_stats: active_history
+                .read()
+                .fetch_production_stats()
+                .or_else(|| final_state.read().pos_state.get_production_stats())
+                .unwrap_or_default(),
+            ..Default::default()
+        };
         SpeculativeRollState {
             final_state,
             active_history,
             selector,
-            added_changes: Default::default(),
+            added_changes,
         }
     }
 
@@ -175,10 +183,11 @@ impl SpeculativeRollState {
                     .roll_changes
                     .entry(*addr)
                     .or_insert_with(u64::default);
+                // checking overflow for the sake of it
                 if let Some(amount) = ROLL_PRICE.checked_mul_u64(*rolls) {
                     credits.insert(*addr, amount);
-                    *rolls = 0;
                 }
+                *rolls = 0;
             }
         }
     }

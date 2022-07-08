@@ -1,6 +1,6 @@
 use massa_models::{prehash::Map, Address, Amount, Slot};
 
-use crate::{PoSChanges, PoSFinalState};
+use crate::{PoSChanges, PoSFinalState, ProductionStats};
 
 impl PoSFinalState {
     /// Finalizes changes at a slot S (cycle C):
@@ -33,5 +33,12 @@ impl PoSFinalState {
     /// Retrives every deferred credit of the given slot
     pub fn get_deferred_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
         self.deferred_credits.get(slot).cloned().unwrap_or_default()
+    }
+
+    /// Retrives the productions statistics
+    pub fn get_production_stats(&self) -> Option<Map<Address, ProductionStats>> {
+        self.cycle_history
+            .back()
+            .map(|info| info.production_stats.clone())
     }
 }
