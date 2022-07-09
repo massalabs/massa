@@ -677,7 +677,7 @@ Where public_key is the public key used to sign the input and signature,
 the resulting signature.
 
 `node_add_staking_secret_keys`
---------------------------
+------------------------------
 
 Add a vec of new secret keys for the node to use to stake.
 
@@ -692,7 +692,7 @@ The strings must be secret keys.
 -   No return.
 
 `node_remove_staking_addresses`
---------------------------
+-------------------------------
 
 Remove a vec of addresses used to stake.
 
@@ -707,7 +707,7 @@ The strings must be addresses.
 -   No return.
 
 `node_get_staking_addresses`
------------------------
+----------------------------
 
 Return hashset of staking addresses.
 
@@ -722,7 +722,7 @@ Return hashset of staking addresses.
 The strings are addresses.
 
 `node_ban_by_ip`
--------
+----------------
 
 Ban given IP address(es).
 
@@ -735,8 +735,9 @@ Ban given IP address(es).
 The strings must be IP address(es).
 
 -   No return.
+
 `node_ban_by_id`
--------
+----------------
 
 Ban given id(s)
 
@@ -751,7 +752,7 @@ The strings must be node id(s).
 -   No return.
 
 `node_unban_by_ip`
--------
+------------------
 
 Unban given IP address(es).
 
@@ -764,8 +765,9 @@ Unban given IP address(es).
 The strings must be IP address(es).
 
 -   No return.
+
 `node_unban_by_id`
--------
+------------------
 
 Unban given id(s)
 
@@ -780,7 +782,7 @@ The strings must be node id(s)
 -   No return.
 
 `node_whitelist`
--------
+----------------
 
 Whitelist given IP address(es).
 
@@ -791,8 +793,12 @@ Whitelist given IP address(es).
     [String];
 
 The strings must be IP address(es).
+
+-   No return.
+
+
 `node_remove_from_whitelist`
--------
+----------------------------
 
 Remove from whitelist given IP address(es).
 
