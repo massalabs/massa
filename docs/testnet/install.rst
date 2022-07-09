@@ -27,7 +27,7 @@ On Ubuntu / MacOS
 -----------------
 
 - on Ubuntu, these libs must be installed: :code:`sudo apt install pkg-config curl git build-essential libssl-dev libclang-dev`
-- on MacOS, `brew install llvm`__
+- on MacOS: :code:`brew install llvm`
 - install `rustup <https://www.rust-lang.org/tools/install>`_: :code:`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 - configure path: :code:`source $HOME/.cargo/env`
 - check rust version: :code:`rustc --version`
@@ -53,7 +53,7 @@ On Windows
 
   - Click install on the bottom right to download and install those packages
 
-- Install choco: https://docs.chocolatey.org/en-us/choco/setup and run: `choco install llvm`__
+- Install `Chocolatey <https://docs.chocolatey.org/en-us/choco/setup>`_ and run: :code:`choco install llvm`
 - Install Rust, to be downloaded `here <https://www.rust-lang.org/tools/install>`__
 - Install Git for windows, to be downloaded `here <https://git-scm.com/download/win>`__
 
