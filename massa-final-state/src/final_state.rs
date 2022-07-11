@@ -81,7 +81,7 @@ impl FinalState {
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
-            .apply_changes(&changes.roll_state_changes, self.slot);
+            .apply_changes(changes.roll_state_changes.clone(), self.slot);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {
