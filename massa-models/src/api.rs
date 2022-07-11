@@ -229,8 +229,11 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,
-            "Final datastore keys:\n{:?}\n",
+            "Final datastore keys (UTF-8):\n{:?}\n",
             self.final_datastore_keys
+                .iter()
+                .map(|v| std::str::from_utf8(v).ok())
+                .collect::<Vec<Option<&str>>>()
         )?;
         writeln!(
             f,
@@ -508,8 +511,8 @@ pub struct DatastoreEntryOutput {
 
 impl std::fmt::Display for DatastoreEntryOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{:?}", self.final_value)?;
-        writeln!(f, "{:?}", self.candidate_value)?;
+        writeln!(f, "final value: {:?}", self.final_value)?;
+        writeln!(f, "candidate value: {:?}", self.candidate_value)?;
         Ok(())
     }
 }
