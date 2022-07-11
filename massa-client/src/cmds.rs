@@ -3,7 +3,9 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter, OperationInput};
+use massa_models::api::{
+    AddressInfo, CompactAddressInfo, DatastoreEntryInput, EventFilter, OperationInput,
+};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::node::NodeId;
 use massa_models::prehash::Map;
@@ -118,6 +120,13 @@ pub enum Command {
         message = "get info about a list of addresses (balances, block creation, ...)"
     )]
     get_addresses,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "Address Key"),
+        message = "get the entry of a given key for a given address"
+    )]
+    get_datastore_entry,
 
     #[strum(
         ascii_case_insensitive,
@@ -515,6 +524,22 @@ impl Command {
                 let addresses = parse_vec::<Address>(parameters)?;
                 match client.public.get_addresses(addresses).await {
                     Ok(addresses_info) => Ok(Box::new(addresses_info)),
+                    Err(e) => rpc_error!(e),
+                }
+            }
+
+            Command::get_datastore_entry => {
+                if parameters.len() != 2 {
+                    bail!("invalid number of parameters");
+                }
+                let address = parameters[0].parse::<Address>()?;
+                let key = parameters[1].as_bytes().to_vec();
+                match client
+                    .public
+                    .get_datastore_entries(vec![DatastoreEntryInput { address, key }])
+                    .await
+                {
+                    Ok(result) => Ok(Box::new(result)),
                     Err(e) => rpc_error!(e),
                 }
             }

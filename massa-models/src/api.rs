@@ -506,6 +506,14 @@ pub struct DatastoreEntryOutput {
     pub candidate_value: Option<Vec<u8>>,
 }
 
+impl std::fmt::Display for DatastoreEntryOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{:?}", self.final_value)?;
+        writeln!(f, "{:?}", self.candidate_value)?;
+        Ok(())
+    }
+}
+
 /// filter used when retrieving SC output events
 #[derive(Default, Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {
