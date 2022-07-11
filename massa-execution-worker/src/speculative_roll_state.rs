@@ -41,20 +41,12 @@ impl SpeculativeRollState {
         active_history: Arc<RwLock<ActiveHistory>>,
         selector: Box<dyn SelectorController>,
     ) -> Self {
-        let active_lock = active_history.read();
-        let final_lock = final_state.read();
-        let production_stats = active_lock
-            .fetch_production_stats()
-            .or_else(|| final_lock.pos_state.get_production_stats())
-            .unwrap_or_default();
-        let deferred_credits = active_lock
-            .fetch_all_deferred_credits_at(&slot)
-            .into_iter()
-            .chain(final_lock.pos_state.get_deferred_credits_at(&slot))
-            .collect();
         let added_changes = PoSChanges {
-            production_stats,
-            deferred_credits,
+            production_stats: active_history
+                .read()
+                .fetch_production_stats()
+                .or_else(|| final_state.read().pos_state.get_production_stats())
+                .unwrap_or_default(),
             ..Default::default()
         };
         SpeculativeRollState {
@@ -202,9 +194,19 @@ impl SpeculativeRollState {
 
     /// Get the deferred credits of `slot`.
     ///
+    /// NOTE: this probably shouldn't be done here but there is no alternative for now
+    ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
     pub fn get_deferred_credits(&mut self, slot: Slot) -> Map<Address, Amount> {
-        self.added_changes.deferred_credits()
+        let final_lock = self.final_state.read();
+        let credits = self
+            .active_history
+            .read()
+            .fetch_all_deferred_credits_at(&slot)
+            .into_iter()
+            .chain(final_lock.pos_state.get_deferred_credits_at(&slot))
+            .collect();
+        credits
     }
 }
