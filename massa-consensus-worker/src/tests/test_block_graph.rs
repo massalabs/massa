@@ -13,7 +13,7 @@ use massa_models::{
     prehash::{Map, Set},
     wrapped::WrappedContent,
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
-    DeserializeCompact, Endorsement, EndorsementSerializer, SerializeCompact, Slot, WrappedBlock,
+    Endorsement, EndorsementSerializer, SerializeCompact, Slot, WrappedBlock,
 };
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;

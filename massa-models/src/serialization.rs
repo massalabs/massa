@@ -230,18 +230,6 @@ pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
     Ok(buffer[0])
 }
 
-/// custom serialization trait
-pub trait SerializeCompact {
-    /// serialization
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError>;
-}
-
-/// custom deserialization trait
-pub trait DeserializeCompact: Sized {
-    /// deserialization
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError>;
-}
-
 /// Serializer for `IpAddr`
 #[derive(Default)]
 pub struct IpAddrSerializer;

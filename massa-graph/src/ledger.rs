@@ -1,23 +1,32 @@
-use massa_models::WrappedOperation;
+use massa_models::{AddressDeserializer, WrappedOperation};
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
+use crate::{
+    error::{GraphError, InternalError, LedgerError, LedgerResult as Result},
+    settings::LedgerConfig,
+};
+use massa_models::ledger_models::{
+    LedgerChange, LedgerChanges, LedgerData, LedgerDataDeserializer, LedgerDataSerializer,
+};
 use massa_models::prehash::Set;
-use massa_models::{
-    array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, Amount, DeserializeCompact,
-    DeserializeVarInt, SerializeCompact, SerializeVarInt,
+use massa_models::{array_from_slice, Address, Amount};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::multi::length_count;
+use nom::sequence::tuple;
+use nom::{error::context, Parser};
+use nom::{
+    error::{ContextError, ParseError},
+    IResult,
 };
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
+use std::ops::Bound::Included;
 use std::{
     convert::{TryFrom, TryInto},
     usize,
-};
-
-use crate::{
-    error::{GraphError, InternalError, LedgerError, LedgerResult as Result},
-    settings::LedgerConfig,
 };
 
 /// Here we map an address to its balance.
@@ -620,10 +629,66 @@ impl<'a> TryFrom<&'a Ledger> for ConsensusLedgerSubset {
     }
 }
 
-impl SerializeCompact for ConsensusLedgerSubset {
+/// Basic `ConsensusLedgerSubset` implementation
+#[derive(Default)]
+pub struct ConsensusLedgerSubsetSerializer {
+    pub ledger_data_serializer: LedgerDataSerializer,
+    pub u64_serializer: U64VarIntSerializer,
+}
+
+impl ConsensusLedgerSubsetSerializer {
+    /// Create a new `ConsensusLedgerSubsetSerializer`
+    pub fn new() -> Self {
+        ConsensusLedgerSubsetSerializer {
+            ledger_data_serializer: LedgerDataSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<ConsensusLedgerSubset> for ConsensusLedgerSubsetSerializer {
+    fn serialize(
+        &self,
+        value: &ConsensusLedgerSubset,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        self.u64_serializer.serialize(
+            &value.0.len().try_into().map_err(|_| {
+                SerializeError::NumberTooBig(
+                    "Too much LedgerData in ConsensusLedgerSubset".to_owned(),
+                )
+            })?,
+            buffer,
+        )?;
+        for (addr, data) in value.0.iter() {
+            buffer.extend(addr.to_bytes());
+            self.ledger_data_serializer.serialize(data, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Basic `ConsensusLedgerSubset` deserializer
+pub struct ConsensusLedgerSubsetDeserializer {
+    pub ledger_data_deserializer: LedgerDataDeserializer,
+    pub address_deserializer: AddressDeserializer,
+    pub u64_deserializer: U64VarIntDeserializer,
+}
+
+impl ConsensusLedgerSubsetDeserializer {
+    /// Create a new `ConsensusLedgerSubsetDeserializer`
+    pub fn new() -> Self {
+        ConsensusLedgerSubsetDeserializer {
+            ledger_data_deserializer: LedgerDataDeserializer::new(),
+            address_deserializer: AddressDeserializer::new(),
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Deserializer<ConsensusLedgerSubset> for ConsensusLedgerSubsetDeserializer {
     /// ## Example
     /// ```rust
-    /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
     /// # use std::str::FromStr;
     /// # use massa_models::ledger_models::LedgerData;
     /// # use massa_graph::ledger::ConsensusLedgerSubset;
@@ -639,45 +704,22 @@ impl SerializeCompact for ConsensusLedgerSubset {
     /// }
     /// assert_eq!(ledger.0.len(), res.0.len());
     /// ```
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        let entry_count: u64 = self.0.len().try_into().map_err(|err| {
-            massa_models::ModelsError::SerializeError(format!(
-                "too many entries in ConsensusLedgerSubset: {}",
-                err
-            ))
-        })?;
-        res.extend(entry_count.to_varint_bytes());
-        for (address, data) in self.0.iter() {
-            res.extend(address.to_bytes());
-            res.extend(&data.to_bytes_compact()?);
-        }
-
-        Ok(res)
-    }
-}
-
-impl DeserializeCompact for ConsensusLedgerSubset {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
-        let mut cursor = 0usize;
-
-        let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        // TODO: add entry_count checks ... see #1200
-        cursor += delta;
-
-        let mut ledger_subset = ConsensusLedgerSubset(BTreeMap::new());
-        for _ in 0..entry_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += ADDRESS_SIZE_BYTES;
-
-            let (data, delta) = LedgerData::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-
-            ledger_subset.0.insert(address, data);
-        }
-
-        Ok((ledger_subset, cursor))
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], ConsensusLedgerSubset, E> {
+        context(
+            "Failed ConsensusLedgerSubset deserialization",
+            length_count(
+                |input| self.u64_deserializer.deserialize(input),
+                tuple((
+                    |input| self.address_deserializer.deserialize(input),
+                    |input| self.ledger_data_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|data| ConsensusLedgerSubset(data.into_iter().collect()))
+        .parse(buffer)
     }
 }
 

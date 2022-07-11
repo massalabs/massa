@@ -3,17 +3,15 @@ use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
     constants::{default::MAX_BOOTSTRAP_CHILDREN, *},
-    ledger_models::{
-        LedgerChangeDeserializer, LedgerChangeSerializer, LedgerChanges,
-    },
+    ledger_models::{LedgerChangeDeserializer, LedgerChangeSerializer, LedgerChanges},
     prehash::{Map, Set},
     rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
     wrapped::{WrappedDeserializer, WrappedSerializer},
     *,
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
-    U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_storage::Storage;
 use nom::branch::alt;

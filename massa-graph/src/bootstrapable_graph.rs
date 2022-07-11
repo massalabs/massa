@@ -3,7 +3,7 @@ use massa_models::{
     clique::{Clique, CliqueDeserializer, CliqueSerializer},
     constants::{MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CLIQUES, THREAD_COUNT},
     prehash::{Map, Set},
-    BlockId, DeserializeCompact, SerializeCompact,
+    BlockId,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -20,7 +20,9 @@ use crate::{
     export_active_block::{
         ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer,
     },
-    ledger::ConsensusLedgerSubset,
+    ledger::{
+        ConsensusLedgerSubset, ConsensusLedgerSubsetDeserializer, ConsensusLedgerSubsetSerializer,
+    },
 };
 use std::ops::Bound::Included;
 
@@ -48,6 +50,7 @@ pub struct BootstrapableGraphSerializer {
     export_active_block_serializer: ExportActiveBlockSerializer,
     period_serializer: U64VarIntSerializer,
     clique_serializer: CliqueSerializer,
+    consensus_ledger_subset_serializer: ConsensusLedgerSubsetSerializer,
 }
 
 impl BootstrapableGraphSerializer {
@@ -58,6 +61,7 @@ impl BootstrapableGraphSerializer {
             export_active_block_serializer: ExportActiveBlockSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
             clique_serializer: CliqueSerializer::new(),
+            consensus_ledger_subset_serializer: ConsensusLedgerSubsetSerializer::new(),
         }
     }
 }
@@ -119,7 +123,8 @@ impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
         for clique in &value.max_cliques {
             self.clique_serializer.serialize(clique, buffer)?;
         }
-        buffer.extend(value.ledger.to_bytes_compact().unwrap());
+        self.consensus_ledger_subset_serializer
+            .serialize(&value.ledger, buffer)?;
         Ok(())
     }
 }
@@ -132,6 +137,7 @@ pub struct BootstrapableGraphDeserializer {
     set_length_deserializer: U32VarIntDeserializer,
     clique_length_deserializer: U32VarIntDeserializer,
     clique_deserializer: CliqueDeserializer,
+    consensus_ledger_data_deserializer: ConsensusLedgerSubsetDeserializer,
     hash_deserializer: HashDeserializer,
 }
 
@@ -151,6 +157,7 @@ impl BootstrapableGraphDeserializer {
                 Included(MAX_BOOTSTRAP_CLIQUES),
             ),
             clique_deserializer: CliqueDeserializer::new(),
+            consensus_ledger_data_deserializer: ConsensusLedgerSubsetDeserializer::new(),
             hash_deserializer: HashDeserializer::new(),
         }
     }
@@ -222,16 +229,7 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
                     |input| self.clique_length_deserializer.deserialize(input),
                     |input| self.clique_deserializer.deserialize(input),
                 ),
-                |input| {
-                    let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(input)
-                        .map_err(|_| {
-                            nom::Err::Error(ParseError::from_error_kind(
-                                input,
-                                nom::error::ErrorKind::Fail,
-                            ))
-                        })?;
-                    Ok((&input[delta..], ledger))
-                },
+                |input| self.consensus_ledger_data_deserializer.deserialize(input),
             )),
         )
         .map(
