@@ -1,8 +1,17 @@
 use massa_models::{constants::PERIODS_PER_CYCLE, prehash::Map, Address, Amount, Slot};
 
-use crate::{CycleInfo, PoSChanges, PoSFinalState, ProductionStats};
+use crate::{CycleInfo, PoSChanges, PoSFinalState, ProductionStats, SelectorController};
 
 impl PoSFinalState {
+    /// TODO
+    pub fn new(selector: Box<dyn SelectorController>) -> PoSFinalState {
+        PoSFinalState {
+            selector,
+            cycle_history: Default::default(),
+            deferred_credits: Default::default(),
+        }
+    }
+
     /// Finalizes changes at a slot S (cycle C):
     ///
     /// set self.last_final_slot = C
@@ -20,7 +29,7 @@ impl PoSFinalState {
     /// if slot S was the last of cycle C:
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
-    pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) {
+    pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) -> bool {
         let cycle = slot.get_cycle(PERIODS_PER_CYCLE);
         // if cycle not in history push a new one and pop front
         if !self.cycle_history.iter().any(|info| info.cycle == cycle) {
@@ -36,7 +45,18 @@ impl PoSFinalState {
         current.roll_counts.extend(changes.roll_changes);
         current.roll_counts.drain_filter(|_, &mut count| count == 0);
         current.production_stats.extend(changes.production_stats);
-        self.deferred_credits = changes.deferred_credits;
+        // following could be handled better
+        // leaving this for now
+        self.deferred_credits.extend(changes.deferred_credits);
+        self.deferred_credits
+            .drain_filter(|&credit_slot, _| credit_slot < slot);
+        // return true if cycle is over
+        if slot.last_in_cycle() {
+            current.complete = true;
+            true
+        } else {
+            false
+        }
     }
 
     /// Retrieves the amount of rolls a given address has

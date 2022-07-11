@@ -6,6 +6,7 @@
 
 #![feature(int_roundings)]
 #![feature(hash_drain_filter)]
+#![feature(btree_drain_filter)]
 #![warn(missing_docs)]
 
 mod controller_traits;

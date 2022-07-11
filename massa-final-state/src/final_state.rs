@@ -9,7 +9,7 @@ use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::Sta
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{constants::THREAD_COUNT, Address, Slot};
-use massa_pos_exports::PoSFinalState;
+use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool)`
@@ -37,6 +37,7 @@ impl FinalState {
     pub fn new(
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
+        selector: Box<dyn SelectorController>,
     ) -> Result<Self, FinalStateError> {
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
@@ -45,7 +46,7 @@ impl FinalState {
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
 
         // create the pos state
-        let pos_state = PoSFinalState::default();
+        let pos_state = PoSFinalState::new(selector);
 
         // generate the final state
         Ok(FinalState {
