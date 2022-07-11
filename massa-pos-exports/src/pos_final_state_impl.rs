@@ -3,12 +3,12 @@ use massa_models::{constants::PERIODS_PER_CYCLE, prehash::Map, Address, Amount, 
 use crate::{CycleInfo, PoSChanges, PoSFinalState, ProductionStats, SelectorController};
 
 impl PoSFinalState {
-    /// Give the selector controller to `PoSFinalState`
+    /// Used to give the selector controller to `PoSFinalState` when it has been created
     pub fn give_selector_controller(&mut self, selector: Box<dyn SelectorController>) {
         self.selector = Some(selector);
     }
 
-    /// Finalizes changes at a slot S (cycle C):
+    /// Technical specification of apply_changes:
     ///
     /// set self.last_final_slot = C
     /// if cycle C is absent from self.cycle_history:
@@ -25,28 +25,44 @@ impl PoSFinalState {
     /// if slot S was the last of cycle C:
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
+    ///
     pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) {
+        /// compute the current cycle from the given slot
         let cycle = slot.get_cycle(PERIODS_PER_CYCLE);
-        // if cycle not in history push a new one and pop front
+
+        // if cycle C is absent from self.cycle_history:
+        // push a new empty CycleInfo at the back of self.cycle_history and set its cycle = C
+        // pop_front from cycle_history until front() represents cycle C-4 or later
+        // (not C-3 because we might need older endorsement draws on the limit between 2 cycles)
         if !self.cycle_history.iter().any(|info| info.cycle == cycle) {
             self.cycle_history.push_back(CycleInfo {
                 cycle,
                 ..Default::default()
             });
-            self.cycle_history.pop_front();
+            if cycle_history.len() > 4 {
+                self.cycle_history.pop_front();
+            }
         }
-        // can't fail because of previous check
+
+        // extend seed_bits with changes.seed_bits
+        // extend roll_counts with changes.roll_changes and remove entries for which Amount = 0
+        // extend production_stats with changes.production_stats
         let current = self.cycle_history.back_mut().unwrap();
         current.rng_seed.extend(changes.seed_bits);
         current.roll_counts.extend(changes.roll_changes);
         current.roll_counts.drain_filter(|_, &mut count| count == 0);
         current.production_stats.extend(changes.production_stats);
-        // following could be handled better
-        // leaving this for now
+
+        // extent deferred_credits with changes.deferred_credits
+        // remove executed credits from the map
         self.deferred_credits.extend(changes.deferred_credits);
         self.deferred_credits
             .drain_filter(|&credit_slot, _| credit_slot < slot);
+
         // feed the cycle if it is complete
+        // if slot S was the last of cycle C:
+        // set complete=true for cycle C in the history
+        // notify the PoSDrawer for cycle C+3
         if slot.last_in_cycle() {
             current.complete = true;
             self.selector
