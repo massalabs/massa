@@ -8,6 +8,8 @@ use massa_models::{
 };
 use num::rational::Ratio;
 
+use crate::SelectorController;
+
 /// Final state of PoS
 #[derive(Default)]
 pub struct PoSFinalState {
@@ -15,6 +17,8 @@ pub struct PoSFinalState {
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
     pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
+    /// selector controller to feed the cycle when completed
+    pub selector: Option<Box<dyn SelectorController>>,
 }
 
 /// State of a cycle for all threads
