@@ -15,7 +15,9 @@ use massa_models::{
     WrappedEndorsement, WrappedHeader, THREAD_COUNT,
 };
 use massa_models::{Block, EndorsementSerializer, OperationSerializer, WrappedBlock};
-use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
+use massa_network_exports::{
+    AskForBlocksInfo, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
+};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
@@ -611,10 +613,11 @@ impl ProtocolWorker {
 
         // list blocks to re-ask and gather candidate nodes to ask from
         let mut candidate_nodes: Map<BlockId, Vec<_>> = Default::default();
-        let mut ask_block_list: HashMap<NodeId, Vec<BlockId>> = Default::default();
+        let mut ask_block_list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>> =
+            Default::default();
 
         // list blocks to re-ask and from whom
-        for (hash, _) in self.block_wishlist.iter() {
+        for (hash, required_info) in self.block_wishlist.iter() {
             let mut needs_ask = true;
 
             for (node_id, node_info) in self.active_nodes.iter_mut() {
@@ -696,10 +699,11 @@ impl ProtocolWorker {
                 };
 
                 // add candidate node
-                candidate_nodes
-                    .entry(*hash)
-                    .or_insert_with(Vec::new)
-                    .push((candidate, *node_id));
+                candidate_nodes.entry(*hash).or_insert_with(Vec::new).push((
+                    candidate,
+                    *node_id,
+                    required_info,
+                ));
             }
 
             // remove if doesn't need to be asked
@@ -730,14 +734,14 @@ impl ProtocolWorker {
 
         for (hash, criteria) in candidate_nodes.into_iter() {
             // find the best node
-            if let Some((_knowledge, best_node)) = criteria
+            if let Some((_knowledge, best_node, required_info)) = criteria
                 .into_iter()
-                .filter(|(_knowledge, node_id)| {
+                .filter(|(_knowledge, node_id, _)| {
                     // filter out nodes with too many active block requests
                     *active_block_req_count.get(node_id).unwrap_or(&0)
                         <= self.protocol_settings.max_simultaneous_ask_blocks_per_node
                 })
-                .min_by_key(|(knowledge, node_id)| {
+                .min_by_key(|(knowledge, node_id, _)| {
                     (
                         *knowledge,                                                 // block knowledge
                         *active_block_req_count.get(node_id).unwrap_or(&0), // active requests
@@ -752,10 +756,15 @@ impl ProtocolWorker {
                     *cnt += 1; // increase the number of actively asked blocks
                 }
 
+                let to_ask_info = match required_info {
+                    AskForBlock::Info(_) => AskForBlocksInfo::Info,
+                    AskForBlock::Operations(_) => AskForBlocksInfo::Operations,
+                };
+
                 ask_block_list
                     .entry(best_node)
                     .or_insert_with(Vec::new)
-                    .push(hash);
+                    .push((hash, to_ask_info));
 
                 let timeout_at = now
                     .checked_add(self.protocol_settings.ask_block_timeout.into())
@@ -766,9 +775,9 @@ impl ProtocolWorker {
 
         // send AskBlockEvents
         if !ask_block_list.is_empty() {
-            massa_trace!("protocol.protocol_worker.update_ask_block", {
-                "list": ask_block_list
-            });
+            //massa_trace!("protocol.protocol_worker.update_ask_block", {
+            //    "list": ask_block_list
+            //});
             self.network_command_sender
                 .ask_for_block_list(ask_block_list)
                 .await
@@ -1327,25 +1336,19 @@ impl ProtocolWorker {
                             }
                         }
 
-                        // Store entire operation list
-                        if let Some(info) = self.checked_headers.get_mut(&block_id) {
-                            info.operations = Some(operation_list.clone());
-                        } else {
-                            warn!("Missing block info for {}", block_id);
-                        }
+                        let missing_operations = operation_list
+                            .into_iter()
+                            .filter(|op| !self.checked_operations.contains(&op.into_prefix()))
+                            .collect();
 
-                        // Stop asking for info about this block.
-                        let mut set =
-                            Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
-                        set.insert(block_id);
-                        self.stop_asking_blocks(set)?;
+                        // Switch the state on ask block.
+                        self.block_wishlist.insert(
+                            block_id.clone(),
+                            AskForBlock::Operations(missing_operations),
+                        );
 
-                        // Ask for the operations.
-                        self.on_operations_announcements_received(
-                            operation_list.iter().map(|id| id.into_prefix()).collect(),
-                            from_node_id,
-                        )
-                        .await?;
+                        // Re-run the ask block algorithm.
+                        self.update_ask_block(block_ask_timer).await?;
                     } else {
                         let _ = self.ban_node(&from_node_id).await;
                     }
@@ -1355,9 +1358,9 @@ impl ProtocolWorker {
                 node: from_node_id,
                 list,
             } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.asked_for_blocks", { "node": from_node_id, "hashlist": list});
+                //massa_trace!("protocol.protocol_worker.on_network_event.asked_for_blocks", { "node": from_node_id, "hashlist": list});
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
-                    for hash in &list {
+                    for (hash, _) in &list {
                         node_info.insert_wanted_block(
                             *hash,
                             self.protocol_settings.max_node_wanted_blocks_size,
@@ -1367,9 +1370,8 @@ impl ProtocolWorker {
                 } else {
                     return Ok(());
                 }
-                // TODO: Get op list instead.
-                self.send_protocol_event(ProtocolEvent::GetBlocks(list))
-                    .await;
+                //self.send_protocol_event(ProtocolEvent::GetBlocks(list))
+                //    .await;
             }
             NetworkEvent::ReceivedBlockHeader {
                 source_node_id,

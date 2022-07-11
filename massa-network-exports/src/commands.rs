@@ -150,13 +150,22 @@ pub enum NodeEventType {
 #[derive(Clone, Debug)]
 pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
+/// The info required for a block being asked for.
+#[derive(Debug, Clone, Copy)]
+pub enum AskForBlocksInfo {
+    // The info about the block is required(list of operations ids).
+    Info,
+    // The actual operations re required.
+    Operations,
+}
+
 /// Commands that the worker can execute
 #[derive(Debug)]
 pub enum NetworkCommand {
     /// Ask for a block to a node.
     AskForBlocks {
         /// node to block ids
-        list: HashMap<NodeId, Vec<BlockId>>,
+        list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
     },
     /// Send that block to node.
     SendBlock {
@@ -282,7 +291,7 @@ pub enum NetworkEvent {
         /// node id
         node: NodeId,
         /// asked blocks
-        list: Vec<BlockId>,
+        list: Vec<(BlockId, AskForBlocksInfo)>,
     },
     /// That node does not have this block
     BlockNotFound {

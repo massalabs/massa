@@ -5,7 +5,8 @@
 #![feature(ip)]
 
 pub use commands::{
-    NetworkCommand, NetworkEvent, NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType,
+    AskForBlocksInfo, NetworkCommand, NetworkEvent, NetworkManagementCommand, NodeCommand,
+    NodeEvent, NodeEventType,
 };
 
 pub use common::{ConnectionClosureReason, ConnectionId};
