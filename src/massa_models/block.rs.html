@@ -928,7 +928,7 @@
 
 <span class="kw">impl</span> <span class="ident">BlockDeserializer</span> {
     <span class="doccomment">/// Creates a new `BlockDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">BlockDeserializer</span> {
             <span class="ident">header_deserializer</span>: <span class="ident">WrappedDeserializer::new</span>(<span class="ident">BlockHeaderDeserializer::new</span>()),
             <span class="ident">operation_deserializer</span>: <span class="ident">WrappedDeserializer::new</span>(<span class="ident">OperationDeserializer::new</span>()),
@@ -1160,7 +1160,7 @@
 
 <span class="kw">impl</span> <span class="ident">BlockHeaderDeserializer</span> {
     <span class="doccomment">/// Creates a new `BlockHeaderDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
         <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
@@ -1363,5 +1363,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (06754d885 2022-07-08)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (c396bb3b8 2022-07-10)" ></div>
 </body></html>

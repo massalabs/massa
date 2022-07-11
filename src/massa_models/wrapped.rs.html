@@ -468,7 +468,7 @@
 
 <span class="kw">impl</span> <span class="ident">WrappedSerializer</span> {
     <span class="doccomment">/// Creates a new `WrappedSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span>
     }
 }
@@ -509,7 +509,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * `content_deserializer` - Deserializer for the content</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">content_deserializer</span>: <span class="ident">DT</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">content_deserializer</span>: <span class="ident">DT</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">signature_deserializer</span>: <span class="ident">SignatureDeserializer::new</span>(),
             <span class="ident">public_key_deserializer</span>: <span class="ident">PublicKeyDeserializer::new</span>(),
@@ -563,5 +563,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (06754d885 2022-07-08)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (c396bb3b8 2022-07-10)" ></div>
 </body></html>

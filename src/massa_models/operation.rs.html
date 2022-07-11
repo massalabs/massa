@@ -1487,7 +1487,7 @@
 
 <span class="kw">impl</span> <span class="ident">OperationDeserializer</span> {
     <span class="doccomment">/// Creates a `OperationDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
             <span class="ident">amount_deserializer</span>: <span class="ident">AmountDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
@@ -1738,7 +1738,7 @@
 
 <span class="kw">impl</span> <span class="ident">OperationTypeDeserializer</span> {
     <span class="doccomment">/// Creates a new `OperationTypeDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u32::MAX</span>)),
             <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
@@ -2054,7 +2054,7 @@
 
 <span class="kw">impl</span> <span class="ident">OperationPrefixIdDeserializer</span> {
     <span class="doccomment">/// Creates a deserializer for [OperationPrefixId]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span>
     }
 }
@@ -2099,7 +2099,7 @@
 
 <span class="kw">impl</span> <span class="ident">OperationPrefixIdsDeserializer</span> {
     <span class="doccomment">/// Creates a new `OperationIdsDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(
                 <span class="ident">Included</span>(<span class="number">0</span>),
@@ -2144,7 +2144,7 @@
 
 <span class="kw">impl</span> <span class="ident">OperationPrefixIdsSerializer</span> {
     <span class="doccomment">/// Creates a new `OperationIdsSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
         }
@@ -2185,7 +2185,7 @@
 
 <span class="kw">impl</span> <span class="ident">OperationsSerializer</span> {
     <span class="doccomment">/// Creates a new `OperationsSerializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">u32_serializer</span>: <span class="ident">U32VarIntSerializer::new</span>(),
             <span class="ident">signed_op_serializer</span>: <span class="ident">WrappedSerializer::new</span>(),
@@ -2220,7 +2220,7 @@
 
 <span class="kw">impl</span> <span class="ident">OperationsDeserializer</span> {
     <span class="doccomment">/// Creates a new `OperationsDeserializer`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(
                 <span class="ident">Included</span>(<span class="number">0</span>),
@@ -2423,5 +2423,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (06754d885 2022-07-08)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (c396bb3b8 2022-07-10)" ></div>
 </body></html>
