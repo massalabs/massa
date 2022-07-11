@@ -1,17 +1,8 @@
 use massa_models::{constants::PERIODS_PER_CYCLE, prehash::Map, Address, Amount, Slot};
 
-use crate::{CycleInfo, PoSChanges, PoSFinalState, ProductionStats, SelectorController};
+use crate::{CycleInfo, PoSChanges, PoSFinalState, ProductionStats};
 
 impl PoSFinalState {
-    /// TODO
-    pub fn new(selector: Box<dyn SelectorController>) -> PoSFinalState {
-        PoSFinalState {
-            selector,
-            cycle_history: Default::default(),
-            deferred_credits: Default::default(),
-        }
-    }
-
     /// Finalizes changes at a slot S (cycle C):
     ///
     /// set self.last_final_slot = C
@@ -29,7 +20,7 @@ impl PoSFinalState {
     /// if slot S was the last of cycle C:
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
-    pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) -> bool {
+    pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) -> Option<CycleInfo> {
         let cycle = slot.get_cycle(PERIODS_PER_CYCLE);
         // if cycle not in history push a new one and pop front
         if !self.cycle_history.iter().any(|info| info.cycle == cycle) {
@@ -50,12 +41,13 @@ impl PoSFinalState {
         self.deferred_credits.extend(changes.deferred_credits);
         self.deferred_credits
             .drain_filter(|&credit_slot, _| credit_slot < slot);
-        // return true if cycle is over
+        // return the info if cycle is over
+        // probably a better way to do this but no alternative for now
         if slot.last_in_cycle() {
             current.complete = true;
-            true
+            Some(current.clone())
         } else {
-            false
+            None
         }
     }
 
