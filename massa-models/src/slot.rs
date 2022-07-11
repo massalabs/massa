@@ -186,7 +186,7 @@ impl Slot {
         Slot { period, thread }
     }
 
-    /// first slot of the given cycle
+    /// last slot of the given cycle
     pub fn last(cycle: u64) -> Slot {
         Slot {
             period: ((cycle + 1) * PERIODS_PER_CYCLE) - 1,

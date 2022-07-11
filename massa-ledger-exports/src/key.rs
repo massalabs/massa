@@ -16,7 +16,7 @@ macro_rules! seq_balance_key {
     };
 }
 
-/// Paralle balance key formatting macro
+/// Parallel balance key formatting macro
 #[macro_export]
 macro_rules! par_balance_key {
     ($addr:expr) => {
