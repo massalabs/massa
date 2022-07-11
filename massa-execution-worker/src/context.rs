@@ -614,7 +614,7 @@ impl ExecutionContext {
         for (addr, amount) in credits {
             if let Err(e) = self.transfer_sequential_coins(None, Some(addr), amount) {
                 debug!(
-                    "could not transfer {} deferred credits to {} at slot {}: {}",
+                    "could not credit {} deferred coins to {} at slot {}: {}",
                     amount, addr, slot, e
                 );
             }
