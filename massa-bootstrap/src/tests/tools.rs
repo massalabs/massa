@@ -19,8 +19,8 @@ use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     rolls::{RollCounts, RollUpdate, RollUpdateSerializer, RollUpdates},
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, DeserializeCompact,
-    Endorsement, Operation, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Operation,
+    SerializeCompact, Slot,
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};

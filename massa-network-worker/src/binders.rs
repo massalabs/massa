@@ -1,12 +1,15 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! `Flexbuffer` layer between raw data and our objects.
+use crate::messages::MessageDeserializer;
+
 use super::messages::Message;
 use async_speed_limit::{clock::StandardClock, Limiter, Resource};
 use massa_models::{
-    with_serialization_context, DeserializeCompact, DeserializeMinBEInt, SerializeMinBEInt,
+    with_serialization_context, DeserializeMinBEInt, ModelsError, SerializeMinBEInt,
 };
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
+use massa_serialization::{DeserializeError, Deserializer};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -157,7 +160,11 @@ impl ReadBinder {
                 }
             }
         }
-        let (res_msg, _) = Message::from_bytes_compact(&self.buf)?;
+        let (_, res_msg) = MessageDeserializer::new()
+            .deserialize::<DeserializeError>(&self.buf)
+            .map_err(|err| {
+                NetworkError::ModelsError(ModelsError::DeserializeError(err.to_string()))
+            })?;
 
         // now the message readout is over, we reset the state to start reading the next message's size field again at the next run
         self.cursor = 0;

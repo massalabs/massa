@@ -1,11 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::{
-    serialization::{
-        u8_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
-    },
-    with_serialization_context,
-};
 use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
 use massa_hash::Hash;
@@ -269,64 +263,5 @@ impl Slot {
             .checked_add(self.thread as u64)
             .ok_or(ModelsError::PeriodOverflowError)?
             .saturating_sub(s.thread as u64))
-    }
-}
-
-impl SerializeCompact for Slot {
-    /// Returns a compact binary representation of the slot
-    ///
-    /// ## Example
-    /// ```rust
-    /// # use massa_models::Slot;
-    /// # use massa_models::{DeserializeCompact, SerializeCompact};
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
-    /// # let context = massa_models::get_serialization_context();
-    /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact().unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&ser).unwrap();
-    /// assert_eq!(slot, deser);
-    /// ```
-    ///
-    /// Checks performed: none.
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::with_capacity(9);
-        res.extend(self.period.to_varint_bytes());
-        res.push(self.thread);
-        Ok(res)
-    }
-}
-
-impl DeserializeCompact for Slot {
-    /// Deserializes from a compact representation
-    ///
-    /// ## Example
-    /// ```rust
-    /// # use massa_models::Slot;
-    /// # use massa_models::{DeserializeCompact, SerializeCompact};
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
-    /// # let context = massa_models::get_serialization_context();
-    /// let slot = Slot::new(10,1);
-    /// let ser = slot.to_bytes_compact().unwrap();
-    /// let (deser, _) = Slot::from_bytes_compact(&ser).unwrap();
-    /// assert_eq!(slot, deser);
-    /// ```
-    ///
-    /// Checks performed:
-    /// - Valid period and delta.
-    /// - Valid thread.
-    /// - Valid thread number.
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let parent_count = with_serialization_context(|context| context.thread_count);
-        let mut cursor = 0usize;
-        let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-        let thread = u8_from_slice(&buffer[cursor..])?;
-        cursor += 1;
-        if thread >= parent_count {
-            return Err(ModelsError::DeserializeError(
-                "invalid thread number".into(),
-            ));
-        }
-        Ok((Slot { period, thread }, cursor))
     }
 }

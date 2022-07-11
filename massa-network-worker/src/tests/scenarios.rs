@@ -15,9 +15,7 @@ use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
 use massa_models::EndorsementSerializer;
-use massa_models::{
-    node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, SerializeCompact, Slot,
-};
+use massa_models::{node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, Slot};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,

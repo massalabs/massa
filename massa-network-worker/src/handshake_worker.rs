@@ -2,6 +2,8 @@
 
 //! Here are happening handshakes.
 
+use crate::messages::MessageSerializer;
+
 use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
@@ -10,12 +12,12 @@ use futures::future::try_join;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::node::NodeId;
-use massa_models::SerializeCompact;
 use massa_models::Version;
 use massa_network_exports::{
     throw_handshake_error as throw, ConnectionId, HandshakeErrorType, NetworkError, ReadHalf,
     WriteHalf,
 };
+use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -107,7 +109,11 @@ impl HandshakeWorker {
             random_bytes: self_random_bytes,
             version: self.version,
         };
-        let bytes_vec: Vec<u8> = send_init_msg.to_bytes_compact().unwrap();
+        let mut bytes_vec: Vec<u8> = Vec::new();
+        let message_serializer = MessageSerializer::new();
+        message_serializer
+            .serialize(&send_init_msg, &mut bytes_vec)
+            .unwrap();
         let send_init_fut = self.writer.send(&bytes_vec);
 
         // receive handshake init future
@@ -152,7 +158,10 @@ impl HandshakeWorker {
         let send_reply_msg = Message::HandshakeReply {
             signature: self_signature,
         };
-        let bytes_vec: Vec<u8> = send_reply_msg.to_bytes_compact().unwrap();
+        let mut bytes_vec: Vec<u8> = Vec::new();
+        message_serializer
+            .serialize(&send_reply_msg, &mut bytes_vec)
+            .unwrap();
         let send_reply_fut = self.writer.send(&bytes_vec);
 
         // receive handshake reply future

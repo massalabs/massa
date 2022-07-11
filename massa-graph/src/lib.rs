@@ -16,7 +16,9 @@ pub use settings::LedgerConfig;
 pub mod export_active_block;
 
 mod bootstrapable_graph;
-pub use bootstrapable_graph::BootstrapableGraph;
+pub use bootstrapable_graph::{
+    BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
+};
 
 mod block_graph;
 pub use block_graph::*;
