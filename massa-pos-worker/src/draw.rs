@@ -10,33 +10,12 @@ use std::collections::HashMap;
 
 use crate::worker::SelectorThread;
 
-struct Seed {
-    hash: Vec<u8>,
+struct DrawParameters {
+    seed: Vec<u8>,
     cumulated_func: Vec<(u64, Address)>,
 }
 
 impl SelectorThread {
-    /// Regulary prune `cycle_states` and `cache` pointer
-    pub(crate) fn prune_cache(&mut self) {
-        // truncate cache to keep only the desired number of elements
-        // we do it first to free memory space
-        {
-            let cache = &mut self.cache.write();
-            if cache.len() >= self.cfg.max_draw_cache {
-                let latest_cycle = *cache.last_key_value().unwrap().0 as usize;
-                cache.drain_filter(|cycle, _| {
-                    (*cycle as usize) < latest_cycle - self.cfg.max_draw_cache
-                });
-            }
-        }
-        if self.cycle_states.len() >= self.cfg.max_draw_cache {
-            let latest_cycle = *self.cycle_states.last_key_value().unwrap().0 as usize;
-            self.cycle_states.drain_filter(|cycle, _| {
-                (*cycle as usize) < latest_cycle - self.cfg.max_draw_cache
-            });
-        }
-    }
-
     /// Compute the RNG seed from the of a cycle from the final roll datas of that cycle.
     ///
     /// compute the RNG seed from the seed bits and return it.
@@ -45,15 +24,15 @@ impl SelectorThread {
     /// The method can return an error when:
     /// - Tried to get an unavailable cycle or thread
     /// - Tried to get seed of a not finalized cycle
-    fn get_seed_from_finals(&mut self, cycle_info: &CycleInfo) -> PosResult<Seed> {
+    fn get_params_from_finals(&mut self, cycle_info: &CycleInfo) -> PosResult<DrawParameters> {
         let cumulated_func = match self.cycle_states.get(&(cycle_info.cycle - 1)) {
             Some(cumulated_func) => cumulated_func.clone(),
             _ => return Err(CycleUnavailable(cycle_info.cycle)),
         };
         self.cycle_states
             .insert(cycle_info.cycle, cumulate_sum(&cycle_info.roll_counts));
-        Ok(Seed {
-            hash: Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
+        Ok(DrawParameters {
+            seed: Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
                 .to_bytes()
                 .to_vec(),
             cumulated_func,
@@ -61,7 +40,7 @@ impl SelectorThread {
     }
 
     /// Compute a seed from the initial rools.
-    fn get_seed_from_initials(&mut self, cycle_info: &CycleInfo) -> PosResult<Seed> {
+    fn get_params_from_initials(&mut self, cycle_info: &CycleInfo) -> PosResult<DrawParameters> {
         let init_rolls = match self.initial_rolls.get(cycle_info.cycle as usize) {
             Some(init_rolls) => init_rolls,
             _ => return Err(InitCycleUnavailable),
@@ -69,21 +48,21 @@ impl SelectorThread {
         let cumulated_func = cumulate_sum(init_rolls);
         self.cycle_states
             .insert(cycle_info.cycle, cumulated_func.clone());
-        let hash = match self.initial_seeds.get(cycle_info.cycle as usize) {
+        let seed = match self.initial_seeds.get(cycle_info.cycle as usize) {
             Some(hash) => hash.clone(),
             _ => return Err(InitCycleUnavailable),
         };
-        Ok(Seed {
-            hash,
+        Ok(DrawParameters {
+            seed,
             cumulated_func,
         })
     }
 
-    /// Get seed to compute the draw for C+2. Fill the `cycle_states` variable
+    /// Get seed and distribution to compute the draw for C+2. Fill the `cycle_states` variable
     /// with the cumulative function of roll distribution for the current cycle
     /// info.
     ///
-    /// # Seeds composition
+    /// # DrawParameterss composition
     /// For a cycle, the full seed is composed of the rng_seed of the C-2 and
     /// the roll distribution of the C-3.
     ///
@@ -93,11 +72,11 @@ impl SelectorThread {
     ///
     /// Otherwise, we use the given `cycle_info` for the seed and the roll
     /// distribution stored in `cycle_states` at index `cycle_info.cycle - 1`.
-    fn get_seed(&mut self, cycle_info: &CycleInfo) -> PosResult<Seed> {
-        if cycle_info.cycle > self.cfg.lookback_cycles {
-            self.get_seed_from_finals(cycle_info)
+    fn get_params(&mut self, cycle_info: &CycleInfo) -> PosResult<DrawParameters> {
+        if cycle_info.cycle as usize > self.cfg.lookback_cycles {
+            self.get_params_from_finals(cycle_info)
         } else {
-            self.get_seed_from_initials(cycle_info)
+            self.get_params_from_initials(cycle_info)
         }
     }
 
@@ -159,11 +138,13 @@ impl SelectorThread {
     /// Draws the endorsements and the block creator for C + 2 and store in
     /// cache.
     ///
+    /// Then prune `cycle_states` and `cache` pointer if exceed max cache.
+    ///
     /// # Parameters
     /// * cycle_info: Latest final cycle information.
     ///
     /// # Result
-    /// - The draws can throw the errors of the function [get_seed] and from the
+    /// - The draws can throw the errors of the function [get_params] and from the
     ///   creation of a [Xoshiro256PlusPlus].
     /// - An inconsistency error is thrown when the cumulated sum of roll
     ///   distribution for C-1 is empty.
@@ -174,17 +155,32 @@ impl SelectorThread {
         if !cycle_info.complete {
             return Err(CycleUnfinalised(cycle_info.cycle));
         }
-        let seed = self.get_seed(&cycle_info)?;
+        let params = self.get_params(&cycle_info)?;
         let draws = self.perform(
-            Xoshiro256PlusPlus::from_seed(seed.hash.try_into().map_err(|_| CannotComputeSeed)?),
+            Xoshiro256PlusPlus::from_seed(params.seed.try_into().map_err(|_| CannotComputeSeed)?),
             &cycle_info,
-            &seed.cumulated_func,
-            seed.cumulated_func
+            &params.cumulated_func,
+            params
+                .cumulated_func
                 .last()
                 .ok_or(EmptyContainerInconsistency)?
                 .0,
         );
-        self.cache.write().insert(cycle_info.cycle + 2, draws);
+
+        while self.cycle_states.len() > self.cfg.max_draw_cache {
+            self.cycle_states.pop_first();
+        }
+
+        let cache = &mut self.cache.write();
+        cache.insert(cycle_info.cycle + 2, draws);
+
+        // truncate cache to keep only the desired number of elements
+        // we do it first to free memory space
+        let cache = &mut self.cache.write();
+        while cache.len() > self.cfg.max_draw_cache {
+            cache.pop_first();
+        }
+
         Ok(())
     }
 }

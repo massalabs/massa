@@ -79,7 +79,6 @@ impl SelectorThread {
             if let Some(cycle_info) = data.pop_front() {
                 self.draws(cycle_info)?
             }
-            self.prune_cache();
             // Wait to be notified of new input
             // The return value is ignored because we don't care what woke up the condition variable.
             self.input_data.0.wait(&mut data);
