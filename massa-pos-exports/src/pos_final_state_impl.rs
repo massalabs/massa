@@ -27,7 +27,7 @@ impl PoSFinalState {
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     ///
     pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) {
-        /// compute the current cycle from the given slot
+        // compute the current cycle from the given slot
         let cycle = slot.get_cycle(PERIODS_PER_CYCLE);
 
         // if cycle C is absent from self.cycle_history:
@@ -39,7 +39,7 @@ impl PoSFinalState {
                 cycle,
                 ..Default::default()
             });
-            if cycle_history.len() > 4 {
+            while self.cycle_history.len() > 5 {
                 self.cycle_history.pop_front();
             }
         }
