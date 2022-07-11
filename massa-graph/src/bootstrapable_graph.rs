@@ -80,7 +80,7 @@ impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
                 .map_err(|_| SerializeError::NumberTooBig("Too much active_block".to_string()))?,
             buffer,
         )?;
-        for (block_id, export_active_block) in &value.active_blocks {
+        for export_active_block in value.active_blocks.values() {
             self.export_active_block_serializer
                 .serialize(export_active_block, buffer)?;
         }

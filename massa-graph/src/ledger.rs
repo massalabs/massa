@@ -8,9 +8,10 @@ use massa_models::ledger_models::{
     LedgerChange, LedgerChanges, LedgerData, LedgerDataDeserializer, LedgerDataSerializer,
 };
 use massa_models::prehash::Set;
-use massa_models::{array_from_slice, Address, Amount};
+use massa_models::{array_from_slice, Address, Amount, ModelsError};
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
 use nom::multi::length_count;
 use nom::sequence::tuple;
@@ -201,20 +202,22 @@ impl Ledger {
         }
 
         if let Some(init_ledger) = opt_init_data {
+            let ledger_data_serializer = LedgerDataSerializer::new();
             ledger_per_thread.transaction(|ledger| {
                 for (address, data) in init_ledger.0.iter() {
                     let thread = address.get_thread(cfg.thread_count);
-                    ledger[thread as usize].insert(
-                        address.to_bytes(),
-                        data.to_bytes_compact().map_err(|err| {
+                    let mut data_serialized = Vec::new();
+                    ledger_data_serializer
+                        .serialize(data, &mut data_serialized)
+                        .map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
                                     "error serializing ledger data: {}",
                                     err
                                 )),
                             )
-                        })?,
-                    )?;
+                        })?;
+                    ledger[thread as usize].insert(address.to_bytes(), data_serialized)?;
                 }
                 Ok(())
             })?;
@@ -228,6 +231,7 @@ impl Ledger {
 
     /// Returns the final ledger data of a list of unique addresses belonging to any thread.
     pub fn get_final_data(&self, addresses: Set<Address>) -> Result<ConsensusLedgerSubset> {
+        let ledger_data_deserializer = LedgerDataDeserializer::new();
         self.ledger_per_thread
             .transaction(|ledger_per_thread| {
                 let mut result = ConsensusLedgerSubset::default();
@@ -242,7 +246,8 @@ impl Ledger {
                         )
                     })?;
                     let data = if let Some(res) = ledger.get(address.to_bytes())? {
-                        LedgerData::from_bytes_compact(&res)
+                        ledger_data_deserializer
+                            .deserialize::<DeserializeError>(&res)
                             .map_err(|err| {
                                 sled::transaction::ConflictableTransactionError::Abort(
                                     InternalError::TransactionError(format!(
@@ -251,7 +256,7 @@ impl Ledger {
                                     )),
                                 )
                             })?
-                            .0
+                            .1
                     } else {
                         LedgerData::default()
                     };
@@ -276,13 +281,20 @@ impl Ledger {
         cfg: LedgerConfig,
     ) -> Result<Ledger> {
         let ledger = Ledger::new(cfg.clone(), None)?;
+        let ledger_data_serializer = LedgerDataSerializer::new();
         ledger.clear()?;
 
         // fill ledger per thread
         for (address, addr_data) in export.0.iter() {
             let thread = address.get_thread(cfg.thread_count);
+            let mut data_serialized = Vec::new();
+            ledger_data_serializer
+                .serialize(addr_data, &mut data_serialized)
+                .map_err(|err| {
+                    LedgerError::ModelsError(ModelsError::SerializeError(err.to_string()))
+                })?;
             if ledger.ledger_per_thread[thread as usize]
-                .insert(address.into_bytes(), addr_data.to_bytes_compact()?)?
+                .insert(address.into_bytes(), data_serialized)?
                 .is_some()
             {
                 return Err(LedgerError::LedgerInconsistency(format!(
@@ -304,9 +316,16 @@ impl Ledger {
 
     /// Returns the final balance of an address. 0 if the address does not exist.
     pub fn get_final_balance(&self, address: &Address) -> Result<Amount> {
+        let ledger_data_deserializer = LedgerDataDeserializer::new();
         let thread = address.get_thread(self.cfg.thread_count);
         if let Some(res) = self.ledger_per_thread[thread as usize].get(address.to_bytes())? {
-            Ok(LedgerData::from_bytes_compact(&res)?.0.balance)
+            Ok(ledger_data_deserializer
+                .deserialize::<DeserializeError>(&res)
+                .map_err(|err| {
+                    LedgerError::ModelsError(ModelsError::SerializeError(err.to_string()))
+                })?
+                .1
+                .balance)
         } else {
             Ok(Amount::default())
         }
@@ -328,6 +347,8 @@ impl Ledger {
         let ledger = self.ledger_per_thread.get(thread as usize).ok_or_else(|| {
             LedgerError::LedgerInconsistency(format!("missing ledger for thread {}", thread))
         })?;
+        let ledger_data_serializer = LedgerDataSerializer::new();
+        let ledger_data_deserializer = LedgerDataDeserializer::new();
 
         (ledger, &self.latest_final_periods).transaction(|(db, latest_final_periods_db)| {
             for (address, change) in changes.0.iter() {
@@ -336,15 +357,17 @@ impl Ledger {
                 }
                 let address_bytes = address.to_bytes();
                 let mut data = if let Some(old_bytes) = &db.get(address_bytes)? {
-                    let (old, _) = LedgerData::from_bytes_compact(old_bytes).map_err(|err| {
-                        sled::transaction::ConflictableTransactionError::Abort(
-                            InternalError::TransactionError(format!(
-                                "error deserializing ledger data: {}",
-                                err
-                            )),
-                        )
-                    })?;
-                    old
+                    ledger_data_deserializer
+                        .deserialize::<DeserializeError>(old_bytes)
+                        .map_err(|err| {
+                            sled::transaction::ConflictableTransactionError::Abort(
+                                InternalError::TransactionError(format!(
+                                    "error deserializing ledger data: {}",
+                                    err
+                                )),
+                            )
+                        })?
+                        .1
                 } else {
                     // creating new entry
                     LedgerData::default()
@@ -358,17 +381,18 @@ impl Ledger {
                 if data.is_nil() {
                     db.remove(address_bytes)?;
                 } else {
-                    db.insert(
-                        address_bytes,
-                        data.to_bytes_compact().map_err(|err| {
+                    let mut data_serialized = Vec::new();
+                    ledger_data_serializer
+                        .serialize(&data, &mut data_serialized)
+                        .map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
                                     "error serializing ledger data: {}",
                                     err
                                 )),
                             )
-                        })?,
-                    )?;
+                        })?;
+                    db.insert(address_bytes, data_serialized)?;
                 }
             }
             latest_final_periods_db
@@ -434,11 +458,16 @@ impl Ledger {
     /// Note: this cannot be done transactionally.
     pub fn read_whole(&self) -> Result<ConsensusLedgerSubset> {
         let mut res = ConsensusLedgerSubset::default();
+        let ledger_data_deserializer = LedgerDataDeserializer::new();
         for tree in self.ledger_per_thread.iter() {
             for element in tree.iter() {
                 let (addr, data) = element?;
                 let address = Address::from_bytes(addr.as_ref().try_into()?);
-                let (ledger_data, _) = LedgerData::from_bytes_compact(&data)?;
+                let (_, ledger_data) = ledger_data_deserializer
+                    .deserialize::<DeserializeError>(&data)
+                    .map_err(|err| {
+                        LedgerError::ModelsError(ModelsError::DeserializeError(err.to_string()))
+                    })?;
                 if let Some(val) = res.0.insert(address, ledger_data) {
                     return Err(LedgerError::LedgerInconsistency(format!(
                         "address {:?} twice in ledger",
@@ -457,11 +486,13 @@ impl Ledger {
     ) -> Result<ConsensusLedgerSubset> {
         let res = self.ledger_per_thread.transaction(|ledger_per_thread| {
             let mut data = ConsensusLedgerSubset::default();
+            let ledger_data_deserializer = LedgerDataDeserializer::new();
             for addr in query_addrs {
                 let thread = addr.get_thread(self.cfg.thread_count);
                 if let Some(data_bytes) = ledger_per_thread[thread as usize].get(addr.to_bytes())? {
-                    let (ledger_data, _) =
-                        LedgerData::from_bytes_compact(&data_bytes).map_err(|err| {
+                    let (_, ledger_data) = ledger_data_deserializer
+                        .deserialize::<DeserializeError>(&data_bytes)
+                        .map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
                                     "error deserializing ledger data: {}",
@@ -495,12 +526,17 @@ impl Ledger {
         let mut res = ConsensusLedgerSubset::default();
         let mut start: bool = start_address.is_none();
         let mut count: usize = 0;
+        let ledger_data_deserializer = LedgerDataDeserializer::new();
         for tree in self.ledger_per_thread.iter() {
             for element in tree.iter() {
                 let (addr, data) = element?;
                 let address = Address::from_bytes(addr.as_ref().try_into()?);
                 if start && count < subset_size {
-                    let (ledger_data, _) = LedgerData::from_bytes_compact(&data)?;
+                    let (_, ledger_data) = ledger_data_deserializer
+                        .deserialize::<DeserializeError>(&data)
+                        .map_err(|err| {
+                            LedgerError::ModelsError(ModelsError::DeserializeError(err.to_string()))
+                        })?;
                     if let Some(val) = res.0.insert(address, ledger_data) {
                         return Err(LedgerError::LedgerInconsistency(format!(
                             "address {:?} twice in ledger",
@@ -632,8 +668,8 @@ impl<'a> TryFrom<&'a Ledger> for ConsensusLedgerSubset {
 /// Basic `ConsensusLedgerSubset` implementation
 #[derive(Default)]
 pub struct ConsensusLedgerSubsetSerializer {
-    pub ledger_data_serializer: LedgerDataSerializer,
-    pub u64_serializer: U64VarIntSerializer,
+    ledger_data_serializer: LedgerDataSerializer,
+    u64_serializer: U64VarIntSerializer,
 }
 
 impl ConsensusLedgerSubsetSerializer {
@@ -670,9 +706,9 @@ impl Serializer<ConsensusLedgerSubset> for ConsensusLedgerSubsetSerializer {
 
 /// Basic `ConsensusLedgerSubset` deserializer
 pub struct ConsensusLedgerSubsetDeserializer {
-    pub ledger_data_deserializer: LedgerDataDeserializer,
-    pub address_deserializer: AddressDeserializer,
-    pub u64_deserializer: U64VarIntDeserializer,
+    ledger_data_deserializer: LedgerDataDeserializer,
+    address_deserializer: AddressDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
 }
 
 impl ConsensusLedgerSubsetDeserializer {
@@ -683,6 +719,12 @@ impl ConsensusLedgerSubsetDeserializer {
             address_deserializer: AddressDeserializer::new(),
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
+    }
+}
+
+impl Default for ConsensusLedgerSubsetDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

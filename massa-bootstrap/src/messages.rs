@@ -2,7 +2,9 @@
 
 use massa_async_pool::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer};
 use massa_final_state::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
-use massa_graph::BootstrapableGraph;
+use massa_graph::{
+    BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
+};
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
 use massa_models::constants::MAX_ADVERTISE_LENGTH;
 use massa_models::slot::SlotDeserializer;
@@ -88,6 +90,7 @@ pub struct BootstrapServerMessageSerializer {
     peers_serializer: BootstrapPeersSerializer,
     pos_serializer: ExportProofOfStakeSerializer,
     state_changes_serializer: StateChangesSerializer,
+    bootstrapable_graph_serializer: BootstrapableGraphSerializer,
     vec_u8_serializer: VecU8Serializer,
     slot_serializer: SlotSerializer,
 }
@@ -102,6 +105,7 @@ impl BootstrapServerMessageSerializer {
             peers_serializer: BootstrapPeersSerializer::new(),
             pos_serializer: ExportProofOfStakeSerializer::new(),
             state_changes_serializer: StateChangesSerializer::new(),
+            bootstrapable_graph_serializer: BootstrapableGraphSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
             slot_serializer: SlotSerializer::new(),
         }
@@ -133,9 +137,8 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 self.u32_serializer
                     .serialize(&u32::from(MessageServerTypeId::ConsensusState), buffer)?;
                 self.pos_serializer.serialize(pos, buffer)?;
-                buffer.extend(graph.to_bytes_compact().map_err(|_| {
-                    SerializeError::GeneralError("Fail consensus serialization".to_string())
-                })?);
+                self.bootstrapable_graph_serializer
+                    .serialize(graph, buffer)?;
             }
             BootstrapServerMessage::FinalStatePart {
                 ledger_data,
@@ -183,6 +186,7 @@ pub struct BootstrapServerMessageDeserializer {
     peers_deserializer: BootstrapPeersDeserializer,
     pos_deserializer: ExportProofOfStakeDeserializer,
     state_changes_deserializer: StateChangesDeserializer,
+    bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
     vec_u8_deserializer: VecU8Deserializer,
     slot_deserializer: SlotDeserializer,
 }
@@ -204,6 +208,7 @@ impl BootstrapServerMessageDeserializer {
             peers_deserializer: BootstrapPeersDeserializer::new(MAX_ADVERTISE_LENGTH),
             pos_deserializer: ExportProofOfStakeDeserializer::new(),
             state_changes_deserializer: StateChangesDeserializer::new(),
+            bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(),
             vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -244,16 +249,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     .map(|(rest, peers)| (rest, BootstrapServerMessage::BootstrapPeers { peers })),
                 MessageServerTypeId::ConsensusState => tuple((
                     |input| self.pos_deserializer.deserialize(input),
-                    |input| {
-                        let (graph, delta) = BootstrapableGraph::from_bytes_compact(input)
-                            .map_err(|_| {
-                                nom::Err::Error(ParseError::from_error_kind(
-                                    input,
-                                    nom::error::ErrorKind::Eof,
-                                ))
-                            })?;
-                        Ok((&input[delta..], graph))
-                    },
+                    |input| self.bootstrapable_graph_deserializer.deserialize(input),
                 ))
                 .map(|(pos, graph)| BootstrapServerMessage::ConsensusState { pos, graph })
                 .parse(input),

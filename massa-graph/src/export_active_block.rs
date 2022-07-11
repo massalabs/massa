@@ -154,7 +154,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
         buffer.push(if value.parents.is_empty() { 0 } else { 1 });
         for (hash, period) in value.parents.iter() {
             buffer.extend(hash.0.to_bytes());
-            self.period_serializer.serialize(&period, buffer)?;
+            self.period_serializer.serialize(period, buffer)?;
         }
         self.length_serializer.serialize(
             &value
@@ -173,7 +173,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
             )?;
             for (hash, period) in map.iter() {
                 buffer.extend(hash.0.to_bytes());
-                self.period_serializer.serialize(&period, buffer)?;
+                self.period_serializer.serialize(period, buffer)?;
             }
         }
         self.length_serializer.serialize(
@@ -217,7 +217,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
             buffer,
         )?;
         for (period, addr, has_created) in value.production_events.iter() {
-            self.period_serializer.serialize(&period, buffer)?;
+            self.period_serializer.serialize(period, buffer)?;
             buffer.extend(addr.to_bytes());
             buffer.push(if *has_created { 1u8 } else { 0u8 });
         }
