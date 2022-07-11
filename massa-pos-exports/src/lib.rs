@@ -2,9 +2,12 @@
 //! Definition and exports of the PoS types and errors.
 //!
 //! Define also the Selector worker that compute in background the draws for
-//! the future cycles.
+//! the future cycles
+
 #![feature(int_roundings)]
+#![feature(hash_drain_filter)]
 #![warn(missing_docs)]
+
 mod controller_traits;
 mod error;
 mod pos_final_state_impl;
