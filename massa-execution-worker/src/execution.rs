@@ -830,7 +830,6 @@ impl ExecutionState {
                 // Credit block creator
                 let block_creator =
                     Address::from_public_key(&stored_block.block.header.content.creator);
-                // The following unwrap call should never fail
                 block_remaining_credit = block_remaining_credit
                     .saturating_sub(block_credit_part.checked_mul_u64(2).unwrap_or_default());
                 if let Err(err) = context.transfer_sequential_coins(
