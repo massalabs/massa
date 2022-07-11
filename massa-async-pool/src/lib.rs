@@ -17,7 +17,7 @@
 //! ```json
 //! {
 //!     "sender": "xxxx",  // address that sent the message and spent max_gas*gas_price+coins on emission
-//!     "slot": {"period": 123455, "thread": 11},  // slto at which the message was emitted
+//!     "slot": {"period": 123455, "thread": 11},  // slot at which the message was emitted
 //!     "emission_index": 212,  // index of the message emitted in this slot
 //!     "destination": "xxxx",  // target address
 //!     "handler": "handle_message",  // name of the handler function to call in the target SC

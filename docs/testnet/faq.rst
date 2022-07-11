@@ -30,13 +30,11 @@ How to keep the node running when I close the terminal?
 
 You can run the following command in the terminal:
 
-    nohup cargo run --release &
+:code:`nohup cargo run --release &`
 
 the output will go to the `nohup.out` file. You will be able to close
-the terminal safely then. To kill the app you'll have to use
-`pkill -f massa-node`. You can also use
-[screen](https://help.ubuntu.com/community/Screen) or
-[tmux](http://manpages.ubuntu.com/manpages/cosmic/man1/tmux.1.html) for
+the terminal safely then. To kill the app you'll have to use 
+:code:`pkill -f massa-node`. You can also use `screen <https://help.ubuntu.com/community/Screen>`_ or `tmux <http://manpages.ubuntu.com/manpages/cosmic/man1/tmux.1.html>`_ for
 example.
 
 Will Massa support smart contracts?
@@ -51,7 +49,7 @@ We are currently finishing the implementation of a first version of the smart co
 engine which should be released soon.
 
 We are planning some exciting features, such as self-wakeup, a bit like
-what is introduced here: https://arxiv.org/pdf/2102.10784.pdf
+what is introduced `here <https://arxiv.org/pdf/2102.10784.pdf>`__
 
 What ports does Massa use?
 --------------------------
@@ -138,16 +136,16 @@ selected to do so. Most frequent reasons:
 Diagnostic process:
 
 - make sure the node is running on a computer that matches hardware requirements and that no other software is hogging ressources
-- type `wallet_info` and make sure that at least one address has active rolls > 0
+- type :code:`wallet_info` and make sure that at least one address has active rolls > 0
 
   - if there are no addresses listed, create a new one by calling `wallet_generate_private_key` and try the diagnostic process again
   - if none of the listed addresses has non-zero active rolls, perform a new roll buy (see tutorials) and try the diagnostic process again
 
-- type `node_get_staking_addresses` in the client:
+- type :code:`node_get_staking_addresses` in the client:
 
-  - if the list is empty or if none of the addresses listed matches addresses that have active rolls in `wallet_info`:
+  - if the list is empty or if none of the addresses listed matches addresses that have active rolls in :code:`wallet_info`:
 
-    - call `node_add_staking_secret_keys` with the secret key matching an address that has non-zero active rolls in `wallet_info`
+    - call :code:`node_add_staking_secret_keys` with the secret key matching an address that has non-zero active rolls in :code:`wallet_info`
 
 - check your address with the online explorer: if there is a mismatch between the number of active rolls displayed in the online interface and what is returned by `wallet_info`, it might be that your node is desynchronized. Try restarting it.
 
@@ -169,7 +167,7 @@ Do I need to register the keys after subsequent purchases of ROLLs, or do they g
 For now, they don't stake automatically. In the future, we will add a
 feature allowing auto compounding. That being said, some people appear
 to have done that very early in the project. Feel free to ask on the
-[Discord](https://discord.com/invite/massa) server :).
+`Discord <https://discord.com/invite/massa>`_ server :).
 
 I can buy, send, sell ROLLs and coins without fees. When should I increase the fee \>0?
 ---------------------------------------------------------------------------------------
@@ -223,7 +221,7 @@ change your score.
 I can't register with the Discord bot because the node ID is already used
 -------------------------------------------------------------------------
 
-If you changed your staking key, you need to register again with the bot using the `node_testnet_rewards_program_ownership_proof` command.
+If you changed your staking key, you need to register again with the bot using the :code:`node_testnet_rewards_program_ownership_proof` command.
 If you are using the same install, the bot will return the following error message:
 "This node ID is already used or has already been used, please use another one!".
 To solve this, you need to generate a new node ID. Stop your node and delete the `node_privkey.key` file in `massa-node/config`. You can then start your node again and you will have a new node ID.
@@ -240,10 +238,10 @@ Check the quality of your internet connection. Try increasing the
 -   edit file `massa-node/config/config.toml` (create if it is absent) with the following
     content:
 
-```toml
-[bootstrap]
-max_ping = 10000 # try 10000 for example
-```
+    .. code-block:: toml
+
+        [bootstrap]
+        max_ping = 10000 # try 10000 for example
 
 API can't start
 ---------------
@@ -256,21 +254,22 @@ API can't start
 
 *   create/edit file `massa-node/config/config.toml` to change the port used by the API:
 
-```toml
-[api]
-bind_private = "127.0.0.1:33034" # change port here from 33034 to something else
-bind_public = "0.0.0.0:33035" # change port here from 33035 to something else
-```
+    .. code-block:: toml
+
+        [api]
+        bind_private = "127.0.0.1:33034" # change port here from 33034 to something else
+        bind_public = "0.0.0.0:33035" # change port here from 33035 to something else
+
 
 -   create/edit file `massa-client/config/config.toml` and put the same
     port:
 
-```toml
-[default_node]
-ip = "127.0.0.1"
-private_port = 33034 # change port here from 33034 to the port chosen in node's bind_private
-public_port = 33035 # change port here from 33035 to the port chosen in node's bind_public
-```
+    .. code-block:: toml
+
+        [default_node]
+        ip = "127.0.0.1"
+        private_port = 33034 # change port here from 33034 to the port chosen in node's bind_private
+        public_port = 33035 # change port here from 33035 to the port chosen in node's bind_public
 
 Raspberry Pi problem "Thread 'main' panicked"
 ---------------------------------------------
@@ -289,12 +288,13 @@ Disable IPV6 support
 If your OS, virtual machine or provider does not support IPV6, try disabling IPV6 support on your Massa node.
 
 To do this, edit (or create if absent) the file `massa-node/config/config.toml` with the following contents:
-.. code-block:: toml
 
-    [network]
-        bind = "0.0.0.0:31244"
+    .. code-block:: toml
 
-    [bootstrap]
-        bind = "0.0.0.0:31245"
+        [network]
+            bind = "0.0.0.0:31244"
+
+        [bootstrap]
+            bind = "0.0.0.0:31245"
 
 then restart your node.

@@ -47,7 +47,7 @@ pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10))
 /// generates a small random number of bytes
 fn get_some_random_bytes() -> Vec<u8> {
     let mut rng = rand::thread_rng();
-    (0usize..rng.gen_range(0..10))
+    (0usize..rng.gen_range(1..10))
         .map(|_| rand::random::<u8>())
         .collect()
 }
@@ -59,7 +59,7 @@ fn get_random_ledger_entry() -> LedgerEntry {
     let bytecode: Vec<u8> = get_some_random_bytes();
     let mut datastore = BTreeMap::new();
     for _ in 0usize..rng.gen_range(0..10) {
-        let key = Hash::compute_from(&get_some_random_bytes());
+        let key = get_some_random_bytes();
         let value = get_some_random_bytes();
         datastore.insert(key, value);
     }

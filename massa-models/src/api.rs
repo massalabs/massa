@@ -10,7 +10,6 @@ use crate::WrappedOperation;
 use crate::{
     Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
-use massa_hash::Hash;
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
@@ -201,6 +200,8 @@ pub struct AddressInfo {
     pub final_balance_info: Option<Amount>,
     /// latest sequential balance
     pub candidate_balance_info: Option<Amount>,
+    /// every final datastore key
+    pub final_datastore_keys: Vec<Vec<u8>>,
     /// rolls
     pub rolls: RollsInfo,
     /// next slots this address will be selected to create a block
@@ -226,6 +227,11 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "\tFinal: {:?}", self.final_balance_info)?;
         writeln!(f, "\tCandidate: {:?}\n", self.candidate_balance_info)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
+        writeln!(
+            f,
+            "Final datastore keys:\n{:?}\n",
+            self.final_datastore_keys
+        )?;
         writeln!(
             f,
             "Block draws: {}",
@@ -488,7 +494,7 @@ pub struct DatastoreEntryInput {
     /// associated address of the entry
     pub address: Address,
     /// datastore key
-    pub key: Hash,
+    pub key: Vec<u8>,
 }
 
 /// Datastore entry query output struct
@@ -496,8 +502,8 @@ pub struct DatastoreEntryInput {
 pub struct DatastoreEntryOutput {
     /// final datastore entry value
     pub final_value: Option<Vec<u8>>,
-    /// active datastore entry value
-    pub active_value: Option<Vec<u8>>,
+    /// candidate datastore entry value
+    pub candidate_value: Option<Vec<u8>>,
 }
 
 /// filter used when retrieving SC output events

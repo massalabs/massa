@@ -33,7 +33,7 @@ How to make your node routable
 
 -   make sure the computer on which the node is running has a static
     public IP address (IPv4 or IPv6). You can retrieve the public IP
-    address of your computer by opening <https://api.ipify.org>
+    address of your computer by opening `ipify <https://api.ipify.org>`_
 -   if the computer running the node is behind a router/NAT, you will
     need to configure your router:
 
@@ -58,8 +58,7 @@ How to make your node routable
     the local one !). IPV6 is also supported.
 -   run the massa node
 -   you can then test if your ports are open by typing your public IP
-    address and port 31244 in
-    https://www.yougetsignal.com/tools/open-ports/ (then again with
+    address and port 31244 in `yougetsignal <https://www.yougetsignal.com/tools/open-ports/>`_ (then again with
     port 31245)
 -   Once your node is routable, you need to send the public IP address of your node to the Discord bot.
     You first need to register to the staking reward program (see the last step below).

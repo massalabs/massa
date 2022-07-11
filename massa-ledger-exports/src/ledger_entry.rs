@@ -4,8 +4,8 @@
 
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
-use massa_hash::{Hash, HashDeserializer};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
+use massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{Amount, VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -29,13 +29,13 @@ pub struct LedgerEntry {
     pub bytecode: Vec<u8>,
 
     /// A key-value store associating a hash to arbitrary bytes
-    pub datastore: BTreeMap<Hash, Vec<u8>>,
+    pub datastore: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 /// Serializer for `Datastore` field in `LedgerEntry`
 pub struct DatastoreSerializer {
     u64_serializer: U64VarIntSerializer,
-    value_serializer: VecU8Serializer,
+    vec_u8_serializer: VecU8Serializer,
 }
 
 impl DatastoreSerializer {
@@ -43,15 +43,15 @@ impl DatastoreSerializer {
     pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
-            value_serializer: VecU8Serializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(),
         }
     }
 }
 
-impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
+impl Serializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreSerializer {
     fn serialize(
         &self,
-        value: &BTreeMap<Hash, Vec<u8>>,
+        value: &BTreeMap<Vec<u8>, Vec<u8>>,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         let entry_count: u64 = value.len().try_into().map_err(|err| {
@@ -62,8 +62,8 @@ impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;
         for (key, value) in value.iter() {
-            buffer.extend(key.to_bytes());
-            self.value_serializer.serialize(value, buffer)?;
+            self.vec_u8_serializer.serialize(key, buffer)?;
+            self.vec_u8_serializer.serialize(value, buffer)?;
         }
         Ok(())
     }
@@ -72,8 +72,7 @@ impl Serializer<BTreeMap<Hash, Vec<u8>>> for DatastoreSerializer {
 /// Deserializer for `Datastore` field in `LedgerEntry`
 pub struct DatastoreDeserializer {
     u64_deserializer: U64VarIntDeserializer,
-    hash_deserializer: HashDeserializer,
-    value_deserializer: VecU8Deserializer,
+    vec_u8_deserializer: VecU8Deserializer,
 }
 
 impl DatastoreDeserializer {
@@ -81,17 +80,19 @@ impl DatastoreDeserializer {
     pub fn new() -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            hash_deserializer: HashDeserializer::new(),
-            value_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            vec_u8_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(MAX_DATASTORE_KEY_LENGTH as u64),
+            ),
         }
     }
 }
 
-impl Deserializer<BTreeMap<Hash, Vec<u8>>> for DatastoreDeserializer {
+impl Deserializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], BTreeMap<Hash, Vec<u8>>, E> {
+    ) -> IResult<&'a [u8], BTreeMap<Vec<u8>, Vec<u8>>, E> {
         context(
             "Failed Datastore deserialization",
             length_count(
@@ -99,8 +100,8 @@ impl Deserializer<BTreeMap<Hash, Vec<u8>>> for DatastoreDeserializer {
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    |input| self.hash_deserializer.deserialize(input),
-                    |input| self.value_deserializer.deserialize(input),
+                    |input| self.vec_u8_deserializer.deserialize(input),
+                    |input| self.vec_u8_deserializer.deserialize(input),
                 )),
             ),
         )
@@ -140,11 +141,10 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// use std::str::FromStr;
     /// use massa_models::Amount;
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
-    /// store.insert(hash, vec![1, 2, 3]);
+    /// store.insert(key, vec![1, 2, 3]);
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
@@ -197,11 +197,10 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// use std::str::FromStr;
     /// use massa_models::Amount;
     /// use massa_ledger_exports::{LedgerEntry, LedgerEntrySerializer, LedgerEntryDeserializer};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
-    /// store.insert(hash, vec![1, 2, 3]);
+    /// store.insert(key, vec![1, 2, 3]);
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
