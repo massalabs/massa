@@ -461,22 +461,8 @@ impl ProtocolWorker {
                                         Instant::now(),
                                         self.protocol_settings.max_node_known_blocks_size,
                                     );
-                                    if let Some(ref endorsement_ids) = opt_endorsement_ids {
-                                        // if endorsement IDs are available from the search, note them
-                                        // otherwise, it means that they are not relevant anyways (old final block)
-                                        node_info.insert_known_endorsements(
-                                            endorsement_ids.clone(),
-                                            self.protocol_settings.max_node_known_endorsements_size,
-                                        );
-                                    }
                                     if let Some(ref operation_ids) = opt_operation_ids {
-                                        // if operation IDs are available from the search, note them
-                                        // otherwise, it means that they are not relevant anyways (old final block)
-                                        node_info.insert_known_ops(
-                                            operation_ids.clone(),
-                                            self.protocol_settings.max_node_known_ops_size,
-                                        );
-
+                                        // Send block info.
                                         massa_trace!("protocol.protocol_worker.process_command.found_block.send_block_info", { "node": node_id, "block_id": block_id});
                                         self.network_command_sender
                                             .send_block_info(
