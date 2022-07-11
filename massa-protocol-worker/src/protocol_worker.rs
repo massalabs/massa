@@ -129,6 +129,11 @@ impl BlockInfo {
     }
 }
 
+enum AskForBlock {
+    Info(Hash),
+    Operations(OperationIds),
+}
+
 /// protocol worker
 pub struct ProtocolWorker {
     /// Protocol configuration.
@@ -152,7 +157,7 @@ pub struct ProtocolWorker {
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks, with the hash of their operations.
-    block_wishlist: Map<BlockId, Hash>,
+    block_wishlist: Map<BlockId, AskForBlock>,
     /// Map of blocks waiting for operation.
     awaiting_operations: Map<OperationId, BlockId>,
     /// List of processed endorsements
@@ -510,7 +515,7 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                 self.stop_asking_blocks(remove)?;
                 for (block, hash) in new.into_iter() {
-                    self.block_wishlist.insert(block, hash);
+                    self.block_wishlist.insert(block, AskForBlock::Info(hash));
                 }
                 self.update_ask_block(timer).await?;
                 massa_trace!(
@@ -1301,7 +1306,7 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block_info", { "node": from_node_id, "block_id": block_id});
 
                 // Check operation_list against expected operations hash from header.
-                if let Some(op_hash) = self.block_wishlist.get(&block_id) {
+                if let Some(AskForBlock::Info(op_hash)) = self.block_wishlist.get(&block_id) {
                     let mut total_hash: Vec<u8> = vec![];
                     for op_id in operation_list.iter() {
                         let op_hash = op_id.hash().into_bytes();
