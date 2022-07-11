@@ -800,37 +800,49 @@ impl ExecutionState {
                     );
                 }
             }
-            // Credit endorsers and block creator
-            // TODO: properly handle the results
+            // Compute the credits for block and endorsement creation
+            // The following unwrap_or_default calls will never happen
             let block_credit_part = block_credits
                 .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-                .unwrap();
+                .unwrap_or_default();
             let mut block_remaining_credit = block_credits
                 .checked_mul_u64(
                     1 + stored_block.block.header.content.endorsements.len() as u64
                         / (1 + ENDORSEMENT_COUNT as u64),
                 )
-                .unwrap();
+                .unwrap_or_default();
             {
                 let mut context = context_guard!(self);
+                // Credit endorsement producers
                 for Signed { content, .. } in &stored_block.block.header.content.endorsements {
                     let sender_addr = Address::from_public_key(&content.sender_public_key);
-                    context
-                        .transfer_sequential_coins(None, Some(sender_addr), block_credit_part)
-                        .unwrap();
+                    if let Err(err) = context.transfer_sequential_coins(
+                        None,
+                        Some(sender_addr),
+                        block_credit_part,
+                    ) {
+                        debug!(
+                            "failed to credit {} coins to {} for an endorsement production: {}",
+                            block_credit_part, sender_addr, err
+                        )
+                    }
                 }
+                // Credit block creator
                 let block_creator =
                     Address::from_public_key(&stored_block.block.header.content.creator);
-
+                // The following unwrap call should never fail
                 block_remaining_credit = block_remaining_credit
-                    .saturating_sub(block_credit_part.checked_mul_u64(2).unwrap());
-                context
-                    .transfer_sequential_coins(
-                        None,
-                        Some(block_creator),
-                        block_credit_part.saturating_add(block_remaining_credit),
+                    .saturating_sub(block_credit_part.checked_mul_u64(2).unwrap_or_default());
+                if let Err(err) = context.transfer_sequential_coins(
+                    None,
+                    Some(block_creator),
+                    block_credit_part.saturating_add(block_remaining_credit),
+                ) {
+                    debug!(
+                        "failed to credit {} coins to {} for the creation of a block: {}",
+                        block_credit_part, block_creator, err
                     )
-                    .unwrap();
+                }
             }
         } else {
             // Update speculative rolls state production stats
