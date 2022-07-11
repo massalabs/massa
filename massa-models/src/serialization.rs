@@ -249,7 +249,7 @@ pub struct IpAddrSerializer;
 
 impl IpAddrSerializer {
     /// Creates a `IpAddrSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -287,7 +287,7 @@ pub struct IpAddrDeserializer;
 
 impl IpAddrDeserializer {
     /// Creates a `IpAddrDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -397,7 +397,7 @@ pub struct VecU8Deserializer {
 
 impl VecU8Deserializer {
     /// Creates a new `VecU8Deserializer`
-    pub fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
+    pub const fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
         Self {
             varint_u64_deserializer: U64VarIntDeserializer::new(min_length, max_length),
         }
@@ -494,7 +494,7 @@ where
     ///
     /// # Arguments:
     /// - `length_deserializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
-    pub fn new(length_deserializer: DL) -> Self {
+    pub const fn new(length_deserializer: DL) -> Self {
         Self {
             length_deserializer,
             marker_l: std::marker::PhantomData,

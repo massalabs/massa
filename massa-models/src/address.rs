@@ -248,7 +248,7 @@ pub struct AddressDeserializer {
 
 impl AddressDeserializer {
     /// Creates a new deserializer for `Address`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             hash_deserializer: HashDeserializer::new(),
         }
