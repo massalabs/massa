@@ -145,9 +145,26 @@ impl ExecutionContext {
         }
     }
 
-    /// Resets context to an existing snapshot
+    /// Resets context to an existing snapshot.
+    /// Optionally emits an error as an event after restoring the snapshot.
     /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
-    pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot) {
+    ///
+    /// # Arguments
+    /// * `snapshot`: a saved snapshot to be restored
+    /// * `with_error`: an optional execution error to emit as an event conserved after snapshot reset.
+    pub fn reset_to_snapshot(
+        &mut self,
+        snapshot: ExecutionContextSnapshot,
+        with_error: Option<ExecutionError>,
+    ) {
+        // Create error event, if any.
+        let err_event = with_error.map(|err| {
+            self.event_create(
+                serde_json::json!({ "massa_execution_error": format!("{}", err) }).to_string(),
+            )
+        });
+
+        // Reset context to snapshot.
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
         self.speculative_async_pool
@@ -157,6 +174,12 @@ impl ExecutionContext {
         self.stack = snapshot.stack;
         self.events = snapshot.events;
         self.unsafe_rng = snapshot.unsafe_rng;
+
+        // If there was an error, emit the corresponding event now.
+        // Note that the context event counter is properly handled by event_emit (see doc).
+        if let Some(event) = err_event {
+            self.event_emit(event);
+        }
     }
 
     /// Create a new `ExecutionContext` for read-only execution
@@ -567,11 +590,12 @@ impl ExecutionContext {
         self.speculative_ledger.set_bytecode(address, bytecode)
     }
 
-    /// Emits an execution event to be stored.
+    /// Creates a new event but does not emit it.
+    /// Note that this does not increments the context event counter.
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    pub fn generate_event(&mut self, data: String) -> Result<(), ExecutionError> {
+    pub fn event_create(&self, data: String) -> SCOutputEvent {
         // Gather contextual information from the execution context
         let context = EventExecutionContext {
             slot: self.slot,
@@ -582,15 +606,20 @@ impl ExecutionContext {
             origin_operation_id: self.origin_operation_id,
         };
 
-        // Generate the event
-        let event = SCOutputEvent { context, data };
+        // Return the event
+        SCOutputEvent { context, data }
+    }
+
+    /// Emits a previously created event.
+    /// Overrides the event's index with the current event counter value, and increments the event counter.
+    pub fn event_emit(&mut self, mut event: SCOutputEvent) {
+        // Set the event index
+        event.context.index_in_slot = self.created_event_index;
 
         // Increment the event counter fot this slot
         self.created_event_index += 1;
 
         // Add the event to the context store
         self.events.push(event);
-
-        Ok(())
     }
 }
