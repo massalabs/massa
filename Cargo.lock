@@ -1986,6 +1986,7 @@ dependencies = [
  "massa_signature",
  "massa_time",
  "nom 7.1.1",
+ "num",
  "serde 1.0.136",
  "serde_json",
  "thiserror",

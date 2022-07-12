@@ -9,7 +9,7 @@ use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::Sta
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{constants::THREAD_COUNT, Address, Slot};
-use massa_pos_exports::PoSFinalState;
+use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool)`
@@ -58,6 +58,11 @@ impl FinalState {
         })
     }
 
+    /// Give the selector controller to `PoSFinalState`
+    pub fn give_selector_controller(&mut self, selector: Box<dyn SelectorController>) {
+        self.pos_state.give_selector_controller(selector);
+    }
+
     /// Applies changes to the execution state at a given slot, and settles that slot forever.
     /// Once this is called, the state is attached at the output of the provided slot.
     ///
@@ -81,7 +86,7 @@ impl FinalState {
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
-            .apply_changes(&changes.roll_state_changes, self.slot);
+            .apply_changes(changes.roll_state_changes.clone(), self.slot);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {

@@ -2,7 +2,11 @@
 
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_models::{
+    constants::{default::POS_SELL_CYCLES, PERIODS_PER_CYCLE, ROLL_PRICE},
+    prehash::Map,
+    Address, Amount, Slot,
+};
 use massa_pos_exports::{PoSChanges, SelectorController};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -37,11 +41,19 @@ impl SpeculativeRollState {
         active_history: Arc<RwLock<ActiveHistory>>,
         selector: Box<dyn SelectorController>,
     ) -> Self {
+        let added_changes = PoSChanges {
+            production_stats: active_history
+                .read()
+                .fetch_production_stats()
+                .or_else(|| final_state.read().pos_state.get_production_stats())
+                .unwrap_or_default(),
+            ..Default::default()
+        };
         SpeculativeRollState {
             final_state,
             active_history,
             selector,
-            added_changes: Default::default(),
+            added_changes,
         }
     }
 
@@ -90,7 +102,6 @@ impl SpeculativeRollState {
         &mut self,
         seller_addr: &Address,
         slot: Slot,
-        roll_price: Amount,
         roll_count: u64,
     ) -> Result<(), ExecutionError> {
         // take a read lock on the final state
@@ -120,12 +131,14 @@ impl SpeculativeRollState {
         *count = count.saturating_sub(roll_count);
 
         // add deferred reimbursement corresponding to the sold rolls value
-        self.added_changes
+        let credit = self
+            .added_changes
             .deferred_credits
-            .entry(slot)
-            .and_modify(|credit| {
-                credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
-            });
+            .entry(Slot::last(
+                slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
+            ))
+            .or_insert_with(Map::default);
+        credit.insert(*seller_addr, ROLL_PRICE.saturating_mul_u64(roll_count));
 
         Ok(())
     }
@@ -145,6 +158,36 @@ impl SpeculativeRollState {
             } else {
                 production_stats.block_failure_count =
                     production_stats.block_failure_count.saturating_add(1);
+            }
+        }
+    }
+
+    /// Settle the production statistics at `slot`.
+    ///
+    /// This function should only be used at the end of a cycle.
+    ///
+    /// # Arguments:
+    /// `slot`: the final slot of the cycle to compute
+    pub fn settle_production_stats(&mut self, slot: Slot) {
+        let credits = self
+            .added_changes
+            .deferred_credits
+            .entry(Slot::last(
+                slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
+            ))
+            .or_insert_with(Map::default);
+        for (addr, stats) in self.added_changes.production_stats.iter() {
+            if !stats.satisfying() {
+                let rolls = self
+                    .added_changes
+                    .roll_changes
+                    .entry(*addr)
+                    .or_insert_with(u64::default);
+                // checking overflow for the sake of it
+                if let Some(amount) = ROLL_PRICE.checked_mul_u64(*rolls) {
+                    credits.insert(*addr, amount);
+                }
+                *rolls = 0;
             }
         }
     }

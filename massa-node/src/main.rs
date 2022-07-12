@@ -192,6 +192,10 @@ async fn launch(
             ..SelectorConfig::default()
         },
     );
+    // give the controller to final state in order for it to feed the cycles
+    final_state
+        .write()
+        .give_selector_controller(selector_controller.clone());
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,

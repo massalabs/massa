@@ -19,8 +19,9 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_hash::Hash;
 use massa_models::api::EventFilter;
+use massa_models::constants::{BLOCK_REWARD, ENDORSEMENT_COUNT, MAX_BLOCK_SIZE, MAX_GAS_PER_BLOCK};
 use massa_models::output_event::SCOutputEvent;
-use massa_models::signed::Signable;
+use massa_models::signed::{Signable, Signed};
 use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
 use massa_models::{Amount, Slot};
 use massa_pos_exports::SelectorController;
@@ -249,15 +250,30 @@ impl ExecutionState {
         &self,
         operation: &SignedOperation,
         block_creator_addr: Address,
+        _remaining_block_gas: &mut u64,
+        block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
         // filter out only transactions operations
-        match &operation.content.op {
-            OperationType::Transaction { .. } => return Ok(()),
-            _ => (),
-        };
+        if let OperationType::Transaction { .. } = &operation.content.op {
+            return Ok(());
+        }
 
         // get the operation's sender address
         let sender_addr = Address::from_public_key(&operation.content.sender_public_key);
+
+        // TODO 1: sub from remaining gas
+        // TODO 2: compute fee from (op.max_gas * op.gas_price + op.fee)
+        let op_fees = operation.content.fee;
+
+        // try to debit the fee from the operation sender
+        context_guard!(self).transfer_sequential_coins(
+            Some(sender_addr),
+            Some(block_creator_addr),
+            operation.content.fee,
+        )?;
+
+        // increment block credits
+        *block_credits = block_credits.saturating_add(op_fees);
 
         // get operation ID
         // TODO have operation_id contained in the Operation object in the future to avoid recomputation
@@ -267,16 +283,6 @@ impl ExecutionState {
             .content
             .compute_id()
             .expect("could not compute operation ID");
-
-        // transfer the fee from sender to block creator
-        {
-            let mut context = context_guard!(self);
-            context.transfer_parallel_coins(
-                Some(sender_addr),
-                Some(block_creator_addr),
-                operation.content.fee,
-            )?;
-        }
 
         // call the execution process specific to the operation type
         match &operation.content.op {
@@ -331,8 +337,7 @@ impl ExecutionState {
         context.origin_operation_id = Some(operation_id);
 
         // try to sell the rolls
-        if let Err(err) = context.try_sell_rolls(&seller_addr, self.config.roll_price, *roll_count)
-        {
+        if let Err(err) = context.try_sell_rolls(&seller_addr, *roll_count) {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
@@ -736,7 +741,7 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(&self, slot: Slot, opt_block_id: Option<BlockId>) -> ExecutionOutput {
-        // create a new execution context for the whole active slot
+        // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             slot,
             opt_block_id,
@@ -745,12 +750,10 @@ impl ExecutionState {
             self.selector.clone(),
         );
 
-        // note that here, some pre-operations (like crediting block producers) can be performed before the lock
-
-        // get asynchronous messages to execute
+        // Get asynchronous messages to execute
         let messages = execution_context.take_async_batch(self.config.max_async_gas);
 
-        // apply the created execution context for slot execution
+        // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
 
         // Try executing asynchronous messages.
@@ -769,6 +772,15 @@ impl ExecutionState {
                 .retrieve_block(&block_id)
                 .expect("Missing block in storage.");
             let stored_block = block.read();
+            // Check total size of operations, settle slot and return if it is too big
+            if stored_block.block.operations.len() > MAX_BLOCK_SIZE as usize {
+                debug!("total size of block operations is higher than the maximum allowed");
+                return context_guard!(self).settle_slot();
+            }
+            // Set remaining block gas
+            let mut remaining_block_gas = MAX_GAS_PER_BLOCK;
+            // Set block credits
+            let mut block_credits = BLOCK_REWARD;
             // Compute creator address
             let addr = Address::from_public_key(&stored_block.block.header.content.creator);
             // Update speculative rolls state production stats
@@ -776,11 +788,59 @@ impl ExecutionState {
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
             for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
-                if let Err(err) = self.execute_operation(operation, addr) {
+                if let Err(err) = self.execute_operation(
+                    operation,
+                    addr,
+                    &mut remaining_block_gas,
+                    &mut block_credits,
+                ) {
                     debug!(
                         "failed executing operation index {} in block {}: {}",
                         op_idx, block_id, err
                     );
+                }
+            }
+            // Compute the credits for block and endorsement creation
+            // The following unwrap_or_default calls will never happen
+            let block_credit_part = block_credits
+                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
+                .unwrap_or_default();
+            let mut block_remaining_credit = block_credits
+                .checked_mul_u64(
+                    1 + stored_block.block.header.content.endorsements.len() as u64
+                        / (1 + ENDORSEMENT_COUNT as u64),
+                )
+                .unwrap_or_default();
+            {
+                let mut context = context_guard!(self);
+                // Credit endorsement producers
+                for Signed { content, .. } in &stored_block.block.header.content.endorsements {
+                    let sender_addr = Address::from_public_key(&content.sender_public_key);
+                    if let Err(err) = context.transfer_sequential_coins(
+                        None,
+                        Some(sender_addr),
+                        block_credit_part,
+                    ) {
+                        debug!(
+                            "failed to credit {} coins to {} for an endorsement production: {}",
+                            block_credit_part, sender_addr, err
+                        )
+                    }
+                }
+                // Credit block creator
+                let block_creator =
+                    Address::from_public_key(&stored_block.block.header.content.creator);
+                block_remaining_credit = block_remaining_credit
+                    .saturating_sub(block_credit_part.checked_mul_u64(2).unwrap_or_default());
+                if let Err(err) = context.transfer_sequential_coins(
+                    None,
+                    Some(block_creator),
+                    block_credit_part.saturating_add(block_remaining_credit),
+                ) {
+                    debug!(
+                        "failed to credit {} coins to {} for the creation of a block: {}",
+                        block_credit_part, block_creator, err
+                    )
                 }
             }
         } else {
@@ -792,7 +852,7 @@ impl ExecutionState {
             }
         }
 
-        // finish slot and return the execution output
+        // Finish slot and return the execution output
         context_guard!(self).settle_slot()
     }
 

@@ -131,7 +131,7 @@ impl ExecutionContext {
             ),
             speculative_roll_state: SpeculativeRollState::new(
                 final_state,
-                active_history.clone(),
+                active_history,
                 selector,
             ),
             max_gas: Default::default(),
@@ -587,11 +587,10 @@ impl ExecutionContext {
     pub fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
-        roll_price: Amount,
         roll_count: u64,
     ) -> Result<(), ExecutionError> {
         self.speculative_roll_state
-            .try_sell_rolls(seller_addr, self.slot, roll_price, roll_count)
+            .try_sell_rolls(seller_addr, self.slot, roll_count)
     }
 
     /// Update production statistics of an address.
@@ -613,9 +612,9 @@ impl ExecutionContext {
     pub fn execute_deferred_credits(&mut self, slot: Slot) {
         let credits = self.speculative_roll_state.get_deferred_credits(slot);
         for (addr, amount) in credits {
-            if let Err(e) = self.transfer_parallel_coins(None, Some(addr), amount) {
+            if let Err(e) = self.transfer_sequential_coins(None, Some(addr), amount) {
                 debug!(
-                    "could not transfer {} deferred credits to {} at slot {}: {}",
+                    "could not credit {} deferred coins to {} at slot {}: {}",
                     amount, addr, slot, e
                 );
             }
@@ -638,6 +637,12 @@ impl ExecutionContext {
 
         // execute the deferred credites comming from roll sells
         self.execute_deferred_credits(self.slot);
+
+        // if the current slot is last in cycle check the production stats and act accordingly
+        if self.slot.last_in_cycle() {
+            self.speculative_roll_state
+                .settle_production_stats(self.slot);
+        }
 
         // generate the execution output
         let state_changes = StateChanges {

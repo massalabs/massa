@@ -3,7 +3,12 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use bitvec::prelude::*;
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_models::{
+    constants::POS_MISS_RATE_DEACTIVATION_THRESHOLD, prehash::Map, Address, Amount, Slot,
+};
+use num::rational::Ratio;
+
+use crate::SelectorController;
 
 /// Final state of PoS
 #[derive(Default)]
@@ -12,10 +17,12 @@ pub struct PoSFinalState {
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
     pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
+    /// selector controller to feed the cycle when completed
+    pub selector: Option<Box<dyn SelectorController>>,
 }
 
 /// State of a cycle for all threads
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct CycleInfo {
     /// cycle number
     pub cycle: u64,
@@ -36,6 +43,14 @@ pub struct ProductionStats {
     pub block_success_count: u64,
     /// Number of blocks missed
     pub block_failure_count: u64,
+}
+
+impl ProductionStats {
+    /// Check if the production stats are above the required percentage
+    pub fn satisfying(&self) -> bool {
+        Ratio::new(self.block_success_count, self.block_failure_count)
+            >= *POS_MISS_RATE_DEACTIVATION_THRESHOLD
+    }
 }
 
 /// Recap of all PoS changes

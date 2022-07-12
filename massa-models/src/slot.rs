@@ -6,8 +6,11 @@ use super::{
     },
     with_serialization_context,
 };
-use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
+use crate::{
+    constants::SLOT_KEY_SIZE,
+    node_configuration::{PERIODS_PER_CYCLE, THREAD_COUNT},
+};
 use massa_hash::Hash;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -183,6 +186,14 @@ impl Slot {
         Slot { period, thread }
     }
 
+    /// last slot of the given cycle
+    pub fn last(cycle: u64) -> Slot {
+        Slot {
+            period: ((cycle + 1) * PERIODS_PER_CYCLE) - 1,
+            thread: THREAD_COUNT,
+        }
+    }
+
     /// returns the minimal slot
     pub const fn min() -> Slot {
         Slot {
@@ -207,6 +218,11 @@ impl Slot {
     /// cycle associated to that slot
     pub fn get_cycle(&self, periods_per_cycle: u64) -> u64 {
         self.period / periods_per_cycle
+    }
+
+    /// check if the slot is last in the cycle
+    pub fn last_in_cycle(&self) -> bool {
+        self.period % PERIODS_PER_CYCLE == 0 && self.thread == THREAD_COUNT
     }
 
     /// Returns a fixed-size sortable binary key

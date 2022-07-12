@@ -112,6 +112,8 @@ pub const PERIODS_PER_CYCLE: u64 = 128;
 pub const POS_LOOKBACK_CYCLES: u64 = 2;
 /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
 pub const POS_LOCK_CYCLES: u64 = 1;
+/// PoS sell cycles: when some rolls are sold, we only credit the coins back to their owner after waiting `pos_sell_cycles`
+pub const POS_SELL_CYCLES: u64 = 3;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
