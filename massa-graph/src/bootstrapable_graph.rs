@@ -181,55 +181,88 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
         context(
             "Failed BootstrapableGraph deserialization",
             tuple((
-                length_count(
-                    |input| self.blocks_length_deserializer.deserialize(input),
-                    |input| self.export_active_block_deserializer.deserialize(input),
+                context(
+                    "Failed active_blocks deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.blocks_length_deserializer.deserialize(input)
+                        }),
+                        context("Failed export_active_block deserialization", |input| {
+                            self.export_active_block_deserializer.deserialize(input)
+                        }),
+                    ),
                 ),
-                count(
-                    tuple((
-                        |input| {
-                            self.hash_deserializer
-                                .deserialize(input)
-                                .map(|(rest, hash)| (rest, BlockId(hash)))
-                        },
-                        |input| self.period_deserializer.deserialize(input),
-                    )),
-                    thread_count as usize,
-                ),
-                count(
-                    tuple((
-                        |input| {
-                            self.hash_deserializer
-                                .deserialize(input)
-                                .map(|(rest, hash)| (rest, BlockId(hash)))
-                        },
-                        |input| self.period_deserializer.deserialize(input),
-                    )),
-                    thread_count as usize,
-                ),
-                length_count(
-                    |input| self.blocks_length_deserializer.deserialize(input),
-                    tuple((
-                        |input| {
-                            self.hash_deserializer
-                                .deserialize(input)
-                                .map(|(rest, hash)| (rest, BlockId(hash)))
-                        },
-                        length_count(
-                            |input| self.set_length_deserializer.deserialize(input),
-                            |input| {
+                context(
+                    "Failed best_parents deserialization",
+                    count(
+                        tuple((
+                            context("Failed block_id deserialization", |input| {
                                 self.hash_deserializer
                                     .deserialize(input)
                                     .map(|(rest, hash)| (rest, BlockId(hash)))
-                            },
-                        ),
-                    )),
+                            }),
+                            context("Failed period deserialization", |input| {
+                                self.period_deserializer.deserialize(input)
+                            }),
+                        )),
+                        thread_count as usize,
+                    ),
                 ),
-                length_count(
-                    |input| self.clique_length_deserializer.deserialize(input),
-                    |input| self.clique_deserializer.deserialize(input),
+                context(
+                    "Failed latest_final_blocks_periods deserialization",
+                    count(
+                        tuple((
+                            context("Failed block_id deserialization", |input| {
+                                self.hash_deserializer
+                                    .deserialize(input)
+                                    .map(|(rest, hash)| (rest, BlockId(hash)))
+                            }),
+                            context("Failed period deserialization", |input| {
+                                self.period_deserializer.deserialize(input)
+                            }),
+                        )),
+                        thread_count as usize,
+                    ),
                 ),
-                |input| self.consensus_ledger_data_deserializer.deserialize(input),
+                context(
+                    "Failed gi_head deserialization",
+                    length_count(
+                        context("Failed key length deserialization", |input| {
+                            self.blocks_length_deserializer.deserialize(input)
+                        }),
+                        tuple((
+                            context("Failed key block_id deserialization", |input| {
+                                self.hash_deserializer
+                                    .deserialize(input)
+                                    .map(|(rest, hash)| (rest, BlockId(hash)))
+                            }),
+                            length_count(
+                                context("Failed value length deserialization", |input| {
+                                    self.set_length_deserializer.deserialize(input)
+                                }),
+                                context("Failed value block_id deserialization", |input| {
+                                    self.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                }),
+                            ),
+                        )),
+                    ),
+                ),
+                context(
+                    "Failed max_cliques deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.clique_length_deserializer.deserialize(input)
+                        }),
+                        context("Failed clique deserialization", |input| {
+                            self.clique_deserializer.deserialize(input)
+                        }),
+                    ),
+                ),
+                context("Failed ledger deserialization", |input| {
+                    self.consensus_ledger_data_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(

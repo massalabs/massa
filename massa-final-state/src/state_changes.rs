@@ -45,6 +45,7 @@ impl Default for StateChangesSerializer {
 }
 
 impl Serializer<StateChanges> for StateChangesSerializer {
+    /// ## Example
     /// ```
     /// use massa_serialization::Serializer;
     /// use massa_models::{Address, Amount, Slot};
@@ -119,6 +120,7 @@ impl Default for StateChangesDeserializer {
 }
 
 impl Deserializer<StateChanges> for StateChangesDeserializer {
+    /// ## Example
     /// ```
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use massa_models::{Address, prehash::Map, Amount, Slot};

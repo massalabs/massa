@@ -62,6 +62,25 @@ impl CliqueSerializer {
 }
 
 impl Serializer<Clique> for CliqueSerializer {
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::clique::{Clique, CliqueSerializer};
+    /// # use massa_models::BlockId;
+    /// # use massa_hash::Hash;
+    /// # use std::str::FromStr;
+    /// # use massa_serialization::Serializer;
+    /// # pub fn get_dummy_block_id(s: &str) -> BlockId {
+    /// #     BlockId(Hash::compute_from(s.as_bytes()))
+    /// # }
+    /// let clique = Clique {
+    ///         block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")].into_iter().collect(),
+    ///         fitness: 123,
+    ///         is_blockclique: true,
+    ///     };
+    /// let mut buffer = Vec::new();
+    /// let mut serializer = CliqueSerializer::new();
+    /// serializer.serialize(&clique, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &Clique, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.block_ids_length_serializer
             .serialize(&(value.block_ids.len() as u32), buffer)?;
@@ -134,18 +153,25 @@ impl Deserializer<Clique> for CliqueDeserializer {
             "Failed Clique deserialization",
             tuple((
                 length_count(
-                    |input| self.block_ids_length_deserializer.deserialize(input),
-                    |input| {
+                    context("Failed length deserialization", |input| {
+                        self.block_ids_length_deserializer.deserialize(input)
+                    }),
+                    context("Failed block_id deserialization", |input| {
                         self.block_id_deserializer
                             .deserialize(input)
                             .map(|(rest, hash)| (rest, BlockId(hash)))
-                    },
+                    }),
                 ),
-                |input| self.fitness_deserializer.deserialize(input),
-                alt((
-                    value(true, |input| tag(&[1u8])(input)),
-                    value(false, |input| tag(&[0u8])(input)),
-                )),
+                context("Failed fitness deserialization", |input| {
+                    self.fitness_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed is_blockclique deserialization",
+                    alt((
+                        value(true, |input| tag(&[1u8])(input)),
+                        value(false, |input| tag(&[0u8])(input)),
+                    )),
+                ),
             )),
         )
         .map(|(block_ids, fitness, is_blockclique)| Clique {

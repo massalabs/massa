@@ -5,7 +5,7 @@ use crate::ModelsError;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};
-use nom::IResult;
+use nom::{IResult, Parser};
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
@@ -210,6 +210,7 @@ impl Default for AmountSerializer {
 }
 
 impl Serializer<Amount> for AmountSerializer {
+    /// ## Example
     /// ```
     /// use massa_models::{Amount, AmountSerializer};
     /// use massa_serialization::Serializer;
@@ -241,6 +242,7 @@ impl AmountDeserializer {
 }
 
 impl Deserializer<Amount> for AmountDeserializer {
+    /// ## Example
     /// ```
     /// use massa_models::{Amount, AmountSerializer, AmountDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -261,9 +263,10 @@ impl Deserializer<Amount> for AmountDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Amount, E> {
         context("Failed Amount deserialization", |input| {
-            let (rest, raw) = self.u64_deserializer.deserialize(input)?;
-            Ok((rest, Amount::from_raw(raw)))
-        })(buffer)
+            self.u64_deserializer.deserialize(input)
+        })
+        .map(Amount::from_raw)
+        .parse(buffer)
     }
 }
 

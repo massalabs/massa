@@ -10,7 +10,7 @@ use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::Deserializer;
 use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
-use nom::IResult;
+use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -256,14 +256,27 @@ impl AddressDeserializer {
 }
 
 impl Deserializer<Address> for AddressDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_models::{Address, AddressDeserializer};
+    /// use massa_serialization::{Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let address = Address::from_str("A12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap();
+    /// let bytes = address.into_bytes();
+    /// let (rest, res_addr) = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
+    /// assert_eq!(address, res_addr);
+    /// assert_eq!(rest.len(), 0);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Address, E> {
         context("Failed Address deserialization", |input| {
-            let (rest, hash) = self.hash_deserializer.deserialize(input)?;
-            Ok((rest, Address(hash)))
-        })(buffer)
+            self.hash_deserializer.deserialize(input)
+        })
+        .map(Address)
+        .parse(buffer)
     }
 }
 

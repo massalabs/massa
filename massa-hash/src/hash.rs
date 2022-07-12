@@ -135,6 +135,17 @@ impl HashDeserializer {
 }
 
 impl Deserializer<Hash> for HashDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_hash::{Hash, HashDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let hash_deserializer = HashDeserializer::new();
+    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let (rest, deserialized) = hash_deserializer.deserialize::<DeserializeError>(hash.to_bytes()).unwrap();
+    /// assert_eq!(deserialized, hash);
+    /// assert_eq!(rest.len(), 0);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

@@ -52,7 +52,26 @@ impl DatastoreUpdateSerializer {
     }
 }
 
+impl Default for DatastoreUpdateSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSerializer {
+    /// ## Example
+    /// ```rust
+    /// use std::collections::BTreeMap;
+    /// use massa_ledger_exports::{DatastoreUpdateSerializer, SetOrDelete};
+    /// use massa_serialization::Serializer;
+    ///
+    /// let serializer = DatastoreUpdateSerializer::new();
+    /// let mut buffer = Vec::new();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(vec![1, 2, 3], SetOrDelete::Set(vec![4, 5, 6]));
+    /// datastore.insert(vec![3, 4, 5], SetOrDelete::Delete);
+    /// serializer.serialize(&datastore, &mut buffer).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>,
@@ -97,7 +116,30 @@ impl DatastoreUpdateDeserializer {
     }
 }
 
+impl Default for DatastoreUpdateDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use std::collections::BTreeMap;
+    /// use massa_ledger_exports::{DatastoreUpdateDeserializer, DatastoreUpdateSerializer, SetOrDelete};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let serializer = DatastoreUpdateSerializer::new();
+    /// let deserializer = DatastoreUpdateDeserializer::new();
+    /// let mut buffer = Vec::new();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(vec![1, 2, 3], SetOrDelete::Set(vec![4, 5, 6]));
+    /// datastore.insert(vec![3, 4, 5], SetOrDelete::Delete);
+    /// serializer.serialize(&datastore, &mut buffer).unwrap();
+    /// let (rest, deserialized) = deserializer.deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized, datastore);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -110,8 +152,12 @@ impl Deserializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDe
                 }),
                 |input| {
                     tuple((
-                        |input| self.key_deserializer.deserialize(input),
-                        |input| self.value_deserializer.deserialize(input),
+                        context("Failed key deserialization", |input| {
+                            self.key_deserializer.deserialize(input)
+                        }),
+                        context("Failed value deserialization", |input| {
+                            self.value_deserializer.deserialize(input)
+                        }),
                     ))(input)
                 },
             ),
@@ -146,6 +192,7 @@ impl Default for LedgerEntryUpdateSerializer {
 }
 
 impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
+    /// ## Example
     /// ```
     /// use massa_serialization::Serializer;
     /// use massa_models::{prehash::Map, Address, Amount};
@@ -213,6 +260,7 @@ impl Default for LedgerEntryUpdateDeserializer {
 }
 
 impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
+    /// ## Example
     /// ```
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_models::{prehash::Map, Address, Amount};
@@ -311,6 +359,7 @@ impl Default for LedgerChangesSerializer {
 }
 
 impl Serializer<LedgerChanges> for LedgerChangesSerializer {
+    /// ## Example
     /// ```
     /// use massa_serialization::Serializer;
     /// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer};
@@ -382,6 +431,7 @@ impl Default for LedgerChangesDeserializer {
 }
 
 impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
+    /// ## Example
     /// ```
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete, LedgerChanges, LedgerChangesSerializer, LedgerChangesDeserializer};
@@ -421,8 +471,12 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    |input| self.address_deserializer.deserialize(input),
-                    |input| self.entry_deserializer.deserialize(input),
+                    context("Failed address deserialization", |input| {
+                        self.address_deserializer.deserialize(input)
+                    }),
+                    context("Failed entry deserialization", |input| {
+                        self.entry_deserializer.deserialize(input)
+                    }),
                 )),
             ),
         )

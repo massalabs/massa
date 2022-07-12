@@ -31,6 +31,10 @@ mod server_binder;
 mod settings;
 pub use client::get_state;
 pub use establisher::types;
+pub use messages::{
+    BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
+    BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
+};
 pub use server::{start_bootstrap_server, BootstrapManager};
 pub use settings::BootstrapSettings;
 

@@ -55,13 +55,8 @@ impl<'a> ParseError<&'a [u8]> for DeserializeError<'a> {
 
 impl<'a> Display for DeserializeError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut last_input = None;
         for error in &self.errors {
             write!(f, "{} / ", error.1)?;
-            last_input = Some(error.0);
-        }
-        if let Some(last_input) = last_input {
-            writeln!(f, "Input: {:?}", last_input)?;
         }
         Ok(())
     }

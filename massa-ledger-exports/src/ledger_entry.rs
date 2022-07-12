@@ -33,6 +33,7 @@ pub struct LedgerEntry {
 }
 
 /// Serializer for `Datastore` field in `LedgerEntry`
+#[derive(Default)]
 pub struct DatastoreSerializer {
     u64_serializer: U64VarIntSerializer,
     vec_u8_serializer: VecU8Serializer,
@@ -49,6 +50,19 @@ impl DatastoreSerializer {
 }
 
 impl Serializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreSerializer {
+    /// ## Example
+    /// ```rust
+    /// use std::collections::BTreeMap;
+    /// use massa_ledger_exports::DatastoreSerializer;
+    /// use massa_serialization::Serializer;
+    ///
+    /// let serializer = DatastoreSerializer::new();
+    /// let mut buffer = Vec::new();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(vec![1, 2, 3], vec![4, 5, 6]);
+    /// datastore.insert(vec![3, 4, 5], vec![6, 7, 8]);
+    /// serializer.serialize(&datastore, &mut buffer).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &BTreeMap<Vec<u8>, Vec<u8>>,
@@ -88,7 +102,30 @@ impl DatastoreDeserializer {
     }
 }
 
+impl Default for DatastoreDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use std::collections::BTreeMap;
+    /// use massa_ledger_exports::{DatastoreDeserializer, DatastoreSerializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let serializer = DatastoreSerializer::new();
+    /// let deserializer = DatastoreDeserializer::new();
+    /// let mut buffer = Vec::new();
+    /// let mut datastore = BTreeMap::new();
+    /// datastore.insert(vec![1, 2, 3], vec![4, 5, 6]);
+    /// datastore.insert(vec![3, 4, 5], vec![6, 7, 8]);
+    /// serializer.serialize(&datastore, &mut buffer).unwrap();
+    /// let (rest, deserialized) = deserializer.deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized, datastore);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -100,8 +137,12 @@ impl Deserializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreDeserializer {
                     self.u64_deserializer.deserialize(input)
                 }),
                 tuple((
-                    |input| self.vec_u8_deserializer.deserialize(input),
-                    |input| self.vec_u8_deserializer.deserialize(input),
+                    context("Failed key deserialization", |input| {
+                        self.vec_u8_deserializer.deserialize(input)
+                    }),
+                    context("Failed value deserialization", |input| {
+                        self.vec_u8_deserializer.deserialize(input)
+                    }),
                 )),
             ),
         )
@@ -135,6 +176,7 @@ impl Default for LedgerEntrySerializer {
 }
 
 impl Serializer<LedgerEntry> for LedgerEntrySerializer {
+    /// ## Example
     /// ```
     /// use massa_serialization::Serializer;
     /// use std::collections::BTreeMap;
@@ -191,6 +233,7 @@ impl Default for LedgerEntryDeserializer {
 }
 
 impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
+    /// ## Example
     /// ```
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use std::collections::BTreeMap;

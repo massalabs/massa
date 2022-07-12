@@ -132,6 +132,7 @@ impl KeyDeserializer {
 
 // TODO: deserialize keys into a rust type
 impl Deserializer<Vec<u8>> for KeyDeserializer {
+    /// ## Example
     /// ```
     /// use massa_models::address::Address;
     /// use massa_ledger_exports::{KeyDeserializer, KeySerializer, DATASTORE_IDENT, BALANCE_IDENT};

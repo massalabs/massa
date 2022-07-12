@@ -522,11 +522,11 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                         preceded(
                             tag(&[1]),
                             count(
-                                |input| {
+                                context("Failed block_id deserialization", |input| {
                                     self.hash_deserializer
                                         .deserialize(input)
                                         .map(|(rest, hash)| (rest, BlockId(hash)))
-                                },
+                                }),
                                 thread_count as usize,
                             ),
                         ),
@@ -538,8 +538,12 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 context(
                     "Failed endorsements deserialization",
                     length_count(
-                        |input| self.u32_deserializer.deserialize(input),
-                        |input| self.endorsement_deserializer.deserialize(input),
+                        context("Failed length deserialization", |input| {
+                            self.u32_deserializer.deserialize(input)
+                        }),
+                        context("Failed endorsement deserialization", |input| {
+                            self.endorsement_deserializer.deserialize(input)
+                        }),
                     ),
                 ),
             )),

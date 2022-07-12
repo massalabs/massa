@@ -37,6 +37,7 @@ pub enum BootstrapServerMessage {
     BootstrapTime {
         /// The current time on the bootstrap server.
         server_time: MassaTime,
+        /// The version of the bootstrap server.
         version: Version,
     },
     /// Bootstrap peers
@@ -67,7 +68,10 @@ pub enum BootstrapServerMessage {
     /// Slot sent to get state changes is too old
     SlotTooOld,
     /// Bootstrap error
-    BootstrapError { error: String },
+    BootstrapError {
+        /// Error message
+        error: String,
+    },
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -83,6 +87,7 @@ enum MessageServerTypeId {
 }
 
 /// Serializer for `BootstrapServerMessage`
+#[derive(Default)]
 pub struct BootstrapServerMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     time_serializer: MassaTimeSerializer,
@@ -113,6 +118,22 @@ impl BootstrapServerMessageSerializer {
 }
 
 impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer};
+    /// use massa_serialization::Serializer;
+    /// use massa_time::MassaTime;
+    /// use massa_models::Version;
+    /// use std::str::FromStr;
+    ///
+    /// let message_serializer = BootstrapServerMessageSerializer::new();
+    /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
+    ///    server_time: MassaTime::from(0),
+    ///    version: Version::from_str("TEST.1.0").unwrap(),
+    /// };
+    /// let mut message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &BootstrapServerMessage,
@@ -218,23 +239,67 @@ impl BootstrapServerMessageDeserializer {
     }
 }
 
+impl Default for BootstrapServerMessageDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_bootstrap::{BootstrapServerMessage, BootstrapServerMessageSerializer, BootstrapServerMessageDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_time::MassaTime;
+    /// use massa_models::Version;
+    /// use std::str::FromStr;
+    ///
+    /// let message_serializer = BootstrapServerMessageSerializer::new();
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new();
+    /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
+    ///    server_time: MassaTime::from(0),
+    ///    version: Version::from_str("TEST.1.0").unwrap(),
+    /// };
+    /// let mut message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
+    /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&message_serialized).unwrap();
+    /// match message_deserialized {
+    ///     BootstrapServerMessage::BootstrapTime {
+    ///        server_time,
+    ///        version,
+    ///    } => {
+    ///     assert_eq!(server_time, MassaTime::from(0));
+    ///     assert_eq!(version, Version::from_str("TEST.1.0").unwrap());
+    ///   },
+    ///   _ => panic!("Unexpected message"),
+    /// }
+    /// assert_eq!(rest.len(), 0);
+    /// ```
     fn deserialize<'a, E: nom::error::ParseError<&'a [u8]> + nom::error::ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BootstrapServerMessage, E> {
         context("Failed BootstrapServerMessage deserialization", |buffer| {
-            let (input, id) = self.u32_deserializer.deserialize(buffer)?;
-            let id = MessageServerTypeId::try_from(id).map_err(|_| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    buffer,
-                    nom::error::ErrorKind::Eof,
-                ))
-            })?;
-            match id {
+            let (input, id) = context("Failed id deserialization", |input| {
+                self.u32_deserializer.deserialize(input)
+            })
+            .map(|id| {
+                MessageServerTypeId::try_from(id).map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        buffer,
+                        nom::error::ErrorKind::Eof,
+                    ))
+                })
+            })
+            .parse(buffer)?;
+            match id? {
                 MessageServerTypeId::BootstrapTime => tuple((
-                    |input| self.time_deserializer.deserialize(input),
-                    |input| self.version_deserializer.deserialize(input),
+                    context("Failed server_time deserialization", |input| {
+                        self.time_deserializer.deserialize(input)
+                    }),
+                    context("Failed version deserialization", |input| {
+                        self.version_deserializer.deserialize(input)
+                    }),
                 ))
                 .map(
                     |(server_time, version)| BootstrapServerMessage::BootstrapTime {
@@ -243,21 +308,34 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     },
                 )
                 .parse(input),
-                MessageServerTypeId::Peers => self
-                    .peers_deserializer
-                    .deserialize(input)
-                    .map(|(rest, peers)| (rest, BootstrapServerMessage::BootstrapPeers { peers })),
+                MessageServerTypeId::Peers => context("Failed peers deserialization", |input| {
+                    self.peers_deserializer.deserialize(input)
+                })
+                .map(|peers| BootstrapServerMessage::BootstrapPeers { peers })
+                .parse(input),
                 MessageServerTypeId::ConsensusState => tuple((
-                    |input| self.pos_deserializer.deserialize(input),
-                    |input| self.bootstrapable_graph_deserializer.deserialize(input),
+                    context("Failed pos deserialization", |input| {
+                        self.pos_deserializer.deserialize(input)
+                    }),
+                    context("Failed graph deserialization", |input| {
+                        self.bootstrapable_graph_deserializer.deserialize(input)
+                    }),
                 ))
                 .map(|(pos, graph)| BootstrapServerMessage::ConsensusState { pos, graph })
                 .parse(input),
                 MessageServerTypeId::FinalStatePart => tuple((
-                    |input| self.vec_u8_deserializer.deserialize(input),
-                    |input| self.vec_u8_deserializer.deserialize(input),
-                    |input| self.slot_deserializer.deserialize(input),
-                    |input| self.state_changes_deserializer.deserialize(input),
+                    context("Failed ledger_data deserialization", |input| {
+                        self.vec_u8_deserializer.deserialize(input)
+                    }),
+                    context("Failed async_pool_part deserialization", |input| {
+                        self.vec_u8_deserializer.deserialize(input)
+                    }),
+                    context("Failed slot deserialization", |input| {
+                        self.slot_deserializer.deserialize(input)
+                    }),
+                    context("Failed final_state_changes deserialization", |input| {
+                        self.state_changes_deserializer.deserialize(input)
+                    }),
                 ))
                 .map(
                     |(ledger_data, async_pool_part, slot, final_state_changes)| {
@@ -274,13 +352,16 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     Ok((input, BootstrapServerMessage::FinalStateFinished))
                 }
                 MessageServerTypeId::SlotTooOld => Ok((input, BootstrapServerMessage::SlotTooOld)),
-                MessageServerTypeId::BootstrapError => {
-                    length_data(|input| self.u32_deserializer.deserialize(input))
-                        .map(|error| BootstrapServerMessage::BootstrapError {
-                            error: String::from_utf8_lossy(error).into_owned(),
-                        })
-                        .parse(input)
-                }
+                MessageServerTypeId::BootstrapError => context(
+                    "Failed BootstrapError deserialization",
+                    length_data(context("Failed length deserialization", |input| {
+                        self.u32_deserializer.deserialize(input)
+                    })),
+                )
+                .map(|error| BootstrapServerMessage::BootstrapError {
+                    error: String::from_utf8_lossy(error).into_owned(),
+                })
+                .parse(input),
             }
         })
         .parse(buffer)
@@ -304,7 +385,10 @@ pub enum BootstrapClientMessage {
         last_async_message_id: Option<AsyncMessageId>,
     },
     /// Bootstrap error
-    BootstrapError { error: String },
+    BootstrapError {
+        /// Error message
+        error: String,
+    },
     /// Bootstrap succeed
     BootstrapSuccess,
 }
@@ -320,6 +404,7 @@ enum MessageClientTypeId {
 }
 
 /// Serializer for `BootstrapClientMessage`
+#[derive(Default)]
 pub struct BootstrapClientMessageSerializer {
     u32_serializer: U32VarIntSerializer,
     slot_serializer: SlotSerializer,
@@ -340,6 +425,19 @@ impl BootstrapClientMessageSerializer {
 }
 
 impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_bootstrap::{BootstrapClientMessage, BootstrapClientMessageSerializer};
+    /// use massa_serialization::Serializer;
+    /// use massa_time::MassaTime;
+    /// use massa_models::Version;
+    /// use std::str::FromStr;
+    ///
+    /// let message_serializer = BootstrapClientMessageSerializer::new();
+    /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
+    /// let mut message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &BootstrapClientMessage,
@@ -415,20 +513,51 @@ impl BootstrapClientMessageDeserializer {
     }
 }
 
+impl Default for BootstrapClientMessageDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_bootstrap::{BootstrapClientMessage, BootstrapClientMessageSerializer, BootstrapClientMessageDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_time::MassaTime;
+    /// use massa_models::Version;
+    /// use std::str::FromStr;
+    ///
+    /// let message_serializer = BootstrapClientMessageSerializer::new();
+    /// let message_deserializer = BootstrapClientMessageDeserializer::new();
+    /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
+    /// let mut message_serialized = Vec::new();
+    /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
+    /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&message_serialized).unwrap();
+    /// match message_deserialized {
+    ///     BootstrapClientMessage::AskBootstrapPeers => (),
+    ///   _ => panic!("Unexpected message"),
+    /// };
+    /// assert_eq!(rest.len(), 0);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BootstrapClientMessage, E> {
         context("Failed BootstrapClientMessage deserialization", |buffer| {
-            let (input, id) = self.u32_deserializer.deserialize(buffer)?;
-            let id = MessageClientTypeId::try_from(id).map_err(|_| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    buffer,
-                    nom::error::ErrorKind::Eof,
-                ))
-            })?;
-            match id {
+            let (input, id) = context("Failed id deserialization", |input| {
+                self.u32_deserializer.deserialize(input)
+            })
+            .map(|id| {
+                MessageClientTypeId::try_from(id).map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        buffer,
+                        nom::error::ErrorKind::Eof,
+                    ))
+                })
+            })
+            .parse(buffer)?;
+            match id? {
                 MessageClientTypeId::AskBootstrapPeers => {
                     Ok((input, BootstrapClientMessage::AskBootstrapPeers))
                 }
@@ -467,13 +596,16 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                         .parse(input)
                     }
                 }
-                MessageClientTypeId::BootstrapError => {
-                    length_data(|input| self.u32_deserializer.deserialize(input))
-                        .map(|error| BootstrapClientMessage::BootstrapError {
-                            error: String::from_utf8_lossy(error).into_owned(),
-                        })
-                        .parse(input)
-                }
+                MessageClientTypeId::BootstrapError => context(
+                    "Failed BootstrapError deserialization",
+                    length_data(context("Failed length deserialization", |input| {
+                        self.u32_deserializer.deserialize(input)
+                    })),
+                )
+                .map(|error| BootstrapClientMessage::BootstrapError {
+                    error: String::from_utf8_lossy(error).into_owned(),
+                })
+                .parse(input),
                 MessageClientTypeId::BootstrapSuccess => {
                     Ok((input, BootstrapClientMessage::BootstrapSuccess))
                 }

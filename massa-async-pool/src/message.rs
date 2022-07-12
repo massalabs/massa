@@ -46,6 +46,7 @@ impl Default for AsyncMessageIdSerializer {
 }
 
 impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
+    /// ## Example
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
@@ -112,6 +113,7 @@ impl Default for AsyncMessageIdDeserializer {
 }
 
 impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
+    /// ## Example
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -148,9 +150,15 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
         context(
             "Failed AsyncMessageId deserialization",
             tuple((
-                |input| self.amount_deserializer.deserialize(input),
-                |input| self.slot_deserializer.deserialize(input),
-                |input| self.u64_deserializer.deserialize(input),
+                context("Failed gas_price deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed emission_slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed emission_index deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(|(amount, slot, index)| (std::cmp::Reverse(amount), slot, index))
@@ -237,6 +245,7 @@ impl Default for AsyncMessageSerializer {
 }
 
 impl Serializer<AsyncMessage> for AsyncMessageSerializer {
+    /// ## Example
     /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer};
     /// use massa_models::{Address, Amount, Slot};
@@ -324,6 +333,7 @@ impl Default for AsyncMessageDeserializer {
 }
 
 impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
+    /// ## Example
     /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer};
     /// use massa_models::{Address, Amount, Slot};

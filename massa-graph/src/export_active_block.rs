@@ -301,71 +301,123 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
         context(
             "Failed ExportActiveBlock deserialization",
             tuple((
-                alt((value(true, tag(&[1])), value(false, tag(&[0])))),
-                |input| self.wrapped_block_deserializer.deserialize(input),
-                alt((
-                    value(Vec::new(), tag(&[0])),
-                    preceded(
-                        tag(&[1]),
-                        count(
+                context(
+                    "Failed is_final deserialization",
+                    alt((value(true, tag(&[1])), value(false, tag(&[0])))),
+                ),
+                context("Failed block deserialization", |input| {
+                    self.wrapped_block_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed parents deserialization",
+                    alt((
+                        value(Vec::new(), tag(&[0])),
+                        preceded(
+                            tag(&[1]),
+                            count(
+                                tuple((
+                                    context("Failed block_id deserialization", |input| {
+                                        self.hash_deserializer
+                                            .deserialize(input)
+                                            .map(|(rest, hash)| (rest, BlockId(hash)))
+                                    }),
+                                    context("Failed period deserialization", |input| {
+                                        self.period_deserializer.deserialize(input)
+                                    }),
+                                )),
+                                thread_count as usize,
+                            ),
+                        ),
+                    )),
+                ),
+                context(
+                    "Failed children deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.children_length_deserializer.deserialize(input)
+                        }),
+                        length_count(
+                            context("Failed length deserialization", |input| {
+                                self.map_length_deserializer.deserialize(input)
+                            }),
                             tuple((
-                                |input| {
+                                context("Failed block_id deserialization", |input| {
                                     self.hash_deserializer
                                         .deserialize(input)
                                         .map(|(rest, hash)| (rest, BlockId(hash)))
-                                },
-                                |input| self.period_deserializer.deserialize(input),
+                                }),
+                                context("Failed period deserialization", |input| {
+                                    self.period_deserializer.deserialize(input)
+                                }),
                             )),
-                            thread_count as usize,
                         ),
                     ),
-                )),
-                length_count(
-                    |input| self.children_length_deserializer.deserialize(input),
+                ),
+                context(
+                    "Failed dependencies deserialization",
                     length_count(
-                        |input| self.map_length_deserializer.deserialize(input),
+                        context("Failed length deserialization", |input| {
+                            self.dependencies_length_deserializer.deserialize(input)
+                        }),
+                        context("Failed block_id deserialization", |input| {
+                            self.hash_deserializer
+                                .deserialize(input)
+                                .map(|(rest, hash)| (rest, BlockId(hash)))
+                        }),
+                    ),
+                ),
+                context(
+                    "Failed block_ledger_changes deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.block_ledger_changes_length_deserializer
+                                .deserialize(input)
+                        }),
                         tuple((
-                            |input| {
-                                self.hash_deserializer
-                                    .deserialize(input)
-                                    .map(|(rest, hash)| (rest, BlockId(hash)))
-                            },
-                            |input| self.period_deserializer.deserialize(input),
+                            context("Failed address deserialization", |input| {
+                                self.address_deserializer.deserialize(input)
+                            }),
+                            context("Failed ledger_change deserialization", |input| {
+                                self.ledger_change_deserializer.deserialize(input)
+                            }),
                         )),
                     ),
                 ),
-                length_count(
-                    |input| self.dependencies_length_deserializer.deserialize(input),
-                    |input| {
-                        self.hash_deserializer
-                            .deserialize(input)
-                            .map(|(rest, hash)| (rest, BlockId(hash)))
-                    },
+                context(
+                    "Failed roll_updates deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.roll_updates_length_deserializer.deserialize(input)
+                        }),
+                        tuple((
+                            context("Failed address deserialization", |input| {
+                                self.address_deserializer.deserialize(input)
+                            }),
+                            context("Failed roll_update deserialization", |input| {
+                                self.roll_update_deserializer.deserialize(input)
+                            }),
+                        )),
+                    ),
                 ),
-                length_count(
-                    |input| {
-                        self.block_ledger_changes_length_deserializer
-                            .deserialize(input)
-                    },
-                    tuple((
-                        |input| self.address_deserializer.deserialize(input),
-                        |input| self.ledger_change_deserializer.deserialize(input),
-                    )),
-                ),
-                length_count(
-                    |input| self.roll_updates_length_deserializer.deserialize(input),
-                    tuple((
-                        |input| self.address_deserializer.deserialize(input),
-                        |input| self.roll_update_deserializer.deserialize(input),
-                    )),
-                ),
-                length_count(
-                    |input| self.production_events_deserializer.deserialize(input),
-                    tuple((
-                        |input| self.period_deserializer.deserialize(input),
-                        |input| self.address_deserializer.deserialize(input),
-                        alt((value(true, tag(&[1])), value(false, tag(&[0])))),
-                    )),
+                context(
+                    "Failed production_events deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.production_events_deserializer.deserialize(input)
+                        }),
+                        tuple((
+                            context("Failed period deserialization", |input| {
+                                self.period_deserializer.deserialize(input)
+                            }),
+                            context("Failed address deserialization", |input| {
+                                self.address_deserializer.deserialize(input)
+                            }),
+                            context(
+                                "Failed did_create deserialization",
+                                alt((value(true, tag(&[1])), value(false, tag(&[0])))),
+                            ),
+                        )),
+                    ),
                 ),
             )),
         )
