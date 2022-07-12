@@ -1309,21 +1309,14 @@ impl ConsensusWorker {
         self.pos.note_final_blocks(new_final_blocks)?;
 
         // notify protocol of block wishlist
-        let new_wishlist_map = self.block_db.get_block_wishlist()?;
-        let new_wishlist: Set<BlockId> = new_wishlist_map.keys().copied().collect();
+        let new_wishlist = self.block_db.get_block_wishlist()?;
         let new_blocks = &new_wishlist - &self.wishlist;
         let remove_blocks = &self.wishlist - &new_wishlist;
         if !new_blocks.is_empty() || !remove_blocks.is_empty() {
             massa_trace!("consensus.consensus_worker.block_db_changed.send_wishlist_delta", { "new": new_wishlist, "remove": remove_blocks });
             self.channels
                 .protocol_command_sender
-                .send_wishlist_delta(
-                    new_wishlist_map
-                        .into_iter()
-                        .filter(|(block, _)| new_blocks.contains(block))
-                        .collect(),
-                    remove_blocks,
-                )
+                .send_wishlist_delta(new_blocks, remove_blocks)
                 .await?;
             self.wishlist = new_wishlist;
         }

@@ -153,7 +153,8 @@ pub struct ProtocolWorker {
     controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
-    /// List of wanted blocks, with the hash of their operations.
+    /// List of wanted blocks,
+    /// with the info representing their state withint the as_block workflow.
     block_wishlist: Map<BlockId, AskForBlocksInfo>,
     /// Map of blocks waiting for operation.
     awaiting_operations: Map<OperationId, BlockId>,
@@ -511,7 +512,7 @@ impl ProtocolWorker {
             ProtocolCommand::WishlistDelta { new, remove } => {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                 self.stop_asking_blocks(remove)?;
-                for (block, hash) in new.into_iter() {
+                for block in new.into_iter() {
                     self.block_wishlist.insert(block, AskForBlocksInfo::Info);
                 }
                 self.update_ask_block(timer).await?;
@@ -1313,7 +1314,9 @@ impl ProtocolWorker {
                             total_hash.extend(op_hash);
                             info.awaiting_operations.insert(op_id.clone());
                         }
-                        if info.header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
+                        if info.header.content.operation_merkle_root
+                            == Hash::compute_from(&total_hash)
+                        {
                             // Note ops are needed for block
                             for op_id in operation_list
                                 .iter()
@@ -1321,7 +1324,6 @@ impl ProtocolWorker {
                             {
                                 self.awaiting_operations
                                     .insert(op_id.clone(), block_id.clone());
-                            
                             }
 
                             let missing_operations = operation_list
