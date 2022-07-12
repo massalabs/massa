@@ -151,12 +151,12 @@ pub enum NodeEventType {
 pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
 /// The info required for a block being asked for.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum AskForBlocksInfo {
     // The info about the block is required(list of operations ids).
     Info,
     // The actual operations re required.
-    Operations,
+    Operations(OperationIds),
 }
 
 /// Commands that the worker can execute

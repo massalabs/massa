@@ -131,11 +131,6 @@ impl BlockInfo {
     }
 }
 
-enum AskForBlock {
-    Info(Hash),
-    Operations(OperationIds),
-}
-
 /// protocol worker
 pub struct ProtocolWorker {
     /// Protocol configuration.
@@ -159,7 +154,7 @@ pub struct ProtocolWorker {
     /// Ids of active nodes mapped to node info.
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks, with the hash of their operations.
-    block_wishlist: Map<BlockId, AskForBlock>,
+    block_wishlist: Map<BlockId, AskForBlocksInfo>,
     /// Map of blocks waiting for operation.
     awaiting_operations: Map<OperationId, BlockId>,
     /// List of processed endorsements
@@ -517,7 +512,7 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                 self.stop_asking_blocks(remove)?;
                 for (block, hash) in new.into_iter() {
-                    self.block_wishlist.insert(block, AskForBlock::Info(hash));
+                    self.block_wishlist.insert(block, AskForBlocksInfo::Info);
                 }
                 self.update_ask_block(timer).await?;
                 massa_trace!(
@@ -756,15 +751,10 @@ impl ProtocolWorker {
                     *cnt += 1; // increase the number of actively asked blocks
                 }
 
-                let to_ask_info = match required_info {
-                    AskForBlock::Info(_) => AskForBlocksInfo::Info,
-                    AskForBlock::Operations(_) => AskForBlocksInfo::Operations,
-                };
-
                 ask_block_list
                     .entry(best_node)
                     .or_insert_with(Vec::new)
-                    .push((hash, to_ask_info));
+                    .push((hash, required_info.clone()));
 
                 let timeout_at = now
                     .checked_add(self.protocol_settings.ask_block_timeout.into())
@@ -1315,42 +1305,43 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block_info", { "node": from_node_id, "block_id": block_id});
 
                 // Check operation_list against expected operations hash from header.
-                if let Some(AskForBlock::Info(op_hash)) = self.block_wishlist.get(&block_id) {
-                    let mut total_hash: Vec<u8> = vec![];
-                    for op_id in operation_list.iter() {
-                        let op_hash = op_id.hash().into_bytes();
-                        total_hash.extend(op_hash);
-                    }
-                    if op_hash == &Hash::compute_from(&total_hash) {
-                        // Note ops are needed for block
-                        for op_id in operation_list
-                            .iter()
-                            .filter(|op| !self.checked_operations.contains(&op.into_prefix()))
-                        {
-                            self.awaiting_operations
-                                .insert(op_id.clone(), block_id.clone());
-                            if let Some(info) = self.checked_headers.get_mut(&block_id) {
-                                info.awaiting_operations.insert(op_id.clone());
-                            } else {
-                                warn!("Missing block info for {}", block_id);
-                            }
+                if let Some(AskForBlocksInfo::Info) = self.block_wishlist.get(&block_id) {
+                    if let Some(info) = self.checked_headers.get_mut(&block_id) {
+                        let mut total_hash: Vec<u8> = vec![];
+                        for op_id in operation_list.iter() {
+                            let op_hash = op_id.hash().into_bytes();
+                            total_hash.extend(op_hash);
+                            info.awaiting_operations.insert(op_id.clone());
                         }
+                        if info.header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
+                            // Note ops are needed for block
+                            for op_id in operation_list
+                                .iter()
+                                .filter(|op| !self.checked_operations.contains(&op.into_prefix()))
+                            {
+                                self.awaiting_operations
+                                    .insert(op_id.clone(), block_id.clone());
+                            
+                            }
 
-                        let missing_operations = operation_list
-                            .into_iter()
-                            .filter(|op| !self.checked_operations.contains(&op.into_prefix()))
-                            .collect();
+                            let missing_operations = operation_list
+                                .into_iter()
+                                .filter(|op| !self.checked_operations.contains(&op.into_prefix()))
+                                .collect();
 
-                        // Switch the state on ask block.
-                        self.block_wishlist.insert(
-                            block_id.clone(),
-                            AskForBlock::Operations(missing_operations),
-                        );
+                            // Switch the state on ask block.
+                            self.block_wishlist.insert(
+                                block_id.clone(),
+                                AskForBlocksInfo::Operations(missing_operations),
+                            );
 
-                        // Re-run the ask block algorithm.
-                        self.update_ask_block(block_ask_timer).await?;
+                            // Re-run the ask block algorithm.
+                            self.update_ask_block(block_ask_timer).await?;
+                        } else {
+                            let _ = self.ban_node(&from_node_id).await;
+                        }
                     } else {
-                        let _ = self.ban_node(&from_node_id).await;
+                        warn!("Missing block info for {}", block_id);
                     }
                 }
             }

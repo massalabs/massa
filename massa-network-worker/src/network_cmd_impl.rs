@@ -194,7 +194,7 @@ pub async fn on_ask_for_block_cmd(
 ) {
     for (node, hash_list) in map.into_iter() {
         // FIXME
-        let hash_list: Vec<BlockId> = hash_list.iter().copied().map(|(id, _)| id).collect();
+        let hash_list: Vec<BlockId> = hash_list.iter().cloned().map(|(id, _)| id).collect();
         massa_trace!(
             "network_worker.manage_network_command receive NetworkCommand::AskForBlocks",
             { "hashlist": hash_list, "node": node }
