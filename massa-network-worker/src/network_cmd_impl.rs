@@ -32,7 +32,7 @@ use massa_models::{
 };
 use massa_network_exports::{
     AskForBlocksInfo, BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError,
-    NodeCommand, Peer, Peers,
+    NodeCommand, Peer, Peers, ReplyForBlocksInfo,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -233,24 +233,8 @@ pub async fn on_send_block_cmd(
 pub async fn on_send_block_info_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    block_id: BlockId,
-    operation_list: OperationIds,
+    info: Vec<(BlockId, ReplyForBlocksInfo)>,
 ) -> Result<(), NetworkError> {
-    massa_trace!(
-        "network_worker.manage_network_command send NodeCommand::SendBlock",
-        {"hash": block_id, "node": node}
-    );
-    worker
-        .event
-        .forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::SendBlockInfo {
-                block_id,
-                operation_list,
-            },
-        )
-        .await;
     Ok(())
 }
 

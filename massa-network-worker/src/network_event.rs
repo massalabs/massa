@@ -86,7 +86,7 @@ pub mod event_impl {
         wrapped::Id,
         BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
     };
-    use massa_network_exports::{AskForBlocksInfo, NodeCommand};
+    use massa_network_exports::{AskForBlocksInfo, NodeCommand, ReplyForBlocksInfo};
     use massa_network_exports::{NetworkError, NetworkEvent};
     use std::net::IpAddr;
     use tracing::{debug, info};
@@ -169,20 +169,11 @@ pub mod event_impl {
     pub async fn on_received_block_info(
         worker: &mut NetworkWorker,
         from: NodeId,
-        block_id: BlockId,
-        operation_list: OperationIds,
+        info: Vec<(BlockId, ReplyForBlocksInfo)>,
     ) -> Result<(), NetworkError> {
-        massa_trace!(
-            "network_worker.on_node_event receive NetworkEvent::ReceivedBlockInfo",
-            {"block_id": block_id, "node": from}
-        );
         if let Err(err) = worker
             .event
-            .send(NetworkEvent::ReceivedBlockInfo {
-                node: from,
-                block_id,
-                operation_list,
-            })
+            .send(NetworkEvent::ReceivedBlockInfo { node: from, info })
             .await
         {
             evt_failed!(err)

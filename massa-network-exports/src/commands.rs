@@ -155,8 +155,17 @@ pub struct NodeEvent(pub NodeId, pub NodeEventType);
 pub enum AskForBlocksInfo {
     // The info about the block is required(list of operations ids).
     Info,
-    // The actual operations re required.
+    // The actual operations are required.
     Operations(OperationIds),
+}
+
+/// The content required for a block being asked for.
+#[derive(Debug, Clone)]
+pub enum ReplyForBlocksInfo {
+    // The info about the block is required(list of operations ids).
+    Info(OperationIds),
+    // The actual operations required.
+    Operations(Operations),
 }
 
 /// Commands that the worker can execute
@@ -179,9 +188,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// block id
-        block_id: BlockId,
-        /// List of operations
-        operation_list: OperationIds,
+        info: Vec<(BlockId, ReplyForBlocksInfo)>,
     },
     /// Send a header to a node.
     SendBlockHeader {
@@ -276,8 +283,7 @@ pub enum NetworkEvent {
         /// from node id
         node: NodeId,
         /// block
-        block_id: BlockId,
-        operation_list: OperationIds,
+        info: Vec<(BlockId, ReplyForBlocksInfo)>,
     },
     /// A block header was received
     ReceivedBlockHeader {
