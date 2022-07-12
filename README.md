@@ -7,7 +7,8 @@ mass adoption.
 [![CI](https://github.com/massalabs/massa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/massalabs/massa/actions/workflows/ci.yml?query=branch%3Amain)
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/39543)
 [![Coverage Status](https://coveralls.io/repos/github/massalabs/massa/badge.svg?branch=main)](https://coveralls.io/github/massalabs/massa?branch=main)
-[![Docs](https://img.shields.io/static/v1?label=Docs&message=massa&color=blue)](https://massalabs.github.io/massa/massa_node/)
+[![Docs](https://img.shields.io/static/v1?label=docs&message=massa&color=blue)](https://massalabs.github.io/massa/massa_node/)
+[![OpenRPC Playground](https://img.shields.io/static/v1?label=openrpc-playground&message=massa&color=blue)](https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/massalabs/massa/main/docs/technical-doc/openrpc.json)
 
 ## Introduction
 
