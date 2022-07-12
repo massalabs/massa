@@ -97,7 +97,7 @@ impl ActiveHistory {
         addr: &Address,
     ) -> Option<SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>> {
         let mut changes = LedgerChanges::default();
-        for output in self.0.iter().rev() {
+        for output in self.0.iter() {
             changes.apply(output.state_changes.ledger_changes.clone());
         }
         changes.0.get(addr).cloned()
