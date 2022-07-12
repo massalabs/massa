@@ -447,13 +447,15 @@ pool.
 
     [[
         {
-            "serialized_content": String,
+            "serialized_content": ByteArray,
             "creator_public_key": String,
             "signature": String
         }
     ]]
 
-The `serialized_content` parameter contains all the content encoded in byte compact (see https://github.com/massalabs/massa/blob/main/massa-models/src/operation.rs#L185) base58 encoded.
+The `serialized_content` parameter contains all the content encoded in byte compact (see https://github.com/massalabs/massa/blob/main/massa-models/src/operation.rs#L185).
+For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with ed25519.
+
 Here is an example of the content format :
 
 .. code-block:: javascript
@@ -494,7 +496,6 @@ Here is an example of the content format :
         },
     }
 
-For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with schnorr.
 
 -   Return:
 
