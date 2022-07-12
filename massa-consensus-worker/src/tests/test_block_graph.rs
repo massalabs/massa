@@ -2,7 +2,8 @@ use crate::tests::tools::get_dummy_block_id;
 use massa_consensus_exports::ConsensusConfig;
 use massa_graph::{
     create_genesis_block, export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset,
-    settings::GraphConfig, BlockGraph, BootstrapableGraph,
+    settings::GraphConfig, BlockGraph, BootstrapableGraph, BootstrapableGraphDeserializer,
+    BootstrapableGraphSerializer,
 };
 use massa_hash::Hash;
 use massa_models::{
@@ -13,8 +14,9 @@ use massa_models::{
     prehash::{Map, Set},
     wrapped::WrappedContent,
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
-    Endorsement, EndorsementSerializer, SerializeCompact, Slot, WrappedBlock,
+    Endorsement, EndorsementSerializer, Slot, WrappedBlock,
 };
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use serial_test::serial;
@@ -655,10 +657,17 @@ fn test_bootsrapable_graph_serialize_compact() {
         ledger: Default::default(),
     };
 
-    let bytes = graph.to_bytes_compact().unwrap();
-    let (new_graph, cursor) = BootstrapableGraph::from_bytes_compact(&bytes).unwrap();
+    let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
+    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new();
+    let mut bytes = Vec::new();
 
-    assert_eq!(bytes.len(), cursor);
+    bootstrapable_graph_serializer
+        .serialize(&graph, &mut bytes)
+        .unwrap();
+    let (_, new_graph) = bootstrapable_graph_deserializer
+        .deserialize::<DeserializeError>(&bytes)
+        .unwrap();
+
     assert_eq!(
         graph.active_blocks[&b1_id].block.serialized_data,
         new_graph.active_blocks[&b1_id].block.serialized_data

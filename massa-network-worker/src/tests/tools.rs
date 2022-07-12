@@ -3,7 +3,7 @@
 use super::super::binders::{ReadBinder, WriteBinder};
 use super::tools;
 use crate::handshake_worker::HandshakeWorker;
-use crate::messages::Message;
+use crate::messages::{Message, MessageSerializer};
 use crate::start_network_controller;
 use crate::NetworkError;
 use crate::NetworkEvent;
@@ -20,6 +20,7 @@ use massa_network_exports::test_exports::mock_establisher::{self, MockEstablishe
 use massa_network_exports::{
     ConnectionId, NetworkCommandSender, NetworkEventReceiver, NetworkManager, PeerInfo,
 };
+use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -308,12 +309,13 @@ pub async fn incoming_message_drain_start(
 }
 
 pub async fn advertise_peers_in_connection(write_binder: &mut WriteBinder, peer_list: Vec<IpAddr>) {
+    let message_serializer = MessageSerializer::new();
+    let mut message_serialized = Vec::new();
+    message_serializer
+        .serialize(&Message::PeerList(peer_list), &mut message_serialized)
+        .expect("Fail to serialize message");
     write_binder
-        .send(
-            &Message::PeerList(peer_list)
-                .to_bytes_compact()
-                .expect("Fail to serialize message"),
-        )
+        .send(&message_serialized)
         .await
         .expect("could not send peer list");
 }

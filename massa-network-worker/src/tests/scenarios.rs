@@ -2,7 +2,7 @@
 
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
-use crate::messages::Message;
+use crate::messages::{Message, MessageSerializer};
 use crate::node_worker::NodeWorker;
 use crate::tests::tools::{get_dummy_block_id, get_transaction};
 use crate::NetworkError;
@@ -20,6 +20,7 @@ use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, Nod
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
 };
+use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -731,6 +732,7 @@ async fn test_block_not_found() {
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
+    let message_serializer = MessageSerializer::new();
     // Overwrite the context.
     let mut serialization_context = massa_models::get_serialization_context();
     serialization_context.max_ask_blocks_per_message = 3;
@@ -759,14 +761,14 @@ async fn test_block_not_found() {
 
             // Send ask for block message from connected peer
             let wanted_hash = get_dummy_block_id("default_val");
-            conn1_w
-                .send(
-                    &Message::AskForBlocks(vec![wanted_hash])
-                        .to_bytes_compact()
-                        .expect("Fail to serialize message"),
+            let mut message_serialized = Vec::new();
+            message_serializer
+                .serialize(
+                    &Message::AskForBlocks(vec![wanted_hash]),
+                    &mut message_serialized,
                 )
-                .await
-                .unwrap();
+                .expect("Fail to serialize message");
+            conn1_w.send(&message_serialized).await.unwrap();
 
             // assert it is sent to protocol
             if let Some((list, node)) =
@@ -857,19 +859,19 @@ async fn test_block_not_found() {
             let wanted_hash2 = get_dummy_block_id("default_val2");
             let wanted_hash3 = get_dummy_block_id("default_val3");
             let wanted_hash4 = get_dummy_block_id("default_val4");
-            conn1_w
-                .send(
+            let mut message_serialized = Vec::new();
+            message_serializer
+                .serialize(
                     &Message::AskForBlocks(vec![
                         wanted_hash1,
                         wanted_hash2,
                         wanted_hash3,
                         wanted_hash4,
-                    ])
-                    .to_bytes_compact()
-                    .expect("Fail to serialize message"),
+                    ]),
+                    &mut message_serialized,
                 )
-                .await
-                .unwrap();
+                .expect("Fail to serialize message");
+            conn1_w.send(&message_serialized).await.unwrap();
             // assert it is sent to protocol
             if tools::wait_network_event(
                 &mut network_event_receiver,
@@ -1027,6 +1029,7 @@ async fn test_operation_messages() {
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
+    let message_serializer = MessageSerializer::new();
     // Overwrite the context.
     let mut serialization_context = massa_models::get_serialization_context();
     serialization_context.max_ask_blocks_per_message = 3;
@@ -1056,14 +1059,14 @@ async fn test_operation_messages() {
             // Send transaction message from connected peer
             let transaction = get_transaction(50, 10);
             let ref_id = transaction.verify_integrity().unwrap();
-            conn1_w
-                .send(
-                    &Message::Operations(vec![transaction.clone()])
-                        .to_bytes_compact()
-                        .expect("Fail to serialize message"),
+            let mut message_serialized = Vec::new();
+            message_serializer
+                .serialize(
+                    &Message::Operations(vec![transaction.clone()]),
+                    &mut message_serialized,
                 )
-                .await
-                .unwrap();
+                .expect("Fail to serialize message");
+            conn1_w.send(&message_serialized).await.unwrap();
 
             // assert it is sent to protocol
             if let Some((operations, node)) =
@@ -1158,6 +1161,7 @@ async fn test_endorsements_messages() {
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
+    let message_serializer = MessageSerializer::new();
     // Overwrite the context.
     let mut serialization_context = massa_models::get_serialization_context();
     serialization_context.max_ask_blocks_per_message = 3;
@@ -1198,14 +1202,14 @@ async fn test_endorsements_messages() {
             )
             .unwrap();
             let ref_id = endorsement.id;
-            conn1_w
-                .send(
-                    &Message::Endorsements(vec![endorsement])
-                        .to_bytes_compact()
-                        .expect("Fail to serialize message"),
+            let mut message_serialized = Vec::new();
+            message_serializer
+                .serialize(
+                    &Message::Endorsements(vec![endorsement]),
+                    &mut message_serialized,
                 )
-                .await
-                .unwrap();
+                .expect("Fail to serialize message");
+            conn1_w.send(&message_serialized).await.unwrap();
 
             // assert it is sent to protocol
             if let Some((endorsements, node)) =

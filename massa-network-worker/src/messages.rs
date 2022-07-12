@@ -400,6 +400,7 @@ impl Deserializer<Message> for MessageDeserializer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
     use rand::{prelude::StdRng, RngCore, SeedableRng};
     use serial_test::serial;
@@ -434,6 +435,8 @@ mod tests {
     #[serial]
     fn test_ser_deser() {
         initialize_context();
+        let message_serializer = MessageSerializer::new();
+        let message_deserializer = MessageDeserializer::new();
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);
         let keypair = KeyPair::generate();
@@ -442,8 +445,11 @@ mod tests {
             random_bytes,
             version: Version::from_str("TEST.1.2").unwrap(),
         };
-        let ser = msg.to_bytes_compact().unwrap();
-        let (deser, _) = Message::from_bytes_compact(&ser).unwrap();
+        let mut ser = Vec::new();
+        message_serializer.serialize(&msg, &mut ser).unwrap();
+        let (_, deser) = message_deserializer
+            .deserialize::<DeserializeError>(&ser)
+            .unwrap();
         match (msg, deser) {
             (
                 Message::HandshakeInitiation {

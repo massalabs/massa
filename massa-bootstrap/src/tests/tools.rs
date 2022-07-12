@@ -10,6 +10,7 @@ use massa_final_state::FinalState;
 use massa_graph::{
     export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset, BootstrapableGraph,
 };
+use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
@@ -20,7 +21,7 @@ use massa_models::{
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     rolls::{RollCounts, RollUpdate, RollUpdateSerializer, RollUpdates},
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Operation,
-    SerializeCompact, Slot,
+    Slot,
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
@@ -593,12 +594,18 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ledger: ledger_subset,
     };
 
-    assert_eq_bootstrap_graph(
-        &BootstrapableGraph::from_bytes_compact(&boot_graph.to_bytes_compact().unwrap())
-            .unwrap()
-            .0,
-        &boot_graph,
-    );
+    let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
+    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new();
+
+    let mut bootstrapable_graph_serialized = Vec::new();
+    bootstrapable_graph_serializer
+        .serialize(&boot_graph, &mut bootstrapable_graph_serialized)
+        .unwrap();
+    let (_, bootstrapable_graph_deserialized) = bootstrapable_graph_deserializer
+        .deserialize::<DeserializeError>(&bootstrapable_graph_serialized)
+        .unwrap();
+
+    assert_eq_bootstrap_graph(&bootstrapable_graph_deserialized, &boot_graph);
 
     (boot_pos, boot_graph)
 }
