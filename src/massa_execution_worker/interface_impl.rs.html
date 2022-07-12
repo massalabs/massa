@@ -553,6 +553,8 @@
 <span id="547">547</span>
 <span id="548">548</span>
 <span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.</span>
@@ -993,7 +995,9 @@
     <span class="doccomment">/// # Arguments:</span>
     <span class="doccomment">/// data: the string data that is the payload of the event</span>
     <span class="kw">fn</span> <span class="ident">generate_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">generate_event</span>(<span class="ident">data</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
+        <span class="kw">let</span> <span class="ident">event</span> <span class="op">=</span> <span class="ident">context</span>.<span class="ident">event_create</span>(<span class="ident">data</span>);
+        <span class="ident">context</span>.<span class="ident">event_emit</span>(<span class="ident">event</span>);
         <span class="prelude-val">Ok</span>(())
     }
 

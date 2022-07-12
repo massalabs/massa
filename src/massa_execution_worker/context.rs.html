@@ -600,6 +600,35 @@
 <span id="594">594</span>
 <span id="595">595</span>
 <span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module represents the context in which the VM executes bytecode.</span>
@@ -747,9 +776,26 @@
         }
     }
 
-    <span class="doccomment">/// Resets context to an existing snapshot</span>
+    <span class="doccomment">/// Resets context to an existing snapshot.</span>
+    <span class="doccomment">/// Optionally emits an error as an event after restoring the snapshot.</span>
     <span class="doccomment">/// Note that the snapshot does not include slot-level information such as the slot number or block ID.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reset_to_snapshot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">snapshot</span>: <span class="ident">ExecutionContextSnapshot</span>) {
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Arguments</span>
+    <span class="doccomment">/// * `snapshot`: a saved snapshot to be restored</span>
+    <span class="doccomment">/// * `with_error`: an optional execution error to emit as an event conserved after snapshot reset.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reset_to_snapshot</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">snapshot</span>: <span class="ident">ExecutionContextSnapshot</span>,
+        <span class="ident">with_error</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExecutionError</span><span class="op">&gt;</span>,
+    ) {
+        <span class="comment">// Create error event, if any.</span>
+        <span class="kw">let</span> <span class="ident">err_event</span> <span class="op">=</span> <span class="ident">with_error</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
+            <span class="self">self</span>.<span class="ident">event_create</span>(
+                <span class="macro">serde_json::json!</span>({ <span class="string">&quot;massa_execution_error&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">err</span>) }).<span class="ident">to_string</span>(),
+            )
+        });
+
+        <span class="comment">// Reset context to snapshot.</span>
         <span class="self">self</span>.<span class="ident">speculative_ledger</span>
             .<span class="ident">reset_to_snapshot</span>(<span class="ident">snapshot</span>.<span class="ident">ledger_changes</span>);
         <span class="self">self</span>.<span class="ident">speculative_async_pool</span>
@@ -759,6 +805,12 @@
         <span class="self">self</span>.<span class="ident">stack</span> <span class="op">=</span> <span class="ident">snapshot</span>.<span class="ident">stack</span>;
         <span class="self">self</span>.<span class="ident">events</span> <span class="op">=</span> <span class="ident">snapshot</span>.<span class="ident">events</span>;
         <span class="self">self</span>.<span class="ident">unsafe_rng</span> <span class="op">=</span> <span class="ident">snapshot</span>.<span class="ident">unsafe_rng</span>;
+
+        <span class="comment">// If there was an error, emit the corresponding event now.</span>
+        <span class="comment">// Note that the context event counter is properly handled by event_emit (see doc).</span>
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">event</span>) <span class="op">=</span> <span class="ident">err_event</span> {
+            <span class="self">self</span>.<span class="ident">event_emit</span>(<span class="ident">event</span>);
+        }
     }
 
     <span class="doccomment">/// Create a new `ExecutionContext` for read-only execution</span>
@@ -1169,11 +1221,12 @@
         <span class="self">self</span>.<span class="ident">speculative_ledger</span>.<span class="ident">set_bytecode</span>(<span class="ident">address</span>, <span class="ident">bytecode</span>)
     }
 
-    <span class="doccomment">/// Emits an execution event to be stored.</span>
+    <span class="doccomment">/// Creates a new event but does not emit it.</span>
+    <span class="doccomment">/// Note that this does not increments the context event counter.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments:</span>
     <span class="doccomment">/// data: the string data that is the payload of the event</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">data</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">event_create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="ident">String</span>) -&gt; <span class="ident">SCOutputEvent</span> {
         <span class="comment">// Gather contextual information from the execution context</span>
         <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">EventExecutionContext</span> {
             <span class="ident">slot</span>: <span class="self">self</span>.<span class="ident">slot</span>,
@@ -1184,16 +1237,21 @@
             <span class="ident">origin_operation_id</span>: <span class="self">self</span>.<span class="ident">origin_operation_id</span>,
         };
 
-        <span class="comment">// Generate the event</span>
-        <span class="kw">let</span> <span class="ident">event</span> <span class="op">=</span> <span class="ident">SCOutputEvent</span> { <span class="ident">context</span>, <span class="ident">data</span> };
+        <span class="comment">// Return the event</span>
+        <span class="ident">SCOutputEvent</span> { <span class="ident">context</span>, <span class="ident">data</span> }
+    }
+
+    <span class="doccomment">/// Emits a previously created event.</span>
+    <span class="doccomment">/// Overrides the event&#39;s index with the current event counter value, and increments the event counter.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">event_emit</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">event</span>: <span class="ident">SCOutputEvent</span>) {
+        <span class="comment">// Set the event index</span>
+        <span class="ident">event</span>.<span class="ident">context</span>.<span class="ident">index_in_slot</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">created_event_index</span>;
 
         <span class="comment">// Increment the event counter fot this slot</span>
         <span class="self">self</span>.<span class="ident">created_event_index</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
 
         <span class="comment">// Add the event to the context store</span>
         <span class="self">self</span>.<span class="ident">events</span>.<span class="ident">push</span>(<span class="ident">event</span>);
-
-        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
