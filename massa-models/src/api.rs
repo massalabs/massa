@@ -13,7 +13,7 @@ use crate::{
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::net::IpAddr;
 use std::str::FromStr;
 
@@ -201,7 +201,9 @@ pub struct AddressInfo {
     /// latest sequential balance
     pub candidate_balance_info: Option<Amount>,
     /// every final datastore key
-    pub final_datastore_keys: Vec<Vec<u8>>,
+    pub final_datastore_keys: BTreeSet<Vec<u8>>,
+    /// every candidate datastore key
+    pub candidate_datastore_keys: BTreeSet<Vec<u8>>,
     /// rolls
     pub rolls: RollsInfo,
     /// next slots this address will be selected to create a block

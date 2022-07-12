@@ -6,7 +6,7 @@ use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecut
 use massa_ledger_exports::LedgerEntry;
 use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, Amount, BlockId, Slot};
 use std::{
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     sync::{
         mpsc::{self, Receiver},
         Arc, Mutex,
@@ -120,8 +120,11 @@ impl ExecutionController for MockExecutionController {
         Vec::default()
     }
 
-    fn get_every_final_datastore_key(&self, _addr: &Address) -> Vec<Vec<u8>> {
-        Vec::default()
+    fn get_final_and_active_datastore_keys(
+        &self,
+        _addr: &Address,
+    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
+        (BTreeSet::default(), BTreeSet::default())
     }
 
     fn execute_readonly_request(

@@ -17,6 +17,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
+use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
@@ -24,6 +25,7 @@ use massa_models::{Amount, Slot};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
+use std::collections::BTreeSet;
 use std::{collections::HashMap, sync::Arc};
 use tracing::debug;
 
@@ -762,14 +764,36 @@ impl ExecutionState {
     }
 
     /// Get every datastore key of the given address.
-    pub fn get_every_final_datastore_key(&self, addr: &Address) -> Vec<Vec<u8>> {
-        self.final_state
+    pub fn get_final_and_active_datastore_keys(
+        &self,
+        addr: &Address,
+    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
+        let final_keys: BTreeSet<Vec<u8>> = self
+            .final_state
             .read()
             .ledger
             .get_entire_datastore(addr)
             .into_iter()
             .map(|v| v.0)
-            .collect()
+            .collect();
+        let active_changes = self.active_history.read().fetch_datastore_changes_of(addr);
+        let active_keys = match active_changes {
+            Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
+                datastore.iter().map(|(key, _)| key.clone()).collect()
+            }
+            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
+                let mut keys = final_keys.clone();
+                for value in datastore {
+                    match value {
+                        (key, SetOrDelete::Set(_)) => keys.insert(key),
+                        (key, SetOrDelete::Delete) => keys.remove(&key),
+                    };
+                }
+                keys
+            }
+            _ => final_keys.clone(),
+        };
+        (final_keys, active_keys)
     }
 
     /// Gets execution events optionally filtered by:
