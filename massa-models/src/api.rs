@@ -234,8 +234,8 @@ impl std::fmt::Display for AddressInfo {
             "Final datastore keys (UTF-8):\n{:?}\n",
             self.final_datastore_keys
                 .iter()
-                .map(|v| std::str::from_utf8(v).ok())
-                .collect::<Vec<Option<&str>>>()
+                .map(|v| std::str::from_utf8(v).unwrap_or("non-utf8 key"))
+                .collect::<Vec<&str>>()
         )?;
         writeln!(
             f,

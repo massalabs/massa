@@ -124,7 +124,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "Address Key"),
-        message = "get the corresponding entry of the given key (key must be UTF-8)"
+        message = "get a datastore entry (key must be UTF-8)"
     )]
     get_datastore_entry,
 
