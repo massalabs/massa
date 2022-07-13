@@ -85,7 +85,7 @@ impl PoSFinalState {
         self.deferred_credits.get(slot).cloned().unwrap_or_default()
     }
 
-    /// Retrives the productions statistics
+    /// Retrives the productions statistics of the last final cycle
     pub fn get_production_stats(&self) -> Option<Map<Address, ProductionStats>> {
         self.cycle_history
             .back()

@@ -7,8 +7,9 @@ use massa_models::{
     prehash::Map,
     Address, Amount, Slot,
 };
-use massa_pos_exports::{PoSChanges, SelectorController};
+use massa_pos_exports::{PoSChanges, ProductionStats, SelectorController};
 use parking_lot::RwLock;
+use std::collections::hash_map::Entry::Occupied;
 use std::sync::Arc;
 
 use crate::active_history::ActiveHistory;
@@ -156,11 +157,12 @@ impl SpeculativeRollState {
 
     /// Settle the production statistics at `slot`.
     ///
-    /// This function should only be used at the end of a cycle.
+    /// IMPORTANT: This function should only be used at the end of a cycle.
     ///
     /// # Arguments:
     /// `slot`: the final slot of the cycle to compute
     pub fn settle_production_stats(&mut self, slot: Slot) {
+        let production_stats = self.get_production_stats();
         let credits = self
             .added_changes
             .deferred_credits
@@ -168,26 +170,41 @@ impl SpeculativeRollState {
                 slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
             ))
             .or_insert_with(Map::default);
-        for (addr, stats) in self.added_changes.production_stats.iter() {
+        for (addr, stats) in production_stats {
             if !stats.satisfying() {
-                let rolls = self
-                    .added_changes
-                    .roll_changes
-                    .entry(*addr)
-                    .or_insert_with(u64::default);
-                // checking overflow for the sake of it
-                if let Some(amount) = ROLL_PRICE.checked_mul_u64(*rolls) {
-                    credits.insert(*addr, amount);
+                if let Occupied(mut entry) = self.added_changes.roll_changes.entry(addr) {
+                    // checking overflow for the sake of it
+                    if let Some(amount) = ROLL_PRICE.checked_mul_u64(*entry.get()) {
+                        credits.insert(addr, amount);
+                    }
+                    *entry.get_mut() = 0;
                 }
-                *rolls = 0;
             }
         }
     }
 
-    /// TODO
+    /// Get the production statistics of the current cycle.
+    ///
+    /// It accumulates final > active > current changes in this order.
     pub fn get_production_stats(&self) -> Map<Address, ProductionStats> {
-        // final > active > changes for cycle
-        let stats = self.added_changes.production_stats;
+        let mut stats = self
+            .final_state
+            .read()
+            .pos_state
+            .get_production_stats()
+            .unwrap_or_default();
+        for (addr, s) in self.active_history.read().fetch_production_stats() {
+            stats
+                .entry(addr)
+                .or_insert_with(ProductionStats::default)
+                .chain(&s);
+        }
+        for (addr, s) in self.added_changes.production_stats.iter() {
+            stats
+                .entry(*addr)
+                .or_insert_with(ProductionStats::default)
+                .chain(s);
+        }
         stats
     }
 

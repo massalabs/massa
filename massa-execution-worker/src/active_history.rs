@@ -169,9 +169,20 @@ impl ActiveHistory {
     /// Retrieve the production statistics of every address as they are in the last element of the history.
     pub fn fetch_production_stats(&self) -> Map<Address, ProductionStats> {
         let mut stats: Map<Address, ProductionStats> = Map::default();
-        while let Some(output) = self.0.iter().next() && !output.slot.last_of_a_cycle() {
-            for (addr, s) in output.state_changes.roll_state_changes.production_stats.iter() {
-                stats.entry(*addr).or_insert_with(ProductionStats::default).chain(s);
+        for output in self.0.iter() {
+            if !output.slot.last_of_a_cycle() {
+                break;
+            }
+            for (addr, s) in output
+                .state_changes
+                .roll_state_changes
+                .production_stats
+                .iter()
+            {
+                stats
+                    .entry(*addr)
+                    .or_insert_with(ProductionStats::default)
+                    .chain(s);
             }
         }
         stats
