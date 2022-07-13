@@ -15,14 +15,8 @@ use rocksdb::{
 };
 use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound;
+use std::path::PathBuf;
 use std::rc::Rc;
-use std::{collections::BTreeMap, path::PathBuf};
-
-#[cfg(feature = "testing")]
-use massa_models::{address::AddressDeserializer, Amount, DeserializeCompact};
-
-#[cfg(feature = "testing")]
-use massa_serialization::DeserializeError;
 
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
@@ -212,33 +206,6 @@ impl LedgerDB {
         }
     }
 
-    /// Get every address and their corresponding balance.
-    /// IMPORTANT: This should only be used for debug purposes.
-    ///
-    /// # Returns
-    /// A BTreeMap with the address as key and the balance as value
-    #[cfg(feature = "testing")]
-    pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
-
-        let ledger = self
-            .0
-            .iterator_cf(handle, IteratorMode::Start)
-            .collect::<Vec<_>>();
-
-        let mut addresses = BTreeMap::new();
-        let address_deserializer = AddressDeserializer::new();
-        for (key, entry) in ledger {
-            let (rest, address) = address_deserializer
-                .deserialize::<DeserializeError>(&key[..])
-                .unwrap();
-            if rest.first() == Some(&BALANCE_IDENT) {
-                addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
-            }
-        }
-        addresses
-    }
-
     /// Get every key of the datastore for a given address.
     ///
     /// # Returns
@@ -256,31 +223,6 @@ impl LedgerDB {
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
             .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
-            .collect()
-    }
-
-    /// Get the entire datastore for a given address.
-    ///
-    /// # Returns
-    /// A BTreeMap with the entry hash as key and the data bytes as value
-    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Vec<u8>, Vec<u8>> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
-
-        let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
-
-        self.0
-            .iterator_cf_opt(
-                handle,
-                opt,
-                IteratorMode::From(data_prefix!(addr), Direction::Forward),
-            )
-            .map(|(key, data)| {
-                (
-                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
-                    data.to_vec(),
-                )
-            })
             .collect()
     }
 
@@ -432,6 +374,71 @@ impl LedgerDB {
                 "rest is not empty.".to_string(),
             ))
         }
+    }
+
+    /// Get every address and their corresponding balance.
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the address as key and the balance as value
+    #[cfg(feature = "testing")]
+    pub fn get_every_address(&self) -> std::collections::BTreeMap<Address, massa_models::Amount> {
+        use massa_models::{address::AddressDeserializer, DeserializeCompact};
+        use massa_serialization::DeserializeError;
+
+        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+
+        let ledger = self
+            .0
+            .iterator_cf(handle, IteratorMode::Start)
+            .collect::<Vec<_>>();
+
+        let mut addresses = std::collections::BTreeMap::new();
+        let address_deserializer = AddressDeserializer::new();
+        for (key, entry) in ledger {
+            let (rest, address) = address_deserializer
+                .deserialize::<DeserializeError>(&key[..])
+                .unwrap();
+            if rest.first() == Some(&BALANCE_IDENT) {
+                addresses.insert(
+                    address,
+                    massa_models::Amount::from_bytes_compact(&entry).unwrap().0,
+                );
+            }
+        }
+        addresses
+    }
+
+    /// Get the entire datastore for a given address.
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the entry hash as key and the data bytes as value
+    #[cfg(feature = "testing")]
+    pub fn get_entire_datastore(
+        &self,
+        addr: &Address,
+    ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
+        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+
+        let mut opt = ReadOptions::default();
+        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
+
+        self.0
+            .iterator_cf_opt(
+                handle,
+                opt,
+                IteratorMode::From(data_prefix!(addr), Direction::Forward),
+            )
+            .map(|(key, data)| {
+                (
+                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
+                    data.to_vec(),
+                )
+            })
+            .collect()
     }
 }
 

@@ -774,7 +774,7 @@ impl ExecutionState {
 
         // here, traverse the history from oldest to newest, applying additions and deletions
         for output in &self.active_history.read().0 {
-            match output.state_changes.ledger_changes.get(&addr) {
+            match output.state_changes.ledger_changes.get(addr) {
                 // address absent from the changes
                 None => (),
 
