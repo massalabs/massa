@@ -1104,72 +1104,7 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
-            for (op_id, _) in received_ids.iter() {
-                if let Some(block_id) = self.awaiting_operations.get(op_id) {
-                    if let Some(info) = self.checked_headers.get_mut(block_id) {
-                        info.awaiting_operations.remove(op_id);
-                        self.awaiting_operations.remove(op_id);
-                        if info.awaiting_operations.is_empty() {
-                            let endorsement_ids = info.endorsements.clone();
-                            let block = Block {
-                                header: info.header.clone(),
-                                operations: info.operations.clone().unwrap().clone(),
-                            };
-                            let content_serializer = BlockSerializer::new();
-                            let mut content_serialized = Vec::new();
-                            content_serializer
-                                .serialize(&block, &mut content_serialized)
-                                .unwrap();
-                            #[cfg(feature = "sandbox")]
-                            let thread_count = *THREAD_COUNT;
-                            #[cfg(not(feature = "sandbox"))]
-                            let thread_count = THREAD_COUNT;
-                            let wrapped: WrappedBlock = Wrapped {
-                                signature: info.header.signature,
-                                creator_public_key: info.header.creator_public_key,
-                                creator_address: info.header.creator_address,
-                                thread: info.header.creator_address.get_thread(thread_count),
-                                id: BlockId::new(info.header.id.hash()),
-                                content: block,
-                                serialized_data: content_serialized,
-                            };
-
-                            if let Some((block_id, operation_set)) = self
-                                .process_block(
-                                    &wrapped,
-                                    seen_ops.clone(),
-                                    received_ids.clone(),
-                                    has_duplicate_operations,
-                                    total_gas,
-                                )
-                                .await?
-                            {
-                                let slot = wrapped.content.header.content.slot;
-
-                                let mut set = Set::<BlockId>::with_capacity_and_hasher(
-                                    1,
-                                    BuildMap::default(),
-                                );
-                                set.insert(block_id);
-                                self.stop_asking_blocks(set)?;
-                                self.send_protocol_event(ProtocolEvent::ReceivedBlock {
-                                    block: wrapped,
-                                    slot,
-                                    operation_set,
-                                    endorsement_ids,
-                                })
-                                .await;
-                                //self.update_ask_block(block_ask_timer).await?;
-                            }
-                        }
-                    } else {
-                        warn!(
-                            "Missing block info when receiving operations for {}",
-                            block_id
-                        );
-                    }
-                }
-            }
+            for (op_id, _) in received_ids.iter() {}
 
             // Add to pool, propagate when received outside of a header.
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
@@ -1290,10 +1225,10 @@ impl ProtocolWorker {
                 info,
             } => {
                 for (block_id, block_info) in info.into_iter() {
-                    // Check operation_list against expected operations hash from header.
-                    if let Some(AskForBlocksInfo::Info) = self.block_wishlist.get(&block_id) {
-                        match block_info {
-                            BlockInfoReply::Info(operation_list) => {
+                    match block_info {
+                        BlockInfoReply::Info(operation_list) => {
+                            if let Some(AskForBlocksInfo::Info) = self.block_wishlist.get(&block_id)
+                            {
                                 if let Some(info) = self.checked_headers.get_mut(&block_id) {
                                     let mut total_hash: Vec<u8> = vec![];
                                     for op_id in operation_list.iter() {
@@ -1301,6 +1236,8 @@ impl ProtocolWorker {
                                         total_hash.extend(op_hash);
                                         info.awaiting_operations.insert(op_id.clone());
                                     }
+
+                                    // Check operation_list against expected operations hash from header.
                                     if info.header.content.operation_merkle_root
                                         == Hash::compute_from(&total_hash)
                                     {
@@ -1334,7 +1271,36 @@ impl ProtocolWorker {
                                     warn!("Missing block info for {}", block_id);
                                 }
                             }
-                            _ => {}
+                        }
+                        BlockInfoReply::Operations(operations) => {
+                            // Send to pool?
+                            self.on_operations_received(from_node_id, operations.clone())
+                                .await;
+                                
+                            if let Some(AskForBlocksInfo::Operations(_operation_ids)) =
+                                self.block_wishlist.get(&block_id)
+                            {
+                                // TODO: Send to graph
+
+                                // Update ask block
+                                let mut set = Set::<BlockId>::with_capacity_and_hasher(
+                                    1,
+                                    BuildMap::default(),
+                                );
+                                set.insert(block_id);
+                                self.stop_asking_blocks(set)?;
+                            }
+                        }
+                        BlockInfoReply::NotFound => {
+                            if let Some(info) = self.active_nodes.get_mut(&from_node_id) {
+                                info.insert_known_blocks(
+                                    &[block_id],
+                                    false,
+                                    Instant::now(),
+                                    self.protocol_settings.max_node_known_blocks_size,
+                                );
+                            }
+                            self.update_ask_block(block_ask_timer).await?;
                         }
                     }
                 }
