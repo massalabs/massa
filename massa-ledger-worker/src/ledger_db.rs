@@ -2,9 +2,8 @@
 
 //! Module to interact with the disk ledger
 
-use massa_hash::HASH_SIZE_BYTES;
 use massa_ledger_exports::*;
-use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
+use massa_models::constants::{ADDRESS_SIZE_BYTES, LEDGER_PART_SIZE_MESSAGE_BYTES};
 use massa_models::{
     Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
 };
@@ -14,7 +13,7 @@ use nom::sequence::tuple;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound;
 use std::rc::Rc;
 use std::{collections::BTreeMap, path::PathBuf};
@@ -240,6 +239,26 @@ impl LedgerDB {
         addresses
     }
 
+    /// Get every key of the datastore for a given address.
+    ///
+    /// # Returns
+    /// A BTreeSet of the datastore keys
+    pub fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
+        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+
+        let mut opt = ReadOptions::default();
+        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
+
+        self.0
+            .iterator_cf_opt(
+                handle,
+                opt,
+                IteratorMode::From(data_prefix!(addr), Direction::Forward),
+            )
+            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
+            .collect()
+    }
+
     /// Get the entire datastore for a given address.
     ///
     /// # Returns
@@ -256,7 +275,12 @@ impl LedgerDB {
                 opt,
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
-            .map(|(key, data)| (key.split_at(HASH_SIZE_BYTES + 1).1.to_vec(), data.to_vec()))
+            .map(|(key, data)| {
+                (
+                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
+                    data.to_vec(),
+                )
+            })
             .collect()
     }
 

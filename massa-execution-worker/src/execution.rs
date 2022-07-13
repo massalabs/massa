@@ -769,8 +769,7 @@ impl ExecutionState {
         addr: &Address,
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
-        // let final_keys = self.final_state.read().ledger.get_datastore_keys(addr);
-        let final_keys = BTreeSet::default();
+        let final_keys = self.final_state.read().ledger.get_datastore_keys(addr);
         let mut candidate_keys = final_keys.clone();
 
         // here, traverse the history from oldest to newest, applying additions and deletions

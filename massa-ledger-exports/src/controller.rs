@@ -1,5 +1,5 @@
 use massa_models::{Address, Amount, ModelsError, Slot};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 
 use crate::LedgerChanges;
@@ -46,6 +46,14 @@ pub trait LedgerController: Send + Sync + Debug {
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
     fn has_data_entry(&self, addr: &Address, key: &[u8]) -> bool;
 
+    /// Get every key of the datastore for a given address.
+    ///
+    /// # Returns
+    /// A BTreeSet of the datastore keys
+    fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>>;
+
+    /// Retrieve the entire datastore of a given address.
+    ///
     /// # Returns
     /// A copy of the datastore sorted by key
     fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Vec<u8>, Vec<u8>>;

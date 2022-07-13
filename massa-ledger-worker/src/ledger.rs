@@ -9,7 +9,7 @@ use massa_ledger_exports::{
 use massa_models::{Address, Amount, ModelsError};
 use massa_models::{DeserializeCompact, Slot};
 use nom::AsBytes;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -137,6 +137,14 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger
             .get_sub_entry(addr, LedgerSubEntry::Datastore(key.to_owned()))
             .is_some()
+    }
+
+    /// Get every key of the datastore for a given address.
+    ///
+    /// # Returns
+    /// A BTreeSet of the datastore keys
+    fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
+        self.sorted_ledger.get_datastore_keys(addr)
     }
 
     /// Retrieve the entire datastore of a given address
