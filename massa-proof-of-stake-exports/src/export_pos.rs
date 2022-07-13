@@ -117,8 +117,12 @@ impl Deserializer<ExportProofOfStake> for ExportProofOfStakeDeserializer {
             "Failed ExportProofOfStake deserialization",
             count(
                 length_count(
-                    |input| self.u32_deserializer.deserialize(input),
-                    |input| self.cycle_state_deserializer.deserialize(input),
+                    context("Failed length deserializer", |input| {
+                        self.u32_deserializer.deserialize(input)
+                    }),
+                    context("Failed cycle_state deserializer", |input| {
+                        self.cycle_state_deserializer.deserialize(input)
+                    }),
                 )
                 .map(|cycles| cycles.into_iter().collect()),
                 self.thread_count.into(),

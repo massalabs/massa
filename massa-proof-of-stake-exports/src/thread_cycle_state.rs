@@ -187,10 +187,16 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
                 context(
                     "Failed roll_count deserialization",
                     length_count(
-                        |input| self.u32_deserializer.deserialize(input),
+                        context("Failed length deserialization", |input| {
+                            self.u32_deserializer.deserialize(input)
+                        }),
                         tuple((
-                            |input| self.address_deserializer.deserialize(input),
-                            |input| self.u64_deserializer.deserialize(input),
+                            context("Failed address deserialization", |input| {
+                                self.address_deserializer.deserialize(input)
+                            }),
+                            context("Failed number_of_rolls deserialization", |input| {
+                                self.u64_deserializer.deserialize(input)
+                            }),
                         )),
                     )
                     .map(|res| RollCounts(res.into_iter().collect())),
@@ -198,10 +204,16 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
                 context(
                     "Failed cycle_updates deserialization",
                     length_count(
-                        |input| self.u32_deserializer.deserialize(input),
+                        context("Failed length deserialization", |input| {
+                            self.u32_deserializer.deserialize(input)
+                        }),
                         tuple((
-                            |input| self.address_deserializer.deserialize(input),
-                            |input| self.roll_update_deserializer.deserialize(input),
+                            context("Failed address deserialization", |input| {
+                                self.address_deserializer.deserialize(input)
+                            }),
+                            context("Failed roll_update deserialization", |input| {
+                                self.roll_update_deserializer.deserialize(input)
+                            }),
                         )),
                     )
                     .map(|res| RollUpdates(res.into_iter().collect())),
@@ -231,11 +243,19 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
                 context(
                     "Failed production_stats deserialization",
                     length_count(
-                        |input| self.u32_deserializer.deserialize(input),
+                        context("Failed length deserialization", |input| {
+                            self.u32_deserializer.deserialize(input)
+                        }),
                         tuple((
-                            |input| self.address_deserializer.deserialize(input),
-                            |input| self.u64_deserializer.deserialize(input),
-                            |input| self.u64_deserializer.deserialize(input),
+                            context("Failed address deserialization", |input| {
+                                self.address_deserializer.deserialize(input)
+                            }),
+                            context("Failed ok_count deserialization", |input| {
+                                self.u64_deserializer.deserialize(input)
+                            }),
+                            context("Failed nok_count deserialization", |input| {
+                                self.u64_deserializer.deserialize(input)
+                            }),
                         )),
                     )
                     .map(|res| {

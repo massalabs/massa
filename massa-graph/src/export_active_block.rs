@@ -290,6 +290,21 @@ impl Default for ExportActiveBlockDeserializer {
 }
 
 impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_graph::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
+    ///
+    /// let export_active_block = ExportActiveBlock {
+    ///    block: Block {
+    ///       hash: Hash::compute_from("23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH"),
+    ///       period: 1,
+    /// }
+    ///       parents: vec![],
+    ///       children: vec![(Hash::compute_from("23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH"), 1)],
+    ///       dependencies: vec![Hash::compute_from("23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH")],
+    ///       is_final: false,
+    ///       block_ledger_changes: BlockLedgerChanges {
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

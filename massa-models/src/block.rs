@@ -219,6 +219,60 @@ impl Default for BlockSerializer {
 }
 
 impl Serializer<Block> for BlockSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{Block, BlockSerializer, BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent};
+    /// use massa_hash::Hash;
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// let keypair = KeyPair::generate();
+    /// let parents = (0..THREAD_COUNT)
+    ///     .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///     .collect();
+    ///
+    /// // create block header
+    /// let orig_header = BlockHeader::new_wrapped(
+    ///     BlockHeader {
+    ///         slot: Slot::new(1, 1),
+    ///         parents,
+    ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    ///         endorsements: vec![
+    ///             Endorsement::new_wrapped(
+    ///                 Endorsement {
+    ///                     slot: Slot::new(1, 1),
+    ///                     index: 1,
+    ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///                 },
+    ///                 EndorsementSerializer::new(),
+    ///                 &keypair,
+    ///             )
+    ///             .unwrap(),
+    ///             Endorsement::new_wrapped(
+    ///                 Endorsement {
+    ///                     slot: Slot::new(4, 0),
+    ///                     index: 3,
+    ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///                 },
+    ///                 EndorsementSerializer::new(),
+    ///                 &keypair,
+    ///             )
+    ///             .unwrap(),
+    ///         ],
+    ///     },
+    ///     BlockHeaderSerializer::new(),
+    ///     &keypair,
+    /// )
+    /// .unwrap();
+    ///
+    /// // create block
+    /// let orig_block = Block {
+    ///     header: orig_header,
+    ///     operations: vec![],
+    /// };
+    ///
+    /// let mut buffer = Vec::new();
+    /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &Block, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.header_serializer.serialize(&value.header, buffer)?;
         self.u32_serializer.serialize(
@@ -262,6 +316,77 @@ impl Default for BlockDeserializer {
 }
 
 impl Deserializer<Block> for BlockDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{Block, BlockSerializer, BlockDeserializer, BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent};
+    /// use massa_hash::Hash;
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// let keypair = KeyPair::generate();
+    /// let parents = (0..THREAD_COUNT)
+    ///     .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///     .collect();
+    ///
+    /// // create block header
+    /// let orig_header = BlockHeader::new_wrapped(
+    ///     BlockHeader {
+    ///         slot: Slot::new(1, 1),
+    ///         parents,
+    ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    ///         endorsements: vec![
+    ///             Endorsement::new_wrapped(
+    ///                 Endorsement {
+    ///                     slot: Slot::new(1, 1),
+    ///                     index: 1,
+    ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///                 },
+    ///                 EndorsementSerializer::new(),
+    ///                 &keypair,
+    ///             )
+    ///             .unwrap(),
+    ///             Endorsement::new_wrapped(
+    ///                 Endorsement {
+    ///                     slot: Slot::new(4, 0),
+    ///                     index: 3,
+    ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///                 },
+    ///                 EndorsementSerializer::new(),
+    ///                 &keypair,
+    ///             )
+    ///             .unwrap(),
+    ///         ],
+    ///     },
+    ///     BlockHeaderSerializer::new(),
+    ///     &keypair,
+    /// )
+    /// .unwrap();
+    ///
+    /// // create block
+    /// let orig_block = Block {
+    ///     header: orig_header,
+    ///     operations: vec![],
+    /// };
+    ///
+    /// let mut buffer = Vec::new();
+    /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
+    /// let (rest, res_block) = BlockDeserializer::new().deserialize::<DeserializeError>(&mut buffer).unwrap();
+    ///
+    /// assert!(rest.is_empty());
+    /// // check equality
+    /// assert_eq!(orig_block.header.id, res_block.header.id);
+    /// assert_eq!(
+    ///     orig_block.header.content.slot,
+    ///     res_block.header.content.slot
+    /// );
+    /// assert_eq!(
+    ///     orig_block.header.serialized_data,
+    ///     res_block.header.serialized_data
+    /// );
+    /// assert_eq!(
+    ///     orig_block.header.signature,
+    ///     res_block.header.signature
+    /// );
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -437,6 +562,47 @@ impl Default for BlockHeaderSerializer {
 }
 
 impl Serializer<BlockHeader> for BlockHeaderSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent};
+    /// use massa_hash::Hash;
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::Serializer;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let parents = (0..THREAD_COUNT)
+    ///   .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///   .collect();
+    /// let header = BlockHeader {
+    ///   slot: Slot::new(1, 1),
+    ///   parents,
+    ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    ///   endorsements: vec![
+    ///     Endorsement::new_wrapped(
+    ///        Endorsement {
+    ///          slot: Slot::new(1, 1),
+    ///          index: 1,
+    ///          endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///        },
+    ///     EndorsementSerializer::new(),
+    ///     &keypair,
+    ///     )
+    ///     .unwrap(),
+    ///     Endorsement::new_wrapped(
+    ///       Endorsement {
+    ///         slot: Slot::new(4, 0),
+    ///         index: 3,
+    ///         endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///       },
+    ///     EndorsementSerializer::new(),
+    ///     &keypair,
+    ///     )
+    ///     .unwrap(),
+    ///    ],
+    /// };
+    /// let mut buffer = vec![];
+    /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &BlockHeader, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.slot_serializer.serialize(&value.slot, buffer)?;
         // parents (note: there should be none if slot period=0)
@@ -501,6 +667,52 @@ impl Default for BlockHeaderDeserializer {
 }
 
 impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent};
+    /// use massa_hash::Hash;
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let parents = (0..THREAD_COUNT)
+    ///   .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///   .collect();
+    /// let header = BlockHeader {
+    ///   slot: Slot::new(1, 1),
+    ///   parents,
+    ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    ///   endorsements: vec![
+    ///     Endorsement::new_wrapped(
+    ///        Endorsement {
+    ///          slot: Slot::new(1, 1),
+    ///          index: 1,
+    ///          endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///        },
+    ///     EndorsementSerializer::new(),
+    ///     &keypair,
+    ///     )
+    ///     .unwrap(),
+    ///     Endorsement::new_wrapped(
+    ///       Endorsement {
+    ///         slot: Slot::new(4, 0),
+    ///         index: 3,
+    ///         endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///       },
+    ///     EndorsementSerializer::new(),
+    ///     &keypair,
+    ///     )
+    ///     .unwrap(),
+    ///    ],
+    /// };
+    /// let mut buffer = vec![];
+    /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
+    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// let mut buffer2 = Vec::new();
+    /// BlockHeaderSerializer::new().serialize(&deserialized_header, &mut buffer2).unwrap();
+    /// assert_eq!(buffer, buffer2);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
