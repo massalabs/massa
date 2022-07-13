@@ -799,46 +799,40 @@ impl ExecutionState {
                     );
                 }
             }
-            // Compute the credits for block and endorsement creation
-            // The following unwrap_or_default calls will never happen
+            let mut context = context_guard!(self);
+            // Credit endorsement producers
             let block_credit_part = block_credits
                 .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-                .unwrap_or_default();
+                .expect("critical: block_credits checked_div factor is 0");
+            for Signed { content, .. } in &stored_block.block.header.content.endorsements {
+                let sender_addr = Address::from_public_key(&content.sender_public_key);
+                if let Err(err) =
+                    context.transfer_sequential_coins(None, Some(sender_addr), block_credit_part)
+                {
+                    debug!(
+                        "failed to credit {} coins to {} for an endorsement production: {}",
+                        block_credit_part, sender_addr, err
+                    )
+                }
+            }
+            // Credit block creator
             let mut block_remaining_credit = block_credits
                 .checked_mul_u64(
                     1 + stored_block.block.header.content.endorsements.len() as u64
                         / (1 + ENDORSEMENT_COUNT as u64),
                 )
-                .unwrap_or_default();
-            {
-                let mut context = context_guard!(self);
-                // Credit endorsement producers
-                for Signed { content, .. } in &stored_block.block.header.content.endorsements {
-                    let sender_addr = Address::from_public_key(&content.sender_public_key);
-                    if let Err(err) = context.transfer_sequential_coins(
-                        None,
-                        Some(sender_addr),
-                        block_credit_part,
-                    ) {
-                        debug!(
-                            "failed to credit {} coins to {} for an endorsement production: {}",
-                            block_credit_part, sender_addr, err
-                        )
-                    }
-                }
-                // Credit block creator
-                block_remaining_credit = block_remaining_credit
-                    .saturating_sub(block_credit_part.checked_mul_u64(2).unwrap_or_default());
-                if let Err(err) = context.transfer_sequential_coins(
-                    None,
-                    Some(block_creator_addr),
-                    block_remaining_credit,
-                ) {
-                    debug!(
-                        "failed to credit {} coins to {} for the creation of a block: {}",
-                        block_credit_part, block_creator_addr, err
-                    )
-                }
+                .expect("critical: block_credits checked_mul overflowed");
+            block_remaining_credit = block_remaining_credit
+                .saturating_sub(block_credit_part.checked_mul_u64(2).unwrap_or_default());
+            if let Err(err) = context.transfer_sequential_coins(
+                None,
+                Some(block_creator_addr),
+                block_remaining_credit,
+            ) {
+                debug!(
+                    "failed to credit {} coins to {} for the creation of a block: {}",
+                    block_credit_part, block_creator_addr, err
+                )
             }
         } else {
             // Update speculative rolls state production stats
