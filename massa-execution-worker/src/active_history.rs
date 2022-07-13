@@ -183,6 +183,9 @@ impl ActiveHistory {
     /// * `addr`:  address to fetch the production stats from
     #[allow(dead_code)]
     pub fn fetch_production_stats_for(&self, addr: &Address) -> Option<ProductionStats> {
+        while let Some(output) = self.0.iter().next() && !output.slot.last_of_a_cycle() {
+
+        }
         self.0.back().and_then(|output| {
             output
                 .state_changes

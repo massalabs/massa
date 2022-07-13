@@ -69,6 +69,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(is_sorted)]
+#![feature(let_chains)]
 
 mod active_history;
 mod context;

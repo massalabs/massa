@@ -63,7 +63,7 @@ impl PoSFinalState {
         // if slot S was the last of cycle C:
         // set complete=true for cycle C in the history
         // notify the PoSDrawer for cycle C+3
-        if slot.last_in_cycle() {
+        if slot.last_of_a_cycle() {
             current.complete = true;
             self.selector
                 .as_ref()

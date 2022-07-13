@@ -73,7 +73,7 @@ impl SelectorThread {
     /// Otherwise, we use the given `cycle_info` for the seed and the roll
     /// distribution stored in `cycle_states` at index `cycle_info.cycle - 1`.
     fn get_params(&mut self, cycle_info: &CycleInfo) -> PosResult<DrawParameters> {
-        if cycle_info.cycle as usize > self.cfg.lookback_cycles {
+        if cycle_info.cycle > self.cfg.lookback_cycles {
             self.get_params_from_finals(cycle_info)
         } else {
             self.get_params_from_initials(cycle_info)

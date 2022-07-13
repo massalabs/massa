@@ -187,10 +187,10 @@ impl Slot {
     }
 
     /// last slot of the given cycle
-    pub fn last(cycle: u64) -> Slot {
+    pub fn new_last_of_cycle(cycle: u64) -> Slot {
         Slot {
             period: ((cycle + 1) * PERIODS_PER_CYCLE) - 1,
-            thread: THREAD_COUNT,
+            thread: THREAD_COUNT - 1,
         }
     }
 
@@ -221,8 +221,9 @@ impl Slot {
     }
 
     /// check if the slot is last in the cycle
-    pub fn last_in_cycle(&self) -> bool {
-        self.period % PERIODS_PER_CYCLE == 0 && self.thread == THREAD_COUNT
+    pub fn last_of_a_cycle(&self) -> bool {
+        self.period % PERIODS_PER_CYCLE == (PERIODS_PER_CYCLE - 1)
+            && self.thread == (THREAD_COUNT - 1)
     }
 
     /// Returns a fixed-size sortable binary key

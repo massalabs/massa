@@ -134,7 +134,7 @@ impl SpeculativeRollState {
         let credit = self
             .added_changes
             .deferred_credits
-            .entry(Slot::last(
+            .entry(Slot::new_last_of_cycle(
                 slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
             ))
             .or_insert_with(Map::default);
@@ -172,7 +172,7 @@ impl SpeculativeRollState {
         let credits = self
             .added_changes
             .deferred_credits
-            .entry(Slot::last(
+            .entry(Slot::new_last_of_cycle(
                 slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
             ))
             .or_insert_with(Map::default);
