@@ -598,10 +598,15 @@ impl ExecutionContext {
     /// # Arguments
     /// * `creator`: the supposed creator
     /// * `slot`: current slot
-    /// * `contains_block`: indicates whether or not `creator` produced the block
-    pub fn update_production_stats(&mut self, creator: &Address, slot: Slot, contains_block: bool) {
+    /// * `block_id`: id of the block (if some)
+    pub fn update_production_stats(
+        &mut self,
+        creator: &Address,
+        slot: Slot,
+        block_id: Option<BlockId>,
+    ) {
         self.speculative_roll_state
-            .update_production_stats(creator, slot, contains_block);
+            .update_production_stats(creator, slot, block_id);
     }
 
     /// Execute the deferred credits of `slot`.

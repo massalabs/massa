@@ -5,7 +5,7 @@ use massa_final_state::FinalState;
 use massa_models::{
     constants::{default::POS_SELL_CYCLES, PERIODS_PER_CYCLE, ROLL_PRICE},
     prehash::Map,
-    Address, Amount, Slot,
+    Address, Amount, BlockId, Slot,
 };
 use massa_pos_exports::{PoSChanges, ProductionStats, SelectorController};
 use parking_lot::RwLock;
@@ -141,16 +141,22 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `creator`: the supposed creator
     /// * `slot`: current slot
-    /// * `contains_block`: indicates whether or not `creator` produced the block
-    pub fn update_production_stats(&mut self, creator: &Address, slot: Slot, contains_block: bool) {
+    /// * `block_id`: id of the block (if some)
+    pub fn update_production_stats(
+        &mut self,
+        creator: &Address,
+        slot: Slot,
+        block_id: Option<BlockId>,
+    ) {
         if let Some(production_stats) = self.added_changes.production_stats.get_mut(creator) {
-            if contains_block {
+            if let Some(id) = block_id {
                 production_stats.block_success_count =
                     production_stats.block_success_count.saturating_add(1);
-                self.added_changes.seed_bits.push(slot.get_first_bit());
+                self.added_changes.seed_bits.push(id.get_first_bit());
             } else {
                 production_stats.block_failure_count =
                     production_stats.block_failure_count.saturating_add(1);
+                self.added_changes.seed_bits.push(slot.get_first_bit());
             }
         }
     }
