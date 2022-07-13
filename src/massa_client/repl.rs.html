@@ -321,6 +321,16 @@
 <span id="315">315</span>
 <span id="316">316</span>
 <span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::cmds</span>::{<span class="ident">Command</span>, <span class="ident">ExtendedWallet</span>};
@@ -330,7 +340,9 @@
 <span class="kw">use</span> <span class="ident">dialoguer</span>::{<span class="ident">theme::ColorfulTheme</span>, <span class="ident">Completion</span>, <span class="ident">History</span>, <span class="ident">Input</span>};
 <span class="kw">use</span> <span class="ident">erased_serde</span>::{<span class="ident">Serialize</span>, <span class="ident">Serializer</span>};
 <span class="kw">use</span> <span class="ident">glob::glob</span>;
-<span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>};
+<span class="kw">use</span> <span class="ident">massa_models::api</span>::{
+    <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">DatastoreEntryOutput</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>,
+};
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
@@ -583,6 +595,14 @@
     <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for</span> <span class="ident">address_info</span> <span class="kw">in</span> <span class="self">self</span> {
             <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">address_info</span>);
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DatastoreEntryOutput</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">for</span> <span class="ident">data_entry</span> <span class="kw">in</span> <span class="self">self</span> {
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">data_entry</span>);
         }
     }
 }

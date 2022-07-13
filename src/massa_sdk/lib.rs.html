@@ -281,6 +281,20 @@
 <span id="275">275</span>
 <span id="276">276</span>
 <span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Utilities for a massa client</span>
 
@@ -290,8 +304,9 @@
 <span class="kw">use</span> <span class="ident">jsonrpc_core_client::transports::http</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_core_client</span>::{<span class="ident">RpcChannel</span>, <span class="ident">RpcError</span>, <span class="ident">RpcResult</span>, <span class="ident">TypedClient</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
-    <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>,
-    <span class="ident">OperationInput</span>, <span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>, <span class="ident">TimeInterval</span>,
+    <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">DatastoreEntryInput</span>, <span class="ident">DatastoreEntryOutput</span>,
+    <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">OperationInput</span>,
+    <span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>, <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
@@ -513,6 +528,19 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressInfo</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_addresses&quot;</span>, <span class="string">&quot;Vec&lt;AddressInfo&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">addresses</span>])
             .<span class="kw">await</span>
+    }
+
+    <span class="doccomment">/// Get datastore entries</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_datastore_entries</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">input</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DatastoreEntryInput</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DatastoreEntryOutput</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">call_method</span>(
+            <span class="string">&quot;get_datastore_entries&quot;</span>,
+            <span class="string">&quot;Vec&lt;DatastoreEntryOutput&gt;&quot;</span>,
+            <span class="macro">vec!</span>[<span class="ident">input</span>],
+        )
+        .<span class="kw">await</span>
     }
 
     <span class="comment">// User (interaction with the node)</span>
