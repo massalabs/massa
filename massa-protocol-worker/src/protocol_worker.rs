@@ -1241,14 +1241,6 @@ impl ProtocolWorker {
                                     if info.header.content.operation_merkle_root
                                         == Hash::compute_from(&total_hash)
                                     {
-                                        // Note ops are needed for block
-                                        for op_id in operation_list.iter().filter(|op| {
-                                            !self.checked_operations.contains(&op.into_prefix())
-                                        }) {
-                                            self.awaiting_operations
-                                                .insert(op_id.clone(), block_id.clone());
-                                        }
-
                                         let missing_operations = operation_list
                                             .into_iter()
                                             .filter(|op| {
@@ -1276,11 +1268,44 @@ impl ProtocolWorker {
                             // Send to pool?
                             self.on_operations_received(from_node_id, operations.clone())
                                 .await;
-                                
-                            if let Some(AskForBlocksInfo::Operations(_operation_ids)) =
+
+                            if let Some(AskForBlocksInfo::Operations(wanted_operation_ids)) =
                                 self.block_wishlist.get(&block_id)
                             {
-                                // TODO: Send to graph
+                                let mut should_be_banned = false;
+                                if let Some(info) = self.checked_headers.get_mut(&block_id) {
+                                    for op in operations.iter() {
+                                        if !wanted_operation_ids.contains(&op.id) {
+                                            should_be_banned = true;
+                                            break;
+                                        }
+
+                                        // check validity period
+                                        if !(op
+                                            .get_validity_range(self.operation_validity_periods)
+                                            .contains(&info.header.content.slot.period))
+                                        {
+                                            should_be_banned = true;
+                                            break;
+                                        }
+
+                                        // check thread
+                                        if op.thread != info.header.content.slot.thread {
+                                            massa_trace!("protocol.protocol_worker.process_block.err_op_thread",
+                                                 {"block_id":block_id, "op": op});
+                                            should_be_banned = true;
+                                            break;
+                                        }
+                                    }
+
+                                    // TODO: Send to graph
+                                } else {
+                                    warn!("Missing block info for {}", block_id);
+                                }
+
+                                if should_be_banned {
+                                    let _ = self.ban_node(&from_node_id).await;
+                                }
 
                                 // Update ask block
                                 let mut set = Set::<BlockId>::with_capacity_and_hasher(
