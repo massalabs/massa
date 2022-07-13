@@ -1,7 +1,6 @@
 use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{
-    Applicable, LedgerChanges, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep,
-    SetUpdateOrDelete,
+    LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::{Address, Amount};
 use std::collections::VecDeque;
@@ -89,17 +88,5 @@ impl ActiveHistory {
             }
         }
         HistorySearchResult::NoInfo
-    }
-
-    /// Query every change of the given address datastore at the end of the active history.
-    pub fn fetch_datastore_changes_of(
-        &self,
-        addr: &Address,
-    ) -> Option<SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>> {
-        let mut changes = LedgerChanges::default();
-        for output in self.0.iter() {
-            changes.apply(output.state_changes.ledger_changes.clone());
-        }
-        changes.0.get(addr).cloned()
     }
 }

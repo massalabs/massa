@@ -17,7 +17,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
-use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetUpdateOrDelete};
+use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
@@ -763,37 +763,45 @@ impl ExecutionState {
         )
     }
 
-    /// Get every datastore key of the given address.
+    /// Get every final and active datastore key of the given address
     pub fn get_final_and_active_datastore_keys(
         &self,
         addr: &Address,
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
-        let final_keys: BTreeSet<Vec<u8>> = self
-            .final_state
-            .read()
-            .ledger
-            .get_entire_datastore(addr)
-            .into_iter()
-            .map(|v| v.0)
-            .collect();
-        let active_changes = self.active_history.read().fetch_datastore_changes_of(addr);
-        let active_keys = match active_changes {
-            Some(SetUpdateOrDelete::Set(LedgerEntry { datastore, .. })) => {
-                datastore.iter().map(|(key, _)| key.clone()).collect()
-            }
-            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
-                let mut keys = final_keys.clone();
-                for value in datastore {
-                    match value {
-                        (key, SetOrDelete::Set(_)) => keys.insert(key),
-                        (key, SetOrDelete::Delete) => keys.remove(&key),
-                    };
+        // here, get the final keys from the final ledger, and make a copy of it for the candidate list
+        // let final_keys = self.final_state.read().ledger.get_datastore_keys(addr);
+        let final_keys = BTreeSet::default();
+        let mut candidate_keys = final_keys.clone();
+
+        // here, traverse the history from oldest to newest, applying additions and deletions
+        for output in &self.active_history.read().0 {
+            match output.state_changes.ledger_changes.get(&addr) {
+                // address absent from the changes
+                None => (),
+
+                // address ledger entry being reset to an absolute new list of keys
+                Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
+                    candidate_keys = new_ledger_entry.datastore.keys().cloned().collect();
                 }
-                keys
+
+                // address ledger entry being updated
+                Some(SetUpdateOrDelete::Update(entry_updates)) => {
+                    for (ds_key, ds_update) in &entry_updates.datastore {
+                        match ds_update {
+                            SetOrDelete::Set(_) => candidate_keys.insert(ds_key.clone()),
+                            SetOrDelete::Delete => candidate_keys.remove(ds_key),
+                        };
+                    }
+                }
+
+                // address ledger entry being deleted
+                Some(SetUpdateOrDelete::Delete) => {
+                    candidate_keys.clear();
+                }
             }
-            _ => final_keys.clone(),
-        };
-        (final_keys, active_keys)
+        }
+
+        (final_keys, candidate_keys)
     }
 
     /// Gets execution events optionally filtered by:
