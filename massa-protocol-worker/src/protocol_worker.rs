@@ -1342,15 +1342,37 @@ impl ProtocolWorker {
                 node: from_node_id,
                 list,
             } => {
-                //massa_trace!("protocol.protocol_worker.on_network_event.asked_for_blocks", { "node": from_node_id, "hashlist": list});
+                massa_trace!("protocol.protocol_worker.on_network_event.asked_for_blocks", { "node": from_node_id, "hashlist": list});
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
-                    let mut content = Map::<BlockId, Operations>::default();
+                    let mut all_blocks_info = vec![];
                     for (hash, info_wanted) in &list {
-                        match info_wanted {
-                            AskForBlocksInfo::Info => {}
-                            AskForBlocksInfo::Operations(op_ids) => {}
-                        }
+                        let operations_ids = match self.storage.retrieve_block(hash) {
+                            Some(wrapped_block) => wrapped_block.read().content.operations.clone(),
+                            None => {
+                                all_blocks_info.push((hash.clone(), ReplyForBlocksInfo::NotFound));
+                                continue;
+                            }
+                        };
+                        let block_info = match info_wanted {
+                            AskForBlocksInfo::Info => ReplyForBlocksInfo::Info(operations_ids),
+                            AskForBlocksInfo::Operations(op_ids) => {
+                                let needed_ops = operations_ids
+                                    .into_iter()
+                                    .filter(|id| op_ids.contains(id))
+                                    .collect();
+                                ReplyForBlocksInfo::Operations(needed_ops)
+                            }
+                        };
+                        all_blocks_info.push((hash.clone(), block_info));
                     }
+                    self.network_command_sender
+                        .send_block_info(from_node_id, all_blocks_info)
+                        .await
+                        .map_err(|_| {
+                            ProtocolError::ChannelError(
+                                "send block info network command send failed".into(),
+                            )
+                        })?;
                 } else {
                     return Ok(());
                 }

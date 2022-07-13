@@ -77,6 +77,7 @@ use massa_models::{
     stats::NetworkStats,
     BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
 
@@ -151,7 +152,7 @@ pub enum NodeEventType {
 pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
 /// The info required for a block being asked for.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AskForBlocksInfo {
     // The info about the block is required(list of operations ids).
     Info,
@@ -160,12 +161,14 @@ pub enum AskForBlocksInfo {
 }
 
 /// The content required for a block being asked for.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReplyForBlocksInfo {
     // The info about the block is required(list of operations ids).
     Info(OperationIds),
     // The actual operations required.
-    Operations(Operations),
+    Operations(OperationIds),
+    // Block not found
+    NotFound,
 }
 
 /// Commands that the worker can execute
