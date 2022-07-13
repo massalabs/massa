@@ -21,9 +21,12 @@ pub enum ExecutionError {
     /// `ModelsError`: {0}
     ModelsError(#[from] massa_models::ModelsError),
 
-    /// RollBuyError: {0}
+    /// RollBuy error: {0}
     RollBuyError(String),
 
-    /// RollSellError: {0}
+    /// RollSell error: {0}
     RollSellError(String),
+
+    /// Block gas error: {0}
+    BlockGasError(String),
 }

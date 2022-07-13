@@ -588,6 +588,7 @@ impl Operation {
 
     /// Get the amount of gas used by the operation
     pub fn get_gas_usage(&self) -> u64 {
+        // TODO: update this
         match &self.op {
             OperationType::ExecuteSC { max_gas, .. } => *max_gas,
             OperationType::CallSC { max_gas, .. } => *max_gas,
@@ -599,6 +600,7 @@ impl Operation {
 
     /// Get the amount of coins used by the operation to pay for gas
     pub fn get_gas_coins(&self) -> Amount {
+        // TODO: update this
         match &self.op {
             OperationType::ExecuteSC {
                 max_gas, gas_price, ..

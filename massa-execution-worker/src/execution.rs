@@ -250,7 +250,7 @@ impl ExecutionState {
         &self,
         operation: &SignedOperation,
         block_creator_addr: Address,
-        _remaining_block_gas: &mut u64,
+        remaining_block_gas: &mut u64,
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
         // filter out only transactions operations
@@ -258,17 +258,27 @@ impl ExecutionState {
             return Ok(());
         }
 
+        // sub from the remaining gas or ignore the operation
+        let op_gas = operation.content.get_gas_usage();
+        if let Some(gas) = remaining_block_gas.checked_sub(op_gas) {
+            *remaining_block_gas = gas;
+        } else {
+            return Err(ExecutionError::BlockGasError(
+                "not enough gas to execute operation".to_string(),
+            ));
+        }
+
         // get the operation's sender address
         let sender_addr = Address::from_public_key(&operation.content.sender_public_key);
 
-        // TODO 1: sub from remaining gas
-        // TODO 2: compute fee from (op.max_gas * op.gas_price + op.fee)
-        let op_fees = operation.content.fee;
+        // compute fee from (op.max_gas * op.gas_price + op.fee)
+        let op_gas_coins = operation.content.get_gas_coins();
+        let op_fees = op_gas_coins.saturating_add(operation.content.fee);
 
         // try to debit the fee from the operation sender
         context_guard!(self).transfer_sequential_coins(
             Some(sender_addr),
-            Some(block_creator_addr),
+            None,
             operation.content.fee,
         )?;
 
@@ -342,18 +352,6 @@ impl ExecutionState {
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
             return Err(err);
-        }
-
-        // credit `roll_price` * `roll_count` sequential coins to the seller
-        let amount = self.config.roll_price.saturating_mul_u64(*roll_count);
-        if let Err(err) = context.transfer_sequential_coins(None, Some(seller_addr), amount) {
-            // cancel the effects of the execution by resetting the context to the previously saved snapshot
-            context.origin_operation_id = None;
-            context.reset_to_snapshot(context_snapshot);
-            return Err(ExecutionError::RollSellError(format!(
-                "{} failed to credit {} coins after selling {} rolls: {}",
-                seller_addr, amount, roll_count, err
-            )));
         }
         Ok(())
     }
@@ -782,15 +780,16 @@ impl ExecutionState {
             // Set block credits
             let mut block_credits = BLOCK_REWARD;
             // Compute creator address
-            let addr = Address::from_public_key(&stored_block.block.header.content.creator);
+            let block_creator_addr =
+                Address::from_public_key(&stored_block.block.header.content.creator);
             // Update speculative rolls state production stats
-            context_guard!(self).update_production_stats(&addr, slot, true);
+            context_guard!(self).update_production_stats(&block_creator_addr, slot, true);
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
             for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
                 if let Err(err) = self.execute_operation(
                     operation,
-                    addr,
+                    block_creator_addr,
                     &mut remaining_block_gas,
                     &mut block_credits,
                 ) {
@@ -828,18 +827,16 @@ impl ExecutionState {
                     }
                 }
                 // Credit block creator
-                let block_creator =
-                    Address::from_public_key(&stored_block.block.header.content.creator);
                 block_remaining_credit = block_remaining_credit
                     .saturating_sub(block_credit_part.checked_mul_u64(2).unwrap_or_default());
                 if let Err(err) = context.transfer_sequential_coins(
                     None,
-                    Some(block_creator),
+                    Some(block_creator_addr),
                     block_credit_part.saturating_add(block_remaining_credit),
                 ) {
                     debug!(
                         "failed to credit {} coins to {} for the creation of a block: {}",
-                        block_credit_part, block_creator, err
+                        block_credit_part, block_creator_addr, err
                     )
                 }
             }
