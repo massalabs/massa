@@ -24,7 +24,9 @@ pub use export_pos::{
 pub use settings::ProofOfStakeConfig;
 
 mod thread_cycle_state;
-pub use thread_cycle_state::ThreadCycleState;
+pub use thread_cycle_state::{
+    ThreadCycleState, ThreadCycleStateDeserializer, ThreadCycleStateSerializer,
+};
 
 /// Roll specific method on operation
 pub trait OperationRollInterface {

@@ -6,7 +6,6 @@
 
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
-use massa_models::DeserializeVarInt;
 use pbkdf2::{
     password_hash::{PasswordHasher, SaltString},
     Pbkdf2,
@@ -14,22 +13,25 @@ use pbkdf2::{
 
 use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
 use crate::error::CipherError;
+use massa_serialization::{DeserializeError, Deserializer, U32VarIntDeserializer};
+
+use std::ops::Bound::Included;
 
 /// Decryption function using AES-GCM cipher.
 ///
 /// Read `lib.rs` module documentation for more information.
 pub fn decrypt(password: &str, data: &[u8]) -> Result<(u32, Vec<u8>), CipherError> {
     // parse cipher version
-    let (version, index): (u32, usize) =
-        DeserializeVarInt::from_varint_bytes(data).map_err(|_| {
+    let (rest, version) = U32VarIntDeserializer::new(Included(0), Included(u32::MAX))
+        .deserialize::<DeserializeError>(data)
+        .map_err(|_| {
             CipherError::DecryptionError(
                 "wallet file truncated: version missing or incomplete".to_string(),
             )
         })?;
 
     // parse PBKDF2 salt
-    let salt_end_index = index + SALT_SIZE;
-    let salt_data = data.get(index..salt_end_index).ok_or_else(|| {
+    let salt_data = rest.get(..SALT_SIZE).ok_or_else(|| {
         CipherError::DecryptionError(
             "wallet file truncated: salt missing or incomplete".to_string(),
         )
@@ -45,8 +47,8 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<(u32, Vec<u8>), CipherErro
         .expect("content is missing after a successful hash");
 
     // parse AES-GCM nonce
-    let nonce_end_index = salt_end_index + NONCE_SIZE;
-    let nonce = Nonce::from_slice(data.get(salt_end_index..nonce_end_index).ok_or_else(|| {
+    let nonce_end_index = SALT_SIZE + NONCE_SIZE;
+    let nonce = Nonce::from_slice(rest.get(SALT_SIZE..nonce_end_index).ok_or_else(|| {
         CipherError::DecryptionError(
             "wallet file truncated: nonce missing or incomplete".to_string(),
         )

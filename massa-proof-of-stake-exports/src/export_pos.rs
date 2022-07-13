@@ -56,6 +56,54 @@ impl Default for ExportProofOfStakeSerializer {
 }
 
 impl Serializer<ExportProofOfStake> for ExportProofOfStakeSerializer {
+    /// ## Example
+    /// ```rust
+    /// use bitvec::prelude::BitVec;
+    /// use massa_proof_of_stake_exports::{ExportProofOfStake, ExportProofOfStakeSerializer, ThreadCycleState};
+    /// use massa_models::{Address, Slot, prehash::Map, rolls::{RollUpdate, RollUpdates, RollCounts}, constants::THREAD_COUNT};
+    /// use std::str::FromStr;
+    /// use std::collections::VecDeque;
+    /// use massa_serialization::Serializer;
+    ///
+    /// let mut thread_cycle_state = ThreadCycleState {
+    ///   cycle: 0,
+    ///   last_final_slot: Slot::new(1, 2),
+    ///   roll_count: RollCounts::default(),
+    ///   cycle_updates: RollUpdates::default(),
+    ///   rng_seed: BitVec::default(),
+    ///   production_stats: Map::default(),
+    /// };
+    /// thread_cycle_state.roll_count.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   1,
+    /// );
+    /// thread_cycle_state.roll_count.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   4,
+    /// );
+    /// thread_cycle_state.cycle_updates.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   RollUpdate {
+    ///    roll_purchases: 3,
+    ///    roll_sales: 0
+    ///   }
+    /// );
+    /// thread_cycle_state.production_stats.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   (1, 2)
+    /// );
+    /// let mut thread_cycle_state_vec = VecDeque::new();
+    /// thread_cycle_state_vec.push_back(thread_cycle_state.clone());
+    /// thread_cycle_state_vec.push_back(thread_cycle_state.clone());
+    /// let mut export_proof_of_stake = ExportProofOfStake {
+    ///  cycle_states: vec![],
+    /// };
+    /// for _ in 0..THREAD_COUNT {
+    ///   export_proof_of_stake.cycle_states.push(thread_cycle_state_vec.clone());
+    /// }
+    /// let mut buffer = Vec::new();
+    /// ExportProofOfStakeSerializer::new().serialize(&export_proof_of_stake, &mut buffer).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &ExportProofOfStake,
@@ -109,6 +157,59 @@ impl Default for ExportProofOfStakeDeserializer {
 }
 
 impl Deserializer<ExportProofOfStake> for ExportProofOfStakeDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use bitvec::prelude::BitVec;
+    /// use massa_proof_of_stake_exports::{ExportProofOfStake, ExportProofOfStakeSerializer, ExportProofOfStakeDeserializer, ThreadCycleState};
+    /// use massa_models::{Address, Slot, prehash::Map, rolls::{RollUpdate, RollUpdates, RollCounts}, constants::THREAD_COUNT};
+    /// use std::str::FromStr;
+    /// use std::collections::VecDeque;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let mut thread_cycle_state = ThreadCycleState {
+    ///   cycle: 0,
+    ///   last_final_slot: Slot::new(1, 2),
+    ///   roll_count: RollCounts::default(),
+    ///   cycle_updates: RollUpdates::default(),
+    ///   rng_seed: BitVec::default(),
+    ///   production_stats: Map::default(),
+    /// };
+    /// thread_cycle_state.roll_count.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   1,
+    /// );
+    /// thread_cycle_state.roll_count.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   4,
+    /// );
+    /// thread_cycle_state.cycle_updates.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   RollUpdate {
+    ///    roll_purchases: 3,
+    ///    roll_sales: 0
+    ///   }
+    /// );
+    /// thread_cycle_state.production_stats.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   (1, 2)
+    /// );
+    /// let mut thread_cycle_state_vec = VecDeque::new();
+    /// thread_cycle_state_vec.push_back(thread_cycle_state.clone());
+    /// thread_cycle_state_vec.push_back(thread_cycle_state.clone());
+    /// let mut export_proof_of_stake = ExportProofOfStake {
+    ///  cycle_states: vec![],
+    /// };
+    /// for _ in 0..THREAD_COUNT {
+    ///   export_proof_of_stake.cycle_states.push(thread_cycle_state_vec.clone());
+    /// }
+    /// let mut buffer = Vec::new();
+    /// ExportProofOfStakeSerializer::new().serialize(&export_proof_of_stake, &mut buffer).unwrap();
+    /// let (rest, export_proof_of_stake_deserialized) = ExportProofOfStakeDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// let mut buffer2 = Vec::new();
+    /// ExportProofOfStakeSerializer::new().serialize(&export_proof_of_stake_deserialized, &mut buffer2).unwrap();
+    /// assert_eq!(buffer, buffer2);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

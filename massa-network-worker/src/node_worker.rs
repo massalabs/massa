@@ -11,11 +11,11 @@ use massa_models::{
     node::NodeId,
     wrapped::{Id, WrappedSerializer},
 };
-use massa_models::{BlockId, OperationId, SerializeVarInt};
+use massa_models::{BlockId, OperationId};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
 };
-use massa_serialization::Serializer;
+use massa_serialization::{SerializeError, Serializer, U32VarIntSerializer};
 use massa_storage::Storage;
 use tokio::{
     sync::mpsc,
@@ -146,6 +146,7 @@ impl NodeWorker {
         let write_timeout = self.cfg.message_timeout;
         let node_id_copy = self.node_id;
         let storage = self.storage.clone();
+        let u32_serializer = U32VarIntSerializer::new();
         let node_writer_handle = tokio::spawn(async move {
             loop {
                 match writer_command_rx.recv().await {
@@ -160,7 +161,8 @@ impl NodeWorker {
                                 // Construct the message,
                                 // using the serialized block retrieved from shared storage.
                                 let mut res: Vec<u8> = Vec::new();
-                                res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
+                                u32_serializer
+                                    .serialize(&u32::from(MessageTypeId::Block), &mut res)?;
                                 let block = storage
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
@@ -172,8 +174,8 @@ impl NodeWorker {
                                 // Construct the message,
                                 // using the serialized header retrieved from shared storage.
                                 let mut res: Vec<u8> = Vec::new();
-                                res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
-
+                                u32_serializer
+                                    .serialize(&u32::from(MessageTypeId::BlockHeader), &mut res)?;
                                 let block = storage
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
@@ -186,11 +188,17 @@ impl NodeWorker {
                                 // Construct the message,
                                 // using the serialized operations retrieved from shared storage.
                                 let mut res: Vec<u8> = Vec::new();
-                                res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
-                                let len = (operation_ids.len() as u32).to_varint_bytes();
-                                res.extend(len);
+                                u32_serializer
+                                    .serialize(&u32::from(MessageTypeId::Operations), &mut res)?;
+                                u32_serializer.serialize(
+                                    &operation_ids.len().try_into().map_err(|_| {
+                                        NetworkError::SerializeError(SerializeError::NumberTooBig(
+                                            "Too much operations".to_string(),
+                                        ))
+                                    })?,
+                                    &mut res,
+                                )?;
                                 let wrapped_operation_serializer = WrappedSerializer::new();
-
                                 storage.with_operations(&operation_ids, |operations| {
                                     for operation in operations {
                                         match operation {

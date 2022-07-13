@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ModelsError;
-use integer_encoding::VarInt;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -16,106 +15,6 @@ use nom::{
 use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
-
-/// varint serialization
-pub trait SerializeVarInt {
-    /// Serialize as varint bytes
-    fn to_varint_bytes(self) -> Vec<u8>;
-}
-
-impl SerializeVarInt for u16 {
-    fn to_varint_bytes(self) -> Vec<u8> {
-        self.encode_var_vec()
-    }
-}
-
-impl SerializeVarInt for u32 {
-    fn to_varint_bytes(self) -> Vec<u8> {
-        self.encode_var_vec()
-    }
-}
-
-impl SerializeVarInt for u64 {
-    fn to_varint_bytes(self) -> Vec<u8> {
-        self.encode_var_vec()
-    }
-}
-
-/// var int deserialization
-pub trait DeserializeVarInt: Sized {
-    /// Deserialize variable size integer to Self from the provided buffer.
-    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
-    /// In case of success, return the deserialized data and the number of bytes read
-    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError>;
-
-    /// Deserialize variable size integer to Self from the provided buffer and checks that its value is within given bounds.
-    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
-    /// In case of success, return the deserialized data and the number of bytes read
-    fn from_varint_bytes_bounded(
-        buffer: &[u8],
-        max_value: Self,
-    ) -> Result<(Self, usize), ModelsError>;
-}
-
-impl DeserializeVarInt for u16 {
-    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        u16::decode_var(buffer)
-            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
-    }
-
-    fn from_varint_bytes_bounded(
-        buffer: &[u8],
-        max_value: Self,
-    ) -> Result<(Self, usize), ModelsError> {
-        let (res, res_size) = Self::from_varint_bytes(buffer)?;
-        if res > max_value {
-            return Err(ModelsError::DeserializeError(
-                "deserialized varint u16 out of bounds".into(),
-            ));
-        }
-        Ok((res, res_size))
-    }
-}
-
-impl DeserializeVarInt for u32 {
-    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        u32::decode_var(buffer)
-            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
-    }
-
-    fn from_varint_bytes_bounded(
-        buffer: &[u8],
-        max_value: Self,
-    ) -> Result<(Self, usize), ModelsError> {
-        let (res, res_size) = Self::from_varint_bytes(buffer)?;
-        if res > max_value {
-            return Err(ModelsError::DeserializeError(
-                "deserialized varint u32 out of bounds".into(),
-            ));
-        }
-        Ok((res, res_size))
-    }
-}
-
-impl DeserializeVarInt for u64 {
-    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        u64::decode_var(buffer)
-            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
-    }
-
-    fn from_varint_bytes_bounded(
-        buffer: &[u8],
-        max_value: Self,
-    ) -> Result<(Self, usize), ModelsError> {
-        let (res, res_size) = Self::from_varint_bytes(buffer)?;
-        if res > max_value {
-            return Err(ModelsError::DeserializeError(
-                "deserialized varint u64 out of bounds".into(),
-            ));
-        }
-        Ok((res, res_size))
-    }
-}
 
 /// Serialize min big endian integer
 pub trait SerializeMinBEInt {

@@ -95,6 +95,18 @@ impl Default for RollUpdateSerializer {
 }
 
 impl Serializer<RollUpdate> for RollUpdateSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::rolls::{RollUpdate, RollUpdateSerializer};
+    /// use massa_serialization::Serializer;
+    ///
+    /// let roll_update = RollUpdate {
+    ///   roll_purchases: 1,
+    ///   roll_sales: 2,
+    /// };
+    /// let mut buffer = vec![];
+    /// RollUpdateSerializer::new().serialize(&roll_update, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &RollUpdate, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.u64_serializer
             .serialize(&value.roll_purchases, buffer)?;
@@ -124,6 +136,22 @@ impl Default for RollUpdateDeserializer {
 }
 
 impl Deserializer<RollUpdate> for RollUpdateDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::rolls::{RollUpdate, RollUpdateDeserializer, RollUpdateSerializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let roll_update = RollUpdate {
+    ///   roll_purchases: 1,
+    ///   roll_sales: 2,
+    /// };
+    /// let mut buffer = vec![];
+    /// RollUpdateSerializer::new().serialize(&roll_update, &mut buffer).unwrap();
+    /// let (rest, roll_update_deserialized) = RollUpdateDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(roll_update.roll_purchases, roll_update_deserialized.roll_purchases);
+    /// assert_eq!(roll_update.roll_sales, roll_update_deserialized.roll_sales);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

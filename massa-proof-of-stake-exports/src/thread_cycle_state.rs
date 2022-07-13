@@ -69,6 +69,44 @@ impl Default for ThreadCycleStateSerializer {
 }
 
 impl Serializer<ThreadCycleState> for ThreadCycleStateSerializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_proof_of_stake_exports::{ThreadCycleState, ThreadCycleStateSerializer};
+    /// use massa_models::{Slot, Address, prehash::Map, rolls::{RollCounts, RollUpdates, RollUpdate}};
+    /// use bitvec::prelude::BitVec;
+    /// use std::str::FromStr;
+    /// use massa_serialization::Serializer;
+    ///
+    /// let mut thread_cycle_state = ThreadCycleState {
+    ///   cycle: 0,
+    ///   last_final_slot: Slot::new(1, 2),
+    ///   roll_count: RollCounts::default(),
+    ///   cycle_updates: RollUpdates::default(),
+    ///   rng_seed: BitVec::default(),
+    ///   production_stats: Map::default(),
+    /// };
+    /// thread_cycle_state.roll_count.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   1,
+    /// );
+    /// thread_cycle_state.roll_count.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   4,
+    /// );
+    /// thread_cycle_state.cycle_updates.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   RollUpdate {
+    ///    roll_purchases: 3,
+    ///    roll_sales: 0
+    ///   }
+    /// );
+    /// thread_cycle_state.production_stats.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   (1, 2)
+    /// );
+    /// let mut buffer = Vec::new();
+    /// ThreadCycleStateSerializer::new().serialize(&thread_cycle_state, &mut buffer).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &ThreadCycleState,
@@ -171,6 +209,49 @@ impl Default for ThreadCycleStateDeserializer {
 }
 
 impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_proof_of_stake_exports::{ThreadCycleState, ThreadCycleStateSerializer, ThreadCycleStateDeserializer};
+    /// use massa_models::{Slot, Address, prehash::Map, rolls::{RollCounts, RollUpdates, RollUpdate}};
+    /// use bitvec::prelude::BitVec;
+    /// use std::str::FromStr;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let mut thread_cycle_state = ThreadCycleState {
+    ///   cycle: 0,
+    ///   last_final_slot: Slot::new(1, 2),
+    ///   roll_count: RollCounts::default(),
+    ///   cycle_updates: RollUpdates::default(),
+    ///   rng_seed: BitVec::default(),
+    ///   production_stats: Map::default(),
+    /// };
+    /// thread_cycle_state.roll_count.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   1,
+    /// );
+    /// thread_cycle_state.roll_count.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   4,
+    /// );
+    /// thread_cycle_state.cycle_updates.0.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   RollUpdate {
+    ///    roll_purchases: 3,
+    ///    roll_sales: 0
+    ///   }
+    /// );
+    /// thread_cycle_state.production_stats.insert(
+    ///   Address::from_str("A12Xng6ydrtsX2smz8VVG5bvs6TmbNQYgv765UtsC2bm7htTgYW4").unwrap(),
+    ///   (1, 2)
+    /// );
+    /// let mut buffer = Vec::new();
+    /// ThreadCycleStateSerializer::new().serialize(&thread_cycle_state, &mut buffer).unwrap();
+    /// let (rest, thread_cycle_state_deserialized) = ThreadCycleStateDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// let mut buffer2 = Vec::new();
+    /// ThreadCycleStateSerializer::new().serialize(&thread_cycle_state_deserialized, &mut buffer2).unwrap();
+    /// assert_eq!(buffer, buffer2);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

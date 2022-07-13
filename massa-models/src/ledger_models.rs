@@ -45,6 +45,19 @@ impl LedgerDataSerializer {
 }
 
 impl Serializer<LedgerData> for LedgerDataSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::ledger_models::{LedgerData, LedgerDataSerializer};
+    /// use massa_models::Amount;
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    ///
+    /// let ledger_data = LedgerData {
+    ///    balance: Amount::from_str("1349").unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// LedgerDataSerializer::new().serialize(&ledger_data, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &LedgerData, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.amount_serializer.serialize(&value.balance, buffer)?;
         Ok(())
@@ -72,6 +85,22 @@ impl Default for LedgerDataDeserializer {
 }
 
 impl Deserializer<LedgerData> for LedgerDataDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::ledger_models::{LedgerData, LedgerDataDeserializer, LedgerDataSerializer};
+    /// use massa_models::Amount;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let ledger_data = LedgerData {
+    ///    balance: Amount::from_str("1349").unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// LedgerDataSerializer::new().serialize(&ledger_data, &mut buffer).unwrap();
+    /// let (rest, ledger_data_deserialized) = LedgerDataDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(ledger_data.balance, ledger_data_deserialized.balance);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -157,6 +186,19 @@ impl LedgerChangeSerializer {
 }
 
 impl Serializer<LedgerChange> for LedgerChangeSerializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_models::{Address, Amount, ledger_models::LedgerChangeSerializer};
+    /// use std::str::FromStr;
+    /// use massa_models::ledger_models::LedgerChange;
+    /// use massa_serialization::Serializer;
+    /// let ledger_change = LedgerChange {
+    ///   balance_delta: Amount::from_str("1149").unwrap(),
+    ///   balance_increment: true
+    /// };
+    /// let mut serialized = Vec::new();
+    /// LedgerChangeSerializer::new().serialize(&ledger_change, &mut serialized).unwrap();
+    /// ```
     fn serialize(&self, value: &LedgerChange, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         buffer.push(if value.balance_increment { 1 } else { 0 });
         self.amount_serializer
@@ -186,6 +228,23 @@ impl Default for LedgerChangeDeserializer {
 }
 
 impl Deserializer<LedgerChange> for LedgerChangeDeserializer {
+    /// ## Example
+    /// ```rust
+    /// use massa_models::{Address, Amount, ledger_models::{LedgerChangeSerializer, LedgerChangeDeserializer}};
+    /// use std::str::FromStr;
+    /// use massa_models::ledger_models::LedgerChange;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// let ledger_change = LedgerChange {
+    ///   balance_delta: Amount::from_str("1149").unwrap(),
+    ///   balance_increment: true
+    /// };
+    /// let mut serialized = Vec::new();
+    /// LedgerChangeSerializer::new().serialize(&ledger_change, &mut serialized).unwrap();
+    /// let (rest, serialized) = LedgerChangeDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(ledger_change.balance_delta, serialized.balance_delta);
+    /// assert_eq!(ledger_change.balance_increment, serialized.balance_increment);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

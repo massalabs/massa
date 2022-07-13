@@ -151,6 +151,20 @@ impl Default for EndorsementSerializer {
 }
 
 impl Serializer<Endorsement> for EndorsementSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{Slot, BlockId, Endorsement, EndorsementSerializer};
+    /// use massa_serialization::Serializer;
+    /// use massa_hash::Hash;
+    ///
+    /// let endorsement = Endorsement {
+    ///   slot: Slot::new(1, 2),
+    ///   index: 0,
+    ///   endorsed_block: BlockId(Hash::compute_from("test".as_bytes()))
+    /// };
+    /// let mut buffer = Vec::new();
+    /// EndorsementSerializer::new().serialize(&endorsement, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &Endorsement, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.slot_serializer.serialize(&value.slot, buffer)?;
         self.u32_serializer.serialize(&value.index, buffer)?;
@@ -185,6 +199,25 @@ impl EndorsementDeserializer {
 }
 
 impl Deserializer<Endorsement> for EndorsementDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{Slot, BlockId, Endorsement, EndorsementSerializer, EndorsementDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_hash::Hash;
+    ///
+    /// let endorsement = Endorsement {
+    ///   slot: Slot::new(1, 2),
+    ///   index: 0,
+    ///   endorsed_block: BlockId(Hash::compute_from("test".as_bytes()))
+    /// };
+    /// let mut buffer = Vec::new();
+    /// EndorsementSerializer::new().serialize(&endorsement, &mut buffer).unwrap();
+    /// let (rest, deserialized) = EndorsementDeserializer::new(1).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized.slot, endorsement.slot);
+    /// assert_eq!(deserialized.index, endorsement.index);
+    /// assert_eq!(deserialized.endorsed_block, endorsement.endorsed_block);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],

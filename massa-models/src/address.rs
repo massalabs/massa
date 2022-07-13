@@ -1,17 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::prehash::PreHashed;
+use crate::ModelsError;
 use crate::{
     api::{LedgerInfo, RollsInfo},
     constants::ADDRESS_SIZE_BYTES,
 };
-use crate::{DeserializeVarInt, ModelsError, SerializeVarInt};
 use massa_hash::{Hash, HashDeserializer};
-use massa_serialization::Deserializer;
+use massa_serialization::{
+    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use massa_signature::PublicKey;
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
+use std::ops::Bound::Included;
 use std::str::FromStr;
 
 /// Derived from a public key
@@ -23,8 +26,12 @@ const ADDRESS_VERSION: u64 = 0;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let u64_serializer = U64VarIntSerializer::new();
         // might want to allocate the vector with capacity in order to avoid re-allocation
-        let mut bytes: Vec<u8> = ADDRESS_VERSION.to_varint_bytes();
+        let mut bytes: Vec<u8> = Vec::new();
+        u64_serializer
+            .serialize(&ADDRESS_VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
         bytes.extend(self.0.to_bytes());
         write!(
             f,
@@ -112,17 +119,16 @@ impl FromStr for Address {
         match chars.next() {
             Some(prefix) if prefix == ADDRESS_PREFIX => {
                 let data = chars.collect::<String>();
-                let mut decoded_bs58_check = bs58::decode(data)
+                let decoded_bs58_check = bs58::decode(data)
                     .with_check(None)
                     .into_vec()
                     .map_err(|_| ModelsError::AddressParseError)?;
-                let (_version, size) = u64::from_varint_bytes(&decoded_bs58_check[..])
+                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+                let (rest, _version) = u64_deserializer
+                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::AddressParseError)?;
-                decoded_bs58_check.drain(0..size);
                 Ok(Address(Hash::from_bytes(
-                    &decoded_bs58_check
-                        .as_slice()
-                        .try_into()
+                    rest.try_into()
                         .map_err(|_| ModelsError::AddressParseError)?,
                 )))
             }

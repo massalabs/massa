@@ -20,14 +20,15 @@ pub use endorsement::{
 };
 pub use error::ModelsError;
 pub use operation::{
-    Operation, OperationId, OperationIdsDeserializer, OperationPrefixId,
-    OperationPrefixIdDeserializer, OperationPrefixIds, OperationPrefixIdsDeserializer,
-    OperationPrefixIdsSerializer, OperationSerializer, OperationType, WrappedOperation,
+    Operation, OperationDeserializer, OperationId, OperationIds, OperationIdsDeserializer,
+    OperationIdsSerializer, OperationPrefixId, OperationPrefixIdDeserializer, OperationPrefixIds,
+    OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, OperationSerializer,
+    OperationType, OperationTypeDeserializer, OperationTypeSerializer, Operations,
+    OperationsDeserializer, OperationsSerializer, WrappedOperation,
 };
 pub use serialization::{
-    array_from_slice, u8_from_slice, DeserializeMinBEInt, DeserializeVarInt, IpAddrDeserializer,
-    IpAddrSerializer, SerializeMinBEInt, SerializeVarInt, StringDeserializer, StringSerializer,
-    VecU8Deserializer, VecU8Serializer,
+    array_from_slice, u8_from_slice, DeserializeMinBEInt, IpAddrDeserializer, IpAddrSerializer,
+    SerializeMinBEInt, StringDeserializer, StringSerializer, VecU8Deserializer, VecU8Serializer,
 };
 pub use serialization_context::{
     get_serialization_context, init_serialization_context, with_serialization_context,

@@ -254,6 +254,26 @@ impl Default for OperationSerializer {
 }
 
 impl Serializer<Operation> for OperationSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{Amount, Address, OperationType, OperationSerializer, Operation};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::Transaction {
+    ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
+    ///    amount: Amount::from_str("300").unwrap(),
+    /// };
+    /// let operation = Operation {
+    ///   fee: Amount::from_str("20").unwrap(),
+    ///   op,
+    ///   expire_period: 50,
+    /// };
+    /// let mut buffer = Vec::new();
+    /// OperationSerializer::new().serialize(&operation, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &Operation, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.amount_serializer.serialize(&value.fee, buffer)?;
         self.u64_serializer
@@ -288,6 +308,40 @@ impl Default for OperationDeserializer {
 }
 
 impl Deserializer<Operation> for OperationDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{Amount, Address, OperationType, OperationSerializer, Operation, OperationDeserializer};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::Transaction {
+    ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
+    ///    amount: Amount::from_str("300").unwrap(),
+    /// };
+    /// let operation = Operation {
+    ///   fee: Amount::from_str("20").unwrap(),
+    ///   op,
+    ///   expire_period: 50,
+    /// };
+    /// let mut buffer = Vec::new();
+    /// OperationSerializer::new().serialize(&operation, &mut buffer).unwrap();
+    /// let (rest, deserialized_operation) = OperationDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized_operation.fee, operation.fee);
+    /// assert_eq!(deserialized_operation.expire_period, operation.expire_period);
+    /// match deserialized_operation.op {
+    ///   OperationType::Transaction {
+    ///     recipient_address,
+    ///     amount,
+    ///   } => {
+    ///     assert_eq!(recipient_address, Address::from_public_key(&keypair.get_public_key()));
+    ///     assert_eq!(amount, Amount::from_str("300").unwrap());
+    ///   }
+    ///   _ => panic!("wrong operation type"),
+    /// };
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -451,6 +505,23 @@ impl Default for OperationTypeSerializer {
 }
 
 impl Serializer<OperationType> for OperationTypeSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{OperationTypeSerializer, OperationTypeDeserializer, Address, Amount, OperationType};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::ExecuteSC {
+    ///    data: vec![0x01, 0x02, 0x03],
+    ///    max_gas: 100,
+    ///    coins: Amount::from_str("300").unwrap(),
+    ///    gas_price: Amount::from_str("1").unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// OperationTypeSerializer::new().serialize(&op, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &OperationType, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         match value {
             OperationType::Transaction {
@@ -549,6 +620,39 @@ impl Default for OperationTypeDeserializer {
 }
 
 impl Deserializer<OperationType> for OperationTypeDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{OperationTypeSerializer, OperationTypeDeserializer, Address, Amount, OperationType};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::ExecuteSC {
+    ///    data: vec![0x01, 0x02, 0x03],
+    ///    max_gas: 100,
+    ///    coins: Amount::from_str("300").unwrap(),
+    ///    gas_price: Amount::from_str("1").unwrap(),
+    /// };
+    /// let mut buffer = Vec::new();
+    /// OperationTypeSerializer::new().serialize(&op, &mut buffer).unwrap();
+    /// let (rest, op_deserialized) = OperationTypeDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// match op_deserialized {
+    ///    OperationType::ExecuteSC {
+    ///      data,
+    ///      max_gas,
+    ///      coins,
+    ///      gas_price
+    ///   } => {
+    ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
+    ///     assert_eq!(max_gas, 100);
+    ///     assert_eq!(coins, Amount::from_str("300").unwrap());
+    ///     assert_eq!(gas_price, Amount::from_str("1").unwrap());
+    ///   },
+    ///   _ => panic!("Unexpected operation type"),
+    /// };
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -775,6 +879,18 @@ impl Default for OperationIdsSerializer {
 }
 
 impl Serializer<OperationIds> for OperationIdsSerializer {
+    /// ## Example:
+    /// ```
+    /// use massa_models::{OperationIds, OperationId, OperationIdsSerializer};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    ///
+    /// let mut operations_ids = OperationIds::default();
+    /// operations_ids.insert(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// operations_ids.insert(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// let mut buffer = Vec::new();
+    /// OperationIdsSerializer::new().serialize(&operations_ids, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &OperationIds, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let list_len: u32 = value.len().try_into().map_err(|_| {
             SerializeError::NumberTooBig("could not encode OperationIds list length as u32".into())
@@ -813,6 +929,21 @@ impl Default for OperationIdsDeserializer {
 }
 
 impl Deserializer<OperationIds> for OperationIdsDeserializer {
+    /// ## Example:
+    /// ```
+    /// use massa_models::{OperationIds, OperationId, OperationIdsSerializer, OperationIdsDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let mut operations_ids = OperationIds::default();
+    /// operations_ids.insert(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// operations_ids.insert(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// let mut buffer = Vec::new();
+    /// OperationIdsSerializer::new().serialize(&operations_ids, &mut buffer).unwrap();
+    /// let (rest, deserialized_operations_ids) = OperationIdsDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized_operations_ids, operations_ids);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -845,6 +976,17 @@ impl OperationPrefixIdDeserializer {
 }
 
 impl Deserializer<OperationPrefixId> for OperationPrefixIdDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, constants::OPERATION_ID_PREFIX_SIZE_BYTES};
+    /// use massa_serialization::Serializer;
+    ///
+    /// let mut op_prefixes = OperationPrefixIds::default();
+    /// op_prefixes.insert(OperationPrefixId::from(&[20; OPERATION_ID_PREFIX_SIZE_BYTES]));
+    /// op_prefixes.insert(OperationPrefixId::from(&[20; OPERATION_ID_PREFIX_SIZE_BYTES]));
+    /// let mut buffer = Vec::new();
+    /// OperationPrefixIdsSerializer::new().serialize(&op_prefixes, &mut buffer).unwrap();
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -902,6 +1044,20 @@ impl Default for OperationPrefixIdsDeserializer {
 }
 
 impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{OperationPrefixId, OperationPrefixIds, OperationPrefixIdsSerializer, OperationPrefixIdsDeserializer, constants::OPERATION_ID_PREFIX_SIZE_BYTES};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    ///
+    /// let mut op_prefixes = OperationPrefixIds::default();
+    /// op_prefixes.insert(OperationPrefixId::from(&[20; OPERATION_ID_PREFIX_SIZE_BYTES]));
+    /// op_prefixes.insert(OperationPrefixId::from(&[20; OPERATION_ID_PREFIX_SIZE_BYTES]));
+    /// let mut buffer = Vec::new();
+    /// OperationPrefixIdsSerializer::new().serialize(&op_prefixes, &mut buffer).unwrap();
+    /// let (rest, deserialized) = OperationPrefixIdsDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// assert_eq!(rest.len(), 0);
+    /// assert_eq!(deserialized, op_prefixes);
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -985,6 +1141,28 @@ impl Default for OperationsSerializer {
 }
 
 impl Serializer<Operations> for OperationsSerializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{WrappedOperation, wrapped::WrappedContent, OperationSerializer, Address, Amount, Operations, Operation, OperationType, OperationsSerializer};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::Transaction {
+    ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
+    ///    amount: Amount::from_str("300").unwrap(),
+    /// };
+    /// let content = Operation {
+    ///   fee: Amount::from_str("20").unwrap(),
+    ///   op,
+    ///   expire_period: 50,
+    /// };
+    /// let op_wrapped = Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap();
+    /// let operations = vec![op_wrapped.clone(), op_wrapped.clone()];
+    /// let mut buffer = Vec::new();
+    /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
+    /// ```
     fn serialize(&self, value: &Operations, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let list_len: u32 = value.len().try_into().map_err(|_| {
             SerializeError::NumberTooBig("could not encode Operations list length as u32".into())
@@ -1023,6 +1201,35 @@ impl Default for OperationsDeserializer {
 }
 
 impl Deserializer<Operations> for OperationsDeserializer {
+    /// ## Example:
+    /// ```rust
+    /// use massa_models::{WrappedOperation, wrapped::WrappedContent, OperationSerializer, Address, Amount, Operations, Operation, OperationType, OperationsSerializer, OperationsDeserializer};
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    ///
+    /// let keypair = KeyPair::generate();
+    /// let op = OperationType::Transaction {
+    ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
+    ///    amount: Amount::from_str("300").unwrap(),
+    /// };
+    /// let content = Operation {
+    ///   fee: Amount::from_str("20").unwrap(),
+    ///   op,
+    ///   expire_period: 50,
+    /// };
+    /// let op_wrapped = Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap();
+    /// let operations = vec![op_wrapped.clone(), op_wrapped.clone()];
+    /// let mut buffer = Vec::new();
+    /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
+    /// let (rest, deserialized_operations) = OperationsDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
+    ///     assert_eq!(operation1.id, operation2.id);
+    ///     assert_eq!(operation1.signature, operation2.signature);
+    ///     assert_eq!(operation1.creator_public_key, operation2.creator_public_key);
+    ///     assert_eq!(operation1.content.fee, operation2.content.fee);
+    /// }
+    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
