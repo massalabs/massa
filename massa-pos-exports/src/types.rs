@@ -48,8 +48,12 @@ pub struct ProductionStats {
 impl ProductionStats {
     /// Check if the production stats are above the required percentage
     pub fn satisfying(&self) -> bool {
-        Ratio::new(self.block_success_count, self.block_failure_count)
-            >= *POS_MISS_RATE_DEACTIVATION_THRESHOLD
+        let opportunities_count = self.block_success_count + self.block_failure_count;
+        if opportunities_count == 0 {
+            return true;
+        }
+        Ratio::new(self.block_failure_count, opportunities_count)
+            <= *POS_MISS_RATE_DEACTIVATION_THRESHOLD
     }
 
     /// Increment a production stat struct with another
