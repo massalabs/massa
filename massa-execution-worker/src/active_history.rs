@@ -167,14 +167,14 @@ impl ActiveHistory {
     }
 
     /// Retrieve the production statistics of every address as they are in the last element of the history.
-    pub fn fetch_production_stats(&self) -> Option<Map<Address, ProductionStats>> {
-        self.0.back().map(|output| {
-            output
-                .state_changes
-                .roll_state_changes
-                .production_stats
-                .clone()
-        })
+    pub fn fetch_production_stats(&self) -> Map<Address, ProductionStats> {
+        let mut stats: Map<Address, ProductionStats> = Map::default();
+        while let Some(output) = self.0.iter().next() && !output.slot.last_of_a_cycle() {
+            for (addr, s) in output.state_changes.roll_state_changes.production_stats.iter() {
+                stats.entry(*addr).or_insert_with(ProductionStats::default).chain(s);
+            }
+        }
+        stats
     }
 
     /// Retrieve the production statistics of `addr` as they are in the last element of the history.
@@ -182,10 +182,7 @@ impl ActiveHistory {
     /// # Arguments
     /// * `addr`:  address to fetch the production stats from
     #[allow(dead_code)]
-    pub fn fetch_production_stats_for(&self, addr: &Address) -> Option<ProductionStats> {
-        while let Some(output) = self.0.iter().next() && !output.slot.last_of_a_cycle() {
-
-        }
+    pub fn outdated_fetch_production_stats_for(&self, addr: &Address) -> Option<ProductionStats> {
         self.0.back().and_then(|output| {
             output
                 .state_changes

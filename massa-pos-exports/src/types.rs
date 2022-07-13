@@ -51,6 +51,16 @@ impl ProductionStats {
         Ratio::new(self.block_success_count, self.block_failure_count)
             >= *POS_MISS_RATE_DEACTIVATION_THRESHOLD
     }
+
+    /// Increment a production stat struct with another
+    pub fn chain(&mut self, stats: &ProductionStats) {
+        self.block_success_count = self
+            .block_success_count
+            .saturating_add(stats.block_success_count);
+        self.block_failure_count = self
+            .block_failure_count
+            .saturating_add(stats.block_failure_count);
+    }
 }
 
 /// Recap of all PoS changes

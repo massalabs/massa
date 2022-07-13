@@ -41,19 +41,11 @@ impl SpeculativeRollState {
         active_history: Arc<RwLock<ActiveHistory>>,
         selector: Box<dyn SelectorController>,
     ) -> Self {
-        let added_changes = PoSChanges {
-            production_stats: active_history
-                .read()
-                .fetch_production_stats()
-                .or_else(|| final_state.read().pos_state.get_production_stats())
-                .unwrap_or_default(),
-            ..Default::default()
-        };
         SpeculativeRollState {
             final_state,
             active_history,
             selector,
-            added_changes,
+            added_changes: PoSChanges::default(),
         }
     }
 
@@ -190,6 +182,13 @@ impl SpeculativeRollState {
                 *rolls = 0;
             }
         }
+    }
+
+    /// TODO
+    pub fn get_production_stats(&self) -> Map<Address, ProductionStats> {
+        // final > active > changes for cycle
+        let stats = self.added_changes.production_stats;
+        stats
     }
 
     /// Get the deferred credits of `slot`.
