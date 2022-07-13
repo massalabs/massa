@@ -216,19 +216,25 @@ impl SpeculativeRollState {
 
     /// Get the deferred credits of `slot`.
     ///
-    /// NOTE: this probably shouldn't be done here but there is no alternative for now
-    ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
     pub fn get_deferred_credits(&mut self, slot: Slot) -> Map<Address, Amount> {
-        let final_lock = self.final_state.read();
-        let credits = self
-            .active_history
+        // NOTE:
+        // There is no need to sum the credits for similar entries between
+        // the final state and the active history.
+        // Credits come from cycle C-3 so there will never be similar entries.
+        // Even in the case of final credits being removed because of active slashing
+        // we want the active value to override the final one in this function.
+        let mut credits = self
+            .final_state
             .read()
-            .fetch_all_deferred_credits_at(&slot)
-            .into_iter()
-            .chain(final_lock.pos_state.get_deferred_credits_at(&slot))
-            .collect();
+            .pos_state
+            .get_deferred_credits_at(&slot);
+        credits.extend(
+            self.active_history
+                .read()
+                .fetch_all_deferred_credits_at(&slot),
+        );
         credits
     }
 }
