@@ -9,7 +9,7 @@ use massa_ledger_exports::{
 use massa_models::{Address, Amount, ModelsError};
 use massa_models::{DeserializeCompact, Slot};
 use nom::AsBytes;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeSet, HashMap};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -139,12 +139,12 @@ impl LedgerController for FinalLedger {
             .is_some()
     }
 
-    /// Retrieve the entire datastore of a given address
+    /// Get every key of the datastore for a given address.
     ///
     /// # Returns
-    /// A copy of the datastore sorted by key
-    fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Vec<u8>, Vec<u8>> {
-        self.sorted_ledger.get_entire_datastore(addr)
+    /// A BTreeSet of the datastore keys
+    fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
+        self.sorted_ledger.get_datastore_keys(addr)
     }
 
     /// Get a part of the disk ledger.
@@ -177,7 +177,18 @@ impl LedgerController for FinalLedger {
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
     #[cfg(feature = "testing")]
-    fn get_every_address(&self) -> BTreeMap<Address, Amount> {
+    fn get_every_address(&self) -> std::collections::BTreeMap<Address, Amount> {
         self.sorted_ledger.get_every_address()
+    }
+
+    /// Get the entire datastore for a given address.
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the entry hash as key and the data bytes as value
+    #[cfg(feature = "testing")]
+    fn get_entire_datastore(&self, addr: &Address) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
+        self.sorted_ledger.get_entire_datastore(addr)
     }
 }

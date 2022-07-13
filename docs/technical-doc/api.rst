@@ -346,7 +346,7 @@ Get the block graph within the specified time interval.
 
 Get a data entry both at the latest final and candidate executed slots for the given addresses.
 
-If an existing final entry (`final_value`) is found in the active history, it will return its final value in `candidate_value` field. If it was deleted in the active history, it will return null in `candidate_value` field.
+If an existing entry did not undergo any changes in the speculative history, it will return its final value in `candidate_value` field. If it was deleted in the active history, it will return null in `candidate_value` field.
 
 -   Parameters:
 
@@ -432,6 +432,7 @@ Get addresses.
             final_balance_info: null OR Number,
             candidate_balance_info: null OR Number,
             final_datastore_keys: [Byte array],
+            candidate_datastore_keys: [Byte array],
         },
     ];
 
