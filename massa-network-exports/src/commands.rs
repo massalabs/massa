@@ -151,7 +151,7 @@ pub enum NodeEventType {
 #[derive(Clone, Debug)]
 pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
-/// The info required for a block being asked for.
+/// Ask for the info about a block.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AskForBlocksInfo {
     // The info about the block is required(list of operations ids).
@@ -160,7 +160,7 @@ pub enum AskForBlocksInfo {
     Operations(OperationIds),
 }
 
-/// The content required for a block being asked for.
+/// Reply with the content required for a block.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReplyForBlocksInfo {
     // The info about the block is required(list of operations ids).
@@ -266,6 +266,17 @@ pub enum NetworkCommand {
     RemoveFromWhitelist(Vec<IpAddr>),
 }
 
+/// A node replied with info about a block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum BlockInfoReply {
+    // The info about the block is required(list of operations ids).
+    Info(OperationIds),
+    // The actual operations required.
+    Operations(Operations),
+    // Block not found
+    NotFound,
+}
+
 /// network event
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -286,7 +297,7 @@ pub enum NetworkEvent {
         /// from node id
         node: NodeId,
         /// block
-        info: Vec<(BlockId, ReplyForBlocksInfo)>,
+        info: Vec<(BlockId, BlockInfoReply)>,
     },
     /// A block header was received
     ReceivedBlockHeader {

@@ -16,7 +16,8 @@ use massa_models::{
 };
 use massa_models::{Block, EndorsementSerializer, OperationSerializer, WrappedBlock};
 use massa_network_exports::{
-    AskForBlocksInfo, NetworkCommandSender, NetworkEvent, NetworkEventReceiver, ReplyForBlocksInfo,
+    AskForBlocksInfo, BlockInfoReply, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
+    ReplyForBlocksInfo,
 };
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
@@ -1292,7 +1293,7 @@ impl ProtocolWorker {
                     // Check operation_list against expected operations hash from header.
                     if let Some(AskForBlocksInfo::Info) = self.block_wishlist.get(&block_id) {
                         match block_info {
-                            ReplyForBlocksInfo::Info(operation_list) => {
+                            BlockInfoReply::Info(operation_list) => {
                                 if let Some(info) = self.checked_headers.get_mut(&block_id) {
                                     let mut total_hash: Vec<u8> = vec![];
                                     for op_id in operation_list.iter() {
