@@ -168,7 +168,7 @@ pub struct EndorsementDeserializer {
 
 impl EndorsementDeserializer {
     /// Creates a new `EndorsementDeserializer`
-    pub fn new(endorsement_count: u32) -> Self {
+    pub const fn new(endorsement_count: u32) -> Self {
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;
         #[cfg(not(feature = "sandbox"))]

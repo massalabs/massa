@@ -344,7 +344,7 @@ Get the block graph within the specified time interval.
 `get_datastore_entries`
 --------------------
 
-Get a data entry both at the latest final and candidate_value executed slots for the given addresses.
+Get a data entry both at the latest final and candidate executed slots for the given addresses.
 
 If an existing final entry (`final_value`) is found in the active history, it will return its final value in `candidate_value` field. If it was deleted in the active history, it will return null in `candidate_value` field.
 
@@ -448,13 +448,15 @@ pool.
 
     [[
         {
-            "serialized_content": String,
+            "serialized_content": ByteArray,
             "creator_public_key": String,
             "signature": String
         }
     ]]
 
-The `serialized_content` parameter contains all the content encoded in byte compact (see https://github.com/massalabs/massa/blob/main/massa-models/src/operation.rs#L185) base58 encoded.
+The `serialized_content` parameter contains all the content encoded in byte compact (see https://github.com/massalabs/massa/blob/main/massa-models/src/operation.rs#L185).
+For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with ed25519.
+
 Here is an example of the content format :
 
 .. code-block:: javascript
@@ -495,7 +497,6 @@ Here is an example of the content format :
         },
     }
 
-For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with schnorr.
 
 -   Return:
 

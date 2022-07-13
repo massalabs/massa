@@ -352,13 +352,11 @@ impl ExecutionState {
         if let Err(err) = run_result {
             // there was an error during bytecode execution:
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
+            let err = ExecutionError::RuntimeError(format!("bytecode execution error: {}", err));
             let mut context = context_guard!(self);
             context.origin_operation_id = None;
-            context.reset_to_snapshot(context_snapshot);
-            return Err(ExecutionError::RuntimeError(format!(
-                "bytecode execution error: {}",
-                err
-            )));
+            context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+            return Err(err);
         }
 
         Ok(())
@@ -463,24 +461,29 @@ impl ExecutionState {
             }];
 
             // try to transfer parallel coins from the sender to the target
-            if let Err(err) =
-                context.transfer_parallel_coins(Some(sender_addr), Some(target_addr), coins)
-            {
-                // cancel the effects of the execution by resetting the context to the previously saved snapshot
-                context.origin_operation_id = None;
-                context.reset_to_snapshot(context_snapshot);
-                return Err(ExecutionError::RuntimeError(format!(
-                    "failed to transfer {} call coins from {} to {}: {}",
-                    coins, sender_addr, target_addr, err
-                )));
-            }
+            let coin_transfer_result =
+                context.transfer_parallel_coins(Some(sender_addr), Some(target_addr), coins);
 
             // Add the second part of the stack (the target)
+            // Note that we do it here so that the sender is on the top of the stack for the coin transfer above.
+            // and we don't do it after the coin transfer error handling because the emitted error event must show the correct stack.
             context.stack.push(ExecutionStackElement {
                 address: target_addr,
                 coins,
                 owned_addresses: vec![target_addr],
             });
+
+            // check the coin transfer result
+            if let Err(err) = coin_transfer_result {
+                // cancel the effects of the execution by resetting the context to the previously saved snapshot
+                let err = ExecutionError::RuntimeError(format!(
+                    "failed to transfer {} call coins from {} to {}: {}",
+                    coins, sender_addr, target_addr, err
+                ));
+                context.origin_operation_id = None;
+                context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                return Err(err);
+            }
         };
 
         // quit if there is no function to be called
@@ -499,13 +502,11 @@ impl ExecutionState {
         if let Err(err) = run_result {
             // there was an error during bytecode execution:
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
+            let err = ExecutionError::RuntimeError(format!("bytecode execution error: {}", err));
             let mut context = context_guard!(self);
             context.origin_operation_id = None;
-            context.reset_to_snapshot(context_snapshot);
-            return Err(ExecutionError::RuntimeError(format!(
-                "bytecode execution error: {}",
-                err
-            )));
+            context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+            return Err(err);
         }
 
         Ok(())
@@ -522,26 +523,9 @@ impl ExecutionState {
         message: AsyncMessage,
         bytecode: Option<Vec<u8>>,
     ) -> Result<(), ExecutionError> {
-        // If there is no target bytecode or if message data is invalid,
-        // directly reimburse sender with coins and quit
-        let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
-            (Some(bc), Ok(d)) => (bc, d),
-            (bc, _d) => {
-                context_guard!(self).cancel_async_message(&message);
-                if bc.is_none() {
-                    return Err(ExecutionError::RuntimeError(
-                        "no target bytecode found".into(),
-                    ));
-                }
-                return Err(ExecutionError::RuntimeError(
-                    "message data does not convert to utf-8".into(),
-                ));
-            }
-        };
-
         // prepare execution context
         let context_snapshot;
-        {
+        let (bytecode, data): (Vec<u8>, &str) = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
@@ -559,19 +543,40 @@ impl ExecutionState {
                 },
             ];
 
+            // If there is no target bytecode or if message data is invalid,
+            // reimburse sender with coins and quit
+            let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
+                (Some(bc), Ok(d)) => (bc, d),
+                (bc, _d) => {
+                    let err = if bc.is_none() {
+                        ExecutionError::RuntimeError("no target bytecode found".into())
+                    } else {
+                        ExecutionError::RuntimeError(
+                            "message data does not convert to utf-8".into(),
+                        )
+                    };
+                    context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                    context.cancel_async_message(&message);
+                    return Err(err);
+                }
+            };
+
             // credit coins to the target address
             if let Err(err) =
                 context.transfer_parallel_coins(None, Some(message.destination), message.coins)
             {
                 // coin crediting failed: reset context to snapshot and reimburse sender
-                context.reset_to_snapshot(context_snapshot);
-                context.cancel_async_message(&message);
-                return Err(ExecutionError::RuntimeError(format!(
+                let err = ExecutionError::RuntimeError(format!(
                     "could not credit coins to target of async execution: {}",
                     err
-                )));
+                ));
+                context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                context.cancel_async_message(&message);
+                return Err(err);
             }
-        }
+
+            (bytecode, data)
+        };
 
         // run the target function
         if let Err(err) = massa_sc_runtime::run_function(
@@ -582,13 +587,14 @@ impl ExecutionState {
             &*self.execution_interface,
         ) {
             // execution failed: reset context to snapshot and reimburse sender
-            let mut context = context_guard!(self);
-            context.reset_to_snapshot(context_snapshot);
-            context.cancel_async_message(&message);
-            Err(ExecutionError::RuntimeError(format!(
+            let err = ExecutionError::RuntimeError(format!(
                 "async message runtime execution error: {}",
                 err
-            )))
+            ));
+            let mut context = context_guard!(self);
+            context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+            context.cancel_async_message(&message);
+            Err(err)
         } else {
             Ok(())
         }

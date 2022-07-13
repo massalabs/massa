@@ -548,7 +548,7 @@ pub struct PublicKeyDeserializer;
 
 impl PublicKeyDeserializer {
     /// Creates a `SignatureDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -920,7 +920,7 @@ pub struct SignatureDeserializer;
 
 impl SignatureDeserializer {
     /// Creates a `SignatureDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
