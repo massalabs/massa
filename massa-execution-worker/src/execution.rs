@@ -832,7 +832,7 @@ impl ExecutionState {
                 if let Err(err) = context.transfer_sequential_coins(
                     None,
                     Some(block_creator_addr),
-                    block_credit_part.saturating_add(block_remaining_credit),
+                    block_remaining_credit,
                 ) {
                     debug!(
                         "failed to credit {} coins to {} for the creation of a block: {}",

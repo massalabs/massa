@@ -101,7 +101,7 @@ impl SpeculativeRollState {
         let final_lock = self.final_state.read();
 
         // fetch the roll count from: current changes > active history > final state
-        let count = self
+        let owned_count = self
             .added_changes
             .roll_changes
             .entry(*seller_addr)
@@ -113,15 +113,15 @@ impl SpeculativeRollState {
             });
 
         // verify that the seller has enough rolls to sell
-        if *count < roll_count {
+        if *owned_count < roll_count {
             return Err(ExecutionError::RollSellError(format!(
                 "{} tried to sell {} rolls but only has {}",
-                seller_addr, roll_count, count
+                seller_addr, roll_count, owned_count
             )));
         }
 
         // remove the rolls
-        *count = count.saturating_sub(roll_count);
+        *owned_count = owned_count.saturating_sub(roll_count);
 
         // add deferred reimbursement corresponding to the sold rolls value
         let credit = self
