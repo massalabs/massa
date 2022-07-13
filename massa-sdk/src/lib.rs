@@ -7,8 +7,9 @@
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcError, RpcResult, TypedClient};
 use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
-    OperationInput, ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
+    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -230,6 +231,19 @@ impl RpcClient {
     pub async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
         self.call_method("get_addresses", "Vec<AddressInfo>", vec![addresses])
             .await
+    }
+
+    /// Get datastore entries
+    pub async fn get_datastore_entries(
+        &self,
+        input: Vec<DatastoreEntryInput>,
+    ) -> RpcResult<Vec<DatastoreEntryOutput>> {
+        self.call_method(
+            "get_datastore_entries",
+            "Vec<DatastoreEntryOutput>",
+            vec![input],
+        )
+        .await
     }
 
     // User (interaction with the node)

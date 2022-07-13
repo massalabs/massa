@@ -14,9 +14,9 @@ From binaries
 If you just wish to run a Massa node without compiling it yourself, you
 can simply download the latest binary below and go the the next step: :ref:`Running a node <testnet-running>`.
 
-- `Windows executable <https://github.com/massalabs/massa/releases/download/TEST.12.0/massa_TEST.12.0_release_windows.zip>`_
-- `Linux binary <https://github.com/massalabs/massa/releases/download/TEST.12.0/massa_TEST.12.0_release_linux.tar.gz>`_ - only works with libc2.28 at least (for example Ubuntu 20.04 and higher)
-- `MacOS binary <https://github.com/massalabs/massa/releases/download/TEST.12.0/massa_TEST.12.0_release_macos.tar.gz>`_
+- `Windows executable <https://github.com/massalabs/massa/releases/download/TEST.12.1/massa_TEST.12.1_release_windows.zip>`_
+- `Linux binary <https://github.com/massalabs/massa/releases/download/TEST.12.1/massa_TEST.12.1_release_linux.tar.gz>`_ - only works with libc2.28 at least (for example Ubuntu 20.04 and higher)
+- `MacOS binary <https://github.com/massalabs/massa/releases/download/TEST.12.1/massa_TEST.12.1_release_macos.tar.gz>`_
 
 From source code
 ================
@@ -27,7 +27,7 @@ On Ubuntu / MacOS
 -----------------
 
 - on Ubuntu, these libs must be installed: :code:`sudo apt install pkg-config curl git build-essential libssl-dev libclang-dev`
-- on MacOS, `brew install llvm`__
+- on MacOS: :code:`brew install llvm`
 - install `rustup <https://www.rust-lang.org/tools/install>`_: :code:`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 - configure path: :code:`source $HOME/.cargo/env`
 - check rust version: :code:`rustc --version`
@@ -53,7 +53,7 @@ On Windows
 
   - Click install on the bottom right to download and install those packages
 
-- Install choco: https://docs.chocolatey.org/en-us/choco/setup and run: `choco install llvm`__
+- Install `Chocolatey <https://docs.chocolatey.org/en-us/choco/setup>`_ and run: :code:`choco install llvm`
 - Install Rust, to be downloaded `here <https://www.rust-lang.org/tools/install>`__
 - Install Git for windows, to be downloaded `here <https://git-scm.com/download/win>`__
 

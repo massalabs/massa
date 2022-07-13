@@ -193,7 +193,7 @@ macro_rules! gen_varint {
                 #[doc = $d]
                 #[doc = " in a varint form."]
                 #[allow(dead_code)]
-                pub fn new() -> Self {
+                pub const fn new() -> Self {
                     Self
                 }
             }
@@ -223,7 +223,7 @@ macro_rules! gen_varint {
                 #[doc = $d]
                 #[doc = " in a varint form."]
                 #[allow(dead_code)]
-                pub fn new(min: Bound<$type>, max: Bound<$type>) -> Self {
+                pub const fn new(min: Bound<$type>, max: Bound<$type>) -> Self {
                     Self {
                         range: (min, max)
                     }

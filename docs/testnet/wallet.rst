@@ -42,7 +42,7 @@ Now you can either generate a new keypair (and associated address):
 
     wallet_generate_secret_key
 
-<u>**Or, if you already have one from a previous wallet**</u>, you can add manually an existing keypair:
+**Or, if you already have one from a previous wallet**, you can add manually an existing keypair:
 
 .. code-block::
 
