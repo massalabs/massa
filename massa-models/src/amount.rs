@@ -29,7 +29,7 @@ impl Amount {
     /// Create an Amount from the form `mantissa / (10^scale)`
     /// Panics on any error.
     /// Used for constant initialization.
-    /// 
+    ///
     /// ```
     /// # use massa_models::Amount;
     /// # use std::str::FromStr;
