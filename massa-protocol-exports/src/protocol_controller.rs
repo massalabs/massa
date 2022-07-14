@@ -15,7 +15,10 @@ use massa_models::{
 use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;
 use std::collections::VecDeque;
-use tokio::{sync::mpsc, task::JoinHandle};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
 use tracing::debug;
 
 /// Possible types of events that can happen.
@@ -44,14 +47,14 @@ pub enum ProtocolEvent {
     GetBlocks(Vec<BlockId>),
 }
 /// Possible types of pool events that can happen.
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
         /// the operations
         operations: Map<OperationId, WrappedOperation>,
-        /// whether or not to propagate operations
-        propagate: bool,
+        /// whether or not to signal the end of processing the batch.
+        done_signal: Option<oneshot::Sender<()>>,
     },
     /// Endorsements were received
     ReceivedEndorsements {

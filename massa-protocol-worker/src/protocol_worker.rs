@@ -24,13 +24,13 @@ use massa_protocol_exports::{
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
-use massa_serialization::Serializer;
 use massa_storage::Storage;
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
 use tokio::{
     sync::mpsc,
     sync::mpsc::error::SendTimeoutError,
+    sync::oneshot,
     time::{sleep, sleep_until, Instant, Sleep},
 };
 use tracing::{debug, error, info, warn};
@@ -1060,7 +1060,7 @@ impl ProtocolWorker {
         &mut self,
         operations: Operations,
         source_node_id: &NodeId,
-        propagate: bool,
+        done_signal: Option<oneshot::Sender<()>>,
     ) -> Result<(Vec<OperationId>, Map<OperationId, usize>, bool, u64), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let mut total_gas = 0u64;
@@ -1109,7 +1109,7 @@ impl ProtocolWorker {
             // Add to pool, propagate when received outside of a header.
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
                 operations: new_operations,
-                propagate,
+                done_signal,
             })
             .await;
 
@@ -1273,9 +1273,17 @@ impl ProtocolWorker {
                             }
                         }
                         BlockInfoReply::Operations(operations) => {
-                            // Send to pool?
-                            self.on_operations_received(from_node_id, operations.clone())
-                                .await;
+                            
+                            // Send operations to pool, 
+                            // and wait for them to have been procesed(and added to storage).
+                            let (tx, rx) = oneshot::channel();
+                            self.note_operations_from_node(
+                                operations.clone(),
+                                &from_node_id,
+                                Some(tx),
+                            )
+                            .await?;
+                            let _ = rx.await;
 
                             if let Some(AskForBlocksInfo::Operations(wanted_operation_ids)) =
                                 self.block_wishlist.get(&block_id)
