@@ -87,17 +87,13 @@ pub struct ExportProofOfStakeDeserializer {
 impl ExportProofOfStakeDeserializer {
     /// Creates a `ExportProofOfStakeDeserializer`
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(MAX_BOOTSTRAP_POS_CYCLES),
             ),
             cycle_state_deserializer: ThreadCycleStateDeserializer::new(),
-            thread_count,
+            thread_count: THREAD_COUNT,
         }
     }
 }

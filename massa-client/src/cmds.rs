@@ -944,7 +944,7 @@ impl Command {
                         target_func,
                         param,
                         max_gas,
-                        sequential_coins: Amount::from_raw(0),
+                        sequential_coins: Amount::zero(),
                         parallel_coins: coins,
                         gas_price,
                     },

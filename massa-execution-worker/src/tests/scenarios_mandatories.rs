@@ -90,7 +90,7 @@ fn test_sending_read_only_execution_command() {
     controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
-            simulated_gas_price: Amount::from_raw(1_000_000 * AMOUNT_DECIMAL_FACTOR),
+            simulated_gas_price: Amount::from_mantissa_scale(1_000_000, 0),
             call_stack: vec![],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
@@ -305,7 +305,7 @@ fn create_execute_sc_operation(
         data: data.to_vec(),
         max_gas: u64::MAX,
         coins: Amount::from_raw(u64::MAX),
-        gas_price: Amount::from_raw(AMOUNT_DECIMAL_FACTOR),
+        gas_price: Amount::from_mantissa_scale(1, 0),
     };
     let op = Operation::new_wrapped(
         Operation {

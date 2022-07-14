@@ -299,7 +299,10 @@ async fn test_interleaving_block_creation_with_reception() {
     let (address_2, keypair_2) = random_address_on_thread(0, thread_count).into();
 
     let mut ledger = HashMap::new();
-    ledger.insert(address_2, LedgerData::new(Amount::from_raw(1000)));
+    ledger.insert(
+        address_2,
+        LedgerData::new(Amount::from_mantissa_scale(1000, 0)),
+    );
     let mut cfg = ConsensusConfig {
         thread_count,
         t0: 1000.into(),
