@@ -13,7 +13,7 @@ use nom::sequence::tuple;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::ops::Bound;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -39,7 +39,7 @@ pub enum LedgerSubEntry {
 ///
 /// Contains a RocksDB DB instance
 #[derive(Debug)]
-pub(crate) struct LedgerDB(DB);
+pub(crate) struct LedgerDB(BTreeMap<Address, Vec<u8>>);
 
 /// For a given start prefix (inclusive), returns the correct end prefix (non-inclusive).
 /// This assumes the key bytes are ordered in lexicographical order.
@@ -71,21 +71,7 @@ impl LedgerDB {
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
     pub fn new(path: PathBuf) -> Self {
-        let mut db_opts = Options::default();
-        db_opts.create_if_missing(true);
-        db_opts.create_missing_column_families(true);
-
-        let db = DB::open_cf_descriptors(
-            &db_opts,
-            path,
-            vec![
-                ColumnFamilyDescriptor::new(LEDGER_CF, Options::default()),
-                ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
-            ],
-        )
-        .expect(OPEN_ERROR);
-
-        LedgerDB(db)
+        LedgerDB(BTreeMap::default())
     }
 
     /// Set the initial disk ledger
@@ -97,7 +83,6 @@ impl LedgerDB {
         for (address, entry) in initial_ledger {
             self.put_entry(&address, entry, &mut batch);
         }
-        self.write_batch(batch);
     }
 
     /// Allows applying `LedgerChanges` to the disk ledger
@@ -129,31 +114,6 @@ impl LedgerDB {
                 }
             }
         }
-        // set the associated slot in metadata
-        self.set_metadata(slot, &mut batch);
-        // write the batch
-        self.write_batch(batch);
-    }
-
-    /// Apply the given operation batch to the disk ledger.
-    ///
-    /// NOTE: the batch is not saved within the object because it cannot be shared between threads safely
-    fn write_batch(&self, batch: WriteBatch) {
-        self.0.write(batch).expect(CRUD_ERROR);
-    }
-
-    /// Set the disk ledger metadata
-    ///
-    /// # Arguments
-    /// * slot: associated slot of the current ledger
-    /// * batch: the given operation batch to update
-    ///
-    /// NOTE: right now the metadata is only a Slot, use a struct in the future
-    fn set_metadata(&self, slot: Slot, batch: &mut WriteBatch) {
-        let handle = self.0.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        // Slot::to_bytes_compact() never fails
-        batch.put_cf(handle, SLOT_KEY, slot.to_bytes_compact().unwrap());
     }
 
     /// Add every sub-entry individually for a given entry.
@@ -163,22 +123,21 @@ impl LedgerDB {
     /// * ledger_entry: complete entry to be added
     /// * batch: the given operation batch to update
     fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut WriteBatch) {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
-
         // balance
-        batch.put_cf(
-            handle,
-            balance_key!(addr),
-            // Amount::to_bytes_compact() never fails
-            ledger_entry.parallel_balance.to_bytes_compact().unwrap(),
-        );
+        // Amount::to_bytes_compact() never fails
+        let balance = ledger_entry.parallel_balance.to_bytes_compact().unwrap();
+        balance.push(BALANCE_IDENT);
+        self.0.insert(*addr, balance);
 
         // bytecode
-        batch.put_cf(handle, bytecode_key!(addr), ledger_entry.bytecode);
+        let bytecode = ledger_entry.bytecode;
+        bytecode.push(BYTECODE_IDENT);
+        self.0.insert(*addr, bytecode);
 
         // datastore
         for (hash, entry) in ledger_entry.datastore {
-            batch.put_cf(handle, data_key!(addr, hash), entry);
+            entry.push(DATASTORE_IDENT);
+            self.0.insert(*addr, entry);
         }
     }
 
