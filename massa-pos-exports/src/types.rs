@@ -6,9 +6,17 @@ use bitvec::prelude::*;
 use massa_models::{
     constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
     prehash::Map,
-    Address, Amount, AmountSerializer, Slot, SlotSerializer,
+    Address, AddressDeserializer, Amount, AmountSerializer, Slot, SlotSerializer,
 };
-use massa_serialization::{SerializeError, Serializer, U64VarIntSerializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
 use num::rational::Ratio;
 use std::ops::Bound::Included;
 
@@ -89,7 +97,6 @@ pub struct PoSChanges {
 }
 
 /// DOC TODO
-/// NOTE: address serialize is to_bytes
 #[allow(dead_code)]
 pub struct PoSChangesSerializer {
     u64_serializer: U64VarIntSerializer,
@@ -167,6 +174,76 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
             }
         };
         Ok(())
+    }
+}
+
+/// DOC TODO
+pub struct RollChangesDeserializer {
+    address_deserializer: AddressDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl Deserializer<Map<Address, u64>> for RollChangesDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Map<Address, u64>, E> {
+        context(
+            "Failed RollChanges deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                tuple((
+                    |input| self.address_deserializer.deserialize(input),
+                    |input| self.u64_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
+    }
+}
+
+/// DOC TODO
+pub struct ProductionStatsDeserializer {
+    address_deserializer: AddressDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+}
+
+impl Deserializer<Map<Address, ProductionStats>> for ProductionStatsDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Map<Address, ProductionStats>, E> {
+        context(
+            "Failed RollChanges deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                tuple((
+                    |input| self.address_deserializer.deserialize(input),
+                    |input| self.u64_deserializer.deserialize(input),
+                    |input| self.u64_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|elements| {
+            elements
+                .into_iter()
+                .map(|(addr, block_success_count, block_failure_count)| {
+                    (
+                        addr,
+                        ProductionStats {
+                            block_success_count,
+                            block_failure_count,
+                        },
+                    )
+                })
+                .collect()
+        })
+        .parse(buffer)
     }
 }
 
