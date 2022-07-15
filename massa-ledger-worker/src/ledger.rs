@@ -166,7 +166,7 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// The last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError> {
+    fn set_ledger_part(&mut self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError> {
         self.sorted_ledger.set_ledger_part(data.as_bytes())
     }
 
