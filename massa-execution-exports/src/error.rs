@@ -29,4 +29,7 @@ pub enum ExecutionError {
 
     /// Block gas error: {0}
     BlockGasError(String),
+
+    /// Inlcude operation error: {0}
+    InlcudeOperationError(String),
 }

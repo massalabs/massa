@@ -9,7 +9,7 @@ use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
 use massa_hash::Hash;
 use massa_ledger_exports::{Applicable, LedgerChanges};
-use massa_models::{constants::THREAD_COUNT, Address, Amount};
+use massa_models::{Address, Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -140,13 +140,6 @@ impl SpeculativeLedger {
     ) -> Result<(), ExecutionError> {
         // init empty ledger changes
         let mut changes = LedgerChanges::default();
-
-        // check that the two addresses belong to the same thread (if any)
-        if let (Some(from), Some(to)) = (from_addr, to_addr) {
-            if from.get_thread(THREAD_COUNT) != to.get_thread(THREAD_COUNT) {
-                return Err(ExecutionError::RuntimeError("can't execute a sequential coins transfer between two addresses that do not belong to the same thread".into()));
-            }
-        }
 
         // simulate spending coins from sender address (if any)
         if let Some(from_addr) = from_addr {

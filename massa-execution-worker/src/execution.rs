@@ -19,7 +19,9 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_hash::Hash;
 use massa_models::api::EventFilter;
-use massa_models::constants::{BLOCK_REWARD, ENDORSEMENT_COUNT, MAX_BLOCK_SIZE, MAX_GAS_PER_BLOCK};
+use massa_models::constants::{
+    BLOCK_REWARD, ENDORSEMENT_COUNT, MAX_BLOCK_SIZE, MAX_GAS_PER_BLOCK, THREAD_COUNT,
+};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::{Signable, Signed};
 use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
@@ -249,6 +251,7 @@ impl ExecutionState {
     pub fn execute_operation(
         &self,
         operation: &SignedOperation,
+        block_id: BlockId,
         block_creator_addr: Address,
         remaining_block_gas: &mut u64,
         block_credits: &mut Amount,
@@ -256,6 +259,16 @@ impl ExecutionState {
         // filter out only transactions operations
         if let OperationType::Transaction { .. } = &operation.content.op {
             return Ok(());
+        }
+
+        // get the operation's sender address
+        let sender_addr = Address::from_public_key(&operation.content.sender_public_key);
+
+        // check if the operation can be included in this block
+        if block_id.get_thread(THREAD_COUNT) != sender_addr.get_thread(THREAD_COUNT) {
+            return Err(ExecutionError::InlcudeOperationError(
+                "operation was not sent from the same thread as the created block".to_string(),
+            ));
         }
 
         // sub from the remaining gas or ignore the operation
@@ -267,9 +280,6 @@ impl ExecutionState {
                 "not enough gas to execute operation".to_string(),
             ));
         }
-
-        // get the operation's sender address
-        let sender_addr = Address::from_public_key(&operation.content.sender_public_key);
 
         // compute fee from (op.max_gas * op.gas_price + op.fee)
         let op_gas_coins = operation.content.get_gas_coins();
@@ -789,6 +799,7 @@ impl ExecutionState {
             for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
                 if let Err(err) = self.execute_operation(
                     operation,
+                    block_id,
                     block_creator_addr,
                     &mut remaining_block_gas,
                     &mut block_credits,

@@ -100,6 +100,13 @@ impl BlockId {
     pub fn get_first_bit(&self) -> bool {
         self.to_bytes()[0] >> 7 == 1
     }
+
+    /// Gets the associated thread. Depends on the `thread_count`
+    pub fn get_thread(&self, thread_count: u8) -> u8 {
+        (self.to_bytes()[0])
+            .checked_shr(8 - thread_count.trailing_zeros())
+            .unwrap_or(0)
+    }
 }
 
 /// block
