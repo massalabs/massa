@@ -6,7 +6,7 @@ use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
 use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
-use massa_pos_exports::PoSChanges;
+use massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{
     error::{context, ContextError, ParseError},
@@ -29,6 +29,7 @@ pub struct StateChanges {
 pub struct StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
+    roll_state_changes_serializer: PoSChangesSerializer,
 }
 
 impl StateChangesSerializer {
@@ -37,6 +38,7 @@ impl StateChangesSerializer {
         Self {
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
+            roll_state_changes_serializer: PoSChangesSerializer::new(),
         }
     }
 }
@@ -94,6 +96,8 @@ impl Serializer<StateChanges> for StateChangesSerializer {
             .serialize(&value.ledger_changes, buffer)?;
         self.async_pool_changes_serializer
             .serialize(&value.async_pool_changes, buffer)?;
+        self.roll_state_changes_serializer
+            .serialize(&value.roll_state_changes, buffer)?;
         Ok(())
     }
 }
@@ -102,6 +106,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
 pub struct StateChangesDeserializer {
     ledger_changes_deserializer: LedgerChangesDeserializer,
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
+    roll_state_changes_deserializer: PoSChangesDeserializer,
 }
 
 impl StateChangesDeserializer {
@@ -110,6 +115,7 @@ impl StateChangesDeserializer {
         Self {
             ledger_changes_deserializer: LedgerChangesDeserializer::new(),
             async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(),
+            roll_state_changes_deserializer: PoSChangesDeserializer::new(),
         }
     }
 }
@@ -178,14 +184,18 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 context("Failed async_pool_changes deserialization", |input| {
                     self.async_pool_changes_deserializer.deserialize(input)
                 }),
+                context("Failed roll_state_changes deserialization", |input| {
+                    self.roll_state_changes_deserializer.deserialize(input)
+                }),
             )),
         )
-        .map(|(ledger_changes, async_pool_changes)| StateChanges {
-            ledger_changes,
-            async_pool_changes,
-            // IMPORTANT NOTE: do not forget to update the serializer
-            ..Default::default()
-        })
+        .map(
+            |(ledger_changes, async_pool_changes, roll_state_changes)| StateChanges {
+                ledger_changes,
+                async_pool_changes,
+                roll_state_changes,
+            },
+        )
         .parse(buffer)
     }
 }

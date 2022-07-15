@@ -97,8 +97,7 @@ pub struct PoSChanges {
     pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
 }
 
-/// DOC TODO
-/// AFTER LUNCH: IMPLEMENT NEWS AND POSCHANGES DESERIALIZER + UPDATE STATES_CHANGES SER / DESER
+/// `PoSChanges` Serializer
 pub struct PoSChangesSerializer {
     u64_serializer: U64VarIntSerializer,
     slot_serializer: SlotSerializer,
@@ -112,7 +111,7 @@ impl Default for PoSChangesSerializer {
 }
 
 impl PoSChangesSerializer {
-    /// DOC TODO
+    /// Create a new `PoSChanges` Serializer
     pub fn new() -> PoSChangesSerializer {
         PoSChangesSerializer {
             u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
@@ -186,7 +185,7 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
     }
 }
 
-/// DOC TODO
+/// `PoSChanges` Deserializer
 pub struct PoSChangesDeserializer {
     roll_changes_deserializer: RollChangesDeserializer,
     production_stats_deserializer: ProductionStatsDeserializer,
@@ -200,7 +199,7 @@ impl Default for PoSChangesDeserializer {
 }
 
 impl PoSChangesDeserializer {
-    /// DOC TODO
+    /// Create a new `PoSChanges` Deserializer
     pub fn new() -> PoSChangesDeserializer {
         PoSChangesDeserializer {
             roll_changes_deserializer: RollChangesDeserializer::new(),
@@ -225,7 +224,7 @@ impl Deserializer<PoSChanges> for PoSChangesDeserializer {
         )
         .map(
             |(roll_changes, production_stats, deferred_credits)| PoSChanges {
-                // TODO: implement seed_bits
+                // TODO: implement `seed_bits` SER / DESER
                 seed_bits: Default::default(),
                 roll_changes,
                 production_stats,
