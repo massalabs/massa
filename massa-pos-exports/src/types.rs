@@ -6,7 +6,8 @@ use bitvec::prelude::*;
 use massa_models::{
     constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
     prehash::Map,
-    Address, AddressDeserializer, Amount, AmountSerializer, Slot, SlotSerializer,
+    Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, Slot,
+    SlotDeserializer, SlotSerializer,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -167,6 +168,11 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
             self.u64_serializer.serialize(&entry_count, buffer)?;
             for (slot, credits) in value.deferred_credits.iter() {
                 self.slot_serializer.serialize(slot, buffer)?;
+                let credits_entry_count: u64 = credits.len().try_into().map_err(|err| {
+                    SerializeError::GeneralError(format!("too many entries in credits: {}", err))
+                })?;
+                self.u64_serializer
+                    .serialize(&credits_entry_count, buffer)?;
                 for (addr, amount) in credits {
                     buffer.extend(addr.to_bytes());
                     self.amount_serializer.serialize(amount, buffer)?;
@@ -217,7 +223,7 @@ impl Deserializer<Map<Address, ProductionStats>> for ProductionStatsDeserializer
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Map<Address, ProductionStats>, E> {
         context(
-            "Failed RollChanges deserialization",
+            "Failed ProductionStats deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.u64_deserializer.deserialize(input)
@@ -243,6 +249,64 @@ impl Deserializer<Map<Address, ProductionStats>> for ProductionStatsDeserializer
                 })
                 .collect()
         })
+        .parse(buffer)
+    }
+}
+
+/// DOC TODO
+pub struct DeferredCreditsDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    slot_deserializer: SlotDeserializer,
+    credit_deserializer: CreditDeserializer,
+}
+
+impl Deserializer<BTreeMap<Slot, Map<Address, Amount>>> for DeferredCreditsDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BTreeMap<Slot, Map<Address, Amount>>, E> {
+        context(
+            "Failed DeferredCredits deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                tuple((
+                    |input| self.slot_deserializer.deserialize(input),
+                    |input| self.credit_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
+    }
+}
+
+/// DOC TODO
+pub struct CreditDeserializer {
+    u64_deserializer: U64VarIntDeserializer,
+    address_deserializer: AddressDeserializer,
+    amount_deserializer: AmountDeserializer,
+}
+
+impl Deserializer<Map<Address, Amount>> for CreditDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Map<Address, Amount>, E> {
+        context(
+            "Failed Credit deserialization",
+            length_count(
+                context("Failed length deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                tuple((
+                    |input| self.address_deserializer.deserialize(input),
+                    |input| self.amount_deserializer.deserialize(input),
+                )),
+            ),
+        )
+        .map(|elements| elements.into_iter().collect())
         .parse(buffer)
     }
 }
