@@ -109,6 +109,7 @@ impl NodeInfo {
             self.known_blocks.insert(*block_id, (val, instant));
         }
         self.remove_excess_known_blocks(max_node_known_blocks_size);
+        println!(">>>>>>>>>>> PROTOCOL NODE known_blocks = {}", self.known_blocks.len());
     }
 
     pub fn insert_known_endorsements(
@@ -126,6 +127,7 @@ impl NodeInfo {
                 }
             }
         }
+        println!(">>>>>>>>>>> PROTOCOL NODE known_endos = {}", self.known_endorsements.len());
     }
 
     pub fn knows_endorsement(&self, endorsement_id: &EndorsementId) -> bool {
@@ -143,6 +145,7 @@ impl NodeInfo {
                 }
             }
         }
+        println!(">>>>>>>>>>> PROTOCOL NODE known_ops = {}", self.known_operations.len());
     }
 
     pub fn knows_op(&self, op: &OperationId) -> bool {
@@ -181,6 +184,8 @@ impl NodeInfo {
         // To avoid asking the node for this block in the meantime,
         // mark the node as not knowing the block.
         self.insert_known_blocks(&[block_id], false, now, max_node_known_blocks_size);
+
+        println!(">>>>>>>>>>> PROTOCOL NODE wanted_blocks = {}", self.wanted_blocks.len());
     }
 
     /// returns whether a node wants a block, and if so, updates the timestamp of that info to now()

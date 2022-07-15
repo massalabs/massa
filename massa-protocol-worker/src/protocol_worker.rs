@@ -506,6 +506,7 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                 self.stop_asking_blocks(remove)?;
                 self.block_wishlist.extend(new);
+                println!(">>>>>>>>>>> PROTOCOL WISHLIST = {}", self.block_wishlist.len());
                 self.update_ask_block(timer).await?;
                 massa_trace!(
                     "protocol.protocol_worker.process_command.wishlist_delta.end",
@@ -520,6 +521,7 @@ impl ProtocolWorker {
                 for id in operation_ids.iter() {
                     self.checked_operations.insert(id);
                 }
+                println!(">>>>>>>>>>> PROTOCOL CHECKED_OPS = {}", self.checked_operations.len());
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_ops: OperationIds = operation_ids
                         .iter()
@@ -736,6 +738,7 @@ impl ProtocolWorker {
             {
                 let info = self.active_nodes.get_mut(&best_node).unwrap(); // will not panic, already checked
                 info.asked_blocks.insert(hash, now);
+                println!(">>>>>>>>>>> PROTOCOL NODE ASKED_BLOCKS = {}", info.asked_blocks.len());
                 if let Some(cnt) = active_block_req_count.get_mut(&best_node) {
                     *cnt += 1; // increase the number of actively asked blocks
                 }
@@ -919,6 +922,7 @@ impl ProtocolWorker {
         {
             self.prune_checked_headers();
         }
+        println!(">>>>>>>>>>> PROTOCOL CHECKED_HEADERS = {}", self.checked_headers.len());
 
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_blocks(
@@ -1115,6 +1119,7 @@ impl ProtocolWorker {
 
                 new_operations.insert(operation_id, operation);
             };
+            println!(">>>>>>>>>>> PROTOCOL CHECKED_OPS = {}", self.checked_operations.len());
         }
 
         // add to known ops
@@ -1176,6 +1181,7 @@ impl ProtocolWorker {
                     &endorsement.creator_public_key,
                 )?;
                 new_endorsements.insert(endorsement_id, endorsement);
+                println!(">>>>>>>>>>> PROTOCOL CHECKED ENDO = {}", self.checked_endorsements.len());
             }
         }
 

@@ -22,6 +22,7 @@ impl OperationIndex {
             .entry(addr)
             .or_insert_with(Set::<OperationId>::default)
             .insert(op_id);
+        println!(">>>>>>>>>>> POOL OP INDEX = {}, {}", self.0.len(), self.0[&addr].len());
     }
 
     fn get_ops_for_address(&self, address: &Address) -> Option<&Set<OperationId>> {
@@ -180,6 +181,7 @@ impl OperationPool {
             let interest = (std::cmp::Reverse(wrapped_op.fee_density), *op_id);
 
             self.ops_by_thread_and_interest[wrapped_op.thread as usize].insert(interest);
+            println!(">>>>>>>>>>> POOL OP BY THREAD[{}] = {}", wrapped_op.thread, self.ops_by_thread_and_interest[wrapped_op.thread as usize].len());
             wrapped_op
                 .ledger_involved_addresses
                 .iter()
@@ -187,6 +189,7 @@ impl OperationPool {
                     self.ops_by_address.insert_op(*addr, *op_id);
                 });
             self.ops.insert(*op_id, wrapped_op);
+            println!(">>>>>>>>>>> POOL OPS = {}", self.ops.len());
             self.storage.store_operation(op.clone());
         }
 
@@ -236,6 +239,9 @@ impl OperationPool {
         self.storage
             .remove_operations(ops.keys().cloned().collect::<Vec<OperationId>>().as_slice());
         self.final_operations.extend(ops);
+
+        println!(">>>>>>>>>>> POOL FINAL OPS = {}", self.final_operations.len());
+
         Ok(())
     }
 

@@ -28,6 +28,7 @@ impl Storage {
                 entry.insert(to_store);
             }
         }
+        println!(">>>>>>>>>>> STORAGE BLOCKS = {}", blocks.len());
     }
 
     /// Get a (mutable) reference to the stored block.
@@ -58,6 +59,7 @@ impl Storage {
                 entry.insert(operation);
             }
         }
+        println!(">>>>>>>>>>> STORAGE OPS = {}", operations.len());
     }
 
     /// Returns a set of operation ids that are found in storage.

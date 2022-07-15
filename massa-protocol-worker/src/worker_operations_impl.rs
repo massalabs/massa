@@ -102,6 +102,7 @@ impl ProtocolWorker {
             } else {
                 ask_set.insert(op_id.clone());
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
+                println!(">>>>>>>>>>> PROTOCOL WORKER asked_ops = {}", self.asked_operations.len());
             }
         } // EndOf for op_id in op_batch:
         if count_reask > 0 {

@@ -18,7 +18,9 @@ impl CheckedOperations {
     /// If the set did have this value present, `false` is returned.
     pub fn insert(&mut self, id: &OperationId) -> bool {
         let prefix = id.prefix();
-        self.0.insert(prefix, *id).is_none()
+        let res = self.0.insert(prefix, *id).is_none();
+        println!(">>>>>>>>>>> PROTOCOL CHECKED OPS 2 = {}", self.0.len());
+        res
     }
 
     /// Get a set of [OperationIds] matching with the givec `prefix`.
