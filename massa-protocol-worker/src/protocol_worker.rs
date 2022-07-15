@@ -24,6 +24,7 @@ use massa_protocol_exports::{
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
+use massa_serialization::Serializer;
 use massa_storage::Storage;
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
@@ -1273,8 +1274,7 @@ impl ProtocolWorker {
                             }
                         }
                         BlockInfoReply::Operations(operations) => {
-                            
-                            // Send operations to pool, 
+                            // Send operations to pool,
                             // and wait for them to have been procesed(and added to storage).
                             let (tx, rx) = oneshot::channel();
                             self.note_operations_from_node(
@@ -1289,7 +1289,11 @@ impl ProtocolWorker {
                                 self.block_wishlist.get(&block_id)
                             {
                                 let mut should_be_banned = false;
-                                if let Some(info) = self.checked_headers.get_mut(&block_id) {
+                                let (block, slot, operation_set, endorsement_ids) = if let Some(
+                                    info,
+                                ) =
+                                    self.checked_headers.get_mut(&block_id)
+                                {
                                     for op in operations.iter() {
                                         if !wanted_operation_ids.contains(&op.id) {
                                             should_be_banned = true;
@@ -1314,14 +1318,62 @@ impl ProtocolWorker {
                                         }
                                     }
 
-                                    // TODO: Send to graph
+                                    if should_be_banned {
+                                        let _ = self.ban_node(&from_node_id).await;
+                                        return Ok(());
+                                    }
+
+                                    // Re-constitute block.
+                                    let endorsement_ids = info.endorsements.clone();
+                                    let block = Block {
+                                        header: info.header.clone(),
+                                        operations: info.operations.clone().unwrap().clone(),
+                                    };
+                                    let content_serializer = BlockSerializer::new();
+                                    let mut content_serialized = Vec::new();
+                                    content_serializer
+                                        .serialize(&block, &mut content_serialized)
+                                        .unwrap();
+                                    #[cfg(feature = "sandbox")]
+                                    let thread_count = *THREAD_COUNT;
+                                    #[cfg(not(feature = "sandbox"))]
+                                    let thread_count = THREAD_COUNT;
+                                    let wrapped: WrappedBlock = Wrapped {
+                                        signature: info.header.signature,
+                                        creator_public_key: info.header.creator_public_key,
+                                        creator_address: info.header.creator_address,
+                                        thread: info
+                                            .header
+                                            .creator_address
+                                            .get_thread(thread_count),
+                                        id: BlockId::new(info.header.id.hash()),
+                                        content: block,
+                                        serialized_data: content_serialized,
+                                    };
+                                    (
+                                        wrapped,
+                                        info.header.content.slot,
+                                        info.operations
+                                            .clone()
+                                            .unwrap()
+                                            .into_iter()
+                                            .enumerate()
+                                            .map(|(idx, op_id)| (op_id, idx))
+                                            .collect(),
+                                        endorsement_ids,
+                                    )
                                 } else {
                                     warn!("Missing block info for {}", block_id);
-                                }
+                                    return Ok(());
+                                };
 
-                                if should_be_banned {
-                                    let _ = self.ban_node(&from_node_id).await;
-                                }
+                                self.send_protocol_event(ProtocolEvent::ReceivedBlock {
+                                    block,
+                                    slot,
+                                    operation_set,
+                                    endorsement_ids,
+                                })
+                                .await;
 
                                 // Update ask block
                                 let mut set = Set::<BlockId>::with_capacity_and_hasher(
