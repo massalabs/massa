@@ -192,7 +192,7 @@ impl SpeculativeRollState {
     /// Get the production statistics of the current cycle.
     ///
     /// It accumulates final > active > current changes in this order.
-    pub fn get_production_stats(&self) -> Map<Address, ProductionStats> {
+    fn get_production_stats(&self) -> Map<Address, ProductionStats> {
         let mut stats = self
             .final_state
             .read()

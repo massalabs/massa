@@ -98,7 +98,7 @@ pub struct PoSChanges {
 }
 
 /// DOC TODO
-#[allow(dead_code)]
+/// AFTER LUNCH: IMPLEMENT NEWS AND POSCHANGES DESERIALIZER + UPDATE STATES_CHANGES SER / DESER
 pub struct PoSChangesSerializer {
     u64_serializer: U64VarIntSerializer,
     slot_serializer: SlotSerializer,
@@ -127,7 +127,8 @@ impl PoSChangesSerializer {
 
 impl Serializer<PoSChanges> for PoSChangesSerializer {
     fn serialize(&self, value: &PoSChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        let _roll_changes = {
+        // roll_changes
+        {
             let entry_count: u64 = value.roll_changes.len().try_into().map_err(|err| {
                 SerializeError::GeneralError(format!("too many entries in roll_changes: {}", err))
             })?;
@@ -137,7 +138,8 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
                 self.u64_serializer.serialize(roll, buffer)?;
             }
         };
-        let _production_stats = {
+        // production_stats
+        {
             let entry_count: u64 = value.production_stats.len().try_into().map_err(|err| {
                 SerializeError::GeneralError(format!(
                     "too many entries in production_stats: {}",
@@ -158,7 +160,8 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
                 self.u64_serializer.serialize(block_failure_count, buffer)?;
             }
         };
-        let _deferred_credits = {
+        // deferred_credit
+        {
             let entry_count: u64 = value.production_stats.len().try_into().map_err(|err| {
                 SerializeError::GeneralError(format!(
                     "too many entries in deferred_credits: {}",
@@ -183,10 +186,24 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
     }
 }
 
-/// DOC TODO
-pub struct RollChangesDeserializer {
+struct RollChangesDeserializer {
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
+}
+
+impl Default for RollChangesDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl RollChangesDeserializer {
+    fn new() -> RollChangesDeserializer {
+        RollChangesDeserializer {
+            address_deserializer: AddressDeserializer::new(),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
 }
 
 impl Deserializer<Map<Address, u64>> for RollChangesDeserializer {
@@ -211,10 +228,18 @@ impl Deserializer<Map<Address, u64>> for RollChangesDeserializer {
     }
 }
 
-/// DOC TODO
-pub struct ProductionStatsDeserializer {
+struct ProductionStatsDeserializer {
     address_deserializer: AddressDeserializer,
     u64_deserializer: U64VarIntDeserializer,
+}
+
+impl ProductionStatsDeserializer {
+    fn new() -> ProductionStatsDeserializer {
+        ProductionStatsDeserializer {
+            address_deserializer: AddressDeserializer::new(),
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
 }
 
 impl Deserializer<Map<Address, ProductionStats>> for ProductionStatsDeserializer {
@@ -253,11 +278,23 @@ impl Deserializer<Map<Address, ProductionStats>> for ProductionStatsDeserializer
     }
 }
 
-/// DOC TODO
-pub struct DeferredCreditsDeserializer {
+struct DeferredCreditsDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
     credit_deserializer: CreditDeserializer,
+}
+
+impl DeferredCreditsDeserializer {
+    fn new() -> DeferredCreditsDeserializer {
+        DeferredCreditsDeserializer {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Included(THREAD_COUNT)),
+            ),
+            credit_deserializer: CreditDeserializer::new(),
+        }
+    }
 }
 
 impl Deserializer<BTreeMap<Slot, Map<Address, Amount>>> for DeferredCreditsDeserializer {
@@ -282,11 +319,20 @@ impl Deserializer<BTreeMap<Slot, Map<Address, Amount>>> for DeferredCreditsDeser
     }
 }
 
-/// DOC TODO
-pub struct CreditDeserializer {
+struct CreditDeserializer {
     u64_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
     amount_deserializer: AmountDeserializer,
+}
+
+impl CreditDeserializer {
+    fn new() -> CreditDeserializer {
+        CreditDeserializer {
+            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            address_deserializer: AddressDeserializer::new(),
+            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
 }
 
 impl Deserializer<Map<Address, Amount>> for CreditDeserializer {
