@@ -4,9 +4,6 @@
 //! Define also the Selector worker that compute in background the draws for
 //! the future cycles
 
-#![feature(int_roundings)]
-#![feature(hash_drain_filter)]
-#![feature(btree_drain_filter)]
 #![warn(missing_docs)]
 
 mod controller_traits;

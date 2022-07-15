@@ -114,6 +114,8 @@ pub const POS_LOOKBACK_CYCLES: u64 = 2;
 pub const POS_LOCK_CYCLES: u64 = 1;
 /// PoS sell cycles: when some rolls are sold, we only credit the coins back to their owner after waiting `pos_sell_cycles`
 pub const POS_SELL_CYCLES: u64 = 3;
+/// PoS saved cycles: number of cycles saved in `PoSFinalState`
+pub const POS_SAVED_CYCLES: u64 = 4;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
