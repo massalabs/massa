@@ -188,14 +188,14 @@ impl LedgerDB {
         self.0.remove(&balance_key!(addr));
 
         // bytecode
-        self.0.remove(&balance_key!(addr));
+        self.0.remove(&bytecode_key!(addr));
 
         // datastore
         let lower = data_prefix!(addr).clone();
         let upper = end_prefix(data_prefix!(addr)).unwrap();
         let mut keys = Vec::default();
         for (key, _) in self.0.range(lower..upper) {
-            keys.push(data_key!(addr, key));
+            keys.push(key.clone());
         }
         for fmt_key in keys {
             self.0.remove(&fmt_key);
@@ -223,7 +223,9 @@ impl LedgerDB {
 
         // Iterates over the whole database
         let mut iter = self.0.range(last_key.clone().unwrap_or_default()..);
-        iter.next();
+        if last_key.is_some() {
+            iter.next();
+        }
         for (key, entry) in iter {
             if (part.len() as u64) < (LEDGER_PART_SIZE_MESSAGE_BYTES) {
                 key_serializer.serialize(&key.to_vec(), &mut part)?;
@@ -312,11 +314,12 @@ impl LedgerDB {
     #[cfg(feature = "testing")]
     pub fn get_entire_datastore(
         &self,
-        _addr: &Address,
+        addr: &Address,
     ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
-        // don't forget to limit the iter
+        let lower = data_prefix!(addr).clone();
+        let upper = end_prefix(data_prefix!(addr)).unwrap();
         self.0
-            .iter()
+            .range(lower..upper)
             .map(|(key, data)| {
                 (
                     key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
