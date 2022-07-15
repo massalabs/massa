@@ -123,7 +123,7 @@ impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializ
 
 /// Serializer for `LedgerEntryUpdate`
 pub struct LedgerEntryUpdateSerializer {
-    parallel_balance_serializer: SetOrKeepSerializer<Amount, AmountSerializer>,
+    balance_serializer: SetOrKeepSerializer<Amount, AmountSerializer>,
     bytecode_serializer: SetOrKeepSerializer<Vec<u8>, VecU8Serializer>,
     datastore_serializer: DatastoreUpdateSerializer,
 }
@@ -132,7 +132,7 @@ impl LedgerEntryUpdateSerializer {
     /// Creates a new `LedgerEntryUpdateSerializer`
     pub fn new() -> Self {
         Self {
-            parallel_balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new(
+            balance_serializer: SetOrKeepSerializer::new(AmountSerializer::new(
                 Included(u64::MIN),
                 Included(u64::MAX),
             )),
@@ -178,7 +178,9 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
         value: &LedgerEntryUpdate,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        self.parallel_balance_serializer
+        self.balance_serializer
+            .serialize(&value.sequential_balance, buffer)?;
+        self.balance_serializer
             .serialize(&value.parallel_balance, buffer)?;
         self.bytecode_serializer
             .serialize(&value.bytecode, buffer)?;

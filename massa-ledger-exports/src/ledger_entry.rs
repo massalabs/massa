@@ -166,6 +166,8 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// ```
     fn serialize(&self, value: &LedgerEntry, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.amount_serializer
+            .serialize(&value.sequential_balance, buffer)?;
+        self.amount_serializer
             .serialize(&value.parallel_balance, buffer)?;
         self.vec_u8_serializer.serialize(&value.bytecode, buffer)?;
         self.datastore_serializer

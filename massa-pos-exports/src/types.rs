@@ -4,9 +4,13 @@ use std::collections::{BTreeMap, VecDeque};
 
 use bitvec::prelude::*;
 use massa_models::{
-    constants::POS_MISS_RATE_DEACTIVATION_THRESHOLD, prehash::Map, Address, Amount, Slot,
+    constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
+    prehash::Map,
+    Address, Amount, AmountSerializer, Slot, SlotSerializer,
 };
+use massa_serialization::{SerializeError, Serializer, U64VarIntSerializer};
 use num::rational::Ratio;
+use std::ops::Bound::Included;
 
 use crate::SelectorController;
 
@@ -82,6 +86,41 @@ pub struct PoSChanges {
     /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
     /// ordered structure to ensure slot iteration order is deterministic
     pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
+}
+
+/// DOC TODO
+/// NOTE: address serialize is to_bytes
+#[allow(dead_code)]
+pub struct PoSChangesSerializer {
+    u64_serializer: U64VarIntSerializer,
+    slot_serializer: SlotSerializer,
+    amount_serializer: AmountSerializer,
+}
+
+impl Default for PoSChangesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PoSChangesSerializer {
+    /// DOC TODO
+    pub fn new() -> PoSChangesSerializer {
+        PoSChangesSerializer {
+            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            slot_serializer: SlotSerializer::new(
+                (Included(u64::MIN), Included(u64::MAX)),
+                (Included(0), Included(THREAD_COUNT)),
+            ),
+            amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+        }
+    }
+}
+
+impl Serializer<PoSChanges> for PoSChangesSerializer {
+    fn serialize(&self, _value: &PoSChanges, _buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        Ok(())
+    }
 }
 
 /// Selections of endorsements and producer
