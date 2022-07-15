@@ -186,15 +186,59 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
     }
 }
 
-struct RollChangesDeserializer {
-    address_deserializer: AddressDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+/// DOC TODO
+pub struct PoSChangesDeserializer {
+    roll_changes_deserializer: RollChangesDeserializer,
+    production_stats_deserializer: ProductionStatsDeserializer,
+    deferred_credits_deserializer: DeferredCreditsDeserializer,
 }
 
-impl Default for RollChangesDeserializer {
+impl Default for PoSChangesDeserializer {
     fn default() -> Self {
         Self::new()
     }
+}
+
+impl PoSChangesDeserializer {
+    /// DOC TODO
+    pub fn new() -> PoSChangesDeserializer {
+        PoSChangesDeserializer {
+            roll_changes_deserializer: RollChangesDeserializer::new(),
+            production_stats_deserializer: ProductionStatsDeserializer::new(),
+            deferred_credits_deserializer: DeferredCreditsDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<PoSChanges> for PoSChangesDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], PoSChanges, E> {
+        context(
+            "Failed PoSChanges deserialization",
+            tuple((
+                |input| self.roll_changes_deserializer.deserialize(input),
+                |input| self.production_stats_deserializer.deserialize(input),
+                |input| self.deferred_credits_deserializer.deserialize(input),
+            )),
+        )
+        .map(
+            |(roll_changes, production_stats, deferred_credits)| PoSChanges {
+                // TODO: implement seed_bits
+                seed_bits: Default::default(),
+                roll_changes,
+                production_stats,
+                deferred_credits,
+            },
+        )
+        .parse(buffer)
+    }
+}
+
+struct RollChangesDeserializer {
+    address_deserializer: AddressDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
 }
 
 impl RollChangesDeserializer {
