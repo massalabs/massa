@@ -2,6 +2,7 @@
 //! All the structures that are used everywhere
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(int_roundings)]
 #[macro_use]
 extern crate lazy_static;
 
@@ -16,9 +17,9 @@ pub use endorsement::{Endorsement, EndorsementId, SignedEndorsement};
 pub use error::ModelsError;
 pub use operation::{Operation, OperationId, OperationType, SignedOperation};
 pub use serialization::{
-    array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
-    IpAddrDeserializer, IpAddrSerializer, SerializeCompact, SerializeMinBEInt, SerializeVarInt,
-    VecU8Deserializer, VecU8Serializer,
+    array_from_slice, u8_from_slice, BitVecDeserializer, BitVecSerializer, DeserializeCompact,
+    DeserializeMinBEInt, DeserializeVarInt, IpAddrDeserializer, IpAddrSerializer, SerializeCompact,
+    SerializeMinBEInt, SerializeVarInt, VecU8Deserializer, VecU8Serializer,
 };
 pub use serialization_context::{
     get_serialization_context, init_serialization_context, with_serialization_context,

@@ -6,8 +6,8 @@ use bitvec::prelude::*;
 use massa_models::{
     constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
     prehash::Map,
-    Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, Slot,
-    SlotDeserializer, SlotSerializer,
+    Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, BitVecDeserializer,
+    BitVecSerializer, Slot, SlotDeserializer, SlotSerializer,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -99,6 +99,7 @@ pub struct PoSChanges {
 
 /// `PoSChanges` Serializer
 pub struct PoSChangesSerializer {
+    bit_vec_serializer: BitVecSerializer,
     u64_serializer: U64VarIntSerializer,
     slot_serializer: SlotSerializer,
     amount_serializer: AmountSerializer,
@@ -114,6 +115,7 @@ impl PoSChangesSerializer {
     /// Create a new `PoSChanges` Serializer
     pub fn new() -> PoSChangesSerializer {
         PoSChangesSerializer {
+            bit_vec_serializer: BitVecSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_serializer: SlotSerializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
@@ -126,67 +128,62 @@ impl PoSChangesSerializer {
 
 impl Serializer<PoSChanges> for PoSChangesSerializer {
     fn serialize(&self, value: &PoSChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        // seed_bits
+        self.bit_vec_serializer
+            .serialize(&value.seed_bits, buffer)?;
+
         // roll_changes
-        {
-            let entry_count: u64 = value.roll_changes.len().try_into().map_err(|err| {
-                SerializeError::GeneralError(format!("too many entries in roll_changes: {}", err))
-            })?;
-            self.u64_serializer.serialize(&entry_count, buffer)?;
-            for (addr, roll) in value.roll_changes.iter() {
-                buffer.extend(addr.to_bytes());
-                self.u64_serializer.serialize(roll, buffer)?;
-            }
-        };
+        let entry_count: u64 = value.roll_changes.len().try_into().map_err(|err| {
+            SerializeError::GeneralError(format!("too many entries in roll_changes: {}", err))
+        })?;
+        self.u64_serializer.serialize(&entry_count, buffer)?;
+        for (addr, roll) in value.roll_changes.iter() {
+            buffer.extend(addr.to_bytes());
+            self.u64_serializer.serialize(roll, buffer)?;
+        }
+
         // production_stats
+        let entry_count: u64 = value.production_stats.len().try_into().map_err(|err| {
+            SerializeError::GeneralError(format!("too many entries in production_stats: {}", err))
+        })?;
+        self.u64_serializer.serialize(&entry_count, buffer)?;
+        for (
+            addr,
+            ProductionStats {
+                block_success_count,
+                block_failure_count,
+            },
+        ) in value.production_stats.iter()
         {
-            let entry_count: u64 = value.production_stats.len().try_into().map_err(|err| {
-                SerializeError::GeneralError(format!(
-                    "too many entries in production_stats: {}",
-                    err
-                ))
-            })?;
-            self.u64_serializer.serialize(&entry_count, buffer)?;
-            for (
-                addr,
-                ProductionStats {
-                    block_success_count,
-                    block_failure_count,
-                },
-            ) in value.production_stats.iter()
-            {
-                buffer.extend(addr.to_bytes());
-                self.u64_serializer.serialize(block_success_count, buffer)?;
-                self.u64_serializer.serialize(block_failure_count, buffer)?;
-            }
-        };
+            buffer.extend(addr.to_bytes());
+            self.u64_serializer.serialize(block_success_count, buffer)?;
+            self.u64_serializer.serialize(block_failure_count, buffer)?;
+        }
+
         // deferred_credit
-        {
-            let entry_count: u64 = value.production_stats.len().try_into().map_err(|err| {
-                SerializeError::GeneralError(format!(
-                    "too many entries in deferred_credits: {}",
-                    err
-                ))
+        let entry_count: u64 = value.production_stats.len().try_into().map_err(|err| {
+            SerializeError::GeneralError(format!("too many entries in deferred_credits: {}", err))
+        })?;
+        self.u64_serializer.serialize(&entry_count, buffer)?;
+        for (slot, credits) in value.deferred_credits.iter() {
+            self.slot_serializer.serialize(slot, buffer)?;
+            let credits_entry_count: u64 = credits.len().try_into().map_err(|err| {
+                SerializeError::GeneralError(format!("too many entries in credits: {}", err))
             })?;
-            self.u64_serializer.serialize(&entry_count, buffer)?;
-            for (slot, credits) in value.deferred_credits.iter() {
-                self.slot_serializer.serialize(slot, buffer)?;
-                let credits_entry_count: u64 = credits.len().try_into().map_err(|err| {
-                    SerializeError::GeneralError(format!("too many entries in credits: {}", err))
-                })?;
-                self.u64_serializer
-                    .serialize(&credits_entry_count, buffer)?;
-                for (addr, amount) in credits {
-                    buffer.extend(addr.to_bytes());
-                    self.amount_serializer.serialize(amount, buffer)?;
-                }
+            self.u64_serializer
+                .serialize(&credits_entry_count, buffer)?;
+            for (addr, amount) in credits {
+                buffer.extend(addr.to_bytes());
+                self.amount_serializer.serialize(amount, buffer)?;
             }
-        };
+        }
         Ok(())
     }
 }
 
 /// `PoSChanges` Deserializer
 pub struct PoSChangesDeserializer {
+    bit_vec_deserializer: BitVecDeserializer,
     roll_changes_deserializer: RollChangesDeserializer,
     production_stats_deserializer: ProductionStatsDeserializer,
     deferred_credits_deserializer: DeferredCreditsDeserializer,
@@ -202,6 +199,7 @@ impl PoSChangesDeserializer {
     /// Create a new `PoSChanges` Deserializer
     pub fn new() -> PoSChangesDeserializer {
         PoSChangesDeserializer {
+            bit_vec_deserializer: BitVecDeserializer::new(),
             roll_changes_deserializer: RollChangesDeserializer::new(),
             production_stats_deserializer: ProductionStatsDeserializer::new(),
             deferred_credits_deserializer: DeferredCreditsDeserializer::new(),
@@ -217,15 +215,15 @@ impl Deserializer<PoSChanges> for PoSChangesDeserializer {
         context(
             "Failed PoSChanges deserialization",
             tuple((
+                |input| self.bit_vec_deserializer.deserialize(input),
                 |input| self.roll_changes_deserializer.deserialize(input),
                 |input| self.production_stats_deserializer.deserialize(input),
                 |input| self.deferred_credits_deserializer.deserialize(input),
             )),
         )
         .map(
-            |(roll_changes, production_stats, deferred_credits)| PoSChanges {
-                // TODO: implement `seed_bits` SER / DESER
-                seed_bits: Default::default(),
+            |(seed_bits, roll_changes, production_stats, deferred_credits)| PoSChanges {
+                seed_bits,
                 roll_changes,
                 production_stats,
                 deferred_credits,

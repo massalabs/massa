@@ -16,6 +16,7 @@ num = { version = "0.4", features = ["serde"] }
 directories = "4.0"
 config = "0.11"
 bs58 = { version = "0.4", features = ["check"] }
+bitvec = { version = "0.22", features = ["serde"] }
 nom = "7.1"
 
 # custom modules
