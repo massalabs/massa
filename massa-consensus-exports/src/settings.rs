@@ -48,6 +48,7 @@ use massa_execution_exports::ExecutionController;
 use massa_graph::settings::GraphConfig;
 use massa_models::Amount;
 use massa_pool::PoolCommandSender;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
@@ -292,6 +293,8 @@ pub struct ConsensusWorkerChannels {
     pub execution_controller: Box<dyn ExecutionController>,
     /// Associated Pool command sender.
     pub pool_command_sender: PoolCommandSender,
+    /// Selector controller
+    pub selector_controller: Box<dyn SelectorController>,
     /// Channel receiving consensus commands.
     pub controller_command_rx: mpsc::Receiver<ConsensusCommand>,
     /// Channel sending out consensus events.
@@ -311,6 +314,8 @@ pub struct ConsensusChannels {
     pub protocol_event_receiver: ProtocolEventReceiver,
     /// outgoing link to pool component
     pub pool_command_sender: PoolCommandSender,
+    /// selector controller
+    pub selector_controller: Box<dyn SelectorController>,
 }
 
 impl From<&ConsensusSettings> for ConsensusConfig {

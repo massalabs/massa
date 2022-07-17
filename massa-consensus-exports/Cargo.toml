@@ -25,6 +25,7 @@ massa_pool = { path = "../massa-pool" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_pos_exports = { path = "../massa-pos-exports" }
 
 [dev-dependencies]
 massa_models = { path = "../massa-models", features = ["testing"] }

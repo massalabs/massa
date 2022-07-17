@@ -184,13 +184,10 @@ async fn launch(
     .expect("could not start pool controller");
 
     // launch selector worker
-    let (selector_manager, selector_controller) = start_selector_worker(
-        4096,
-        SelectorConfig {
-            max_draw_cache: SETTINGS.selector.max_draw_cache,
-            ..SelectorConfig::default()
-        },
-    );
+    let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
+        max_draw_cache: SETTINGS.selector.max_draw_cache,
+        ..SelectorConfig::default()
+    });
 
     // give the controller to final state in order for it to feed the cycles
     final_state
@@ -213,7 +210,7 @@ async fn launch(
         execution_config,
         final_state.clone(),
         shared_storage.clone(),
-        selector_controller,
+        selector_controller.clone(),
     );
 
     // init consensus configuration
@@ -227,6 +224,7 @@ async fn launch(
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
                 pool_command_sender: pool_command_sender.clone(),
+                selector_controller: selector_controller.clone(),
             },
             bootstrap_state.graph,
             shared_storage.clone(),

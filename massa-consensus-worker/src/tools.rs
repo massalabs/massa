@@ -59,7 +59,13 @@ pub async fn start_consensus_controller(
     }
 
     // start worker
-    let block_db = BlockGraph::new(GraphConfig::from(&cfg), boot_graph, storage).await?;
+    let block_db = BlockGraph::new(
+        GraphConfig::from(&cfg),
+        boot_graph,
+        storage,
+        channels.selector_controller.clone(),
+    )
+    .await?;
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
@@ -72,6 +78,7 @@ pub async fn start_consensus_controller(
                 protocol_event_receiver: channels.protocol_event_receiver,
                 execution_controller: channels.execution_controller,
                 pool_command_sender: channels.pool_command_sender,
+                selector_controller: channels.selector_controller,
                 controller_command_rx: command_rx,
                 controller_event_tx: event_tx,
                 controller_manager_rx: manager_rx,

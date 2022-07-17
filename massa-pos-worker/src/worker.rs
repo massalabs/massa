@@ -97,7 +97,6 @@ impl SelectorThread {
 /// * `selector_manager`: allows to stop the worker
 /// * `selector_controller`: allows sending requests and notifications to the worker
 pub fn start_selector_worker(
-    periods_per_cycle: u64,
     selector_config: SelectorConfig,
 ) -> (Box<dyn SelectorManager>, Box<dyn SelectorController>) {
     let input_data = InputDataPtr::default();
@@ -105,7 +104,7 @@ pub fn start_selector_worker(
     let controller = SelectorControllerImpl {
         input_data: input_data.clone(),
         cache: cache.clone(),
-        periods_per_cycle,
+        periods_per_cycle: selector_config.periods_per_cycle,
     };
 
     // launch the selector thread

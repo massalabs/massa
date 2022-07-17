@@ -19,6 +19,7 @@ use massa_models::{
     Address, Block, BlockHeader, BlockId, EndorsementId, OperationId, OperationSearchResult,
     OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
 };
+use massa_pos_exports::SelectorController;
 use massa_signature::{derive_public_key, PublicKey};
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
@@ -266,6 +267,8 @@ pub struct BlockGraph {
     new_stale_blocks: Map<BlockId, (PublicKey, Slot)>,
     /// Shared storage,
     pub storage: Storage,
+    /// Selector controller
+    pub selector_controller: Box<dyn SelectorController>,
 }
 
 /// Possible output of a header check
@@ -297,6 +300,8 @@ enum EndorsementsCheckOutcome {
     Proceed,
     /// There is something wrong with that endorsement
     Discard(DiscardReason),
+    /// It must wait for its slot to be fully processed
+    WaitForSlot,
 }
 
 /// Creates genesis block in given thread.
@@ -335,10 +340,12 @@ impl BlockGraph {
     /// * `cfg`: consensus configuration.
     /// * `init`: A bootstrap graph to start the graph with
     /// * `storage`: A shared storage that share data across all modules.
+    /// * `selector_controller`: Access to the PoS selector to get draws
     pub async fn new(
         cfg: GraphConfig,
         init: Option<BootstrapableGraph>,
         storage: Storage,
+        selector_controller: Box<dyn SelectorController>,
     ) -> Result<Self> {
         // load genesis blocks
 
@@ -409,6 +416,7 @@ impl BlockGraph {
                 new_final_blocks: Default::default(),
                 new_stale_blocks: Default::default(),
                 storage,
+                selector_controller,
             };
             // compute block descendants
             let active_blocks_map: Map<BlockId, Vec<BlockId>> = res_graph
@@ -464,6 +472,7 @@ impl BlockGraph {
                 new_final_blocks: Default::default(),
                 new_stale_blocks: Default::default(),
                 storage,
+                selector_controller,
             })
         }
     }
@@ -1306,6 +1315,7 @@ impl BlockGraph {
         let mut deps = Set::<BlockId>::default();
         let mut incomp = Set::<BlockId>::default();
         let mut missing_deps = Set::<BlockId>::default();
+        let creator_addr = Address::from_public_key(&header.content.creator); // TODO in the future get it from storage
 
         // basic structural checks
         if header.content.parents.len() != (self.cfg.thread_count as usize)
@@ -1334,6 +1344,21 @@ impl BlockGraph {
             {
                 return Ok(HeaderCheckOutcome::WaitForSlot);
             }
+        }
+
+        // check if it was the creator's turn to create this block
+        // (step 1 in consensus/pos.md)
+        // note: do this AFTER TooMuchInTheFuture checks
+        //       to avoid doing too many draws to check blocks in the distant future
+        let slot_draw_address = match self.selector_controller.get_producer(header.content.slot) {
+            Ok(draw) => draw,
+            Err(_) => return Ok(HeaderCheckOutcome::WaitForSlot),
+        };
+        if creator_addr != slot_draw_address {
+            // it was not the creator's turn to create a block for this slot
+            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                format!("Bad creator turn for the slot:{}", header.content.slot),
+            )));
         }
 
         // check if block is in the future: queue it
@@ -1484,6 +1509,7 @@ impl BlockGraph {
             EndorsementsCheckOutcome::Discard(reason) => {
                 return Ok(HeaderCheckOutcome::Discard(reason))
             }
+            EndorsementsCheckOutcome::WaitForSlot => return Ok(HeaderCheckOutcome::WaitForSlot),
         }
 
         // thread incompatibility test
@@ -1594,7 +1620,26 @@ impl BlockGraph {
         header: &SignedHeader,
         parent_in_own_thread: &ActiveBlock,
     ) -> Result<EndorsementsCheckOutcome> {
+        // check endorsements
+        let endorsement_draws = match self
+            .selector_controller
+            .get_selection(parent_in_own_thread.slot)
+        {
+            Ok(sel) => sel.endorsments,
+            Err(_) => return Ok(EndorsementsCheckOutcome::WaitForSlot),
+        };
         for endorsement in header.content.endorsements.iter() {
+            // check that the draw is correct
+            if Address::from_public_key(&endorsement.content.sender_public_key)
+                != endorsement_draws[endorsement.content.index as usize]
+            {
+                return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
+                    format!(
+                        "endorser draw mismatch for header in slot: {}",
+                        header.content.slot
+                    ),
+                )));
+            }
             // check that the endorsement slot matches the endorsed block
             if endorsement.content.slot != parent_in_own_thread.slot {
                 return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
