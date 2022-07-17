@@ -19,7 +19,7 @@ use massa_models::{Amount, SignedOperation};
 use massa_models::{
     api::{
         AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
-        IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
+        NodeStatus, OperationInfo, TimeInterval,
     },
     clique::Clique,
     composite::PubkeySig,
@@ -307,11 +307,8 @@ impl Endpoints for API<Public> {
     }
 
     fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
         let closure = async move || {
-            let stakers = consensus_command_sender.get_active_stakers().await?;
-            let mut staker_vec = Vec::from_iter(stakers);
-            staker_vec.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
+            let staker_vec = Default::default(); // TODO use PoS module
             Ok(staker_vec)
         };
         Box::pin(closure())
@@ -531,7 +528,6 @@ impl Endpoints for API<Public> {
         let api_cfg = self.0.api_settings;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let execution_controller = self.0.execution_controller.clone();
-        let compensation_millis = self.0.compensation_millis;
 
         let closure = async move || {
             let mut res = Vec::with_capacity(addresses.len());
@@ -540,29 +536,11 @@ impl Endpoints for API<Public> {
             if addresses.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
-            // next draws info
-            let now = MassaTime::compensated_now(compensation_millis)?;
-            let current_slot = get_latest_block_slot_at_timestamp(
-                cfg.thread_count,
-                cfg.t0,
-                cfg.genesis_timestamp,
-                now,
-            )?
-            .unwrap_or_else(|| Slot::new(0, 0));
-            let next_draws = cmd_sender.get_selection_draws(
-                current_slot,
-                Slot::new(
-                    current_slot.period + api_cfg.draw_lookahead_period_count,
-                    current_slot.thread,
-                ),
-            );
 
             // roll and balance info
-            let states = cmd_sender.get_addresses_info(addresses.iter().copied().collect());
-
-            // wait for both simultaneously
-            let (next_draws, states) = tokio::join!(next_draws, states);
-            let (next_draws, mut states) = (next_draws?, states?);
+            let mut states = cmd_sender
+                .get_addresses_info(addresses.iter().copied().collect())
+                .await?;
 
             // operations block and endorsement info
             let mut operations: Map<Address, Set<OperationId>> =
@@ -645,23 +623,8 @@ impl Endpoints for API<Public> {
                     thread: address.get_thread(cfg.thread_count),
                     ledger_info: state.ledger_info,
                     rolls: state.rolls,
-                    block_draws: next_draws
-                        .iter()
-                        .filter(|(_, (ad, _))| *ad == address)
-                        .map(|(slot, _)| *slot)
-                        .collect(),
-                    endorsement_draws: next_draws
-                        .iter()
-                        .flat_map(|(slot, (_, addrs))| {
-                            addrs.iter().enumerate().filter_map(|(index, ad)| {
-                                if *ad == address {
-                                    Some(IndexedSlot { slot: *slot, index })
-                                } else {
-                                    None
-                                }
-                            })
-                        })
-                        .collect(),
+                    block_draws: Default::default(), // TODO use PoS module
+                    endorsement_draws: Default::default(), // TODO use PoS module
                     blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
                     involved_in_endorsements: endorsements
                         .remove(&address)

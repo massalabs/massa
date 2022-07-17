@@ -23,7 +23,6 @@ use massa_models::{
     SerializeCompact, SignedEndorsement, SignedOperation, Slot,
 };
 use massa_pool::PoolCommand;
-use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_storage::Storage;

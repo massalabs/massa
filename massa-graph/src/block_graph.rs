@@ -5,39 +5,27 @@ use crate::{
     bootstrapable_graph::BootstrapableGraph,
     error::{GraphError, GraphResult as Result},
     export_active_block::ExportActiveBlock,
-    ledger::{read_genesis_ledger, ConsensusLedgerSubset, Ledger, OperationLedgerInterface},
     settings::GraphConfig,
-    LedgerConfig,
 };
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::signed::{Signable, Signed};
 use massa_models::{
-    active_block::ActiveBlock,
-    api::EndorsementInfo,
-    rolls::{RollCounts, RollUpdate, RollUpdates},
-    SignedEndorsement, SignedHeader, SignedOperation,
+    active_block::ActiveBlock, api::EndorsementInfo, SignedEndorsement, SignedHeader,
 };
 use massa_models::{clique::Clique, SerializeCompact};
 use massa_models::{
-    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, OperationId,
-    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
-};
-use massa_proof_of_stake_exports::{
-    error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
+    Address, Block, BlockHeader, BlockId, EndorsementId, OperationId, OperationSearchResult,
+    OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
 };
 use massa_signature::{derive_public_key, PublicKey};
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
+use std::collections::{hash_map, BTreeSet, HashMap, VecDeque};
 use std::mem;
 use std::{collections::HashSet, usize};
-use std::{
-    collections::{hash_map, BTreeSet, HashMap, VecDeque},
-    convert::TryFrom,
-};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
@@ -58,31 +46,6 @@ impl HeaderOrBlock {
             HeaderOrBlock::Block(_, slot, ..) => *slot,
         }
     }
-}
-
-/// Aggregated changes made during a block's execution
-#[derive(Debug, Clone)]
-pub struct BlockStateAccumulator {
-    /// Addresses impacted by ledger updates
-    pub loaded_ledger_addrs: Set<Address>,
-    /// Subset of the ledger. Contains only data in the thread of the given block
-    pub ledger_thread_subset: ConsensusLedgerSubset,
-    /// Cumulative changes made during that block execution
-    pub ledger_changes: LedgerChanges,
-    /// Addresses impacted by roll updates
-    pub loaded_roll_addrs: Set<Address>,
-    /// Current roll counts for these addresses
-    pub roll_counts: RollCounts,
-    /// Roll updates that happened during that block execution
-    pub roll_updates: RollUpdates,
-    /// Roll updates that happened during current cycle
-    pub cycle_roll_updates: RollUpdates,
-    /// Cycle of the parent in the same thread
-    pub same_thread_parent_cycle: u64,
-    /// Address of the parent in the same thread
-    pub same_thread_parent_creator: Address,
-    /// Addresses of that block endorsers
-    pub endorsers_addresses: Vec<Address>,
 }
 
 /// Something can be discarded
@@ -264,15 +227,6 @@ pub struct BlockGraphExport {
     pub max_cliques: Vec<Clique>,
 }
 
-/// Final and candidate ledger data
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerDataExport {
-    /// Candidate data
-    pub candidate_data: ConsensusLedgerSubset,
-    /// Final data
-    pub final_data: ConsensusLedgerSubset,
-}
-
 /// Graph management
 pub struct BlockGraph {
     /// Consensus related configuration
@@ -310,8 +264,6 @@ pub struct BlockGraph {
     new_final_blocks: Set<BlockId>,
     /// Newly stale block mapped to creator and slot
     new_stale_blocks: Map<BlockId, (PublicKey, Slot)>,
-    /// ledger
-    ledger: Ledger,
     /// Shared storage,
     pub storage: Storage,
 }
@@ -329,8 +281,6 @@ enum HeaderCheckOutcome {
         incompatibilities: Set<BlockId>,
         /// number of incompatibilities that are inherited from the parents
         inherited_incompatibilities_count: usize,
-        /// list of `(period, address, did_create)` for all block/endorsement creation events
-        production_events: Vec<(u64, Address, bool)>,
     },
     /// there is something wrong with that header
     Discard(DiscardReason),
@@ -346,50 +296,6 @@ enum EndorsementsCheckOutcome {
     /// Everything is ok
     Proceed,
     /// There is something wrong with that endorsement
-    Discard(DiscardReason),
-    /// It must wait for its slot to be fully processed
-    WaitForSlot,
-}
-
-/// Possible outcome of block check
-#[derive(Debug)]
-enum BlockCheckOutcome {
-    /// Everything is ok
-    Proceed {
-        /// one (parent block id, parent's period) per thread
-        parents_hash_period: Vec<(BlockId, u64)>,
-        /// blocks that block depends on
-        dependencies: Set<BlockId>,
-        /// blocks that block is incompatible with
-        incompatibilities: Set<BlockId>,
-        /// number of incompatibilities that are inherited from the parents
-        inherited_incompatibilities_count: usize,
-        /// changes caused by that block on the ledger
-        block_ledger_changes: LedgerChanges,
-        /// changes caused by that block on rolls
-        roll_updates: RollUpdates,
-        /// list of `(period, address, did_create)` for all block/endorsement creation events
-        production_events: Vec<(u64, Address, bool)>,
-    },
-    /// There is something wrong with that block
-    Discard(DiscardReason),
-    /// It must wait for its slot to be fully processed
-    WaitForSlot,
-    /// it must wait for these block ids to be fully processed
-    WaitForDependencies(Set<BlockId>),
-}
-
-/// Possible outcome of a block's operations check.
-#[derive(Debug)]
-enum BlockOperationsCheckOutcome {
-    /// Everything is ok
-    Proceed {
-        /// changes caused by that block on the ledger
-        block_ledger_changes: LedgerChanges,
-        /// changes caused by that block on rolls
-        roll_updates: RollUpdates,
-    },
-    /// There is something wrong with that batch of operation
     Discard(DiscardReason),
 }
 
@@ -438,7 +344,6 @@ impl BlockGraph {
 
         let mut block_statuses = Map::default();
         let mut genesis_block_ids = Vec::with_capacity(cfg.thread_count as usize);
-        let ledger_config = LedgerConfig::from(&cfg);
         for thread in 0u8..cfg.thread_count {
             let (block_id, block) = create_genesis_block(&cfg, thread).map_err(|err| {
                 GraphError::GenesisCreationError(format!("genesis error {}", err))
@@ -453,12 +358,9 @@ impl BlockGraph {
                     dependencies: Set::<BlockId>::default(),
                     descendants: Set::<BlockId>::default(),
                     is_final: true,
-                    block_ledger_changes: LedgerChanges::default(), // no changes in genesis blocks
                     operation_set: Default::default(),
                     endorsement_ids: Default::default(),
                     addresses_to_operations: Map::with_capacity_and_hasher(0, BuildMap::default()),
-                    roll_updates: RollUpdates::default(), // no roll updates in genesis blocks
-                    production_events: vec![],
                     block_id,
                     addresses_to_endorsements: Default::default(),
                     slot: block.header.content.slot,
@@ -472,16 +374,6 @@ impl BlockGraph {
 
         massa_trace!("consensus.block_graph.new", {});
         if let Some(boot_graph) = init {
-            // load from boot graph
-            let ledger = Ledger::from_export(
-                boot_graph.ledger,
-                boot_graph
-                    .latest_final_blocks_periods
-                    .iter()
-                    .map(|(_id, period)| *period)
-                    .collect(),
-                ledger_config,
-            )?;
             let mut res_graph = BlockGraph {
                 cfg,
                 sequence_counter: 0,
@@ -514,7 +406,6 @@ impl BlockGraph {
                 max_cliques: boot_graph.max_cliques,
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
-                ledger,
                 new_final_blocks: Default::default(),
                 new_stale_blocks: Default::default(),
                 storage,
@@ -550,7 +441,6 @@ impl BlockGraph {
             }
             Ok(res_graph)
         } else {
-            let ledger = read_genesis_ledger(&ledger_config).await?;
             Ok(BlockGraph {
                 cfg,
                 sequence_counter: 0,
@@ -571,7 +461,6 @@ impl BlockGraph {
                 }],
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
-                ledger,
                 new_final_blocks: Default::default(),
                 new_stale_blocks: Default::default(),
                 storage,
@@ -602,9 +491,6 @@ impl BlockGraph {
                         children: a_block.children.clone(),
                         dependencies: a_block.dependencies.clone(),
                         is_final: a_block.is_final,
-                        block_ledger_changes: a_block.block_ledger_changes.clone(),
-                        roll_updates: a_block.roll_updates.clone(),
-                        production_events: a_block.production_events.clone(),
                     },
                 );
             } else {
@@ -621,398 +507,7 @@ impl BlockGraph {
             latest_final_blocks_periods: self.latest_final_blocks_periods.clone(),
             gi_head: self.gi_head.clone(),
             max_cliques: self.max_cliques.clone(),
-            ledger: ConsensusLedgerSubset::try_from(&self.ledger)?,
         })
-    }
-
-    /// Get a part of the ledger
-    /// Used for bootstrap
-    /// Parameters:
-    /// * address: Address to start fetching
-    /// * batch_size: Size of the batch of address to return
-    ///
-    /// Returns:
-    /// A subset of the ledger starting at `start_address` and of size `batch_size` or less
-    pub fn get_ledger_part(
-        &self,
-        start_address: Option<Address>,
-        batch_size: usize,
-    ) -> Result<ConsensusLedgerSubset> {
-        self.ledger
-            .get_ledger_part(start_address, batch_size)
-            .map_err(|e| e.into())
-    }
-
-    /// Try to apply an operation in the context of the block
-    ///
-    /// # Arguments
-    /// * `state_accu`: where the changes are accumulated while we go through the block
-    /// * `header`: the header of the block we are inside
-    /// * `operation`: the operation that we are trying to apply
-    /// * `pos`: proof of stake engine (used for roll related operations)
-    pub fn block_state_try_apply_op(
-        &self,
-        state_accu: &mut BlockStateAccumulator,
-        header: &SignedHeader,
-        operation: &SignedOperation,
-        pos: &mut ProofOfStake,
-    ) -> Result<()> {
-        let block_creator_address = Address::from_public_key(&header.content.creator);
-
-        // get roll updates
-        let op_roll_updates = operation.content.get_roll_updates()?;
-        // get ledger changes (includes fee distribution)
-        let op_ledger_changes = operation.content.get_ledger_changes(
-            block_creator_address,
-            state_accu.endorsers_addresses.clone(),
-            state_accu.same_thread_parent_creator,
-            self.cfg.roll_price,
-            self.cfg.endorsement_count,
-        )?;
-        // apply to block state accumulator
-        self.block_state_try_apply(
-            state_accu,
-            header,
-            Some(op_ledger_changes),
-            Some(op_roll_updates),
-            pos,
-        )?;
-
-        Ok(())
-    }
-
-    /// loads missing block state rolls if available
-    ///
-    /// # Arguments
-    /// * `accu`: accumulated block changes
-    /// * `header`: block header
-    /// * `pos`: proof of state engine
-    /// * `involved_addrs`: involved addresses
-    pub fn block_state_sync_rolls(
-        &self,
-        accu: &mut BlockStateAccumulator,
-        header: &SignedHeader,
-        pos: &ProofOfStake,
-        involved_addrs: &Set<Address>,
-    ) -> Result<()> {
-        let missing_entries: Set<Address> = involved_addrs
-            .difference(&accu.loaded_roll_addrs)
-            .copied()
-            .collect();
-        if !missing_entries.is_empty() {
-            let (roll_counts, cycle_roll_updates) = self.get_roll_data_at_parent(
-                header.content.parents[header.content.slot.thread as usize],
-                Some(&missing_entries),
-                pos,
-            )?;
-            accu.roll_counts.sync_from(involved_addrs, roll_counts);
-            let block_cycle = header.content.slot.get_cycle(self.cfg.periods_per_cycle);
-            if block_cycle == accu.same_thread_parent_cycle {
-                // if the parent cycle is different, ignore cycle roll updates
-                accu.cycle_roll_updates
-                    .sync_from(involved_addrs, cycle_roll_updates);
-            }
-        }
-        Ok(())
-    }
-
-    /// try to apply ledger/roll changes to a block state accumulator
-    /// if it fails, the state should remain undisturbed
-    pub fn block_state_try_apply(
-        &self,
-        accu: &mut BlockStateAccumulator,
-        header: &SignedHeader,
-        mut opt_ledger_changes: Option<LedgerChanges>,
-        opt_roll_updates: Option<RollUpdates>,
-        pos: &mut ProofOfStake,
-    ) -> Result<()> {
-        // roll changes
-        let (
-            applied_roll_addrs,
-            loaded_roll_addrs,
-            sync_roll_counts,
-            sync_roll_updates,
-            sync_cycle_roll_updates,
-        ) = if let Some(ref roll_updates) = opt_roll_updates {
-            // list roll-involved addresses
-            let involved_addrs: Set<Address> = roll_updates.get_involved_addresses();
-
-            // get a local copy of the roll_counts and cycle_roll_updates restricted to the involved addresses
-            let mut local_roll_counts = accu.roll_counts.clone_subset(&involved_addrs);
-            let mut local_cycle_roll_updates =
-                accu.cycle_roll_updates.clone_subset(&involved_addrs);
-
-            // load missing entries
-            let missing_entries: Set<Address> = involved_addrs
-                .difference(&accu.loaded_roll_addrs)
-                .copied()
-                .collect();
-            if !missing_entries.is_empty() {
-                let (roll_counts, cycle_roll_updates) = self.get_roll_data_at_parent(
-                    header.content.parents[header.content.slot.thread as usize],
-                    Some(&missing_entries),
-                    pos,
-                )?;
-                local_roll_counts.sync_from(&involved_addrs, roll_counts);
-                let block_cycle = header.content.slot.get_cycle(self.cfg.periods_per_cycle);
-                if block_cycle == accu.same_thread_parent_cycle {
-                    // if the parent cycle is different, ignore cycle roll updates
-                    local_cycle_roll_updates.sync_from(&involved_addrs, cycle_roll_updates);
-                }
-            }
-
-            // try to apply updates to the local roll_counts
-            local_roll_counts.apply_updates(roll_updates)?;
-
-            // try to apply updates to the local cycle_roll_updates
-            let compensations = local_cycle_roll_updates.chain(roll_updates)?;
-
-            // credit cycle roll compensations as ledger changes
-            if !compensations.is_empty() {
-                if opt_ledger_changes.is_none() {
-                    // if no ledger changes, create some
-                    opt_ledger_changes = Some(Default::default());
-                }
-                if let Some(ref mut ledger_changes) = opt_ledger_changes {
-                    for (addr, compensation) in compensations {
-                        let balance_delta = self
-                            .cfg
-                            .roll_price
-                            .checked_mul_u64(compensation.0)
-                            .ok_or_else(|| {
-                                GraphError::InvalidLedgerChange(
-                                    "overflow getting compensated roll credit amount".into(),
-                                )
-                            })?;
-                        ledger_changes.apply(
-                            &addr,
-                            &LedgerChange {
-                                balance_delta,
-                                balance_increment: true,
-                            },
-                        )?;
-                    }
-                }
-            }
-
-            // get a local copy of the block roll updates
-            let mut local_roll_updates = accu.roll_updates.clone_subset(&involved_addrs);
-
-            // try to apply updates to the local roll updates
-            local_roll_updates.chain(roll_updates)?;
-
-            (
-                involved_addrs,
-                missing_entries,
-                local_roll_counts,
-                local_roll_updates,
-                local_cycle_roll_updates,
-            )
-        } else {
-            (
-                Default::default(),
-                Default::default(),
-                Default::default(),
-                Default::default(),
-                Default::default(),
-            )
-        };
-
-        // ledger changes
-        let (
-            applied_ledger_addrs,
-            applied_thread_ledger_addrs,
-            loaded_ledger_addrs,
-            sync_thread_ledger_subset,
-            sync_ledger_changes,
-        ) = if let Some(ref mut ledger_changes) = opt_ledger_changes {
-            // list involved addresses
-            let involved_addrs = ledger_changes.get_involved_addresses();
-            let thread_addrs: Set<Address> = involved_addrs
-                .iter()
-                .filter(|addr| addr.get_thread(self.cfg.thread_count) == header.content.slot.thread)
-                .copied()
-                .collect();
-
-            // get a local copy of the changes involved in the block's thread
-            let thread_changes = ledger_changes.clone_subset(&thread_addrs);
-
-            // get a local copy of a block state ledger subset restricted to the involved addresses within the block's thread
-            let mut local_ledger_thread_subset =
-                accu.ledger_thread_subset.clone_subset(&thread_addrs);
-
-            // load missing addresses into the local thread ledger subset
-            let missing_entries: Set<Address> = thread_addrs
-                .difference(&accu.loaded_ledger_addrs)
-                .copied()
-                .collect();
-            if !missing_entries.is_empty() {
-                let missing_subset =
-                    self.get_ledger_at_parents(&header.content.parents, &missing_entries)?;
-                local_ledger_thread_subset.sync_from(&missing_entries, missing_subset);
-            }
-
-            // try to apply changes to the local thread ledger subset
-            local_ledger_thread_subset.apply_changes(&thread_changes)?;
-
-            // get a local copy of the block's ledger changes for the involved addresses
-            let mut local_ledger_changes = accu.ledger_changes.clone_subset(&involved_addrs);
-
-            // try to chain changes to the local ledger changes
-            local_ledger_changes.chain(ledger_changes)?;
-            (
-                involved_addrs,
-                thread_addrs,
-                missing_entries,
-                local_ledger_thread_subset,
-                local_ledger_changes,
-            )
-        } else {
-            (
-                Default::default(),
-                Default::default(),
-                Default::default(),
-                ConsensusLedgerSubset::default(),
-                Default::default(),
-            )
-        };
-
-        // sync ledger structures
-        if opt_ledger_changes.is_some() {
-            accu.loaded_ledger_addrs.extend(loaded_ledger_addrs);
-            accu.ledger_thread_subset
-                .sync_from(&applied_thread_ledger_addrs, sync_thread_ledger_subset);
-            accu.ledger_changes
-                .sync_from(&applied_ledger_addrs, sync_ledger_changes);
-        }
-
-        // sync roll structures
-        if opt_roll_updates.is_some() {
-            accu.loaded_roll_addrs.extend(loaded_roll_addrs);
-            accu.roll_counts
-                .sync_from(&applied_roll_addrs, sync_roll_counts);
-            accu.roll_updates
-                .sync_from(&applied_roll_addrs, sync_roll_updates);
-            accu.cycle_roll_updates
-                .sync_from(&applied_roll_addrs, sync_cycle_roll_updates);
-        }
-
-        Ok(())
-    }
-
-    /// initializes a block state accumulator from a block header
-    pub fn block_state_accumulator_init(
-        &self,
-        header: &SignedHeader,
-        pos: &mut ProofOfStake,
-    ) -> Result<BlockStateAccumulator> {
-        let block_thread = header.content.slot.thread;
-        let block_cycle = header.content.slot.get_cycle(self.cfg.periods_per_cycle);
-        let block_creator_address = Address::from_public_key(&header.content.creator);
-
-        // get same thread parent cycle
-        let same_thread_parent = &self
-            .get_active_block(&header.content.parents[block_thread as usize])
-            .ok_or_else(|| {
-                GraphError::MissingBlock(format!(
-                    "missing block in block_state_accumulator_init: {}",
-                    &header.content.parents[block_thread as usize]
-                ))
-            })?;
-
-        let same_thread_parent_cycle = same_thread_parent
-            .slot
-            .get_cycle(self.cfg.periods_per_cycle);
-
-        let same_thread_parent_creator = same_thread_parent.creator_address;
-
-        let endorsers_addresses: Vec<Address> = header
-            .content
-            .endorsements
-            .iter()
-            .map(|ed| Address::from_public_key(&ed.content.sender_public_key))
-            .collect();
-
-        // init block state accumulator
-        let mut accu = BlockStateAccumulator {
-            loaded_ledger_addrs: Set::<Address>::default(),
-            ledger_thread_subset: Default::default(),
-            ledger_changes: Default::default(),
-            loaded_roll_addrs: Set::<Address>::default(),
-            roll_counts: Default::default(),
-            roll_updates: Default::default(),
-            cycle_roll_updates: Default::default(),
-            same_thread_parent_cycle,
-            same_thread_parent_creator,
-            endorsers_addresses: endorsers_addresses.clone(),
-        };
-
-        // block constant ledger reward
-        let mut reward_ledger_changes = LedgerChanges::default();
-        reward_ledger_changes.add_reward(
-            block_creator_address,
-            endorsers_addresses,
-            same_thread_parent_creator,
-            self.cfg.block_reward,
-            self.cfg.endorsement_count,
-        )?;
-
-        self.block_state_try_apply(&mut accu, header, Some(reward_ledger_changes), None, pos)?;
-
-        // apply roll lock funds release
-        if accu.same_thread_parent_cycle != block_cycle {
-            let mut roll_unlock_ledger_changes = LedgerChanges::default();
-
-            // credit addresses that sold a roll after a lock cycle
-            // (step 5.1 in consensus/pos.md)
-            for (addr, amount) in pos.get_roll_sell_credit(block_cycle, block_thread)? {
-                roll_unlock_ledger_changes.apply(
-                    &addr,
-                    &LedgerChange {
-                        balance_delta: amount,
-                        balance_increment: true,
-                    },
-                )?;
-            }
-
-            // apply to block state
-            self.block_state_try_apply(
-                &mut accu,
-                header,
-                Some(roll_unlock_ledger_changes),
-                None,
-                pos,
-            )?;
-        }
-
-        // apply roll deactivation
-        // (step 5.2 in pos.md)
-        if accu.same_thread_parent_cycle != block_cycle {
-            let mut roll_updates = RollUpdates::default();
-
-            // get addresses for which to deactivate rolls
-            let deactivate_addrs = pos.get_roll_deactivations(block_cycle, block_thread)?;
-
-            // load missing address info (because we need to read roll counts)
-            self.block_state_sync_rolls(&mut accu, header, pos, &deactivate_addrs)?;
-
-            // accumulate roll updates
-            for addr in deactivate_addrs {
-                let roll_count = accu.roll_counts.0.get(&addr).unwrap_or(&0);
-                roll_updates.apply(
-                    &addr,
-                    &RollUpdate {
-                        roll_purchases: 0,
-                        roll_sales: *roll_count,
-                    },
-                )?;
-            }
-
-            // apply changes to block state
-            self.block_state_try_apply(&mut accu, header, None, Some(roll_updates), pos)?;
-        }
-
-        Ok(accu)
     }
 
     /// Gets latest final blocks (hash, period) for each thread.
@@ -1053,141 +548,6 @@ impl BlockGraph {
                 _ => None,
             })
             .collect()
-    }
-
-    /// for algorithm see `pos.md`
-    /// if `addrs_opt` is `Some(addrs)`, restrict to address. If None, return all addresses.
-    /// returns (`roll_counts`, `cycle_roll_updates`)
-    pub fn get_roll_data_at_parent(
-        &self,
-        block_id: BlockId,
-        addrs_opt: Option<&Set<Address>>,
-        pos: &ProofOfStake,
-    ) -> Result<(RollCounts, RollUpdates)> {
-        // get target block and its cycle/thread
-        let (target_cycle, target_thread) = match self.block_statuses.get(&block_id) {
-            Some(BlockStatus::Active(a_block)) => (
-                a_block.slot.get_cycle(self.cfg.periods_per_cycle),
-                a_block.slot.thread,
-            ),
-            _ => {
-                return Err(GraphError::ContainerInconsistency(format!(
-                    "block missing or non-active: {}",
-                    block_id
-                )));
-            }
-        };
-
-        // Get the latest final slot, as seen by PoS,
-        // We do this instead of looking for the latest graph final block because PoS might not be aware of the latest graph final blocks yet,
-        // since PoS is notified only after all block finality changes caused by this new block are processed.
-        let pos_latest_final_block_slot = pos.get_last_final_block_slot(target_thread);
-        let pos_latest_final_block_cycle =
-            pos_latest_final_block_slot.get_cycle(self.cfg.periods_per_cycle);
-
-        // stack back to latest final slot
-        // (step 1 in pos.md)
-        let mut stack = Vec::new();
-        let mut cur_block_id = block_id;
-        // start graph exploration until the latest period known as final
-        // for the PoS module
-        loop {
-            // get block
-            let cur_a_block = match self.block_statuses.get(&cur_block_id) {
-                Some(BlockStatus::Active(a_block)) => a_block,
-                _ => {
-                    return Err(GraphError::ContainerInconsistency(format!(
-                        "block missing or non-active: {}",
-                        cur_block_id
-                    )));
-                }
-            };
-            if cur_a_block.slot.period == pos_latest_final_block_slot.period {
-                // filters out genesis and final blocks
-                // (step 1.1 in pos.md)
-                break;
-            }
-            // (step 1.2 in pos.md)
-            stack.push(cur_block_id);
-            cur_block_id = cur_a_block.parents[target_thread as usize].0;
-        }
-
-        // get latest final PoS state for addresses
-        // (step 2 a,d 3 in pos.md)
-        let (mut cur_rolls, mut cur_cycle_roll_updates) = {
-            // (step 2 in pos.md)
-            let cycle_state = pos
-                .get_final_roll_data(pos_latest_final_block_cycle, target_thread)
-                .ok_or_else(|| {
-                    GraphError::ContainerInconsistency(format!(
-                        "final PoS cycle not available: {}",
-                        pos_latest_final_block_cycle
-                    ))
-                })?;
-            // (step 3 in pos.md)
-            let cur_cycle_roll_updates = if pos_latest_final_block_cycle == target_cycle {
-                if let Some(addrs) = addrs_opt {
-                    cycle_state.cycle_updates.clone_subset(addrs)
-                } else {
-                    cycle_state.cycle_updates.clone()
-                }
-            } else {
-                RollUpdates::default()
-            };
-            let cur_rolls = if let Some(addrs) = addrs_opt {
-                cycle_state.roll_count.clone_subset(addrs)
-            } else {
-                cycle_state.roll_count.clone()
-            };
-            (cur_rolls, cur_cycle_roll_updates)
-        };
-
-        // unstack blocks and apply their roll changes
-        // (step 4 in pos.md)
-        while let Some(cur_block_id) = stack.pop() {
-            // get block and apply its roll updates to cur_rolls and cur_cycle_roll_updates if in the same cycle as the target block
-            match self.block_statuses.get(&cur_block_id) {
-                Some(BlockStatus::Active(a_block)) => {
-                    let applied_updates = if let Some(addrs) = addrs_opt {
-                        a_block.roll_updates.clone_subset(addrs)
-                    } else {
-                        a_block.roll_updates.clone()
-                    };
-                    // (step 4.1 in pos.md)
-                    cur_rolls.apply_updates(&applied_updates)?;
-                    // (step 4.2 in pos.md)
-                    if a_block.slot.get_cycle(self.cfg.periods_per_cycle) == target_cycle {
-                        // if the block is in the target cycle, accumulate the roll updates
-                        // applies compensations but ignores their amount
-                        cur_cycle_roll_updates.chain(&applied_updates)?;
-                    }
-                }
-                _ => {
-                    return Err(GraphError::ContainerInconsistency(format!(
-                        "block missing or non-active: {}",
-                        cur_block_id
-                    )));
-                }
-            };
-        }
-
-        // (step 5 in pos.md)
-        Ok((cur_rolls, cur_cycle_roll_updates))
-    }
-
-    /// gets Ledger data export for given Addressees
-    pub fn get_ledger_data_export(&self, addresses: &Set<Address>) -> Result<LedgerDataExport> {
-        let best_parents = self.get_best_parents();
-        Ok(LedgerDataExport {
-            candidate_data: self.get_ledger_at_parents(
-                &best_parents
-                    .iter()
-                    .map(|(b, _p)| *b)
-                    .collect::<Vec<BlockId>>(),
-                addresses,
-            )?,
-            final_data: self.ledger.get_final_ledger_subset(addresses)?,
-        })
     }
 
     /// get operation info by involved address
@@ -1328,7 +688,7 @@ impl BlockGraph {
     }
 
     /// signal new slot
-    pub fn slot_tick(&mut self, pos: &mut ProofOfStake, current_slot: Option<Slot>) -> Result<()> {
+    pub fn slot_tick(&mut self, current_slot: Option<Slot>) -> Result<()> {
         // list all elements for which the time has come
         let to_process: BTreeSet<(Slot, BlockId)> = self
             .waiting_for_slot_index
@@ -1348,7 +708,7 @@ impl BlockGraph {
 
         massa_trace!("consensus.block_graph.slot_tick", {});
         // process those elements
-        self.rec_process(to_process, pos, current_slot)?;
+        self.rec_process(to_process, current_slot)?;
 
         Ok(())
     }
@@ -1362,7 +722,6 @@ impl BlockGraph {
         &mut self,
         block_id: BlockId,
         header: SignedHeader,
-        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<()> {
         // ignore genesis blocks
@@ -1399,7 +758,7 @@ impl BlockGraph {
         }
 
         // process
-        self.rec_process(to_ack, pos, current_slot)?;
+        self.rec_process(to_ack, current_slot)?;
 
         Ok(())
     }
@@ -1415,7 +774,6 @@ impl BlockGraph {
         slot: Slot,
         operation_set: Map<OperationId, (usize, u64)>,
         endorsement_ids: Map<EndorsementId, u32>,
-        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<()> {
         // ignore genesis blocks
@@ -1468,7 +826,7 @@ impl BlockGraph {
         }
 
         // process
-        self.rec_process(to_ack, pos, current_slot)?;
+        self.rec_process(to_ack, current_slot)?;
 
         Ok(())
     }
@@ -1483,25 +841,19 @@ impl BlockGraph {
     fn rec_process(
         &mut self,
         mut to_ack: BTreeSet<(Slot, BlockId)>,
-        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<()> {
         // order processing by (slot, hash)
         while let Some((_slot, hash)) = to_ack.pop_first() {
-            to_ack.extend(self.process(hash, pos, current_slot)?)
+            to_ack.extend(self.process(hash, current_slot)?)
         }
         Ok(())
     }
 
     /// Acknowledge a single item, return a set of items to re-ack
-    ///
-    /// Checks performed:
-    /// - See `check_header` for checks on incoming headers.
-    /// - See `check_block` for checks on incoming blocks.
     fn process(
         &mut self,
         block_id: BlockId,
-        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<BTreeSet<(Slot, BlockId)>> {
         // list items to reprocess
@@ -1518,11 +870,8 @@ impl BlockGraph {
             valid_block_deps,
             valid_block_incomp,
             valid_block_inherited_incomp_count,
-            valid_block_changes,
             valid_block_operation_set,
             valid_block_endorsement_ids,
-            valid_block_roll_updates,
-            valid_block_production_events,
         ) = match self.block_statuses.get(&block_id) {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
@@ -1559,7 +908,7 @@ impl BlockGraph {
                         block_id
                     )));
                 };
-                match self.check_header(&block_id, &header, pos, current_slot)? {
+                match self.check_header(&block_id, &header, current_slot)? {
                     HeaderCheckOutcome::Proceed { .. } => {
                         // set as waiting dependencies
                         let mut dependencies = Set::<BlockId>::default();
@@ -1671,15 +1020,12 @@ impl BlockGraph {
                             block_id
                         )));
                     };
-                match self.check_block(&block_id, &stored_block.block, pos, current_slot)? {
-                    BlockCheckOutcome::Proceed {
+                match self.check_header(&block_id, &stored_block.block.header, current_slot)? {
+                    HeaderCheckOutcome::Proceed {
                         parents_hash_period,
                         dependencies,
                         incompatibilities,
                         inherited_incompatibilities_count,
-                        block_ledger_changes,
-                        roll_updates,
-                        production_events,
                     } => {
                         // block is valid: remove it from Incoming and return it
                         massa_trace!("consensus.block_graph.process.incoming_block.valid", {
@@ -1694,14 +1040,11 @@ impl BlockGraph {
                             dependencies,
                             incompatibilities,
                             inherited_incompatibilities_count,
-                            block_ledger_changes,
                             operation_set,
                             endorsement_ids,
-                            roll_updates,
-                            production_events,
                         )
                     }
-                    BlockCheckOutcome::WaitForDependencies(dependencies) => {
+                    HeaderCheckOutcome::WaitForDependencies(dependencies) => {
                         // set as waiting dependencies
                         self.block_statuses.insert(
                             block_id,
@@ -1726,7 +1069,7 @@ impl BlockGraph {
                         );
                         return Ok(BTreeSet::new());
                     }
-                    BlockCheckOutcome::WaitForSlot => {
+                    HeaderCheckOutcome::WaitForSlot => {
                         // set as waiting for slot
                         self.block_statuses.insert(
                             block_id,
@@ -1745,7 +1088,7 @@ impl BlockGraph {
                         );
                         return Ok(BTreeSet::new());
                     }
-                    BlockCheckOutcome::Discard(reason) => {
+                    HeaderCheckOutcome::Discard(reason) => {
                         self.maybe_note_attack_attempt(&reason, &block_id);
                         massa_trace!("consensus.block_graph.process.incoming_block.discarded", {"block_id": block_id, "reason": reason});
                         // count stales
@@ -1849,13 +1192,10 @@ impl BlockGraph {
             valid_block_deps,
             valid_block_incomp,
             valid_block_inherited_incomp_count,
-            valid_block_changes,
             valid_block_operation_set,
             valid_block_endorsement_ids,
             valid_block_addresses_to_operations,
             valid_block_addresses_to_endorsements,
-            valid_block_roll_updates,
-            valid_block_production_events,
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
@@ -1957,7 +1297,6 @@ impl BlockGraph {
         &self,
         block_id: &BlockId,
         header: &SignedHeader,
-        pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<HeaderCheckOutcome> {
         massa_trace!("consensus.block_graph.check_header", {
@@ -1967,7 +1306,6 @@ impl BlockGraph {
         let mut deps = Set::<BlockId>::default();
         let mut incomp = Set::<BlockId>::default();
         let mut missing_deps = Set::<BlockId>::default();
-        let creator_addr = Address::from_public_key(&header.content.creator);
 
         // basic structural checks
         if header.content.parents.len() != (self.cfg.thread_count as usize)
@@ -1996,25 +1334,6 @@ impl BlockGraph {
             {
                 return Ok(HeaderCheckOutcome::WaitForSlot);
             }
-        }
-
-        // check if it was the creator's turn to create this block
-        // (step 1 in consensus/pos.md)
-        // note: do this AFTER TooMuchInTheFuture checks
-        //       to avoid doing too many draws to check blocks in the distant future
-        let slot_draw_address = match pos.draw_block_producer(header.content.slot) {
-            Ok(draws) => draws,
-            Err(ProofOfStakeError::PosCycleUnavailable(_)) => {
-                // slot is not available yet
-                return Ok(HeaderCheckOutcome::WaitForSlot);
-            }
-            Err(err) => return Err(err.into()),
-        };
-        if creator_addr != slot_draw_address {
-            // it was not the creator's turn to create a block for this slot
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                format!("Bad creator turn for the slot:{}", header.content.slot),
-            )));
         }
 
         // check if block is in the future: queue it
@@ -2160,12 +1479,11 @@ impl BlockGraph {
         })?;
 
         // check endorsements
-        match self.check_endorsements(header, pos, parent_in_own_thread)? {
+        match self.check_endorsements(header, parent_in_own_thread)? {
             EndorsementsCheckOutcome::Proceed => {}
             EndorsementsCheckOutcome::Discard(reason) => {
                 return Ok(HeaderCheckOutcome::Discard(reason))
             }
-            EndorsementsCheckOutcome::WaitForSlot => return Ok(HeaderCheckOutcome::WaitForSlot),
         }
 
         // thread incompatibility test
@@ -2260,29 +1578,11 @@ impl BlockGraph {
             "block_id": block_id
         });
 
-        // list production events
-        let mut production_events = vec![(header.content.slot.period, creator_addr, true)];
-        for miss_period in
-            (parents[header.content.slot.thread as usize].1 + 1)..header.content.slot.period
-        {
-            let miss_slot = Slot::new(miss_period, header.content.slot.thread);
-            let slot_draw_address = match pos.draw_block_producer(miss_slot) {
-                Ok(draws) => draws,
-                Err(ProofOfStakeError::PosCycleUnavailable(_)) => {
-                    // slot is not available yet
-                    return Ok(HeaderCheckOutcome::WaitForSlot);
-                }
-                Err(err) => return Err(err.into()),
-            };
-            production_events.push((miss_period, slot_draw_address, false));
-        }
-
         Ok(HeaderCheckOutcome::Proceed {
             parents_hash_period: parents,
             dependencies: deps,
             incompatibilities: incomp,
             inherited_incompatibilities_count: inherited_incomp_count,
-            production_events,
         })
     }
 
@@ -2292,30 +1592,9 @@ impl BlockGraph {
     fn check_endorsements(
         &self,
         header: &SignedHeader,
-        pos: &mut ProofOfStake,
         parent_in_own_thread: &ActiveBlock,
     ) -> Result<EndorsementsCheckOutcome> {
-        // check endorsements
-        let endorsement_draws = match pos.draw_endorsement_producers(parent_in_own_thread.slot) {
-            Ok(draws) => draws,
-            Err(ProofOfStakeError::PosCycleUnavailable(_)) => {
-                // slot is not available yet
-                return Ok(EndorsementsCheckOutcome::WaitForSlot);
-            }
-            Err(err) => return Err(err.into()),
-        };
         for endorsement in header.content.endorsements.iter() {
-            // check that the draw is correct
-            if Address::from_public_key(&endorsement.content.sender_public_key)
-                != endorsement_draws[endorsement.content.index as usize]
-            {
-                return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!(
-                        "endorser draw mismatch for header in slot: {}",
-                        header.content.slot
-                    ),
-                )));
-            }
             // check that the endorsement slot matches the endorsed block
             if endorsement.content.slot != parent_in_own_thread.slot {
                 return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
@@ -2325,6 +1604,7 @@ impl BlockGraph {
             }
 
             // note that the following aspects are checked in protocol
+            // * PoS draws
             // * signature
             // * intra block endorsement reuse
             // * intra block index reuse
@@ -2336,242 +1616,9 @@ impl BlockGraph {
         Ok(EndorsementsCheckOutcome::Proceed)
     }
 
-    /// Process and incoming block.
-    ///
-    /// Checks performed:
-    /// - See `check_header`.
-    /// - See `check_operations`.
-    fn check_block(
-        &self,
-        block_id: &BlockId,
-        block: &Block,
-        pos: &mut ProofOfStake,
-        current_slot: Option<Slot>,
-    ) -> Result<BlockCheckOutcome> {
-        massa_trace!("consensus.block_graph.check_block", {
-            "block_id": block_id
-        });
-        let deps;
-        let incomp;
-        let parents;
-        let inherited_incomp_count;
-        let production_evts;
-
-        // check header
-        match self.check_header(block_id, &block.header, pos, current_slot)? {
-            HeaderCheckOutcome::Proceed {
-                parents_hash_period,
-                dependencies,
-                incompatibilities,
-                inherited_incompatibilities_count,
-                production_events,
-            } => {
-                // block_changes can be ignored as it is empty, (maybe add an error if not)
-                parents = parents_hash_period;
-                deps = dependencies;
-                incomp = incompatibilities;
-                inherited_incomp_count = inherited_incompatibilities_count;
-                production_evts = production_events;
-            }
-            HeaderCheckOutcome::Discard(reason) => return Ok(BlockCheckOutcome::Discard(reason)),
-            HeaderCheckOutcome::WaitForDependencies(deps) => {
-                return Ok(BlockCheckOutcome::WaitForDependencies(deps))
-            }
-            HeaderCheckOutcome::WaitForSlot => return Ok(BlockCheckOutcome::WaitForSlot),
-        }
-
-        // check operations
-        let (block_ledger_changes, roll_updates) = match self.check_operations(block, pos)? {
-            BlockOperationsCheckOutcome::Proceed {
-                block_ledger_changes,
-                roll_updates,
-            } => (block_ledger_changes, roll_updates),
-            BlockOperationsCheckOutcome::Discard(reason) => {
-                println!("Discarding ops: {:?}", reason);
-                return Ok(BlockCheckOutcome::Discard(reason));
-            }
-        };
-
-        massa_trace!("consensus.block_graph.check_block.ok", {
-            "block_id": block_id
-        });
-
-        Ok(BlockCheckOutcome::Proceed {
-            parents_hash_period: parents,
-            dependencies: deps,
-            incompatibilities: incomp,
-            inherited_incompatibilities_count: inherited_incomp_count,
-            block_ledger_changes,
-            roll_updates,
-            production_events: production_evts,
-        })
-    }
-
-    /// Check if operations are consistent.
-    ///
-    /// Returns changes done by that block to the ledger (one hashmap per thread) and rolls
-    /// `consensus/pos.md#block-reception-process`
-    ///
-    fn check_operations(
-        &self,
-        block_to_check: &Block,
-        pos: &mut ProofOfStake,
-    ) -> Result<BlockOperationsCheckOutcome> {
-        // initialize block state accumulator
-        let mut state_accu = match self.block_state_accumulator_init(&block_to_check.header, pos) {
-            Ok(accu) => accu,
-            Err(err) => {
-                warn!(
-                    "block graph check_operations error, could not init block state accumulator: {}",
-                    err
-                );
-                return Ok(BlockOperationsCheckOutcome::Discard(
-                    DiscardReason::Invalid(format!("block graph check_operations error, could not init block state accumulator: {}", err)),
-                ));
-            }
-        };
-
-        // all operations
-        // (including step 6 in consensus/pos.md)
-        for operation in block_to_check.operations.iter() {
-            match self.block_state_try_apply_op(
-                &mut state_accu,
-                &block_to_check.header,
-                operation,
-                pos,
-            ) {
-                Ok(_) => (),
-                Err(err) => {
-                    warn!(
-                        "block graph check_operations error, operation apply to state: {}",
-                        err
-                    );
-                    return Ok(BlockOperationsCheckOutcome::Discard(
-                        DiscardReason::Invalid(format!(
-                            "block graph check_operations error, operation apply to state: {}",
-                            err
-                        )),
-                    ));
-                }
-            };
-        }
-
-        Ok(BlockOperationsCheckOutcome::Proceed {
-            block_ledger_changes: state_accu.ledger_changes,
-            roll_updates: state_accu.roll_updates,
-        })
-    }
-
     /// get genesis block ids
     pub fn get_genesis_block_ids(&self) -> &Vec<BlockId> {
         &self.genesis_hashes
-    }
-
-    /// Compute ledger subset after given parents for given addresses
-    pub fn get_ledger_at_parents(
-        &self,
-        parents: &[BlockId],
-        query_addrs: &Set<Address>,
-    ) -> Result<ConsensusLedgerSubset> {
-        // check that all addresses belong to threads with parents later or equal to the latest_final_block of that thread
-        let involved_threads: HashSet<u8> = query_addrs
-            .iter()
-            .map(|addr| addr.get_thread(self.cfg.thread_count))
-            .collect();
-        for thread in involved_threads.into_iter() {
-            match self.block_statuses.get(&parents[thread as usize]) {
-                Some(BlockStatus::Active(b)) => {
-                    if b.slot.period < self.latest_final_blocks_periods[thread as usize].1 {
-                        return Err(GraphError::ContainerInconsistency(format!(
-                            "asking for operations in thread {}, for which the given parent is older than the latest final block of that thread",
-                            thread
-                        )));
-                    }
-                }
-                _ => {
-                    return Err(GraphError::ContainerInconsistency(format!(
-                        "parent block missing or in non-active state: {}",
-                        parents[thread as usize]
-                    )));
-                }
-            }
-        }
-
-        // compute backtrack ending slots for each thread
-        let mut stop_periods =
-            vec![vec![0u64; self.cfg.thread_count as usize]; self.cfg.thread_count as usize];
-        for target_thread in 0u8..self.cfg.thread_count {
-            let (target_last_final_id, target_last_final_period) =
-                self.latest_final_blocks_periods[target_thread as usize];
-            match self.block_statuses.get(&target_last_final_id) {
-                Some(BlockStatus::Active(b)) => {
-                    if !b.parents.is_empty() {
-                        stop_periods[target_thread as usize] =
-                            b.parents.iter().map(|(_id, period)| period + 1).collect();
-                    }
-                }
-                _ => {
-                    return Err(GraphError::ContainerInconsistency(format!(
-                        "last final block missing or in non-active state: {}",
-                        target_last_final_id
-                    )));
-                }
-            }
-            stop_periods[target_thread as usize][target_thread as usize] =
-                target_last_final_period + 1;
-        }
-
-        // backtrack blocks starting from parents
-        let mut ancestry = Set::<BlockId>::default();
-        let mut to_scan: Vec<BlockId> = parents.to_vec();
-        let mut accumulated_changes = LedgerChanges::default();
-        while let Some(scan_b_id) = to_scan.pop() {
-            // insert into ancestry, ignore if already scanned
-            if !ancestry.insert(scan_b_id) {
-                continue;
-            }
-
-            // get block, quit if not found or not active
-            let scan_b = match self.block_statuses.get(&scan_b_id) {
-                Some(BlockStatus::Active(b)) => b,
-                _ => {
-                    return Err(GraphError::ContainerInconsistency(format!(
-                        "missing or not active block during ancestry traversal: {}",
-                        scan_b_id
-                    )));
-                }
-            };
-
-            // accumulate ledger changes
-            // Warning 1: this uses ledger change commutativity and associativity, may not work with smart contracts
-            // Warning 2: we assume that overflows cannot happen here (they won't be deterministic)
-            let mut explore_parents = false;
-            for thread in 0u8..self.cfg.thread_count {
-                if scan_b.slot.period < stop_periods[thread as usize][scan_b.slot.thread as usize] {
-                    continue;
-                }
-                explore_parents = true;
-
-                for (addr, change) in scan_b.block_ledger_changes.0.iter() {
-                    if query_addrs.contains(addr)
-                        && addr.get_thread(self.cfg.thread_count) == thread
-                    {
-                        accumulated_changes.apply(addr, change)?;
-                    }
-                }
-            }
-
-            // if this ancestor is still useful for the ledger of some thread, explore its parents
-            if explore_parents {
-                to_scan.extend(scan_b.parents.iter().map(|(id, _period)| id));
-            }
-        }
-
-        // get final ledger and apply changes to it
-        let mut res_ledger = self.ledger.get_final_ledger_subset(query_addrs)?;
-        res_ledger.apply_changes(&accumulated_changes)?;
-
-        Ok(res_ledger)
     }
 
     /// Computes max cliques of compatible blocks
@@ -2632,13 +1679,10 @@ impl BlockGraph {
         deps: Set<BlockId>,
         incomp: Set<BlockId>,
         inherited_incomp_count: usize,
-        block_ledger_changes: LedgerChanges,
         operation_set: Map<OperationId, (usize, u64)>,
         endorsement_ids: Map<EndorsementId, u32>,
         addresses_to_operations: Map<Address, Set<OperationId>>,
         addresses_to_endorsements: Map<Address, Set<EndorsementId>>,
-        roll_updates: RollUpdates,
-        production_events: Vec<(u64, Address, bool)>,
     ) -> Result<()> {
         massa_trace!("consensus.block_graph.add_block_to_graph", {
             "block_id": add_block_id
@@ -2654,12 +1698,9 @@ impl BlockGraph {
                 block_id: add_block_id,
                 children: vec![Default::default(); self.cfg.thread_count as usize],
                 is_final: false,
-                block_ledger_changes,
                 operation_set,
                 endorsement_ids,
                 addresses_to_operations,
-                roll_updates,
-                production_events,
                 addresses_to_endorsements,
                 slot: add_block_slot,
             })),
@@ -3006,9 +2047,6 @@ impl BlockGraph {
             final_blocks
         };
 
-        // Save latest_final_blocks_periods for later use when updating the ledger.
-        let old_latest_final_blocks_periods = self.latest_final_blocks_periods.clone();
-
         // mark final blocks and update latest_final_blocks_periods
         massa_trace!(
             "consensus.block_graph.add_block_to_graph.mark_final_blocks",
@@ -3060,91 +2098,6 @@ impl BlockGraph {
             } else {
                 return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {} - block {} is missing", add_block_id, final_block_hash)));
             }
-        }
-
-        // list threads where latest final block changed
-        let changed_threads_old_block_thread_id_period = self
-            .latest_final_blocks_periods
-            .iter()
-            .enumerate()
-            .filter_map(|(thread, (b_id, _b_period))| {
-                let (old_b_id, old_period) = &old_latest_final_blocks_periods[thread];
-                if b_id != old_b_id {
-                    return Some((thread as u8, old_b_id, old_period));
-                }
-                None
-            });
-
-        // Update ledger with changes from final blocks, "B2".
-        for (changed_thread, old_block_id, old_period) in changed_threads_old_block_thread_id_period
-        {
-            // Get the old block
-            let old_block = match self.block_statuses.get(old_block_id) {
-                Some(BlockStatus::Active(latest)) => latest,
-                _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - active old latest final block {} is missing in thread {}", old_block_id, changed_thread))),
-            };
-
-            // Get the latest final in the same thread.
-            let latest_final_in_thread_id =
-                self.latest_final_blocks_periods[changed_thread as usize].0;
-
-            // Init the stop backtrack stop periods
-            let mut stop_backtrack_periods = vec![0u64; self.cfg.thread_count as usize];
-            for limit_thread in 0u8..self.cfg.thread_count {
-                if limit_thread == changed_thread {
-                    // in the same thread, set the stop backtrack period to B1.period + 1
-                    stop_backtrack_periods[limit_thread as usize] = old_period + 1;
-                } else if !old_block.parents.is_empty() {
-                    // In every other thread, set it to B1.parents[tau*].period + 1
-                    stop_backtrack_periods[limit_thread as usize] =
-                        old_block.parents[limit_thread as usize].1 + 1;
-                }
-            }
-
-            // Backtrack blocks starting from B2.
-            let mut ancestry: Set<BlockId> = Set::<BlockId>::default();
-            let mut to_scan: Vec<BlockId> = vec![latest_final_in_thread_id]; // B2
-            let mut accumulated_changes = LedgerChanges::default();
-            while let Some(scan_b_id) = to_scan.pop() {
-                // insert into ancestry, ignore if already scanned
-                if !ancestry.insert(scan_b_id) {
-                    continue;
-                }
-
-                // get block, quit if not found or not active
-                let scan_b = match self.block_statuses.get(&scan_b_id) {
-                    Some(BlockStatus::Active(b)) => b,
-                    _ => return Err(GraphError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - block {} is missing", scan_b_id)))
-                };
-
-                // accumulate ledger changes
-                // Warning 1: this uses ledger change commutativity and associativity, may not work with smart contracts
-                // Warning 2: we assume that overflows cannot happen here (they won't be deterministic)
-                if scan_b.slot.period < stop_backtrack_periods[scan_b.slot.thread as usize] {
-                    continue;
-                }
-                for (addr, change) in scan_b.block_ledger_changes.0.iter() {
-                    if addr.get_thread(self.cfg.thread_count) == changed_thread {
-                        accumulated_changes.apply(addr, change)?;
-                    }
-                }
-
-                // Explore parents
-                to_scan.extend(
-                    scan_b
-                        .parents
-                        .iter()
-                        .map(|(b_id, _period)| *b_id)
-                        .collect::<Vec<BlockId>>(),
-                );
-            }
-
-            // update ledger
-            self.ledger.apply_final_changes(
-                changed_thread,
-                &accumulated_changes,
-                self.latest_final_blocks_periods[changed_thread as usize].1,
-            )?;
         }
 
         massa_trace!("consensus.block_graph.add_block_to_graph.end", {});

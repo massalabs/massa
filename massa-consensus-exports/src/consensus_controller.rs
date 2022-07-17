@@ -1,12 +1,9 @@
-use massa_graph::ledger::ConsensusLedgerSubset;
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
-use massa_models::{
-    Address, BlockId, OperationSearchResult, SignedEndorsement, Slot, StakersCycleProductionStats,
-};
-use massa_proof_of_stake_exports::ExportProofOfStake;
+use massa_models::{Address, BlockId, OperationSearchResult, SignedEndorsement, Slot};
 use massa_protocol_exports::ProtocolEventReceiver;
 use massa_signature::PrivateKey;
 
@@ -110,43 +107,9 @@ impl ConsensusCommandSender {
         })
     }
 
-    /// Gets `(slot, public_key)` were the staker with `public_key` was selected for slot, between `start_slot` and `end_slot`.
-    ///
-    /// # Arguments
-    /// * `start_slot`: beginning of the considered interval.
-    /// * `end_slot`: end of the considered interval.
-    pub async fn get_selection_draws(
-        &self,
-        start: Slot,
-        end: Slot,
-    ) -> Result<Vec<(Slot, (Address, Vec<Address>))>, ConsensusError> {
-        massa_trace!("consensus.consensus_controller.get_selection_draws", {});
-        let (response_tx, response_rx) = oneshot::channel();
-        self.0
-            .send(ConsensusCommand::GetSelectionDraws {
-                start,
-                end,
-                response_tx,
-            })
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError(
-                    "send error consensus command get_selection_draws".into(),
-                )
-            })?;
-        response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(
-                "consensus command get_selection_draws response read error".to_string(),
-            )
-        })?
-    }
-
     /// get bootstrap snapshot
-    pub async fn get_bootstrap_state(
-        &self,
-    ) -> Result<(ExportProofOfStake, BootstrapableGraph), ConsensusError> {
-        let (response_tx, response_rx) =
-            oneshot::channel::<(ExportProofOfStake, BootstrapableGraph)>();
+    pub async fn get_bootstrap_state(&self) -> Result<BootstrapableGraph, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<BootstrapableGraph>();
         massa_trace!("consensus.consensus_controller.get_bootstrap_state", {});
         self.0
             .send(ConsensusCommand::GetBootstrapState(response_tx))
@@ -159,33 +122,6 @@ impl ConsensusCommandSender {
         response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_bootstrap_state response read error".to_string(),
-            )
-        })
-    }
-
-    /// get part of the ledger
-    pub async fn get_ledger_part(
-        &self,
-        start_address: Option<Address>,
-        batch_size: usize,
-    ) -> Result<ConsensusLedgerSubset, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<ConsensusLedgerSubset>();
-        massa_trace!("consensus.consensus_controller.get_ledger_part", {});
-        self.0
-            .send(ConsensusCommand::GetLedgerPart {
-                start_address,
-                batch_size,
-                response_tx,
-            })
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError(
-                    "send error consensus command get_ledger_part".into(),
-                )
-            })?;
-        response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(
-                "consensus command get_ledger_part response read error".to_string(),
             )
         })
     }
@@ -318,25 +254,6 @@ impl ConsensusCommandSender {
         })
     }
 
-    /// get all stakers with roll count
-    pub async fn get_active_stakers(&self) -> Result<Map<Address, u64>, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!("consensus.consensus_controller.get_active_stakers", {});
-        self.0
-            .send(ConsensusCommand::GetActiveStakers(response_tx))
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError(
-                    "send error consensus command get_active_stakers".to_string(),
-                )
-            })?;
-        response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(
-                "consensus command get_active_stakers response read error".to_string(),
-            )
-        })
-    }
-
     /// Add some staking keys
     pub async fn register_staking_private_keys(
         &self,
@@ -386,31 +303,6 @@ impl ConsensusCommandSender {
         response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_staking_addresses response read error".to_string(),
-            )
-        })
-    }
-
-    /// get production stats for a set of stakers
-    pub async fn get_stakers_production_stats(
-        &self,
-        addrs: Set<Address>,
-    ) -> Result<Vec<StakersCycleProductionStats>, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!(
-            "consensus.consensus_controller.get_stakers_production_stats",
-            {}
-        );
-        self.0
-            .send(ConsensusCommand::GetStakersProductionStats { addrs, response_tx })
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError(
-                    "send error consensus command get_stakers_production_stats".to_string(),
-                )
-            })?;
-        response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(
-                "consensus command get_stakers_production_statsresponse read error".to_string(),
             )
         })
     }

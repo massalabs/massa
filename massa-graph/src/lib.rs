@@ -10,8 +10,6 @@
 
 extern crate massa_logging;
 
-pub use settings::LedgerConfig;
-
 /// useful structures
 pub mod export_active_block;
 
@@ -20,9 +18,6 @@ pub use bootstrapable_graph::BootstrapableGraph;
 
 mod block_graph;
 pub use block_graph::*;
-
-/// parallel ledger (TODO remove after unification)
-pub mod ledger;
 
 /// graph errors
 pub mod error;

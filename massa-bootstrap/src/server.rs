@@ -15,7 +15,6 @@ use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{Slot, Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
-use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -113,7 +112,6 @@ impl BootstrapServer {
         let mut bootstrap_sessions = FuturesUnordered::new();
         let cache_timeout = self.bootstrap_settings.cache_duration.to_duration();
         let mut bootstrap_data: Option<(
-            ExportProofOfStake,
             BootstrapableGraph,
             BootstrapPeers,
             Arc<RwLock<FinalState>>,
@@ -200,8 +198,8 @@ impl BootstrapServer {
                         // If the consensus state snapshot is older than the execution state snapshot,
                         //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
                         let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
-                        let (pos_boot, graph_boot) = self.consensus_command_sender.get_bootstrap_state().await?;
-                        bootstrap_data = Some((pos_boot, graph_boot, peer_boot, self.final_state.clone()));
+                        let graph_boot = self.consensus_command_sender.get_bootstrap_state().await?;
+                        bootstrap_data = Some((graph_boot, peer_boot, self.final_state.clone()));
                         cache_timer.set(sleep(cache_timeout));
                     }
                     massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
@@ -210,12 +208,12 @@ impl BootstrapServer {
                     let private_key = self.private_key;
                     let compensation_millis = self.compensation_millis;
                     let version = self.version;
-                    let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
+                    let (data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     bootstrap_sessions.push(async move {
                         //Socket lifetime
                         {
                             let mut server = BootstrapServerBinder::new(dplx, private_key, self.bootstrap_settings.max_bytes_read_write);
-                            match manage_bootstrap(self.bootstrap_settings, &mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
+                            match manage_bootstrap(self.bootstrap_settings, &mut server, data_graph, data_peers, data_execution, compensation_millis, version).await {
                                 Ok(_) => info!("bootstrapped peer {}", remote_addr),
                                 Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
                                 Err(err) => {
@@ -370,7 +368,6 @@ pub async fn send_final_state_stream(
 async fn manage_bootstrap(
     bootstrap_settings: &'static BootstrapSettings,
     server: &mut BootstrapServerBinder,
-    data_pos: ExportProofOfStake,
     data_graph: BootstrapableGraph,
     data_peers: BootstrapPeers,
     final_state: Arc<RwLock<FinalState>>,
@@ -471,7 +468,6 @@ async fn manage_bootstrap(
                     match tokio::time::timeout(
                         write_timeout,
                         server.send(BootstrapServerMessage::ConsensusState {
-                            pos: data_pos.clone(),
                             graph: data_graph.clone(),
                         }),
                     )

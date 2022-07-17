@@ -19,7 +19,6 @@ members = [
   "massa-sdk",
   "massa-storage",
   "massa-pool",
-  "massa-proof-of-stake-exports",
   "massa-protocol-exports",
   "massa-protocol-worker",
   "massa-serialization",

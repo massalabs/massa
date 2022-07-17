@@ -45,10 +45,9 @@
 //! use the default values from `/node_configuration/default_testing.rs` in the
 //! `massa-models` crate sources.
 use massa_execution_exports::ExecutionController;
-use massa_graph::{settings::GraphConfig, LedgerConfig};
+use massa_graph::settings::GraphConfig;
 use massa_models::Amount;
 use massa_pool::PoolCommandSender;
-use massa_proof_of_stake_exports::ProofOfStakeConfig;
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
@@ -276,39 +275,6 @@ impl From<&ConsensusConfig> for GraphConfig {
             force_keep_final_periods: cfg.force_keep_final_periods,
             endorsement_count: cfg.endorsement_count,
             max_item_return_count: cfg.max_item_return_count,
-            ledger_path: cfg.ledger_path.clone(),
-            ledger_cache_capacity: cfg.ledger_cache_capacity,
-            ledger_flush_interval: cfg.ledger_flush_interval,
-        }
-    }
-}
-
-impl From<&ConsensusConfig> for ProofOfStakeConfig {
-    fn from(cfg: &ConsensusConfig) -> Self {
-        ProofOfStakeConfig {
-            thread_count: cfg.thread_count,
-            genesis_key: cfg.genesis_key,
-            periods_per_cycle: cfg.periods_per_cycle,
-            pos_lookback_cycles: cfg.pos_lookback_cycles,
-            pos_lock_cycles: cfg.pos_lock_cycles,
-            pos_draw_cached_cycles: cfg.pos_draw_cached_cycles,
-            pos_miss_rate_deactivation_threshold: cfg.pos_miss_rate_deactivation_threshold,
-            initial_rolls_path: cfg.initial_rolls_path.clone(),
-            initial_draw_seed: cfg.initial_draw_seed.clone(),
-            roll_price: cfg.roll_price,
-            endorsement_count: cfg.endorsement_count,
-        }
-    }
-}
-
-impl From<&ConsensusConfig> for LedgerConfig {
-    fn from(cfg: &ConsensusConfig) -> Self {
-        LedgerConfig {
-            thread_count: cfg.thread_count,
-            ledger_path: cfg.ledger_path.clone(),
-            ledger_cache_capacity: cfg.ledger_cache_capacity,
-            ledger_flush_interval: cfg.ledger_flush_interval,
-            initial_ledger_path: cfg.initial_ledger_path.clone(),
         }
     }
 }

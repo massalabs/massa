@@ -23,10 +23,6 @@ use massa_models::{
     SerializeCompact, Slot,
 };
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
-use massa_proof_of_stake_exports::{
-    ExportProofOfStake, ExportProofOfStakeDeserializer, ExportProofOfStakeSerializer,
-    ThreadCycleState,
-};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,

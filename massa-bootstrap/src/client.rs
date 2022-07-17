@@ -270,18 +270,17 @@ async fn bootstrap_from_server(
                 )
                 .await?
                 {
-                    BootstrapServerMessage::ConsensusState { pos, graph } => (pos, graph),
+                    BootstrapServerMessage::ConsensusState { graph } => graph,
                     BootstrapServerMessage::BootstrapError { error } => {
                         return Err(BootstrapError::ReceivedError(error))
                     }
                     other => return Err(BootstrapError::UnexpectedServerMessage(other)),
                 };
-                global_bootstrap_state.pos = Some(state.0);
-                global_bootstrap_state.graph = Some(state.1);
+                global_bootstrap_state.graph = Some(state);
                 *next_bootstrap_message = None;
             }
             None => {
-                if global_bootstrap_state.graph.is_none() || global_bootstrap_state.pos.is_none() {
+                if global_bootstrap_state.graph.is_none() {
                     *next_bootstrap_message = Some(BootstrapClientMessage::AskConsensusState);
                     continue;
                 }

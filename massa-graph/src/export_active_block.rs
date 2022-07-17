@@ -2,13 +2,10 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_models::{
     active_block::ActiveBlock,
     constants::*,
-    ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
-    rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
     signed::Signable,
     *,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 
@@ -29,12 +26,6 @@ pub struct ExportActiveBlock {
     pub dependencies: Set<BlockId>,
     /// for example has its fitness reached the given threshold
     pub is_final: bool,
-    /// Changes caused by this block
-    pub block_ledger_changes: LedgerChanges,
-    /// `Address -> RollUpdate`
-    pub roll_updates: RollUpdates,
-    /// list of `(period, address, did_create)` for all block/endorsement creation events
-    pub production_events: Vec<(u64, Address, bool)>,
 }
 
 impl TryFrom<ExportActiveBlock> for ActiveBlock {
@@ -69,12 +60,9 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             dependencies: a_block.dependencies.clone(),
             descendants: Default::default(), // will be computed once the full graph is available
             is_final: a_block.is_final,
-            block_ledger_changes: a_block.block_ledger_changes.clone(),
             operation_set,
             endorsement_ids,
             addresses_to_operations,
-            roll_updates: a_block.roll_updates.clone(),
-            production_events: a_block.production_events.clone(),
             addresses_to_endorsements,
             slot: a_block.block.header.content.slot,
         })
@@ -99,9 +87,6 @@ impl ExportActiveBlock {
             children: a_block.children.clone(),
             dependencies: a_block.dependencies.clone(),
             is_final: a_block.is_final,
-            block_ledger_changes: a_block.block_ledger_changes.clone(),
-            roll_updates: a_block.roll_updates.clone(),
-            production_events: a_block.production_events.clone(),
         })
     }
 }
@@ -162,51 +147,6 @@ impl SerializeCompact for ExportActiveBlock {
             res.extend(dep.to_bytes());
         }
 
-        // block_ledger_change
-        let block_ledger_change_count: u32 =
-            self.block_ledger_changes
-                .0
-                .len()
-                .try_into()
-                .map_err(|err| {
-                    ModelsError::SerializeError(format!(
-                        "too many block_ledger_change in ActiveBlock: {}",
-                        err
-                    ))
-                })?;
-        res.extend(block_ledger_change_count.to_varint_bytes());
-        for (addr, change) in self.block_ledger_changes.0.iter() {
-            res.extend(addr.to_bytes());
-            res.extend(change.to_bytes_compact()?);
-        }
-
-        // roll updates
-        let roll_updates_count: u32 = self.roll_updates.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many roll updates in ActiveBlock: {}", err))
-        })?;
-        res.extend(roll_updates_count.to_varint_bytes());
-        // TODO: Temp before serialization is everywhere
-        let roll_updates_serializer = RollUpdateSerializer::new();
-        for (addr, roll_update) in self.roll_updates.0.iter() {
-            res.extend(addr.to_bytes());
-            roll_updates_serializer.serialize(roll_update, &mut res)?;
-        }
-
-        // creation events
-        let production_events_count: u32 =
-            self.production_events.len().try_into().map_err(|err| {
-                ModelsError::SerializeError(format!(
-                    "too many creation events in ActiveBlock: {}",
-                    err
-                ))
-            })?;
-        res.extend(production_events_count.to_varint_bytes());
-        for (period, addr, has_created) in self.production_events.iter() {
-            res.extend(period.to_varint_bytes());
-            res.extend(addr.to_bytes());
-            res.push(if *has_created { 1u8 } else { 0u8 });
-        }
-
         Ok(res)
     }
 }
@@ -214,13 +154,12 @@ impl SerializeCompact for ExportActiveBlock {
 impl DeserializeCompact for ExportActiveBlock {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
         let mut cursor = 0usize;
-        let (parent_count, max_bootstrap_children, max_bootstrap_deps, max_bootstrap_pos_entries) =
+        let (parent_count, max_bootstrap_children, max_bootstrap_deps) =
             with_serialization_context(|context| {
                 (
                     context.thread_count,
                     context.max_bootstrap_children,
                     context.max_bootstrap_deps,
-                    context.max_bootstrap_pos_entries,
                 )
             });
 
@@ -307,74 +246,6 @@ impl DeserializeCompact for ExportActiveBlock {
             dependencies.insert(dep);
         }
 
-        // block_ledger_changes
-        let (block_ledger_change_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        // TODO: count check ... see #1200
-        cursor += delta;
-        let mut block_ledger_changes = LedgerChanges(Map::with_capacity_and_hasher(
-            block_ledger_change_count as usize,
-            BuildMap::default(),
-        ));
-        for _ in 0..block_ledger_change_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += ADDRESS_SIZE_BYTES;
-            let (change, delta) = LedgerChange::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            block_ledger_changes.0.insert(address, change);
-        }
-
-        // roll_updates
-        let (roll_updates_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        if roll_updates_count > max_bootstrap_pos_entries {
-            return Err(ModelsError::DeserializeError(
-                "too many roll updates to deserialize".to_string(),
-            ));
-        }
-        cursor += delta;
-        let mut roll_updates = RollUpdates(Map::with_capacity_and_hasher(
-            roll_updates_count as usize,
-            BuildMap::default(),
-        ));
-        // TODO: Temp before serialization is everywhere
-        let roll_update_deserializer = RollUpdateDeserializer::new();
-        for _ in 0..roll_updates_count {
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += ADDRESS_SIZE_BYTES;
-            let (rest, roll_update) = roll_update_deserializer
-                .deserialize::<DeserializeError>(&buffer[cursor..])
-                .map_err(|_| {
-                    ModelsError::DeserializeError(
-                        "Error while deserializing roll_update".to_string(),
-                    )
-                })?;
-            cursor += buffer[cursor..].len() - rest.len();
-            roll_updates.0.insert(address, roll_update);
-        }
-
-        // production_events
-        let (production_events_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        // TODO: count check ... see #1200
-        cursor += delta;
-        let mut production_events: Vec<(u64, Address, bool)> =
-            Vec::with_capacity(production_events_count as usize);
-        for _ in 0..production_events_count {
-            let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-            cursor += delta;
-            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-            cursor += ADDRESS_SIZE_BYTES;
-            let has_created = match u8_from_slice(&buffer[cursor..])? {
-                0u8 => false,
-                1u8 => true,
-                _ => {
-                    return Err(ModelsError::SerializeError(
-                        "could not deserialize active_block.production_events.has_created".into(),
-                    ))
-                }
-            };
-            cursor += 1;
-            production_events.push((period, address, has_created));
-        }
-
         Ok((
             ExportActiveBlock {
                 is_final,
@@ -383,9 +254,6 @@ impl DeserializeCompact for ExportActiveBlock {
                 parents,
                 children,
                 dependencies,
-                block_ledger_changes,
-                roll_updates,
-                production_events,
             },
             cursor,
         ))

@@ -228,7 +228,6 @@ async fn launch(
                 protocol_event_receiver,
                 pool_command_sender: pool_command_sender.clone(),
             },
-            bootstrap_state.pos,
             bootstrap_state.graph,
             shared_storage.clone(),
             bootstrap_state.compensation_millis,
