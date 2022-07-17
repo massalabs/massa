@@ -194,6 +194,33 @@ impl OperationId {
     }
 }
 
+/// Deserializer for `OperationId`
+#[derive(Default)]
+pub struct OperationIdDeserializer {
+    hash_deserializer: HashDeserializer,
+}
+
+impl OperationIdDeserializer {
+    /// Creates a new deserializer for `OperationId`
+    pub fn new() -> Self {
+        Self {
+            hash_deserializer: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<OperationId> for OperationIdDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], OperationId, E> {
+        context("Failed OperationId deserialization", |input| {
+            let (rest, hash) = self.hash_deserializer.deserialize(input)?;
+            Ok((rest, OperationId(hash)))
+        })(buffer)
+    }
+}
+
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
 enum OperationTypeId {
@@ -695,19 +722,21 @@ impl WrappedOperation {
         }
     }
 
-    /// Get the amount of coins used by the operation to pay for gas
-    pub fn get_gas_coins(&self) -> Amount {
+    /// Get the gas price set by the operation
+    pub fn get_gas_price(&self) -> Amount {
         match &self.content.op {
-            OperationType::ExecuteSC {
-                max_gas, gas_price, ..
-            } => gas_price.saturating_mul_u64(*max_gas),
-            OperationType::CallSC {
-                max_gas, gas_price, ..
-            } => gas_price.saturating_mul_u64(*max_gas),
+            OperationType::ExecuteSC { gas_price, .. } => *gas_price,
+            OperationType::CallSC { gas_price, .. } => *gas_price,
             OperationType::RollBuy { .. } => Amount::default(),
             OperationType::RollSell { .. } => Amount::default(),
             OperationType::Transaction { .. } => Amount::default(),
         }
+    }
+
+    /// Get the amount of coins used by the operation to pay for gas
+    pub fn get_gas_coins(&self) -> Amount {
+        self.get_gas_price()
+            .saturating_mul_u64(self.get_gas_usage())
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view

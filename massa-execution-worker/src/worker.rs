@@ -18,6 +18,7 @@ use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
     Slot,
 };
+use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
@@ -582,12 +583,14 @@ pub fn start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc<RwLock<FinalState>>,
     storage: Storage,
+    selector: Box<dyn SelectorController>,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
         storage,
+        selector,
     )));
 
     // define the input data interface

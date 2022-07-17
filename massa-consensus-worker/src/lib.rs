@@ -11,8 +11,6 @@
 extern crate massa_logging;
 
 mod consensus_worker;
-
-// Tools as starting controller etc...
 mod tools;
 pub use tools::start_consensus_controller;
 

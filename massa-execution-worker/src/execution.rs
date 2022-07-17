@@ -19,9 +19,13 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
+use massa_models::constants::{
+    BLOCK_REWARD, ENDORSEMENT_COUNT, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, THREAD_COUNT,
+};
 use massa_models::output_event::SCOutputEvent;
-use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
+use massa_models::{Address, BlockId, OperationType, WrappedEndorsement, WrappedOperation};
 use massa_models::{Amount, Slot};
+use massa_pos_exports::SelectorController;
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
@@ -61,6 +65,8 @@ pub(crate) struct ExecutionState {
     execution_interface: Box<dyn Interface>,
     /// Shared storage across all modules
     storage: Storage,
+    /// PoS selector
+    selector: Box<dyn SelectorController>,
 }
 
 impl ExecutionState {
@@ -77,6 +83,7 @@ impl ExecutionState {
         config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
         storage: Storage,
+        selector: Box<dyn SelectorController>,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -89,6 +96,7 @@ impl ExecutionState {
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             final_state.clone(),
             active_history.clone(),
+            selector.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -111,6 +119,7 @@ impl ExecutionState {
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
             storage,
+            selector,
         }
     }
 
@@ -238,35 +247,288 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `operation`: operation to execute
-    /// * `block_creator_addr`: address of the block creator
+    /// * `block_slot`: slot of the block in which the op is included
+    /// * `remaining_block_gas`: mutable reference towards the remaining gas in the block
+    /// * `block_credits`: mutable reference towards the total block reward/fee credits
     pub fn execute_operation(
         &self,
         operation: &WrappedOperation,
-        block_creator_addr: Address,
+        block_slot: Slot,
+        remaining_block_gas: &mut u64,
+        block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
-        // prefilter only SC operations
-        match &operation.content.op {
-            OperationType::ExecuteSC { .. } => {}
-            OperationType::CallSC { .. } => {}
-            _ => return Ok(()),
+        // check validity period
+        if !(operation
+            .get_validity_range(OPERATION_VALIDITY_PERIODS)
+            .contains(&block_slot.period))
+        {
+            return Err(ExecutionError::BlockGasError(
+                "operation not valid at the enclosing block's period".to_string(),
+            ));
+        }
+
+        // check remaining block gas
+        let op_gas = operation.get_gas_usage();
+        let new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
+            ExecutionError::BlockGasError(
+                "not enough remaining block gas to execute operation".to_string(),
+            )
+        })?;
+
+        // get the operation's sender address
+        let sender_addr = operation.creator_address;
+
+        // get the thread to which the operation belongs
+        // TODO when storage is ready, do not recompute this here, use the "thread" property of the operation itself
+        let op_thread = sender_addr.get_thread(THREAD_COUNT);
+
+        // check block/op thread compatibility
+        if op_thread != block_slot.thread {
+            return Err(ExecutionError::InlcudeOperationError(
+                "operation vs block thread mismatch".to_string(),
+            ));
+        }
+
+        // get operation ID
+        let operation_id = operation.id;
+
+        // compute fee from (op.max_gas * op.gas_price + op.fee)
+        let op_gas_coins = operation.get_gas_coins();
+        let op_fees = op_gas_coins.saturating_add(operation.content.fee);
+        let new_block_credits = block_credits.saturating_add(op_fees);
+
+        let context_snapshot;
+        {
+            // lock execution context
+            let mut context = context_guard!(self);
+
+            // ignore the operation if it was already executed
+            if context.is_op_executed(&operation_id) {
+                return Err(ExecutionError::InlcudeOperationError(
+                    "operation was executed previously".to_string(),
+                ));
+            }
+
+            // debit the fee and coins from the operation sender
+            // fail execution if there are not enough coins
+            if let Err(err) =
+                context.transfer_sequential_coins(Some(sender_addr), None, op_fees, false)
+            {
+                return Err(ExecutionError::InlcudeOperationError(format!(
+                    "could not spend fees: {}",
+                    err
+                )));
+            }
+
+            // from here, the op is considered as executed (fees transferred)
+
+            // add operation to executed ops list
+            context.insert_executed_op(
+                operation_id,
+                Slot::new(operation.content.expire_period, op_thread),
+            );
+
+            // save a snapshot of the context to revert any further changes on error
+            context_snapshot = context.get_snapshot();
+
+            // set the context gas price to match the one defined in the operation
+            context.gas_price = operation.get_gas_price();
+
+            // set the context max gas to match the one defined in the operation
+            context.max_gas = operation.get_gas_usage();
+
+            // set the context origin operation ID
+            context.origin_operation_id = Some(operation_id);
+
+            // execution context lock dropped here because the op-specific execution functions below acquire it again
+        }
+
+        // update block gas
+        *remaining_block_gas = new_remaining_block_gas;
+
+        // update block credits
+        *block_credits = new_block_credits;
+
+        // Call the execution process specific to the operation type.
+        let execution_result = match &operation.content.op {
+            OperationType::ExecuteSC { .. } => {
+                self.execute_executesc_op(&operation.content.op, sender_addr)
+            }
+            OperationType::CallSC { .. } => {
+                self.execute_callsc_op(&operation.content.op, sender_addr)
+            }
+            OperationType::RollBuy { .. } => {
+                self.execute_roll_buy_op(&operation.content.op, sender_addr)
+            }
+            OperationType::RollSell { .. } => {
+                self.execute_roll_sell_op(&operation.content.op, sender_addr)
+            }
+            OperationType::Transaction { .. } => {
+                self.execute_transaction_op(&operation.content.op, sender_addr)
+            }
         };
 
-        // call the execution process specific to the operation type
-        match &operation.content.op {
-            OperationType::ExecuteSC { .. } => self.execute_executesc_op(
-                &operation.content.op,
-                block_creator_addr,
-                operation.id,
-                operation.creator_address,
-            ),
-            OperationType::CallSC { .. } => self.execute_callsc_op(
-                &operation.content.op,
-                block_creator_addr,
-                operation.id,
-                operation.creator_address,
-            ),
-            _ => panic!("unexpected operation type"), // checked at the beginning of the function
+        {
+            // lock execution context
+            let mut context = context_guard!(self);
+
+            // check execution results
+            match execution_result {
+                Ok(_) => {}
+                Err(err) => {
+                    // an error occurred: emit error event and reset context to snapshot
+                    let err = ExecutionError::RuntimeError(format!(
+                        "runtime error when executing operation {}: {}",
+                        operation_id, &err
+                    ));
+                    debug!("{}", &err);
+                    context.reset_to_snapshot(context_snapshot, Some(err));
+                }
+            }
         }
+
+        Ok(())
+    }
+
+    /// Execute an operation of type `RollSell`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `WrappedOperation` to process, must be an `RollSell`
+    /// * `sender_addr`: address of the sender
+    pub fn execute_roll_sell_op(
+        &self,
+        operation: &OperationType,
+        seller_addr: Address,
+    ) -> Result<(), ExecutionError> {
+        // process roll sell operations only
+        let roll_count = match operation {
+            OperationType::RollSell { roll_count } => roll_count,
+            _ => panic!("unexpected operation type"),
+        };
+
+        // acquire write access to the context
+        let mut context = context_guard!(self);
+
+        // Set call stack
+        // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+        context.stack = vec![ExecutionStackElement {
+            address: seller_addr,
+            coins: Amount::default(),
+            owned_addresses: vec![seller_addr],
+        }];
+
+        // try to sell the rolls
+        if let Err(err) = context.try_sell_rolls(&seller_addr, *roll_count) {
+            return Err(ExecutionError::RollSellError(format!(
+                "{} failed to sell {} rolls: {}",
+                seller_addr, roll_count, err
+            )));
+        }
+        Ok(())
+    }
+
+    /// Execute an operation of type `RollBuy`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
+    /// * `sender_addr`: address of the sender
+    pub fn execute_roll_buy_op(
+        &self,
+        operation: &OperationType,
+        buyer_addr: Address,
+    ) -> Result<(), ExecutionError> {
+        // process roll buy operations only
+        let roll_count = match operation {
+            OperationType::RollBuy { roll_count } => roll_count,
+            _ => panic!("unexpected operation type"),
+        };
+
+        // acquire write access to the context
+        let mut context = context_guard!(self);
+
+        // Set call stack
+        // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+        context.stack = vec![ExecutionStackElement {
+            address: buyer_addr,
+            coins: Default::default(),
+            owned_addresses: vec![buyer_addr],
+        }];
+
+        // compute the amount of sequential coins to spend
+        let spend_coins = match self.config.roll_price.checked_mul_u64(*roll_count) {
+            Some(v) => v,
+            None => {
+                return Err(ExecutionError::RollBuyError(format!(
+                    "{} failed to buy {} rolls: overflow on the required coin amount",
+                    buyer_addr, roll_count
+                )));
+            }
+        };
+
+        // spend `roll_price` * `roll_count` sequential coins from the buyer
+        if let Err(err) =
+            context.transfer_sequential_coins(Some(buyer_addr), None, spend_coins, false)
+        {
+            return Err(ExecutionError::RollBuyError(format!(
+                "{} failed to buy {} rolls: {}",
+                buyer_addr, roll_count, err
+            )));
+        }
+
+        // add rolls to the buyer withing the context
+        context.add_rolls(&buyer_addr, *roll_count);
+
+        Ok(())
+    }
+
+    /// Execute an operation of type `Transaction`
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
+    /// * `operation_id`: ID of the operation
+    /// * `sender_addr`: address of the sender
+    pub fn execute_transaction_op(
+        &self,
+        operation: &OperationType,
+        sender_addr: Address,
+    ) -> Result<(), ExecutionError> {
+        // process transaction operations only
+        let (recipient_address, amount) = match operation {
+            OperationType::Transaction {
+                recipient_address,
+                amount,
+            } => (recipient_address, amount),
+            _ => panic!("unexpected operation type"),
+        };
+
+        // acquire write access to the context
+        let mut context = context_guard!(self);
+
+        // Set call stack
+        // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+        context.stack = vec![ExecutionStackElement {
+            address: sender_addr,
+            coins: *amount,
+            owned_addresses: vec![sender_addr],
+        }];
+
+        // spend `roll_price` * `roll_count` sequential coins from the buyer
+        if let Err(err) = context.transfer_sequential_coins(
+            Some(sender_addr),
+            Some(*recipient_address),
+            *amount,
+            false,
+        ) {
+            return Err(ExecutionError::RollBuyError(format!(
+                "{} failed to send {} coins to {}: {}",
+                sender_addr, amount, recipient_address, err
+            )));
+        }
+
+        Ok(())
     }
 
     /// Execute an operation of type `ExecuteSC`
@@ -274,89 +536,69 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`
-    /// * `block_creator_addr`: address of the block creator
-    /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
     pub fn execute_executesc_op(
         &self,
         operation: &OperationType,
-        block_creator_addr: Address,
-        operation_id: OperationId,
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only
-        let (bytecode, max_gas, coins, gas_price) = match &operation {
+        let (bytecode, max_gas, coins) = match &operation {
             OperationType::ExecuteSC {
                 data,
                 max_gas,
                 coins,
-                gas_price,
-            } => (data, max_gas, coins, gas_price),
+                ..
+            } => (data, max_gas, coins),
             _ => panic!("unexpected operation type"),
         };
 
-        // prepare the current slot context for executing the operation
-        let context_snapshot;
         {
             // acquire write access to the context
             let mut context = context_guard!(self);
-
-            // Use the context to credit the producer of the block with max_gas * gas_price parallel coins.
-            // Note that errors are deterministic and do not cancel the operation execution.
-            // That way, even if the sender sent an invalid operation, the block producer will still get credited.
-            let gas_fees = gas_price.saturating_mul_u64(*max_gas);
-            if let Err(err) =
-                context.transfer_parallel_coins(None, Some(block_creator_addr), gas_fees)
-            {
-                debug!(
-                    "failed to credit block producer {} with {} gas fee coins: {}",
-                    block_creator_addr, gas_fees, err
-                );
-            }
-
-            // Credit the operation sender with `coins` parallel coins.
-            // Note that errors are deterministic and do not cancel op execution.
-            if let Err(err) = context.transfer_parallel_coins(None, Some(sender_addr), *coins) {
-                debug!(
-                    "failed to credit operation sender {} with {} operation coins: {}",
-                    sender_addr, *coins, err
-                );
-            }
-
-            // save a snapshot of the context state to restore it if the op fails to execute,
-            // this reverting any changes except the coin transfers above
-            context_snapshot = context.get_snapshot();
-
-            // set the context gas price to match the one defined in the operation
-            context.gas_price = *gas_price;
-
-            // set the context max gas to match the one defined in the operation
-            context.max_gas = *max_gas;
 
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
             // * the context will signal that `coins` were credited to the parallel balance of the sender during that call
             // * the context will give the operation's sender write access to its own ledger entry
+            // This needs to be defined before anything can fail, so that the emitted event contains the right stack
             context.stack = vec![ExecutionStackElement {
                 address: sender_addr,
                 coins: *coins,
                 owned_addresses: vec![sender_addr],
             }];
 
-            // set the context origin operation ID
-            context.origin_operation_id = Some(operation_id);
+            // Debit the sender's sequential balance with the coins to transfer
+            if let Err(err) =
+                context.transfer_sequential_coins(Some(sender_addr), None, *coins, false)
+            {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "failed to debit operation sender {} with {} operation sequential coins: {}",
+                    sender_addr, *coins, err
+                )));
+            }
+
+            // Credit the operation sender with `coins` parallel coins.
+            if let Err(err) =
+                context.transfer_parallel_coins(None, Some(sender_addr), *coins, false)
+            {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "failed to credit operation sender {} with {} operation parallel coins: {}",
+                    sender_addr, *coins, err
+                )));
+            }
         };
 
         // run the VM on the bytecode contained in the operation
-        let run_result = massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface);
-        if let Err(err) = run_result {
-            // there was an error during bytecode execution:
-            // cancel the effects of the execution by resetting the context to the previously saved snapshot
-            let err = ExecutionError::RuntimeError(format!("bytecode execution error: {}", err));
-            let mut context = context_guard!(self);
-            context.origin_operation_id = None;
-            context.reset_to_snapshot(context_snapshot, Some(err.clone()));
-            return Err(err);
+        match massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface) {
+            Ok(_reamining_gas) => {}
+            Err(err) => {
+                // there was an error during bytecode execution
+                return Err(ExecutionError::RuntimeError(format!(
+                    "bytecode execution error: {}",
+                    err
+                )));
+            }
         }
 
         Ok(())
@@ -373,23 +615,20 @@ impl ExecutionState {
     pub fn execute_callsc_op(
         &self,
         operation: &OperationType,
-        block_creator_addr: Address,
-        operation_id: OperationId,
         sender_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process CallSC operations only
-        let (gas_price, max_gas, target_addr, target_func, param, parallel_coins, sequential_coins) =
+        let (max_gas, target_addr, target_func, param, parallel_coins, sequential_coins) =
             match &operation {
                 OperationType::CallSC {
-                    gas_price,
                     max_gas,
                     target_addr,
                     target_func,
                     param,
                     parallel_coins,
                     sequential_coins,
+                    ..
                 } => (
-                    *gas_price,
                     *max_gas,
                     *target_addr,
                     target_func,
@@ -401,112 +640,95 @@ impl ExecutionState {
             };
 
         // prepare the current slot context for executing the operation
-        let context_snapshot;
         let bytecode;
         {
             // acquire write access to the context
             let mut context = context_guard!(self);
 
-            // Use the context to credit the producer of the block with max_gas * gas_price parallel coins.
-            // Note that errors are deterministic and do not cancel the operation execution.
-            // That way, even if the sender sent an invalid operation, the block producer will still get credited.
-            let gas_fees = gas_price.saturating_mul_u64(max_gas);
+            // Set the call stack
+            // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+            context.stack = vec![
+                ExecutionStackElement {
+                    address: sender_addr,
+                    coins: Default::default(),
+                    owned_addresses: vec![sender_addr],
+                },
+                ExecutionStackElement {
+                    address: target_addr,
+                    coins: Default::default(),
+                    owned_addresses: vec![target_addr],
+                },
+            ];
+
+            // Compute the amount of parallel coins to credit
+            let credit_parallel_coins = match sequential_coins.checked_add(parallel_coins) {
+                Some(v) => v,
+                None => {
+                    return Err(ExecutionError::RuntimeError(format!(
+                        "overflow when transfering operation coins from {}",
+                        sender_addr
+                    )));
+                }
+            };
+
+            // Debit the sender's sequential balance with the sequential coins to transfer
             if let Err(err) =
-                context.transfer_parallel_coins(None, Some(block_creator_addr), gas_fees)
+                context.transfer_sequential_coins(Some(sender_addr), None, sequential_coins, false)
             {
-                debug!(
-                    "failed to credit block producer {} with {} gas fee coins: {}",
-                    block_creator_addr, gas_fees, err
-                );
+                return Err(ExecutionError::RuntimeError(format!(
+                    "failed to debit operation sender {} with {} operation sequential coins: {}",
+                    sender_addr, sequential_coins, err
+                )));
             }
 
-            // Credit the operation sender with `sequential_coins` parallel coins.
-            // This is used to ensure that those coins are not lost in case of failure,
-            // since they have been debited by consensus beforehand.
-            // Note that errors are deterministic and do not cancel op execution.
+            // Debit the sender's sequential balance with the parallel coins to transfer
             if let Err(err) =
-                context.transfer_parallel_coins(None, Some(sender_addr), sequential_coins)
+                context.transfer_parallel_coins(Some(sender_addr), None, parallel_coins, false)
             {
-                debug!(
-                    "failed to credit operation sender {} with {} operation coins: {}",
-                    sender_addr, sequential_coins, err
-                );
+                return Err(ExecutionError::RuntimeError(format!(
+                    "failed to debit operation sender {} with {} operation parallel coins: {}",
+                    sender_addr, parallel_coins, err
+                )));
+            }
+
+            // Credit the operation target with parallel coins.
+            if let Err(err) = context.transfer_parallel_coins(
+                None,
+                Some(target_addr),
+                credit_parallel_coins,
+                false,
+            ) {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "failed to credit operation target {} with {} operation parallel coins: {}",
+                    target_addr, credit_parallel_coins, err
+                )));
+            }
+
+            // quit if there is no function to be called
+            if target_func.is_empty() {
+                return Ok(());
             }
 
             // Load bytecode. Assume empty bytecode if not found.
             bytecode = context.get_bytecode(&target_addr).unwrap_or_default();
-
-            // save a snapshot of the context state to restore it if the op fails to execute,
-            // thus reverting any changes except the coin transfers above
-            context_snapshot = context.get_snapshot();
-
-            // compute the total amount of coins that need to be transferred
-            // from the sender's parallel balance to the target's parallel balance
-            let coins = sequential_coins.saturating_add(parallel_coins);
-
-            // set the context gas price to match the one defined in the operation
-            context.gas_price = gas_price;
-
-            // set the context max gas to match the one defined in the operation
-            context.max_gas = max_gas;
-
-            // set the context origin operation ID
-            context.origin_operation_id = Some(operation_id);
-
-            // Set the call stack o the sender addr only to allow it to send parallel coins (access rights)
-            context.stack = vec![ExecutionStackElement {
-                address: sender_addr,
-                coins,
-                owned_addresses: vec![sender_addr],
-            }];
-
-            // try to transfer parallel coins from the sender to the target
-            let coin_transfer_result =
-                context.transfer_parallel_coins(Some(sender_addr), Some(target_addr), coins);
-
-            // Add the second part of the stack (the target)
-            // Note that we do it here so that the sender is on the top of the stack for the coin transfer above.
-            // and we don't do it after the coin transfer error handling because the emitted error event must show the correct stack.
-            context.stack.push(ExecutionStackElement {
-                address: target_addr,
-                coins,
-                owned_addresses: vec![target_addr],
-            });
-
-            // check the coin transfer result
-            if let Err(err) = coin_transfer_result {
-                // cancel the effects of the execution by resetting the context to the previously saved snapshot
-                let err = ExecutionError::RuntimeError(format!(
-                    "failed to transfer {} call coins from {} to {}: {}",
-                    coins, sender_addr, target_addr, err
-                ));
-                context.origin_operation_id = None;
-                context.reset_to_snapshot(context_snapshot, Some(err.clone()));
-                return Err(err);
-            }
-        };
-
-        // quit if there is no function to be called
-        if target_func.is_empty() {
-            return Ok(());
         }
 
-        // run the VM on the called fucntion of the bytecode
-        let run_result = massa_sc_runtime::run_function(
+        // run the VM on the bytecode loaded from the target address
+        match massa_sc_runtime::run_function(
             &bytecode,
             max_gas,
             target_func,
             param,
             &*self.execution_interface,
-        );
-        if let Err(err) = run_result {
-            // there was an error during bytecode execution:
-            // cancel the effects of the execution by resetting the context to the previously saved snapshot
-            let err = ExecutionError::RuntimeError(format!("bytecode execution error: {}", err));
-            let mut context = context_guard!(self);
-            context.origin_operation_id = None;
-            context.reset_to_snapshot(context_snapshot, Some(err.clone()));
-            return Err(err);
+        ) {
+            Ok(_reamining_gas) => {}
+            Err(err) => {
+                // there was an error during bytecode execution
+                return Err(ExecutionError::RuntimeError(format!(
+                    "bytecode execution error: {}",
+                    err
+                )));
+            }
         }
 
         Ok(())
@@ -562,9 +784,12 @@ impl ExecutionState {
             };
 
             // credit coins to the target address
-            if let Err(err) =
-                context.transfer_parallel_coins(None, Some(message.destination), message.coins)
-            {
+            if let Err(err) = context.transfer_parallel_coins(
+                None,
+                Some(message.destination),
+                message.coins,
+                false,
+            ) {
                 // coin crediting failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::RuntimeError(format!(
                     "could not credit coins to target of async execution: {}",
@@ -610,20 +835,19 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(&self, slot: Slot, opt_block_id: Option<BlockId>) -> ExecutionOutput {
-        // create a new execution context for the whole active slot
+        // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             slot,
             opt_block_id,
             self.final_state.clone(),
             self.active_history.clone(),
+            self.selector.clone(),
         );
 
-        // note that here, some pre-operations (like crediting block producers) can be performed before the lock
-
-        // get asynchronous messages to execute
+        // Get asynchronous messages to execute
         let messages = execution_context.take_async_batch(self.config.max_async_gas);
 
-        // apply the created execution context for slot execution
+        // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
 
         // Try executing asynchronous messages.
@@ -634,28 +858,100 @@ impl ExecutionState {
             }
         }
 
-        // check if there is a block at this slot
+        // Check if there is a block at this slot
         if let Some(block_id) = opt_block_id {
+            // Retrieve the block from storage
             let block = self
                 .storage
                 .retrieve_block(&block_id)
                 .expect("Missing block in storage.");
             let stored_block = block.read();
+
+            // Set remaining block gas
+            let mut remaining_block_gas = MAX_GAS_PER_BLOCK;
+
+            // Set block credits
+            let mut block_credits = BLOCK_REWARD;
+
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
             for (op_idx, operation) in stored_block.content.operations.iter().enumerate() {
-                if let Err(err) =
-                    self.execute_operation(operation, stored_block.content.header.creator_address)
-                {
+                if let Err(err) = self.execute_operation(
+                    operation,
+                    stored_block.content.header.content.slot,
+                    &mut remaining_block_gas,
+                    &mut block_credits,
+                ) {
                     debug!(
                         "failed executing operation index {} in block {}: {}",
                         op_idx, block_id, err
                     );
                 }
             }
+
+            // Get block creator address
+            let block_creator_addr = stored_block.creator_address;
+
+            // acquire lock on execution context
+            let mut context = context_guard!(self);
+
+            // Update speculative rolls state production stats
+            context.update_production_stats(&block_creator_addr, slot, Some(block_id));
+
+            // Credit endorsement producers
+            let mut remaining_credit = block_credits;
+            let block_credit_part = block_credits
+                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
+                .expect("critical: block_credits checked_div factor is 0");
+            for WrappedEndorsement {
+                creator_address, ..
+            } in &stored_block.content.header.content.endorsements
+            {
+                // credit endorsement creator with sequential coins
+                match context.transfer_sequential_coins(
+                    None,
+                    Some(*creator_address),
+                    block_credit_part,
+                    false,
+                ) {
+                    Ok(_) => {
+                        remaining_credit = remaining_credit.saturating_sub(block_credit_part);
+                    }
+                    Err(err) => {
+                        debug!(
+                            "failed to credit {} sequential coins to {} for an endorsement production: {}",
+                            block_credit_part, creator_address, err
+                        )
+                    }
+                }
+
+                //TODO credit the creator of the endorsed block with sequential coins
+            }
+
+            // Credit block creator with remaining_credit
+            if let Err(err) = context.transfer_sequential_coins(
+                None,
+                Some(block_creator_addr),
+                remaining_credit,
+                false,
+            ) {
+                debug!(
+                    "failed to credit {} sequential coins to {} for the creation of a block: {}",
+                    remaining_credit, block_creator_addr, err
+                )
+            }
+        } else {
+            // the slot is a miss
+
+            // Update speculative rolls state production stats
+            if let Ok(addr) = self.selector.get_producer(slot) {
+                context_guard!(self).update_production_stats(&addr, slot, None);
+            } else {
+                debug!("couldn't get the expected block producer for a missed slot");
+            }
         }
 
-        // finish slot and return the execution output
+        // Finish slot and return the execution output
         context_guard!(self).settle_slot()
     }
 
@@ -687,6 +983,7 @@ impl ExecutionState {
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
+            self.selector.clone(),
         );
 
         // run the intepreter according to the target type
@@ -734,10 +1031,7 @@ impl ExecutionState {
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
         let final_balance = self.final_state.read().ledger.get_parallel_balance(address);
-        let search_result = self
-            .active_history
-            .read()
-            .fetch_active_history_balance(address);
+        let search_result = self.active_history.read().fetch_parallel_balance(address);
         (
             final_balance,
             match search_result {

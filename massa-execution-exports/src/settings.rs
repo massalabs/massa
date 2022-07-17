@@ -2,6 +2,7 @@
 
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
+use massa_models::Amount;
 use massa_time::MassaTime;
 
 /// Execution module configuration
@@ -15,6 +16,8 @@ pub struct ExecutionConfig {
     pub max_async_gas: u64,
     /// number of threads
     pub thread_count: u8,
+    /// price of a roll inside the network
+    pub roll_price: Amount,
     /// extra lag to add on the execution cursor to improve performance
     pub cursor_delay: MassaTime,
     /// time compensation in milliseconds

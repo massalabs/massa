@@ -21,6 +21,10 @@
 //! Represents a list of changes the final state.
 //! It can be modified, combined or applied to the final ledger.
 //!
+//! ## `executed_ops.rs`
+//! Defines a structure to list and prune previously executed operations.
+//! Used to detect operation reuse.
+//!
 //! ## `bootstrap.rs`
 //! Provides serializable structures and tools for bootstrapping the final state.
 //!
@@ -38,11 +42,13 @@
 
 mod config;
 mod error;
+mod executed_ops;
 mod final_state;
 mod state_changes;
 
 pub use config::FinalStateConfig;
 pub use error::FinalStateError;
+pub use executed_ops::{ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer};
 pub use final_state::FinalState;
 pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 

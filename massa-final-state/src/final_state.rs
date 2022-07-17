@@ -5,14 +5,16 @@
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
-use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
+use crate::{
+    config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges, ExecutedOps,
+};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{constants::THREAD_COUNT, Address, Slot};
+use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool)`
-#[derive(Debug)]
 pub struct FinalState {
     /// execution state configuration
     pub(crate) config: FinalStateConfig,
@@ -22,6 +24,10 @@ pub struct FinalState {
     pub ledger: Box<dyn LedgerController>,
     /// asynchronous pool containing messages sorted by priority and their data
     pub async_pool: AsyncPool,
+    /// proof of stake state containing cycle history and deferred credits
+    pub pos_state: PoSFinalState,
+    /// executed operations
+    pub executed_ops: ExecutedOps,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     pub(crate) changes_history: VecDeque<(Slot, StateChanges)>,
@@ -42,14 +48,27 @@ impl FinalState {
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
 
+        // create the pos state
+        let pos_state = PoSFinalState::default();
+
+        // create a default executed ops
+        let executed_ops = ExecutedOps::default();
+
         // generate the final state
         Ok(FinalState {
             slot,
             ledger,
             async_pool,
+            pos_state,
             config,
+            executed_ops,
             changes_history: Default::default(), // no changes in history
         })
+    }
+
+    /// Give the selector controller to `PoSFinalState`
+    pub fn give_selector_controller(&mut self, selector: Box<dyn SelectorController>) {
+        self.pos_state.give_selector_controller(selector);
     }
 
     /// Applies changes to the execution state at a given slot, and settles that slot forever.
@@ -74,6 +93,10 @@ impl FinalState {
             .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
+        self.pos_state
+            .apply_changes(changes.roll_state_changes.clone(), self.slot);
+        self.executed_ops.extend(changes.executed_ops.clone());
+        self.executed_ops.prune(self.slot);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {

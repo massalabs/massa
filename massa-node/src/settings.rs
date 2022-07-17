@@ -46,6 +46,11 @@ pub struct ExecutionSettings {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct SelectionSettings {
+    pub max_draw_cache: usize,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct LedgerSettings {
     pub initial_sce_ledger_path: PathBuf,
     pub disk_ledger_path: PathBuf,
@@ -63,6 +68,7 @@ pub struct Settings {
     pub pool: PoolSettings,
     pub execution: ExecutionSettings,
     pub ledger: LedgerSettings,
+    pub selector: SelectionSettings,
 }
 
 #[cfg(test)]

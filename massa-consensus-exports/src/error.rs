@@ -3,7 +3,6 @@ use displaydoc::Display;
 use massa_execution_exports::ExecutionError;
 use massa_graph::error::GraphError;
 use massa_models::ModelsError;
-use massa_proof_of_stake_exports::error::ProofOfStakeError;
 use massa_protocol_exports::ProtocolError;
 use thiserror::Error;
 
@@ -58,8 +57,6 @@ pub enum ConsensusError {
     ChannelError(String),
     /// Graph error: {0}
     GraphError(#[from] GraphError),
-    /// Proof of stake error: {0}
-    ProofOfStakeError(#[from] ProofOfStakeError),
     /// slot overflow
     SlotOverflowError,
     /// `MassaCipher` error: {0}

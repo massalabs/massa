@@ -13,8 +13,6 @@ pub use consensus_controller::{ConsensusCommandSender, ConsensusEventReceiver, C
 pub use error::ConsensusError;
 pub use settings::{ConsensusConfig, ConsensusSettings};
 
-use massa_models::{Address, Slot};
-
 mod consensus_controller;
 
 /// consensus errors
@@ -29,9 +27,6 @@ pub mod commands;
 /// consensus events
 pub mod events;
 
-/// For a slot associate the selected node's addresses for draws by a node address
-type SelectionDraws = Vec<(Slot, (Address, Vec<Address>))>;
-
 /// consensus test tools
 #[cfg(feature = "testing")]
-pub mod tools;
+pub mod test_exports;

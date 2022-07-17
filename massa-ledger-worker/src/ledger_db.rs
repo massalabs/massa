@@ -27,8 +27,10 @@ const SLOT_KEY: &[u8; 1] = b"s";
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
-    /// Balance
-    Balance,
+    /// Sequential Balance
+    SeqBalance,
+    /// Parallel Balance
+    ParBalance,
     /// Bytecode
     Bytecode,
     /// Datastore entry
@@ -165,11 +167,18 @@ impl LedgerDB {
     fn put_entry(&mut self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        // balance
+        // sequential balance
+        // note that Amount::to_bytes_compact() never fails
         batch.put_cf(
             handle,
-            balance_key!(addr),
-            // Amount::to_bytes_compact() never fails
+            seq_balance_key!(addr),
+            ledger_entry.sequential_balance.to_bytes_compact().unwrap(),
+        );
+
+        // parallel balance
+        batch.put_cf(
+            handle,
+            par_balance_key!(addr),
             ledger_entry.parallel_balance.to_bytes_compact().unwrap(),
         );
 
@@ -194,7 +203,14 @@ impl LedgerDB {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         match ty {
-            LedgerSubEntry::Balance => self.0.get_cf(handle, balance_key!(addr)).expect(CRUD_ERROR),
+            LedgerSubEntry::SeqBalance => self
+                .0
+                .get_cf(handle, seq_balance_key!(addr))
+                .expect(CRUD_ERROR),
+            LedgerSubEntry::ParBalance => self
+                .0
+                .get_cf(handle, par_balance_key!(addr))
+                .expect(CRUD_ERROR),
             LedgerSubEntry::Bytecode => self
                 .0
                 .get_cf(handle, bytecode_key!(addr))
@@ -239,12 +255,21 @@ impl LedgerDB {
     ) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        // balance
+        // sequential balance
+        // note that Amount::to_bytes_compact() never fails
+        if let SetOrKeep::Set(balance) = entry_update.sequential_balance {
+            batch.put_cf(
+                handle,
+                seq_balance_key!(addr),
+                balance.to_bytes_compact().unwrap(),
+            );
+        }
+
+        // parallel balance
         if let SetOrKeep::Set(balance) = entry_update.parallel_balance {
             batch.put_cf(
                 handle,
-                balance_key!(addr),
-                // Amount::to_bytes_compact() never fails
+                par_balance_key!(addr),
                 balance.to_bytes_compact().unwrap(),
             );
         }
@@ -270,11 +295,14 @@ impl LedgerDB {
     fn delete_entry(&self, addr: &Address, batch: &mut WriteBatch) {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
-        // balance
-        batch.delete_cf(handle, balance_key!(addr));
+        // sequential balance
+        batch.delete_cf(handle, seq_balance_key!(addr));
+
+        // parallel balance
+        batch.delete_cf(handle, par_balance_key!(addr));
 
         // bytecode
-        batch.delete_cf(handle, balance_key!(addr));
+        batch.delete_cf(handle, bytecode_key!(addr));
 
         // datastore
         let mut opt = ReadOptions::default();
@@ -494,14 +522,14 @@ mod tests {
         let (db, data) = init_test_ledger(a);
 
         // first assert
-        assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
+        assert!(db.get_sub_entry(&a, LedgerSubEntry::ParBalance).is_some());
         assert_eq!(
-            Amount::from_bytes_compact(&db.get_sub_entry(&a, LedgerSubEntry::Balance).unwrap())
+            Amount::from_bytes_compact(&db.get_sub_entry(&a, LedgerSubEntry::ParBalance).unwrap())
                 .unwrap()
                 .0,
             Amount::from_raw(21)
         );
-        assert!(db.get_sub_entry(&b, LedgerSubEntry::Balance).is_none());
+        assert!(db.get_sub_entry(&b, LedgerSubEntry::ParBalance).is_none());
         assert_eq!(data, db.get_entire_datastore(&a));
 
         // delete entry
@@ -510,7 +538,7 @@ mod tests {
         db.write_batch(batch);
 
         // second assert
-        assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_none());
+        assert!(db.get_sub_entry(&a, LedgerSubEntry::ParBalance).is_none());
         assert!(db.get_entire_datastore(&a).is_empty());
     }
 

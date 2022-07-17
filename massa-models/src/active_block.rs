@@ -1,7 +1,5 @@
 use crate::{
-    ledger_models::LedgerChanges,
     prehash::{Map, Set},
-    rolls::RollUpdates,
     Address, BlockId, EndorsementId, OperationId, Slot,
 };
 
@@ -23,8 +21,6 @@ pub struct ActiveBlock {
     pub descendants: Set<BlockId>,
     /// for example has its fitness reached the given threshold
     pub is_final: bool,
-    /// Changes caused by this block
-    pub block_ledger_changes: LedgerChanges,
     /// index in the block, end of validity period
     pub operation_set: Map<OperationId, (usize, u64)>,
     /// IDs of the endorsements to index in block
@@ -33,10 +29,6 @@ pub struct ActiveBlock {
     pub addresses_to_operations: Map<Address, Set<OperationId>>,
     /// Maps addresses to endorsements id they are involved in
     pub addresses_to_endorsements: Map<Address, Set<EndorsementId>>,
-    /// `Address -> RollUpdate`
-    pub roll_updates: RollUpdates,
-    /// list of `(period, address, did_create)` for all block/endorsement creation events
-    pub production_events: Vec<(u64, Address, bool)>,
     /// Slot of the block.
     pub slot: Slot,
 }
