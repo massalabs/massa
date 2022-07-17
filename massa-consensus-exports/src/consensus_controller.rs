@@ -3,9 +3,9 @@
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
-use massa_models::{Address, BlockId, OperationSearchResult, SignedEndorsement, Slot};
+use massa_models::{Address, BlockId, OperationSearchResult, Slot, WrappedEndorsement};
 use massa_protocol_exports::ProtocolEventReceiver;
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 
 use std::collections::VecDeque;
 
@@ -255,16 +255,10 @@ impl ConsensusCommandSender {
     }
 
     /// Add some staking keys
-    pub async fn register_staking_private_keys(
-        &self,
-        keys: Vec<PrivateKey>,
-    ) -> Result<(), ConsensusError> {
-        massa_trace!(
-            "consensus.consensus_controller.register_staking_private_keys",
-            {}
-        );
+    pub async fn register_staking_keys(&self, keys: Vec<KeyPair>) -> Result<(), ConsensusError> {
+        massa_trace!("consensus.consensus_controller.register_staking_keys", {});
         self.0
-            .send(ConsensusCommand::RegisterStakingPrivateKeys(keys))
+            .send(ConsensusCommand::RegisterStakingKeys(keys))
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError("send error consensus command".to_string())
@@ -311,7 +305,7 @@ impl ConsensusCommandSender {
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, SignedEndorsement>, ConsensusError> {
+    ) -> Result<Map<EndorsementId, WrappedEndorsement>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!(
             "consensus.consensus_controller.get_endorsements_by_address",

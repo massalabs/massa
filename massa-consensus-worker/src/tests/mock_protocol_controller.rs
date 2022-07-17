@@ -1,8 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{
-    constants::CHANNEL_SIZE, signed::Signable, Block, BlockId, SerializeCompact, SignedHeader,
-};
+use massa_models::{constants::CHANNEL_SIZE, BlockId, WrappedBlock, WrappedHeader};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
@@ -47,15 +45,11 @@ impl MockProtocolController {
     }
 
     /// Note: if you care about the operation set, use another method.
-    pub async fn receive_block(&mut self, block: Block) {
-        let slot = block.header.content.slot;
-        let block_id = block.header.content.compute_id().unwrap();
-        let serialized = block.to_bytes_compact().expect("Fail to serialize block.");
+    pub async fn receive_block(&mut self, block: WrappedBlock) {
+        let slot = block.content.header.content.slot;
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
-                block_id,
                 block,
-                serialized,
                 slot,
                 operation_set: Default::default(),
                 endorsement_ids: Default::default(),
@@ -64,8 +58,8 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_header(&mut self, header: SignedHeader) {
-        let block_id = header.content.compute_id().unwrap();
+    pub async fn receive_header(&mut self, header: WrappedHeader) {
+        let block_id = header.id;
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlockHeader { block_id, header })
             .await

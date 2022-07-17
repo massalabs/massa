@@ -7,9 +7,8 @@
 
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
-use massa_hash::Hash;
 use massa_ledger_exports::{Applicable, LedgerChanges};
-use massa_models::{Address, Amount};
+use massa_models::{constants::default::MAX_DATASTORE_KEY_LENGTH, Address, Amount};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -286,10 +285,14 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// `Some(Vec<u8>)` if the value was found, `None` if the address does not exist or if the key is not in its datastore.
-    pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
+    pub fn get_data_entry(&self, addr: &Address, key: &[u8]) -> Option<Vec<u8>> {
         // try to read from added changes > history > final_state
         self.added_changes.get_data_entry_or_else(addr, key, || {
-            match self.active_history.read().fetch_data_entry(addr, key) {
+            match self
+                .active_history
+                .read()
+                .fetch_active_history_data_entry(addr, key)
+            {
                 HistorySearchResult::Present(entry) => Some(entry),
                 HistorySearchResult::NoInfo => {
                     self.final_state.read().ledger.get_data_entry(addr, key)
@@ -307,10 +310,14 @@ impl SpeculativeLedger {
     ///
     /// # Returns
     /// true if the key exists in the address datastore, false otherwise
-    pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
+    pub fn has_data_entry(&self, addr: &Address, key: &[u8]) -> bool {
         // try to read from added changes > history > final_state
         self.added_changes.has_data_entry_or_else(addr, key, || {
-            match self.active_history.read().fetch_data_entry(addr, key) {
+            match self
+                .active_history
+                .read()
+                .fetch_active_history_data_entry(addr, key)
+            {
                 HistorySearchResult::Present(_entry) => true,
                 HistorySearchResult::NoInfo => {
                     self.final_state.read().ledger.has_data_entry(addr, key)
@@ -331,7 +338,7 @@ impl SpeculativeLedger {
     pub fn set_data_entry(
         &mut self,
         addr: &Address,
-        key: Hash,
+        key: Vec<u8>,
         data: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check for address existence
@@ -339,6 +346,15 @@ impl SpeculativeLedger {
             return Err(ExecutionError::RuntimeError(format!(
                 "could not set data for address {}: entry does not exist",
                 addr
+            )));
+        }
+
+        // check key correctness
+        let key_length = key.len();
+        if key_length == 0 || key_length > MAX_DATASTORE_KEY_LENGTH as usize {
+            return Err(ExecutionError::RuntimeError(format!(
+                "key length is {}, but it must be in [0..{}]",
+                key_length, MAX_DATASTORE_KEY_LENGTH
             )));
         }
 
@@ -354,17 +370,17 @@ impl SpeculativeLedger {
     /// # Arguments
     /// * `addr`: address
     /// * `key`: key of the entry to delete in the address' datastore
-    pub fn delete_data_entry(&mut self, addr: &Address, key: &Hash) -> Result<(), ExecutionError> {
+    pub fn delete_data_entry(&mut self, addr: &Address, key: &[u8]) -> Result<(), ExecutionError> {
         // check if the entry exists
         if !self.has_data_entry(addr, key) {
             return Err(ExecutionError::RuntimeError(format!(
-                "could not delete data entry {} for address {}: entry does not exist",
+                "could not delete data entry {:?} for address {}: entry does not exist",
                 key, addr
             )));
         }
 
         // delete entry
-        self.added_changes.delete_data_entry(*addr, *key);
+        self.added_changes.delete_data_entry(*addr, key.to_owned());
 
         Ok(())
     }

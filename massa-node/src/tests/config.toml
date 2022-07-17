@@ -61,7 +61,7 @@
     max_message_size = 1048576000
     message_timeout = 5000
     ask_peer_list_interval = 30000
-    private_key_file = "../massa-node/config/node_privkey.key"
+    keypair_file = "../massa-node/config/node_privkey.key"
     max_ask_blocks_per_message = 128
     max_operations_per_message = 1024
     max_endorsements_per_message = 1024

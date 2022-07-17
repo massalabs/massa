@@ -9,8 +9,8 @@ use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, DatastoreEntryInput, DatastoreEntryOutput,
-    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, ReadOnlyBytecodeExecution,
-    ReadOnlyCall, TimeInterval,
+    EndorsementInfo, EventFilter, NodeStatus, OperationInfo, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -18,9 +18,9 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
-use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
+use massa_models::{Address, BlockId, EndorsementId, OperationId};
 use massa_network_exports::NetworkCommandSender;
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Private> {
@@ -72,9 +72,9 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn add_staking_private_keys(&self, keys: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>> {
+    fn add_staking_secret_keys(&self, keys: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
-        let closure = async move || Ok(cmd_sender.register_staking_private_keys(keys).await?);
+        let closure = async move || Ok(cmd_sender.register_staking_keys(keys).await?);
         Box::pin(closure())
     }
 
@@ -169,10 +169,10 @@ impl Endpoints for API<Private> {
         crate::wrong_api::<Vec<BlockSummary>>()
     }
 
-    fn get_datastore_entry(
+    fn get_datastore_entries(
         &self,
-        _: DatastoreEntryInput,
-    ) -> BoxFuture<Result<DatastoreEntryOutput, ApiError>> {
+        _: Vec<DatastoreEntryInput>,
+    ) -> BoxFuture<Result<Vec<DatastoreEntryOutput>, ApiError>> {
         crate::wrong_api()
     }
 
@@ -182,7 +182,7 @@ impl Endpoints for API<Private> {
 
     fn send_operations(
         &self,
-        _: Vec<SignedOperation>,
+        _: Vec<OperationInput>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         crate::wrong_api::<Vec<OperationId>>()
     }

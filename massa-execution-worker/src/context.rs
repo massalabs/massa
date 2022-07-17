@@ -14,7 +14,6 @@ use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRo
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
 use massa_final_state::{ExecutedOps, FinalState, StateChanges};
-use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
@@ -421,12 +420,12 @@ impl ExecutionContext {
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
-    pub fn get_data_entry(&self, address: &Address, key: &Hash) -> Option<Vec<u8>> {
+    pub fn get_data_entry(&self, address: &Address, key: &[u8]) -> Option<Vec<u8>> {
         self.speculative_ledger.get_data_entry(address, key)
     }
 
     /// checks if a datastore entry exists in the speculative ledger
-    pub fn has_data_entry(&self, address: &Address, key: &Hash) -> bool {
+    pub fn has_data_entry(&self, address: &Address, key: &[u8]) -> bool {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
@@ -446,7 +445,7 @@ impl ExecutionContext {
     pub fn set_data_entry(
         &mut self,
         address: &Address,
-        key: Hash,
+        key: Vec<u8>,
         data: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check access right
@@ -472,7 +471,7 @@ impl ExecutionContext {
     pub fn append_data_entry(
         &mut self,
         address: &Address,
-        key: Hash,
+        key: Vec<u8>,
         data: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check access right
@@ -489,7 +488,7 @@ impl ExecutionContext {
             .get_data_entry(address, &key)
             .ok_or_else(|| {
                 ExecutionError::RuntimeError(format!(
-                    "appending to the datastore of address {} failed: entry {} not found",
+                    "appending to the datastore of address {} failed: entry {:?} not found",
                     address, key
                 ))
             })?;
@@ -511,7 +510,7 @@ impl ExecutionContext {
     pub fn delete_data_entry(
         &mut self,
         address: &Address,
-        key: &Hash,
+        key: &[u8],
     ) -> Result<(), ExecutionError> {
         // check access right
         if !self.has_write_rights_on(address) {

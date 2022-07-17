@@ -49,6 +49,7 @@ jobs:
           cp -rv ../massa-node/config massa-node/config
           cp -rv ../massa-node/base_config massa-node/base_config
           cp -rv ../massa-node/storage massa-node/storage
+          cp -rv ../massa-client/config massa-client/config
           cp -rv ../massa-client/base_config massa-client/base_config
           cd ..
           if [[ "${{ matrix.os }}" == "windows-latest" ]]

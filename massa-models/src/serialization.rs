@@ -2,7 +2,7 @@
 
 use crate::error::ModelsError;
 use crate::Amount;
-use bitvec::{order::Lsb0, prelude::BitVec};
+use bitvec::prelude::BitVec;
 use integer_encoding::VarInt;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -11,11 +11,11 @@ use massa_serialization::{
 use nom::bytes::complete::take;
 use nom::multi::length_data;
 use nom::sequence::preceded;
-use nom::Parser;
 use nom::{
     error::{context, ContextError, ErrorKind, ParseError},
     IResult,
 };
+use nom::{Parser, ToUsize};
 use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
@@ -252,7 +252,7 @@ pub struct IpAddrSerializer;
 
 impl IpAddrSerializer {
     /// Creates a `IpAddrSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -290,7 +290,7 @@ pub struct IpAddrDeserializer;
 
 impl IpAddrDeserializer {
     /// Creates a `IpAddrDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -359,10 +359,16 @@ pub struct VecU8Serializer {
 
 impl VecU8Serializer {
     /// Creates a new `VecU8Serializer`
-    pub fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
+    pub fn new() -> Self {
         Self {
-            len_serializer: U64VarIntSerializer::new(min_length, max_length),
+            len_serializer: U64VarIntSerializer::new(),
         }
+    }
+}
+
+impl Default for VecU8Serializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -374,7 +380,7 @@ impl Serializer<Vec<u8>> for VecU8Serializer {
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut buffer = Vec::new();
-    /// let serializer = VecU8Serializer::new(Included(0), Included(1000000));
+    /// let serializer = VecU8Serializer::new();
     /// serializer.serialize(&vec, &mut buffer).unwrap();
     /// ```
     fn serialize(&self, value: &Vec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
@@ -394,7 +400,7 @@ pub struct VecU8Deserializer {
 
 impl VecU8Deserializer {
     /// Creates a new `VecU8Deserializer`
-    pub fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
+    pub const fn new(min_length: Bound<u64>, max_length: Bound<u64>) -> Self {
         Self {
             varint_u64_deserializer: U64VarIntDeserializer::new(min_length, max_length),
         }
@@ -409,7 +415,7 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
     ///
     /// let vec = vec![1, 2, 3];
     /// let mut serialized = Vec::new();
-    /// let serializer = VecU8Serializer::new(Included(0), Included(1000000));
+    /// let serializer = VecU8Serializer::new();
     /// let deserializer = VecU8Deserializer::new(Included(0), Included(1000000));
     /// serializer.serialize(&vec, &mut serialized).unwrap();
     /// let (rest, vec_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
@@ -428,29 +434,119 @@ impl Deserializer<Vec<u8>> for VecU8Deserializer {
     }
 }
 
-/// `BitVec<Lsb0, u8>` Serializer
+/// Serializer for `String` with generic serializer for the size of the string
+pub struct StringSerializer<SL, L>
+where
+    SL: Serializer<L>,
+    L: TryFrom<usize>,
+{
+    length_serializer: SL,
+    marker_l: std::marker::PhantomData<L>,
+}
+
+impl<SL, L> StringSerializer<SL, L>
+where
+    SL: Serializer<L>,
+    L: TryFrom<usize>,
+{
+    /// Creates a `StringSerializer`.
+    ///
+    /// # Arguments:
+    /// - `length_serializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
+    pub fn new(length_serializer: SL) -> Self {
+        Self {
+            length_serializer,
+            marker_l: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<SL, L> Serializer<String> for StringSerializer<SL, L>
+where
+    SL: Serializer<L>,
+    L: TryFrom<usize>,
+{
+    fn serialize(&self, value: &String, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.length_serializer.serialize(
+            &value.len().try_into().map_err(|_| {
+                SerializeError::StringTooBig("The string is too big to be serialized".to_string())
+            })?,
+            buffer,
+        )?;
+        buffer.extend(value.as_bytes());
+        Ok(())
+    }
+}
+
+/// Deserializer for `String` with generic deserializer for the size of the string
+pub struct StringDeserializer<DL, L>
+where
+    DL: Deserializer<L>,
+    L: TryFrom<usize> + ToUsize,
+{
+    length_deserializer: DL,
+    marker_l: std::marker::PhantomData<L>,
+}
+
+impl<DL, L> StringDeserializer<DL, L>
+where
+    DL: Deserializer<L>,
+    L: TryFrom<usize> + ToUsize,
+{
+    /// Creates a `StringDeserializer`.
+    ///
+    /// # Arguments:
+    /// - `length_deserializer`: Serializer for the length of the string (should be one of `UXXVarIntSerializer`)
+    pub const fn new(length_deserializer: DL) -> Self {
+        Self {
+            length_deserializer,
+            marker_l: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<DL, L> Deserializer<String> for StringDeserializer<DL, L>
+where
+    DL: Deserializer<L>,
+    L: TryFrom<usize> + ToUsize,
+{
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], String, E> {
+        let (rest, res) = length_data(|input| self.length_deserializer.deserialize(input))
+            .map(|data| {
+                String::from_utf8(data.to_vec()).map_err(|_| {
+                    nom::Err::Error(ParseError::from_error_kind(
+                        data,
+                        nom::error::ErrorKind::Verify,
+                    ))
+                })
+            })
+            .parse(buffer)?;
+        Ok((rest, res?))
+    }
+}
+
+/// `BitVec<u8>` Serializer
 pub struct BitVecSerializer {
     u32_serializer: U32VarIntSerializer,
 }
 
 impl BitVecSerializer {
-    /// Create a new `BitVec<Lsb0, u8>` Serializer
+    /// Create a new `BitVec<u8>` Serializer
     pub fn new() -> BitVecSerializer {
         BitVecSerializer {
-            u32_serializer: U32VarIntSerializer::new(Bound::Included(u32::MIN), Included(u32::MAX)),
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }
 
-impl Serializer<BitVec<Lsb0, u8>> for BitVecSerializer {
-    fn serialize(
-        &self,
-        value: &BitVec<Lsb0, u8>,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
+impl Serializer<BitVec<u8>> for BitVecSerializer {
+    fn serialize(&self, value: &BitVec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let n_entries: u32 = value.len().try_into().map_err(|err| {
             SerializeError::NumberTooBig(format!(
-                "too many entries when serializing a `BitVec<Lsb0, u8>`: {}",
+                "too many entries when serializing a `BitVec<u8>`: {}",
                 err
             ))
         })?;
@@ -460,13 +556,13 @@ impl Serializer<BitVec<Lsb0, u8>> for BitVecSerializer {
     }
 }
 
-/// `BitVec<Lsb0, u8>` Deserializer
+/// `BitVec<u8>` Deserializer
 pub struct BitVecDeserializer {
     u32_deserializer: U32VarIntDeserializer,
 }
 
 impl BitVecDeserializer {
-    /// Create a new `BitVec<Lsb0, u8>` Deserializer
+    /// Create a new `BitVec<u8>` Deserializer
     pub fn new() -> BitVecDeserializer {
         BitVecDeserializer {
             u32_deserializer: U32VarIntDeserializer::new(
@@ -477,11 +573,11 @@ impl BitVecDeserializer {
     }
 }
 
-impl Deserializer<BitVec<Lsb0, u8>> for BitVecDeserializer {
+impl Deserializer<BitVec<u8>> for BitVecDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], BitVec<Lsb0, u8>, E> {
+    ) -> IResult<&'a [u8], BitVec<u8>, E> {
         context("Failed rng_seed deserialization", |input| {
             let (rest, n_entries) = self.u32_deserializer.deserialize(input)?;
             let bits_u8_len = n_entries.div_ceil(u8::BITS) as usize;
@@ -491,7 +587,7 @@ impl Deserializer<BitVec<Lsb0, u8>> for BitVecDeserializer {
                     ErrorKind::Eof,
                 )));
             }
-            let mut rng_seed: BitVec<Lsb0, u8> = BitVec::try_from_vec(rest[..bits_u8_len].to_vec())
+            let mut rng_seed: BitVec<u8> = BitVec::try_from_vec(rest[..bits_u8_len].to_vec())
                 .map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, ErrorKind::Eof)))?;
             rng_seed.truncate(n_entries as usize);
             if rng_seed.len() != n_entries as usize {
@@ -517,7 +613,7 @@ mod tests {
     #[serial]
     fn vec_u8() {
         let vec: Vec<u8> = vec![9, 8, 7];
-        let vec_u8_serializer = VecU8Serializer::new(Included(u64::MIN), Included(u64::MAX));
+        let vec_u8_serializer = VecU8Serializer::new();
         let vec_u8_deserializer = VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX));
         let mut serialized = Vec::new();
         vec_u8_serializer.serialize(&vec, &mut serialized).unwrap();
@@ -534,7 +630,7 @@ mod tests {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 10;
         let mut serialized = Vec::new();
-        U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+        U64VarIntSerializer::new()
             .serialize(&len, &mut serialized)
             .unwrap();
         serialized.extend(vec);
@@ -550,7 +646,7 @@ mod tests {
         let vec: Vec<u8> = vec![9, 8, 7];
         let len: u64 = 1;
         let mut serialized = Vec::new();
-        U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX))
+        U64VarIntSerializer::new()
             .serialize(&len, &mut serialized)
             .unwrap();
         serialized.extend(vec);

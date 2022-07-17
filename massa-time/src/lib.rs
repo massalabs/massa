@@ -33,16 +33,16 @@ pub struct MassaTimeSerializer {
 
 impl MassaTimeSerializer {
     /// Creates a `MassaTimeSerializer`
-    ///
-    /// Arguments:
-    /// * range: minimum value for the time to serialize
-    pub fn new(range: (Bound<MassaTime>, Bound<MassaTime>)) -> Self {
+    pub fn new() -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::new(
-                range.0.map(|time| time.to_millis()),
-                range.1.map(|time| time.to_millis()),
-            ),
+            u64_serializer: U64VarIntSerializer::new(),
         }
+    }
+}
+
+impl Default for MassaTimeSerializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -54,7 +54,7 @@ impl Serializer<MassaTime> for MassaTimeSerializer {
     ///
     /// let time: MassaTime = 30.into();
     /// let mut serialized = Vec::new();
-    /// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));
+    /// let serializer = MassaTimeSerializer::new();
     /// serializer.serialize(&time, &mut serialized).unwrap();
     /// ```
     fn serialize(
@@ -94,7 +94,7 @@ impl Deserializer<MassaTime> for MassaTimeDeserializer {
     ///
     /// let time: MassaTime = 30.into();
     /// let mut serialized = Vec::new();
-    /// let serializer = MassaTimeSerializer::new((Included(0.into()), Included(u64::MAX.into())));
+    /// let serializer = MassaTimeSerializer::new();
     /// let deserializer = MassaTimeDeserializer::new((Included(0.into()), Included(u64::MAX.into())));
     /// serializer.serialize(&time, &mut serialized).unwrap();
     /// let (rest, time_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();

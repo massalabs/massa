@@ -24,13 +24,15 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    composite::PubkeySig, node::NodeId, operation::OperationIds, stats::NetworkStats, BlockId,
-    SignedEndorsement,
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{OperationIds, OperationPrefixIds},
+    stats::NetworkStats,
+    BlockId, WrappedEndorsement,
 };
 use massa_network_exports::{
     BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
 };
-use massa_signature::{derive_public_key, sign};
 use std::{
     collections::{HashMap, HashSet},
     net::IpAddr,
@@ -262,7 +264,7 @@ pub async fn on_block_not_found_cmd(worker: &mut NetworkWorker, node: NodeId, bl
 pub async fn on_send_endorsements_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    endorsements: Vec<SignedEndorsement>,
+    endorsements: Vec<WrappedEndorsement>,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendEndorsements",
@@ -287,11 +289,10 @@ pub async fn on_node_sign_message_cmd(
         "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
         { "mdg": msg }
     );
-    let signature = sign(&Hash::compute_from(&msg), &worker.private_key)?;
-    let public_key = derive_public_key(&worker.private_key);
+    let signature = worker.keypair.sign(&Hash::compute_from(&msg))?;
     if response_tx
         .send(PubkeySig {
-            public_key,
+            public_key: worker.keypair.get_public_key(),
             signature,
         })
         .is_err()
@@ -385,7 +386,7 @@ pub async fn on_send_operations_cmd(
 pub async fn on_send_operation_batches_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
-    batch: OperationIds,
+    batch: OperationPrefixIds,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements",
@@ -416,7 +417,7 @@ pub async fn on_send_operation_batches_cmd(
 pub async fn on_ask_for_operations_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
-    wishlist: OperationIds,
+    wishlist: OperationPrefixIds,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements",

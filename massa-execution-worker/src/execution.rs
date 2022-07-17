@@ -17,19 +17,19 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::FinalState;
-use massa_hash::Hash;
+use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::constants::{
     BLOCK_REWARD, ENDORSEMENT_COUNT, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, THREAD_COUNT,
 };
 use massa_models::output_event::SCOutputEvent;
-use massa_models::signed::{Signable, Signed};
-use massa_models::{Address, BlockId, OperationType, SignedOperation};
+use massa_models::{Address, BlockId, OperationType, WrappedEndorsement, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
+use std::collections::BTreeSet;
 use std::{collections::HashMap, sync::Arc};
 use tracing::debug;
 
@@ -252,14 +252,13 @@ impl ExecutionState {
     /// * `block_credits`: mutable reference towards the total block reward/fee credits
     pub fn execute_operation(
         &self,
-        operation: &SignedOperation,
+        operation: &WrappedOperation,
         block_slot: Slot,
         remaining_block_gas: &mut u64,
         block_credits: &mut Amount,
     ) -> Result<(), ExecutionError> {
         // check validity period
         if !(operation
-            .content
             .get_validity_range(OPERATION_VALIDITY_PERIODS)
             .contains(&block_slot.period))
         {
@@ -269,7 +268,7 @@ impl ExecutionState {
         }
 
         // check remaining block gas
-        let op_gas = operation.content.get_gas_usage();
+        let op_gas = operation.get_gas_usage();
         let new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::BlockGasError(
                 "not enough remaining block gas to execute operation".to_string(),
@@ -277,8 +276,7 @@ impl ExecutionState {
         })?;
 
         // get the operation's sender address
-        // TODO when storage is ready, do not recompute this here, use the sender_address property of the operation itself
-        let sender_addr = Address::from_public_key(&operation.content.sender_public_key);
+        let sender_addr = operation.creator_address;
 
         // get the thread to which the operation belongs
         // TODO when storage is ready, do not recompute this here, use the "thread" property of the operation itself
@@ -292,16 +290,10 @@ impl ExecutionState {
         }
 
         // get operation ID
-        // TODO have operation_id contained in the Operation object in the future to avoid recomputation
-        // https://github.com/massalabs/massa/issues/1121
-        // https://github.com/massalabs/massa/issues/2264
-        let operation_id = operation
-            .content
-            .compute_id()
-            .expect("could not compute operation ID");
+        let operation_id = operation.id;
 
         // compute fee from (op.max_gas * op.gas_price + op.fee)
-        let op_gas_coins = operation.content.get_gas_coins();
+        let op_gas_coins = operation.get_gas_coins();
         let op_fees = op_gas_coins.saturating_add(operation.content.fee);
         let new_block_credits = block_credits.saturating_add(op_fees);
 
@@ -340,10 +332,10 @@ impl ExecutionState {
             context_snapshot = context.get_snapshot();
 
             // set the context gas price to match the one defined in the operation
-            context.gas_price = operation.content.get_gas_price();
+            context.gas_price = operation.get_gas_price();
 
             // set the context max gas to match the one defined in the operation
-            context.max_gas = operation.content.get_gas_usage();
+            context.max_gas = operation.get_gas_usage();
 
             // set the context origin operation ID
             context.origin_operation_id = Some(operation_id);
@@ -402,7 +394,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `SignedOperation` to process, must be an `RollSell`
+    /// * `operation`: the `WrappedOperation` to process, must be an `RollSell`
     /// * `sender_addr`: address of the sender
     pub fn execute_roll_sell_op(
         &self,
@@ -440,7 +432,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `SignedOperation` to process, must be an `RollBuy`
+    /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
     /// * `sender_addr`: address of the sender
     pub fn execute_roll_buy_op(
         &self,
@@ -495,7 +487,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `SignedOperation` to process, must be an `RollBuy`
+    /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
     pub fn execute_transaction_op(
@@ -543,7 +535,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `SignedOperation` to process, must be an `ExecuteSC`
+    /// * `operation`: the `WrappedOperation` to process, must be an `ExecuteSC`
     /// * `sender_addr`: address of the sender
     pub fn execute_executesc_op(
         &self,
@@ -616,7 +608,7 @@ impl ExecutionState {
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * `operation`: the `SignedOperation` to process, must be an `CallSC`
+    /// * `operation`: the `WrappedOperation` to process, must be an `CallSC`
     /// * `block_creator_addr`: address of the block creator
     /// * `operation_id`: ID of the operation
     /// * `sender_addr`: address of the sender
@@ -883,10 +875,10 @@ impl ExecutionState {
 
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
+            for (op_idx, operation) in stored_block.content.operations.iter().enumerate() {
                 if let Err(err) = self.execute_operation(
                     operation,
-                    stored_block.block.header.content.slot,
+                    stored_block.content.header.content.slot,
                     &mut remaining_block_gas,
                     &mut block_credits,
                 ) {
@@ -897,9 +889,8 @@ impl ExecutionState {
                 }
             }
 
-            // Compute block creator address
-            let block_creator_addr =
-                Address::from_public_key(&stored_block.block.header.content.creator);
+            // Get block creator address
+            let block_creator_addr = stored_block.creator_address;
 
             // acquire lock on execution context
             let mut context = context_guard!(self);
@@ -912,15 +903,14 @@ impl ExecutionState {
             let block_credit_part = block_credits
                 .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
                 .expect("critical: block_credits checked_div factor is 0");
-            for Signed { content, .. } in &stored_block.block.header.content.endorsements {
-                // get endorsement creator address
-                // TODO in the future, do not recompute it, just get it from storage
-                let endorsement_sender_addr = Address::from_public_key(&content.sender_public_key);
-
+            for WrappedEndorsement {
+                creator_address, ..
+            } in &stored_block.content.header.content.endorsements
+            {
                 // credit endorsement creator with sequential coins
                 match context.transfer_sequential_coins(
                     None,
-                    Some(endorsement_sender_addr),
+                    Some(*creator_address),
                     block_credit_part,
                     false,
                 ) {
@@ -930,7 +920,7 @@ impl ExecutionState {
                     Err(err) => {
                         debug!(
                             "failed to credit {} sequential coins to {} for an endorsement production: {}",
-                            block_credit_part, endorsement_sender_addr, err
+                            block_credit_part, creator_address, err
                         )
                     }
                 }
@@ -1056,10 +1046,13 @@ impl ExecutionState {
     pub fn get_final_and_active_data_entry(
         &self,
         address: &Address,
-        key: &Hash,
+        key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
         let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
-        let search_result = self.active_history.read().fetch_data_entry(address, key);
+        let search_result = self
+            .active_history
+            .read()
+            .fetch_active_history_data_entry(address, key);
         (
             final_entry.clone(),
             match search_result {
@@ -1068,6 +1061,46 @@ impl ExecutionState {
                 HistorySearchResult::Absent => None,
             },
         )
+    }
+
+    /// Get every final and active datastore key of the given address
+    pub fn get_final_and_active_datastore_keys(
+        &self,
+        addr: &Address,
+    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
+        // here, get the final keys from the final ledger, and make a copy of it for the candidate list
+        let final_keys = self.final_state.read().ledger.get_datastore_keys(addr);
+        let mut candidate_keys = final_keys.clone();
+
+        // here, traverse the history from oldest to newest, applying additions and deletions
+        for output in &self.active_history.read().0 {
+            match output.state_changes.ledger_changes.get(addr) {
+                // address absent from the changes
+                None => (),
+
+                // address ledger entry being reset to an absolute new list of keys
+                Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
+                    candidate_keys = new_ledger_entry.datastore.keys().cloned().collect();
+                }
+
+                // address ledger entry being updated
+                Some(SetUpdateOrDelete::Update(entry_updates)) => {
+                    for (ds_key, ds_update) in &entry_updates.datastore {
+                        match ds_update {
+                            SetOrDelete::Set(_) => candidate_keys.insert(ds_key.clone()),
+                            SetOrDelete::Delete => candidate_keys.remove(ds_key),
+                        };
+                    }
+                }
+
+                // address ledger entry being deleted
+                Some(SetUpdateOrDelete::Delete) => {
+                    candidate_keys.clear();
+                }
+            }
+        }
+
+        (final_keys, candidate_keys)
     }
 
     /// Gets execution events optionally filtered by:

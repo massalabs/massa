@@ -5,10 +5,10 @@ use crate::{pool_controller, settings::PoolConfig, PoolCommandSender, PoolManage
 use futures::Future;
 use massa_hash::Hash;
 use massa_models::{
-    signed::Signed, Address, Amount, BlockId, Endorsement, Operation, OperationType,
-    SignedEndorsement, SignedOperation, Slot,
+    wrapped::WrappedContent, Address, Amount, BlockId, Endorsement, EndorsementSerializer,
+    Operation, OperationSerializer, OperationType, Slot, WrappedEndorsement, WrappedOperation,
 };
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use std::str::FromStr;
 
@@ -37,50 +37,39 @@ where
     pool_manager.stop().await.unwrap();
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
-    let sender_priv = generate_random_private_key();
-    let sender_pub = derive_public_key(&sender_priv);
-
-    let recv_priv = generate_random_private_key();
-    let recv_pub = derive_public_key(&recv_priv);
+pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
+    let sender_keypair = KeyPair::generate();
 
     let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&recv_pub),
+        recipient_address: Address::from_public_key(&KeyPair::generate().get_public_key()),
         amount: Amount::default(),
     };
     let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
-        sender_public_key: sender_pub,
         expire_period,
     };
-    (
-        Signed::new_signed(content, &sender_priv).unwrap().1,
-        Address::from_public_key(&sender_pub).get_thread(2),
-    )
+    Operation::new_wrapped(content, OperationSerializer::new(), &sender_keypair).unwrap()
 }
 
 /// Creates an endorsement for use in pool tests.
-pub fn create_endorsement(slot: Slot) -> SignedEndorsement {
-    let sender_priv = generate_random_private_key();
-    let sender_public_key = derive_public_key(&sender_priv);
+pub fn create_endorsement(slot: Slot) -> WrappedEndorsement {
+    let sender_keypair = KeyPair::generate();
 
     let content = Endorsement {
-        sender_public_key,
         slot,
         index: 0,
         endorsed_block: BlockId(Hash::compute_from("blabla".as_bytes())),
     };
-    Signed::new_signed(content, &sender_priv).unwrap().1
+    Endorsement::new_wrapped(content, EndorsementSerializer::new(), &sender_keypair).unwrap()
 }
 
 pub fn get_transaction_with_addresses(
     expire_period: u64,
     fee: u64,
-    sender_pub: PublicKey,
-    sender_priv: PrivateKey,
+    sender_keypair: &KeyPair,
     recv_pub: PublicKey,
-) -> (SignedOperation, u8) {
+) -> WrappedOperation {
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub),
         amount: Amount::default(),
@@ -88,13 +77,9 @@ pub fn get_transaction_with_addresses(
     let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
-        sender_public_key: sender_pub,
         expire_period,
     };
-    (
-        Signed::new_signed(content, &sender_priv).unwrap().1,
-        Address::from_public_key(&sender_pub).get_thread(2),
-    )
+    Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap()
 }
 
 pub fn create_executesc(
@@ -102,9 +87,8 @@ pub fn create_executesc(
     fee: u64,
     max_gas: u64,
     gas_price: u64,
-) -> (SignedOperation, u8) {
-    let priv_key = generate_random_private_key();
-    let sender_public_key = derive_public_key(&priv_key);
+) -> WrappedOperation {
+    let keypair = KeyPair::generate();
 
     let data = vec![42; 7];
     let coins = 0_u64;
@@ -117,14 +101,9 @@ pub fn create_executesc(
     };
 
     let content = Operation {
-        sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-
-    (
-        Signed::new_signed(content, &priv_key).unwrap().1,
-        Address::from_public_key(&sender_public_key).get_thread(2),
-    )
+    Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap()
 }

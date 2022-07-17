@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use massa_models::constants::{
     ENDORSEMENT_COUNT, PERIODS_PER_CYCLE, POS_LOOKBACK_CYCLES, THREAD_COUNT,
 };
-use massa_signature::{PrivateKey, PRIVATE_KEY_SIZE_BYTES};
+use massa_signature::{KeyPair, SECRET_KEY_BYTES_SIZE};
 use serde::{Deserialize, Serialize};
 
 /// Configuration of selector thread
@@ -21,8 +21,8 @@ pub struct SelectorConfig {
     pub lookback_cycles: u64,
     /// Number of periods per cycle
     pub periods_per_cycle: u64,
-    /// `PrivateKey` to sign genesis blocks.
-    pub genesis_key: PrivateKey,
+    /// `KeyPair` to sign genesis blocks.
+    pub genesis_key: KeyPair,
     /// path to initial rolls
     pub initial_rolls_path: PathBuf,
     /// initial seed
@@ -43,7 +43,7 @@ impl Default for SelectorConfig {
             max_draw_cache: 0,
             lookback_cycles: POS_LOOKBACK_CYCLES,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            genesis_key: PrivateKey::from_bytes(&[0u8; PRIVATE_KEY_SIZE_BYTES]).unwrap(),
+            genesis_key: KeyPair::from_bytes(&[0u8; SECRET_KEY_BYTES_SIZE]).unwrap(),
             initial_rolls_path: PathBuf::default(),
             initial_draw_seed: String::default(),
         }

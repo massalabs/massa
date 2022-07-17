@@ -341,32 +341,34 @@ Get the block graph within the specified time interval.
         },
     ];
 
-`get_datastore_entry`
+`get_datastore_entries`
 --------------------
 
-Get a data entry both at the latest final and active executed slots.
+Get a data entry both at the latest final and candidate executed slots for the given addresses.
 
-If an existing final entry (`final_value`) is:
-* found in the active history, it will return its final value in `active_value` field
-* deleted in the active history, it will return null in `active_value` field
+If an existing entry did not undergo any changes in the speculative history, it will return its final value in `candidate_value` field. If it was deleted in the active history, it will return null in `candidate_value` field.
 
 -   Parameters:
 
 .. code-block:: javascript
 
-    {
-        "address": String,
-        "key": String,
-    }
+    [
+        {
+            "address": String,
+            "key": String,
+        }
+    ];
 
 -   Return:
 
 .. code-block:: javascript
 
-    { 
-        "active_value": Byte array or null,
-        "final_value": Byte array or null,
-    }
+    [
+        {
+            "candidate_value": Byte array or null,
+            "final_value": Byte array or null,
+        }
+    ]
 
 
 `get_addresses`
@@ -429,6 +431,8 @@ Get addresses.
             thread: Number,
             final_balance_info: null OR Number,
             candidate_balance_info: null OR Number,
+            final_datastore_keys: [Byte array],
+            candidate_datastore_keys: [Byte array],
         },
     ];
 
@@ -443,8 +447,21 @@ pool.
 .. code-block:: javascript
 
     [[
+        {
+            "serialized_content": ByteArray,
+            "creator_public_key": String,
+            "signature": String
+        }
+    ]]
+
+The `serialized_content` parameter contains all the content encoded in byte compact (see https://github.com/massalabs/massa/blob/main/massa-models/src/operation.rs#L185).
+For the signature you need to use the bytes of the public_key and content in byte compact concatenated and sign it with ed25519.
+
+Here is an example of the content format :
+
+.. code-block:: javascript
+
     {
-        "content": {
         "expire_period": Number,
         "fee": String, // represent an Amount in coins
         "op": {
@@ -478,11 +495,8 @@ pool.
                 "gas_price": Number, // Amount
             }
         },
-        "sender_public_key": String
-        },
-        "signature": String
     }
-    ]]
+
 
 -   Return:
 
@@ -664,10 +678,10 @@ Sign message with node's key.
 Where public_key is the public key used to sign the input and signature,
 the resulting signature.
 
-`node_add_staking_private_keys`
---------------------------
+`node_add_staking_secret_keys`
+------------------------------
 
-Add a vec of new private keys for the node to use to stake.
+Add a vec of new secret keys for the node to use to stake.
 
 -   Parameter:
 
@@ -675,12 +689,12 @@ Add a vec of new private keys for the node to use to stake.
 
     [String];
 
-The strings must be private keys.
+The strings must be secret keys.
 
 -   No return.
 
 `node_remove_staking_addresses`
---------------------------
+-------------------------------
 
 Remove a vec of addresses used to stake.
 
@@ -695,7 +709,7 @@ The strings must be addresses.
 -   No return.
 
 `node_get_staking_addresses`
------------------------
+----------------------------
 
 Return hashset of staking addresses.
 
@@ -710,7 +724,7 @@ Return hashset of staking addresses.
 The strings are addresses.
 
 `node_ban_by_ip`
--------
+----------------
 
 Ban given IP address(es).
 
@@ -723,8 +737,9 @@ Ban given IP address(es).
 The strings must be IP address(es).
 
 -   No return.
+
 `node_ban_by_id`
--------
+----------------
 
 Ban given id(s)
 
@@ -739,7 +754,7 @@ The strings must be node id(s).
 -   No return.
 
 `node_unban_by_ip`
--------
+------------------
 
 Unban given IP address(es).
 
@@ -752,8 +767,9 @@ Unban given IP address(es).
 The strings must be IP address(es).
 
 -   No return.
+
 `node_unban_by_id`
--------
+------------------
 
 Unban given id(s)
 
@@ -768,7 +784,7 @@ The strings must be node id(s)
 -   No return.
 
 `node_whitelist`
--------
+----------------
 
 Whitelist given IP address(es).
 
@@ -779,8 +795,12 @@ Whitelist given IP address(es).
     [String];
 
 The strings must be IP address(es).
+
+-   No return.
+
+
 `node_remove_from_whitelist`
--------
+----------------------------
 
 Remove from whitelist given IP address(es).
 

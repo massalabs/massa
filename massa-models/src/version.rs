@@ -70,9 +70,9 @@ pub struct VersionSerializer {
 
 impl VersionSerializer {
     /// Creates a `VersionSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            u32_serializer: U32VarIntSerializer::new(Included(0), Included(1000)),
+            u32_serializer: U32VarIntSerializer::new(),
         }
     }
 }
@@ -114,7 +114,7 @@ pub struct VersionDeserializer {
 
 impl VersionDeserializer {
     /// Creates a `VersionSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(1000)),
         }

@@ -5,8 +5,11 @@ use crate::{
     NetworkEvent, Peers,
 };
 use massa_models::{
-    composite::PubkeySig, node::NodeId, operation::OperationIds, stats::NetworkStats, BlockId,
-    SignedEndorsement,
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{OperationIds, OperationPrefixIds},
+    stats::NetworkStats,
+    BlockId, WrappedEndorsement,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -200,7 +203,7 @@ impl NetworkCommandSender {
     pub async fn send_operations_batch(
         &self,
         to_node: NodeId,
-        batch: OperationIds,
+        batch: OperationPrefixIds,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
@@ -222,7 +225,7 @@ impl NetworkCommandSender {
     pub async fn send_ask_for_operations(
         &self,
         to_node: NodeId,
-        wishlist: OperationIds,
+        wishlist: OperationPrefixIds,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::AskForOperations { to_node, wishlist })
@@ -237,7 +240,7 @@ impl NetworkCommandSender {
     pub async fn send_endorsements(
         &self,
         node: NodeId,
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendEndorsements { node, endorsements })
@@ -248,7 +251,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    /// Sign a message using the node's private key
+    /// Sign a message using the node's keypair
     pub async fn node_sign_message(&self, msg: Vec<u8>) -> Result<PubkeySig, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0

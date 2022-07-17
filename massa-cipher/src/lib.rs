@@ -1,18 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Cipher crate
+//! MASSA Cipher crate
 //!
-//! `massa-cipher` uses AES-GCM-SIV ([RFC 8452](https://datatracker.ietf.org/doc/html/rfc8452)).
+//! `massa-cipher` uses AES-GCM
 //!
-//! AES-GCM-SIV is a state-of-the-art high-performance Authenticated Encryption with Associated Data (AEAD)
-//! cipher which also provides nonce reuse misuse resistance.
-//! Suitable as a general purpose symmetric encryption cipher, AES-GCM-SIV also removes many of the sharp edges of AES-GCM.
+//! AES-GCM is a state-of-the-art high-performance Authenticated Encryption with Associated Data (AEAD)
+//! that provides confidentiality and authenticity.
 //!
-//! A nonce is a single-use value which enables securely encrypting multiple messages under the same key.
-//! Nonces need not be random: a counter can be used, so long as the values are never repeated under the same key.
+//! To hash the password before using it as a cipher key, we use the PBKDF2 key derivation function
+//! as specified in [RFC 2898](https://datatracker.ietf.org/doc/html/rfc2898).
 //!
-//! No complete security audits of the crate we use has been performed.
-//! But some of this crate's dependencies were audited by by NCC Group as part of an audit of the AES-GCM crate
+//! The AES-GCM crate we use has received one security audit by NCC Group, with no significant findings.
 
 mod constants;
 mod decrypt;

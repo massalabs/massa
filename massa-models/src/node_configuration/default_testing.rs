@@ -25,14 +25,14 @@
 //! };
 //! ```
 use crate::{Amount, Version};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use std::net::{IpAddr, Ipv4Addr};
 
 lazy_static::lazy_static! {
-    /// genesis private keys
-    pub static ref GENESIS_KEY: PrivateKey = generate_random_private_key();
+    /// genesis keypair
+    pub static ref GENESIS_KEY: KeyPair = KeyPair::generate();
     /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         MassaTime::now()
@@ -125,6 +125,8 @@ pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
 pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
 /// operation id size
 pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+/// operation id prefix size
+pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 /// operation validity periods
 pub const OPERATION_VALIDITY_PERIODS: u64 = 1;
 /// periods per cycle

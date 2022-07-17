@@ -2,9 +2,8 @@
 
 //! Module to interact with the disk ledger
 
-use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::*;
-use massa_models::constants::LEDGER_PART_SIZE_MESSAGE_BYTES;
+use massa_models::constants::{ADDRESS_SIZE_BYTES, LEDGER_PART_SIZE_MESSAGE_BYTES};
 use massa_models::{
     Address, ModelsError, SerializeCompact, Slot, VecU8Deserializer, VecU8Serializer,
 };
@@ -14,16 +13,10 @@ use nom::sequence::tuple;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound;
+use std::path::PathBuf;
 use std::rc::Rc;
-use std::{collections::BTreeMap, path::PathBuf};
-
-#[cfg(feature = "testing")]
-use massa_models::{address::AddressDeserializer, Amount, DeserializeCompact};
-
-#[cfg(feature = "testing")]
-use massa_serialization::DeserializeError;
 
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
@@ -41,7 +34,7 @@ pub enum LedgerSubEntry {
     /// Bytecode
     Bytecode,
     /// Datastore entry
-    Datastore(Hash),
+    Datastore(Vec<u8>),
 }
 
 /// Disk ledger DB module
@@ -229,38 +222,11 @@ impl LedgerDB {
         }
     }
 
-    /// Get every address and their corresponding balance.
-    /// IMPORTANT: This should only be used for debug purposes.
+    /// Get every key of the datastore for a given address.
     ///
     /// # Returns
-    /// A BTreeMap with the address as key and the balance as value
-    #[cfg(feature = "testing")]
-    pub fn get_every_address(&self) -> BTreeMap<Address, Amount> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
-
-        let ledger = self
-            .0
-            .iterator_cf(handle, IteratorMode::Start)
-            .collect::<Vec<_>>();
-
-        let mut addresses = BTreeMap::new();
-        let address_deserializer = AddressDeserializer::new();
-        for (key, entry) in ledger {
-            let (rest, address) = address_deserializer
-                .deserialize::<DeserializeError>(&key[..])
-                .unwrap();
-            if rest.first() == Some(&PAR_BALANCE_IDENT) {
-                addresses.insert(address, Amount::from_bytes_compact(&entry).unwrap().0);
-            }
-        }
-        addresses
-    }
-
-    /// Get the entire datastore for a given address.
-    ///
-    /// # Returns
-    /// A BTreeMap with the entry hash as key and the data bytes as value
-    pub fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>> {
+    /// A BTreeSet of the datastore keys
+    pub fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
@@ -272,12 +238,7 @@ impl LedgerDB {
                 opt,
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
-            .map(|(key, data)| {
-                (
-                    Hash::from_bytes(key.split_at(HASH_SIZE_BYTES + 1).1.try_into().unwrap()),
-                    data.to_vec(),
-                )
-            })
+            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
             .collect()
     }
 
@@ -369,7 +330,7 @@ impl LedgerDB {
         &self,
         last_key: &Option<Vec<u8>>,
     ) -> Result<(Vec<u8>, Option<Vec<u8>>), ModelsError> {
-        let ser = VecU8Serializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
+        let ser = VecU8Serializer::new();
         let key_serializer = KeySerializer::new();
         let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let mut part = Vec::new();
@@ -436,10 +397,76 @@ impl LedgerDB {
             self.0.write(batch).expect(CRUD_ERROR);
             Ok((*last_key).clone())
         } else {
+            println!("REST LEN = {}", rest.len());
             Err(ModelsError::SerializeError(
                 "rest is not empty.".to_string(),
             ))
         }
+    }
+
+    /// Get every address and their corresponding balance.
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the address as key and the balance as value
+    #[cfg(feature = "testing")]
+    pub fn get_every_address(&self) -> std::collections::BTreeMap<Address, massa_models::Amount> {
+        use massa_models::{address::AddressDeserializer, DeserializeCompact};
+        use massa_serialization::DeserializeError;
+
+        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+
+        let ledger = self
+            .0
+            .iterator_cf(handle, IteratorMode::Start)
+            .collect::<Vec<_>>();
+
+        let mut addresses = std::collections::BTreeMap::new();
+        let address_deserializer = AddressDeserializer::new();
+        for (key, entry) in ledger {
+            let (rest, address) = address_deserializer
+                .deserialize::<DeserializeError>(&key[..])
+                .unwrap();
+            if rest.first() == Some(&BALANCE_IDENT) {
+                addresses.insert(
+                    address,
+                    massa_models::Amount::from_bytes_compact(&entry).unwrap().0,
+                );
+            }
+        }
+        addresses
+    }
+
+    /// Get the entire datastore for a given address.
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the entry hash as key and the data bytes as value
+    #[cfg(feature = "testing")]
+    pub fn get_entire_datastore(
+        &self,
+        addr: &Address,
+    ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
+        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+
+        let mut opt = ReadOptions::default();
+        opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
+
+        self.0
+            .iterator_cf_opt(
+                handle,
+                opt,
+                IteratorMode::From(data_prefix!(addr), Direction::Forward),
+            )
+            .map(|(key, data)| {
+                (
+                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
+                    data.to_vec(),
+                )
+            })
+            .collect()
     }
 }
 
@@ -447,21 +474,20 @@ impl LedgerDB {
 mod tests {
     use super::LedgerDB;
     use crate::ledger_db::LedgerSubEntry;
-    use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{Address, Amount, DeserializeCompact};
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use massa_signature::KeyPair;
     use rocksdb::WriteBatch;
     use std::collections::BTreeMap;
     use tempfile::TempDir;
 
     #[cfg(test)]
-    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Hash, Vec<u8>>) {
+    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
         let mut data = BTreeMap::new();
-        data.insert(Hash::compute_from(b"1"), b"a".to_vec());
-        data.insert(Hash::compute_from(b"2"), b"b".to_vec());
-        data.insert(Hash::compute_from(b"3"), b"c".to_vec());
+        data.insert(b"1".to_vec(), b"a".to_vec());
+        data.insert(b"2".to_vec(), b"b".to_vec());
+        data.insert(b"3".to_vec(), b"c".to_vec());
         let entry = LedgerEntry {
             parallel_balance: Amount::from_raw(42),
             datastore: data.clone(),
@@ -489,8 +515,8 @@ mod tests {
     #[test]
     fn test_ledger_db() {
         // init addresses
-        let pub_a = derive_public_key(&generate_random_private_key());
-        let pub_b = derive_public_key(&generate_random_private_key());
+        let pub_a = KeyPair::generate().get_public_key();
+        let pub_b = KeyPair::generate().get_public_key();
         let a = Address::from_public_key(&pub_a);
         let b = Address::from_public_key(&pub_b);
         let (db, data) = init_test_ledger(a);
@@ -518,7 +544,7 @@ mod tests {
 
     #[test]
     fn test_ledger_parts() {
-        let pub_a = derive_public_key(&generate_random_private_key());
+        let pub_a = KeyPair::generate().get_public_key();
         let a = Address::from_public_key(&pub_a);
         let (db, _) = init_test_ledger(a);
         let res = db.get_ledger_part(&None).unwrap();

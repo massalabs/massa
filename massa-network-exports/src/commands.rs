@@ -73,9 +73,9 @@ use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
     composite::PubkeySig,
     node::NodeId,
-    operation::{OperationIds, Operations},
+    operation::{OperationIds, OperationPrefixIds, Operations},
     stats::NetworkStats,
-    Block, BlockId, SignedEndorsement, SignedHeader,
+    BlockId, WrappedBlock, WrappedEndorsement, WrappedHeader,
 };
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
@@ -98,16 +98,17 @@ pub enum NodeCommand {
     /// Send full Operations (send to a node that previously asked for)
     SendOperations(OperationIds),
     /// Send a batch of operation ids
-    SendOperationAnnouncements(OperationIds),
+    SendOperationAnnouncements(OperationPrefixIds),
     /// Ask for a set of operations
-    AskForOperations(OperationIds),
+    AskForOperations(OperationPrefixIds),
     /// Endorsements
-    SendEndorsements(Vec<SignedEndorsement>),
+    SendEndorsements(Vec<WrappedEndorsement>),
 }
 
 /// Event types that node worker can emit
 /// Append on receive something from inside and outside.
 /// Outside initialization with `Received` prefix.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum NodeEventType {
     /// Node we are connected to asked for advertised peers
@@ -115,21 +116,21 @@ pub enum NodeEventType {
     /// Node we are connected to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
     /// Node we are connected to sent block
-    ReceivedBlock(Block, Vec<u8>),
+    ReceivedBlock(WrappedBlock),
     /// Node we are connected to sent block header
-    ReceivedBlockHeader(SignedHeader),
+    ReceivedBlockHeader(WrappedHeader),
     /// Node we are connected to asks for a block.
     ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,
     BlockNotFound(BlockId),
     /// Received full operations.
-    ReceivedOperations(Operations, Vec<Vec<u8>>),
+    ReceivedOperations(Operations),
     /// Received an operation id batch announcing new operations
-    ReceivedOperationAnnouncements(OperationIds),
+    ReceivedOperationAnnouncements(OperationPrefixIds),
     /// Receive a list of wanted operations
-    ReceivedAskForOperations(OperationIds),
+    ReceivedAskForOperations(OperationPrefixIds),
     /// Receive a set of endorsement
-    ReceivedEndorsements(Vec<SignedEndorsement>),
+    ReceivedEndorsements(Vec<WrappedEndorsement>),
 }
 
 /// Events node worker can emit.
@@ -183,9 +184,9 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// endorsements
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     },
-    /// sign message with our node private key (associated to node id)
+    /// sign message with our node keypair (associated to node id)
     /// != staking key
     NodeSignMessage {
         /// arbitrary message
@@ -210,14 +211,14 @@ pub enum NetworkCommand {
         /// to node id
         to_node: NodeId,
         /// batch of operation ids
-        batch: OperationIds,
+        batch: OperationPrefixIds,
     },
     /// Ask for operation
     AskForOperations {
         /// to node id
         to_node: NodeId,
         /// operation ids in the wish list
-        wishlist: OperationIds,
+        wishlist: OperationPrefixIds,
     },
     /// Whitelist a list of `IpAddr`
     Whitelist(Vec<IpAddr>),
@@ -226,6 +227,7 @@ pub enum NetworkCommand {
 }
 
 /// network event
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum NetworkEvent {
     /// new connection from node
@@ -237,16 +239,14 @@ pub enum NetworkEvent {
         /// from node id
         node: NodeId,
         /// block
-        block: Block,
-        /// serialized block
-        serialized: Vec<u8>,
+        block: WrappedBlock,
     },
     /// A block header was received
     ReceivedBlockHeader {
         /// from node id
         source_node_id: NodeId,
         /// header
-        header: SignedHeader,
+        header: WrappedHeader,
     },
     /// Someone ask for block with given header hash.
     AskedForBlocks {
@@ -268,29 +268,27 @@ pub enum NetworkEvent {
         node: NodeId,
         /// operations
         operations: Operations,
-        /// serialized operations.
-        serialized: Vec<Vec<u8>>,
     },
     /// Receive a list of `OperationId`
     ReceivedOperationAnnouncements {
         /// from node id
         node: NodeId,
-        /// operation ids
-        operation_ids: OperationIds,
+        /// operation prefix ids
+        operation_prefix_ids: OperationPrefixIds,
     },
     /// Receive a list of asked operations from `node`
     ReceiveAskForOperations {
         /// from node id
         node: NodeId,
-        /// operation ids
-        operation_ids: OperationIds,
+        /// operation prefix ids
+        operation_prefix_ids: OperationPrefixIds,
     },
     /// received endorsements from node
     ReceivedEndorsements {
         /// node id
         node: NodeId,
         /// Endorsements
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
     },
 }
 

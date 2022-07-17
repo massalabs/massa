@@ -30,17 +30,10 @@ pub struct AsyncMessageIdSerializer {
 
 impl AsyncMessageIdSerializer {
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
-            amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
-            slot_serializer: SlotSerializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
-            ),
-            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            amount_serializer: AmountSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }
@@ -227,18 +220,11 @@ pub struct AsyncMessageSerializer {
 
 impl AsyncMessageSerializer {
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
-            slot_serializer: SlotSerializer::new(
-                (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
-            ),
-            amount_serializer: AmountSerializer::new(Included(0), Included(u64::MAX)),
-            u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
-            vec_u8_serializer: VecU8Serializer::new(Included(0), Included(u64::MAX)),
+            slot_serializer: SlotSerializer::new(),
+            amount_serializer: AmountSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(),
         }
     }
 }

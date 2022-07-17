@@ -5,10 +5,9 @@ use crate::operation_pool::OperationPool;
 use crate::{endorsement_pool::EndorsementPool, settings::PoolConfig};
 use massa_models::prehash::{Map, Set};
 use massa_models::stats::PoolStats;
-use massa_models::SerializeCompact;
 use massa_models::{
-    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, SignedEndorsement,
-    SignedOperation, Slot,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, Slot, WrappedEndorsement,
+    WrappedOperation,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use massa_storage::Storage;
@@ -19,7 +18,7 @@ use tracing::warn;
 #[derive(Debug)]
 pub enum PoolCommand {
     /// Add operations to the pool
-    AddOperations(Map<OperationId, SignedOperation>),
+    AddOperations(Map<OperationId, WrappedOperation>),
     /// current slot update
     UpdateCurrentSlot(Slot),
     /// Latest final periods update
@@ -35,14 +34,14 @@ pub enum PoolCommand {
         /// max size of an operation in bytes
         max_size: u64,
         /// response channel
-        response_tx: oneshot::Sender<Vec<(OperationId, SignedOperation, u64)>>,
+        response_tx: oneshot::Sender<Vec<(WrappedOperation, u64)>>,
     },
     /// get operations by id
     GetOperations {
         /// ids
         operation_ids: Set<OperationId>,
         /// response channel
-        response_tx: oneshot::Sender<Map<OperationId, SignedOperation>>,
+        response_tx: oneshot::Sender<Map<OperationId, WrappedOperation>>,
     },
     /// Get operations by involved address
     GetRecentOperations {
@@ -63,10 +62,10 @@ pub enum PoolCommand {
         /// expected creators
         creators: Vec<Address>,
         /// response channel
-        response_tx: oneshot::Sender<Vec<(EndorsementId, SignedEndorsement)>>,
+        response_tx: oneshot::Sender<Vec<WrappedEndorsement>>,
     },
     /// add endorsements to pool
-    AddEndorsements(Map<EndorsementId, SignedEndorsement>),
+    AddEndorsements(Map<EndorsementId, WrappedEndorsement>),
     /// get pool stats
     GetStats(oneshot::Sender<PoolStats>),
     /// get endorsements by address
@@ -74,14 +73,14 @@ pub enum PoolCommand {
         /// address
         address: Address,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, WrappedEndorsement>>,
     },
     /// get endorsements by id
     GetEndorsementsById {
         /// ids
         endorsements: Set<EndorsementId>,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, WrappedEndorsement>>,
     },
 }
 
@@ -186,14 +185,6 @@ impl PoolWorker {
     async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
             PoolCommand::AddOperations(operations) => {
-                let operations = operations
-                    .into_iter()
-                    .filter_map(|(id, op)| {
-                        op.to_bytes_compact()
-                            .map(|serialized| (id, (op, serialized)))
-                            .ok()
-                    })
-                    .collect();
                 let newly_added = self.operation_pool.process_operations(operations)?;
                 if !newly_added.is_empty() {
                     self.protocol_command_sender
@@ -360,12 +351,6 @@ impl PoolWorker {
                 } else {
                     self.endorsement_pool.add_endorsements(endorsements)?;
                 }
-            }
-            ProtocolPoolEvent::GetOperations((node_id, operation_ids)) => {
-                let results = self.operation_pool.find_operations(operation_ids);
-                self.protocol_command_sender
-                    .send_get_operations_results(node_id, results)
-                    .await?;
             }
         }
         Ok(())

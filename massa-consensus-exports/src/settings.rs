@@ -50,7 +50,7 @@ use massa_models::Amount;
 use massa_pool::PoolCommandSender;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
-use massa_signature::PrivateKey;
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
@@ -66,7 +66,7 @@ use crate::{
 /// Assumes `thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0`
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsensusSettings {
-    /// Staking private keys
+    /// Staking keys
     pub staking_keys_path: PathBuf,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
@@ -124,9 +124,9 @@ pub struct ConsensusConfig {
     pub thread_count: u8,
     /// Time between the periods in the same thread.
     pub t0: MassaTime,
-    /// `PrivateKey` to sign genesis blocks.
-    pub genesis_key: PrivateKey,
-    /// Staking private keys
+    /// `KeyPair` to sign genesis blocks.
+    pub genesis_key: KeyPair,
+    /// Staking keys
     pub staking_keys_path: PathBuf,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
@@ -220,7 +220,7 @@ impl Clone for ConsensusConfig {
             end_timestamp: self.end_timestamp,
             thread_count: self.thread_count,
             t0: self.t0,
-            genesis_key: self.genesis_key,
+            genesis_key: self.genesis_key.clone(),
             staking_keys_path: self.staking_keys_path.clone(),
             max_discarded_blocks: self.max_discarded_blocks,
             future_block_processing_max_periods: self.future_block_processing_max_periods,
@@ -262,7 +262,7 @@ impl From<&ConsensusConfig> for GraphConfig {
     fn from(cfg: &ConsensusConfig) -> Self {
         GraphConfig {
             thread_count: cfg.thread_count,
-            genesis_key: cfg.genesis_key,
+            genesis_key: cfg.genesis_key.clone(),
             max_discarded_blocks: cfg.max_discarded_blocks,
             future_block_processing_max_periods: cfg.future_block_processing_max_periods,
             max_future_processing_blocks: cfg.max_future_processing_blocks,
@@ -341,7 +341,7 @@ impl From<&ConsensusSettings> for ConsensusConfig {
             end_timestamp: *END_TIMESTAMP,
             thread_count,
             t0,
-            genesis_key: *GENESIS_KEY,
+            genesis_key: GENESIS_KEY.clone(),
             staking_keys_path: settings.staking_keys_path.clone(),
             max_discarded_blocks: settings.max_discarded_blocks,
             future_block_processing_max_periods: settings.future_block_processing_max_periods,
@@ -402,7 +402,7 @@ impl From<ConsensusSettings> for ConsensusConfig {
             end_timestamp: *END_TIMESTAMP,
             thread_count,
             t0,
-            genesis_key: *GENESIS_KEY,
+            genesis_key: GENESIS_KEY.clone(),
             staking_keys_path: settings.staking_keys_path,
             max_discarded_blocks: settings.max_discarded_blocks,
             future_block_processing_max_periods: settings.future_block_processing_max_periods,
@@ -483,7 +483,7 @@ impl From<&std::path::Path> for ConsensusConfig {
     fn from(initial_ledger_path: &std::path::Path) -> Self {
         let mut staking_keys = Vec::new();
         for _ in 0..2 {
-            staking_keys.push(massa_signature::generate_random_private_key());
+            staking_keys.push(KeyPair::generate());
         }
         massa_models::init_serialization_context(massa_models::SerializationContext::default());
         ConsensusSettings {
@@ -548,7 +548,7 @@ impl Default for ConsensusConfig {
             end_timestamp: *END_TIMESTAMP,
             thread_count: THREAD_COUNT,
             t0: T0,
-            genesis_key: *GENESIS_KEY,
+            genesis_key: GENESIS_KEY.clone(),
             staking_keys_path: Default::default(),
             max_discarded_blocks: MAX_DISCARDED_BLOCKS,
             future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
@@ -599,9 +599,7 @@ impl ConsensusConfig {
     /// default consensus configuration
     pub fn default_with_paths() -> Self {
         use crate::tools::*;
-        let staking_keys: Vec<PrivateKey> = (0..1)
-            .map(|_| massa_signature::generate_random_private_key())
-            .collect();
+        let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
         let staking_file = generate_staking_keys_file(&staking_keys);
         let rolls_file = generate_default_roll_counts_file(staking_keys);
@@ -617,8 +615,8 @@ impl ConsensusConfig {
         }
     }
 
-    /// Default consensus configuration from private staking keys
-    pub fn default_with_staking_keys(staking_keys: &[PrivateKey]) -> Self {
+    /// Default consensus configuration from staking keypairs
+    pub fn default_with_staking_keys(staking_keys: &[KeyPair]) -> Self {
         use crate::tools::*;
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
         let staking_file = generate_staking_keys_file(staking_keys);
@@ -635,9 +633,9 @@ impl ConsensusConfig {
         }
     }
 
-    /// Default consensus configuration from staking private keys and ledger
+    /// Default consensus configuration from staking keys and ledger
     pub fn default_with_staking_keys_and_ledger(
-        staking_keys: &[PrivateKey],
+        staking_keys: &[KeyPair],
         ledger: &std::collections::HashMap<
             massa_models::Address,
             massa_models::ledger_models::LedgerData,

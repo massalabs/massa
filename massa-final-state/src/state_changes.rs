@@ -39,12 +39,12 @@ pub struct StateChangesSerializer {
 
 impl StateChangesSerializer {
     /// Creates a `StateChangesSerializer`
-    pub fn new(thread_count: u8) -> Self {
+    pub fn new() -> Self {
         Self {
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
             roll_state_changes_serializer: PoSChangesSerializer::new(),
-            executed_ops_serializer: ExecutedOpsSerializer::new(thread_count),
+            executed_ops_serializer: ExecutedOpsSerializer::new(),
         }
     }
 }
@@ -52,9 +52,10 @@ impl StateChangesSerializer {
 impl Serializer<StateChanges> for StateChangesSerializer {
     /// ```
     /// use massa_serialization::Serializer;
-    /// use massa_models::{Address, prehash::Map, Amount, Slot};
+    /// use massa_models::{Address, Amount, Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer};
     /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
@@ -80,7 +81,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// let ledger_entry = LedgerEntryUpdate {
     ///    parallel_balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
-    ///    datastore: Map::default(),
+    ///    datastore: BTreeMap::default(),
     /// };
     /// let mut ledger_changes = LedgerChanges::default();
     /// ledger_changes.0.insert(
@@ -130,6 +131,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// use massa_models::{Address, prehash::Map, Amount, Slot};
     /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
     /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
     /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
     ///
@@ -155,7 +157,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// let ledger_entry = LedgerEntryUpdate {
     ///    parallel_balance: SetOrKeep::Set(amount),
     ///    bytecode: SetOrKeep::Set(bytecode),
-    ///    datastore: Map::default(),
+    ///    datastore: BTreeMap::default(),
     /// };
     /// let mut ledger_changes = LedgerChanges::default();
     /// ledger_changes.0.insert(

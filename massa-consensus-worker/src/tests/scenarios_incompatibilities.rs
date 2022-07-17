@@ -4,14 +4,14 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::{BlockId, Slot};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use serial_test::serial;
 use std::collections::{HashSet, VecDeque};
 
 #[tokio::test]
 #[serial]
 async fn test_thread_incompatibility() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 200.into(),
         future_block_processing_max_periods: 50,
@@ -37,7 +37,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -48,7 +48,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -59,7 +59,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -99,7 +99,7 @@ async fn test_thread_incompatibility() {
                     parents.clone(),
                     true,
                     false,
-                    staking_keys[0],
+                    &staking_keys[0],
                 )
                 .await;
                 current_period += 1;
@@ -120,18 +120,18 @@ async fn test_thread_incompatibility() {
             let mut parents = vec![status.best_parents[0].0, hash_2];
             let mut current_period = 8;
             for _ in 0..30 {
-                let (hash, b, _) = create_block(
+                let b = create_block(
                     &cfg,
                     Slot::new(current_period, 0),
                     parents.clone(),
-                    staking_keys[0],
+                    &staking_keys[0],
                 );
                 current_period += 1;
-                parents[0] = hash;
-                protocol_controller.receive_block(b).await;
+                parents[0] = b.id;
+                protocol_controller.receive_block(b.clone()).await;
 
                 // Note: higher timeout required.
-                validate_propagate_block_in_list(&mut protocol_controller, &vec![hash], 5000).await;
+                validate_propagate_block_in_list(&mut protocol_controller, &vec![b.id], 5000).await;
             }
 
             let status = consensus_command_sender
@@ -150,7 +150,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 false,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -167,7 +167,7 @@ async fn test_thread_incompatibility() {
 #[tokio::test]
 #[serial]
 async fn test_grandpa_incompatibility() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 200.into(),
         future_block_processing_max_periods: 50,
@@ -190,7 +190,7 @@ async fn test_grandpa_incompatibility() {
                 vec![genesis[0], genesis[1]],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -201,7 +201,7 @@ async fn test_grandpa_incompatibility() {
                 vec![genesis[0], genesis[1]],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -212,7 +212,7 @@ async fn test_grandpa_incompatibility() {
                 vec![hash_1, genesis[1]],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -223,7 +223,7 @@ async fn test_grandpa_incompatibility() {
                 vec![genesis[0], hash_2],
                 true,
                 false,
-                staking_keys[0],
+                &staking_keys[0],
             )
             .await;
 
@@ -266,7 +266,7 @@ async fn test_grandpa_incompatibility() {
                     status.best_parents.iter().map(|(b, _p)| *b).collect(),
                     true,
                     false,
-                    staking_keys[0],
+                    &staking_keys[0],
                 )
                 .await;
 

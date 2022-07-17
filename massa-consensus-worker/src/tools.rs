@@ -9,7 +9,7 @@ use massa_consensus_exports::{
 };
 use massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
 use massa_models::{constants::CHANNEL_SIZE, prehash::Map, Address};
-use massa_signature::{PrivateKey, PublicKey};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
@@ -28,7 +28,7 @@ pub async fn start_consensus_controller(
     storage: Storage,
     clock_compensation: i64,
     password: String,
-    staking_keys: Map<Address, (PublicKey, PrivateKey)>,
+    staking_keys: Map<Address, KeyPair>,
 ) -> Result<(
     ConsensusCommandSender,
     ConsensusEventReceiver,

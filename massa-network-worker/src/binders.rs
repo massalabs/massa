@@ -1,11 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! `Flexbuffer` layer between raw data and our objects.
-use super::messages::{
-    deserialize_message_with_optional_serialized_object, Message, SerializedForm,
-};
+use super::messages::Message;
 use async_speed_limit::{clock::StandardClock, Limiter, Resource};
-use massa_models::{with_serialization_context, DeserializeMinBEInt, SerializeMinBEInt};
+use massa_models::{
+    with_serialization_context, DeserializeCompact, DeserializeMinBEInt, SerializeMinBEInt,
+};
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -93,9 +93,7 @@ impl ReadBinder {
     /// or = 0 if there is no more data.
     /// We can't use `read_exact` and similar because they are not cancel-safe:
     /// `https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2`
-    pub async fn next(
-        &mut self,
-    ) -> Result<Option<(u64, Message, Option<SerializedForm>)>, NetworkError> {
+    pub async fn next(&mut self) -> Result<Option<(u64, Message)>, NetworkError> {
         let max_message_size = with_serialization_context(|context| context.max_message_size);
 
         // check if we are in the process of reading the message length
@@ -159,8 +157,7 @@ impl ReadBinder {
                 }
             }
         }
-        // deserialize the message
-        let (res_msg, serialized) = deserialize_message_with_optional_serialized_object(&self.buf)?;
+        let (res_msg, _) = Message::from_bytes_compact(&self.buf)?;
 
         // now the message readout is over, we reset the state to start reading the next message's size field again at the next run
         self.cursor = 0;
@@ -172,6 +169,6 @@ impl ReadBinder {
         // update sequence numbers and return the deserialized message
         let res_index = self.message_index;
         self.message_index += 1;
-        Ok(Some((res_index, res_msg, serialized)))
+        Ok(Some((res_index, res_msg)))
     }
 }

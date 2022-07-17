@@ -5,18 +5,17 @@ use massa_graph::{
     settings::GraphConfig, BlockGraph, BootstrapableGraph,
 };
 use massa_hash::Hash;
-use massa_models::signed::Signable;
 use massa_models::{
     active_block::ActiveBlock,
     clique::Clique,
     init_serialization_context,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     prehash::{Map, Set},
-    signed::Signed,
-    Address, Block, BlockHeader, BlockId, DeserializeCompact, SerializeCompact, Slot,
+    wrapped::WrappedContent,
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
+    DeserializeCompact, Endorsement, EndorsementSerializer, SerializeCompact, Slot, WrappedBlock,
 };
-use massa_models::{Amount, Endorsement};
-use massa_signature::{generate_random_private_key, PublicKey};
+use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use serial_test::serial;
 use std::str::FromStr;
@@ -25,47 +24,36 @@ use tracing::warn;
 
 /// the data input to create the public keys was generated using the secp256k1 curve
 /// a test using this function is a regression test not an implementation test
-fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
-    let pk = generate_random_private_key();
-    let block = Block {
-        header: Signed::new_signed(
-            BlockHeader {
-                creator: PublicKey::from_bs58_check(
-                    "2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA",
-                )
-                .unwrap(),
-                operation_merkle_root: Hash::compute_from(&Vec::new()),
-                parents: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
-                slot: Slot::new(1, 0),
-                endorsements: vec![
-                    Signed::new_signed(
+fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
+    let keypair = KeyPair::generate();
+    let block = Block::new_wrapped(
+        Block {
+            header: BlockHeader::new_wrapped(
+                BlockHeader {
+                    operation_merkle_root: Hash::compute_from(&Vec::new()),
+                    parents: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
+                    slot: Slot::new(1, 0),
+                    endorsements: vec![Endorsement::new_wrapped(
                         Endorsement {
-                            sender_public_key: PublicKey::from_bs58_check(
-                                "2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA",
-                            )
-                            .unwrap(),
                             endorsed_block: get_dummy_block_id("parent1"),
                             index: 0,
                             slot: Slot::new(1, 0),
                         },
-                        &pk,
+                        EndorsementSerializer::new(),
+                        &keypair,
                     )
-                    .unwrap()
-                    .1,
-                ],
-            },
-            &pk,
-        )
-        .unwrap()
-        .1,
-        operations: vec![],
-    };
-
-    let block_id = block
-        .header
-        .content
-        .compute_id()
-        .expect("Fail to calculate block id");
+                    .unwrap()],
+                },
+                BlockHeaderSerializer::new(),
+                &keypair,
+            )
+            .unwrap(),
+            operations: vec![],
+        },
+        BlockSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
 
     (
         block.clone(),
@@ -81,8 +69,8 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
             ]
             .into_iter()
             .collect(),
-            block,
-            block_id,
+            block: block.clone(),
+            block_id: block.id,
             children: vec![vec![
                 (get_dummy_block_id("child11"), 31),
                 (get_dummy_block_id("child11"), 31),
@@ -141,52 +129,35 @@ pub async fn test_get_ledger_at_parents() {
     init_serialization_context(massa_models::SerializationContext::default());
     let thread_count: u8 = 2;
     let storage: Storage = Default::default();
-    let (block, export_active_block): (Block, ExportActiveBlock) = get_export_active_test_block();
-    let block_id = block
-        .header
-        .content
-        .compute_id()
-        .expect("Fail to calculate block id");
-    let block_serialized = block.to_bytes_compact().expect("Fail to serialize block");
-    storage.store_block(block_id, block, block_serialized);
+    let (block, export_active_block): (WrappedBlock, ExportActiveBlock) =
+        get_export_active_test_block();
+    storage.store_block(block.clone());
     warn!("Store block default!");
     let active_block: ActiveBlock = ActiveBlock::try_from(export_active_block).expect(&format!(
         "Fail to convert block (id: {}) from ExportActiveBlock to ActiveBlock",
-        block_id
+        block.id
     ));
     let ledger_file = generate_ledger_file(&Map::default());
     let mut cfg = ConsensusConfig::from(ledger_file.path());
     cfg.thread_count = thread_count;
     cfg.block_reward = Amount::from_str("1").unwrap();
-    // to generate address and public keys
-    /*        let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-
-    let add = Address::from_public_key(&public_key);
-
-    println!(
-        "public key:{}, address:{}, th:{}",
-        public_key.to_bs58_check(),
-        add.to_bs58_check(),
-        add.get_thread(thread_count)
-    ); */
 
     // define addresses use for the test
     let pubkey_a =
-        PublicKey::from_bs58_check("2Bnffv4cGZ5XVAYdV4kiC5L9Vu3f3NSyssJJswdfXYB93iJQrj").unwrap();
+        PublicKey::from_str("P12th2PQFr35aw9K1AfnbpiuKopWCwwsPMoEBeoCWGXrcyt9Yyk8").unwrap();
     let address_a = Address::from_public_key(&pubkey_a);
     assert_eq!(0, address_a.get_thread(thread_count));
 
     let pubkey_b =
-        PublicKey::from_bs58_check("2DTtxCs9xGeX9kZgc8BjosCmCxkKQuxx1a7KTxWxm68sgAh1pt").unwrap();
+        PublicKey::from_str("P12CVCDV3hitAzh6ZQrSCykQDbC4X3ARtTcu8Ls1iwha6z7BWB9d").unwrap();
     let address_b = Address::from_public_key(&pubkey_b);
     assert_eq!(1, address_b.get_thread(thread_count));
 
     let address_c =
-        Address::from_bs58_check("2cABaQpb4fgYjGE7z2TnbQ2DePsyh9KwwPbodS7fD9Pft9uS1p").unwrap();
+        Address::from_str("A12DuJUpZjGot6PBZuTQidYi8MP6zWiUrzXREkwUbA3GtgWz3zHm").unwrap();
     assert_eq!(1, address_c.get_thread(thread_count));
     let address_d =
-        Address::from_bs58_check("21bU2xruH7bFzfcUhJ6SGjnLmC9cMt1kxzqFr11eV58uj7Ui8h").unwrap();
+        Address::from_str("A12qMj3j4V5EwAL6zA7drWu3nAktM26dBatxv3UYz4pzJ3GkNDL5").unwrap();
     assert_eq!(1, address_d.get_thread(thread_count));
 
     let graph_cfg = GraphConfig::from(&cfg);
@@ -214,7 +185,7 @@ pub async fn test_get_ledger_at_parents() {
         roll_updates: Default::default(),
         production_events: vec![],
     };
-    let block: Block = {
+    let block: WrappedBlock = {
         let block_locked = storage
             .retrieve_block(&active_block.block_id)
             .expect(&format!(
@@ -222,7 +193,7 @@ pub async fn test_get_ledger_at_parents() {
                 active_block.block_id
             ));
         let stored_block = block_locked.read();
-        stored_block.block.clone()
+        stored_block.clone()
     };
     // update ledger with initial content.
     //   Thread 0  [at the output of block p0t0]:
@@ -263,16 +234,13 @@ pub async fn test_get_ledger_at_parents() {
         .unwrap();
 
     let mut block_p1t0 = block.clone();
-    block_p1t0.header.content.creator = pubkey_a;
-    block_p1t0.header.content.slot = Slot::new(1, 0);
-
+    block_p1t0.content.header.creator_public_key = pubkey_a;
+    block_p1t0.content.header.content.slot = Slot::new(1, 0);
     let block_id = get_dummy_block_id("active_block_p1t0");
+    block_p1t0.id = block_id;
     active_block_p1t0.block_id = block_id;
-    let block_serialized = block_p1t0
-        .to_bytes_compact()
-        .expect("Fail to serialize block");
     warn!("Store active_block_p1t0!");
-    storage.store_block(block_id, block_p1t0, block_serialized);
+    storage.store_block(block_p1t0);
 
     // block p1t1 [FINAL]: creator B, parents [p0t0, p0t1], operations:
     //   B -> A : 128, fee 64
@@ -304,16 +272,13 @@ pub async fn test_get_ledger_at_parents() {
         .unwrap();
 
     let mut block_p1t1 = block.clone();
-    block_p1t1.header.content.creator = pubkey_b;
-    block_p1t1.header.content.slot = Slot::new(1, 1);
-
+    block_p1t1.content.header.creator_public_key = pubkey_b;
+    block_p1t1.content.header.content.slot = Slot::new(1, 1);
     let block_id = get_dummy_block_id("active_block_p1t1");
+    block_p1t1.id = block_id;
     active_block_p1t1.block_id = block_id;
-    let block_serialized = block_p1t1
-        .to_bytes_compact()
-        .expect("Fail to serialize block");
     warn!("Store active_block_p1t1!");
-    storage.store_block(block_id, block_p1t1, block_serialized);
+    storage.store_block(block_p1t1);
 
     // block p2t0 [NON-FINAL]: creator A, parents [p1t0, p0t1], operations:
     //   A -> A : 512, fee 1024
@@ -337,16 +302,14 @@ pub async fn test_get_ledger_at_parents() {
         .unwrap();
 
     let mut block_p2t0 = block.clone();
-    block_p2t0.header.content.creator = pubkey_a;
-    block_p2t0.header.content.slot = Slot::new(2, 0);
+    block_p2t0.content.header.creator_public_key = pubkey_a;
+    block_p2t0.content.header.content.slot = Slot::new(2, 0);
 
     let block_id = get_dummy_block_id("active_block_p2t0");
+    block_p2t0.id = block_id;
     active_block_p2t0.block_id = block_id;
-    let block_serialized = block_p2t0
-        .to_bytes_compact()
-        .expect("Fail to serialize block");
     warn!("Store active_block_p2t0!");
-    storage.store_block(block_id, block_p2t0, block_serialized);
+    storage.store_block(block_p2t0);
 
     // block p2t1 [FINAL]: creator B, parents [p1t0, p1t1] operations:
     //   B -> A : 10, fee 1
@@ -380,16 +343,14 @@ pub async fn test_get_ledger_at_parents() {
         .unwrap();
 
     let mut block_p2t1 = block.clone();
-    block_p2t1.header.content.creator = pubkey_b;
-    block_p2t1.header.content.slot = Slot::new(2, 1);
+    block_p2t1.content.header.creator_public_key = pubkey_b;
+    block_p2t1.content.header.content.slot = Slot::new(2, 1);
 
     let block_id = get_dummy_block_id("active_block_p2t1");
+    block_p2t1.id = block_id;
     active_block_p2t1.block_id = block_id;
-    let block_serialized = block_p2t1
-        .to_bytes_compact()
-        .expect("Fail to serialize block");
     warn!("Store active_block_p2t1!");
-    storage.store_block(block_id, block_p2t1, block_serialized);
+    storage.store_block(block_p2t1);
 
     // block p3t0 [NON-FINAL]: creator A, parents [p2t0, p1t1] operations:
     //   A -> C : 2048, fee 4096
@@ -423,15 +384,13 @@ pub async fn test_get_ledger_at_parents() {
         .unwrap();
 
     let mut block_p3t0 = block.clone();
-    block_p3t0.header.content.creator = pubkey_a;
-    block_p3t0.header.content.slot = Slot::new(3, 0);
+    block_p3t0.content.header.creator_public_key = pubkey_a;
+    block_p3t0.content.header.content.slot = Slot::new(3, 0);
     let block_id = get_dummy_block_id("active_block_p3t0");
+    block_p3t0.id = block_id;
     active_block_p3t0.block_id = block_id;
-    let block_serialized = block_p3t0
-        .to_bytes_compact()
-        .expect("Fail to serialize block");
     warn!("Store active_block_p3t0!");
-    storage.store_block(block_id, block_p3t0, block_serialized);
+    storage.store_block(block_p3t0);
 
     // block p3t1 [NON-FINAL]: creator B, parents [p2t0, p2t1] operations:
     //   B -> A : 100, fee 10
@@ -465,16 +424,14 @@ pub async fn test_get_ledger_at_parents() {
         .unwrap();
 
     let mut block_p3t1 = block.clone();
-    block_p3t1.header.content.creator = pubkey_b;
-    block_p3t1.header.content.slot = Slot::new(3, 1);
+    block_p3t1.content.header.creator_public_key = pubkey_b;
+    block_p3t1.content.header.content.slot = Slot::new(3, 1);
 
     let block_id = get_dummy_block_id("active_block_p3t1");
     active_block_p3t1.block_id = block_id;
-    let block_serialized = block_p3t1
-        .to_bytes_compact()
-        .expect("Fail to serialize block");
+    block_p3t1.id = block_id;
     warn!("Store active_block_p3t1!");
-    storage.store_block(block_id, block_p3t1, block_serialized);
+    storage.store_block(block_p3t1);
 
     let export_graph = BootstrapableGraph {
         /// Map of active blocks, were blocks are in their exported version.
@@ -636,11 +593,10 @@ fn test_bootsrapable_graph_serialize_compact() {
 
     //let storage: Storage = Default::default();
 
-    let (block, active_block) = get_export_active_test_block();
+    let (_, active_block) = get_export_active_test_block();
 
     //storage.store_block(block.header.content.compute_id().expect("Fail to calculate block id."), block, block.to_bytes_compact().expect("Fail to serialize block"));
 
-    println!("{:?}", block);
     let b1_id = get_dummy_block_id("active11");
     let graph = BootstrapableGraph {
         /// Map of active blocks, were blocks are in their exported version.
@@ -704,14 +660,8 @@ fn test_bootsrapable_graph_serialize_compact() {
 
     assert_eq!(bytes.len(), cursor);
     assert_eq!(
-        graph.active_blocks[&b1_id]
-            .block
-            .to_bytes_compact()
-            .unwrap(),
-        new_graph.active_blocks[&b1_id]
-            .block
-            .to_bytes_compact()
-            .unwrap()
+        graph.active_blocks[&b1_id].block.serialized_data,
+        new_graph.active_blocks[&b1_id].block.serialized_data
     );
     assert_eq!(graph.best_parents[0], new_graph.best_parents[0]);
     assert_eq!(graph.best_parents[1], new_graph.best_parents[1]);

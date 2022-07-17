@@ -11,8 +11,8 @@ use massa_models::{
     constants::CHANNEL_SIZE,
     prehash::{Map, Set},
     stats::PoolStats,
-    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, SignedEndorsement,
-    SignedOperation, Slot,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, Slot, WrappedEndorsement,
+    WrappedOperation,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use massa_storage::Storage;
@@ -79,7 +79,7 @@ impl PoolCommandSender {
     /// add operations to pool
     pub async fn add_operations(
         &mut self,
-        operations: Map<OperationId, SignedOperation>,
+        operations: Map<OperationId, WrappedOperation>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_operations", { "ops": operations });
         self.0
@@ -143,14 +143,14 @@ impl PoolCommandSender {
     }
 
     /// Returns a batch of operations ordered from highest to lowest rentability
-    /// Return value: vector of `(OperationId, Operation, operation_size: u64)`
+    /// Return value: vector of `(Operation, operation_size: u64)`
     pub async fn send_get_operations_announcement(
         &mut self,
         target_slot: Slot,
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-    ) -> Result<Vec<(OperationId, SignedOperation, u64)>, PoolError> {
+    ) -> Result<Vec<(WrappedOperation, u64)>, PoolError> {
         massa_trace!("pool.command_sender.get_operation_batch", {
             "target_slot": target_slot
         });
@@ -183,7 +183,7 @@ impl PoolCommandSender {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<(EndorsementId, SignedEndorsement)>, PoolError> {
+    ) -> Result<Vec<WrappedEndorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements", {
             "target_slot": target_slot
         });
@@ -211,7 +211,7 @@ impl PoolCommandSender {
     pub async fn get_operations(
         &mut self,
         operation_ids: Set<OperationId>,
-    ) -> Result<Map<OperationId, SignedOperation>, PoolError> {
+    ) -> Result<Map<OperationId, WrappedOperation>, PoolError> {
         massa_trace!("pool.command_sender.get_operations", {
             "operation_ids": operation_ids
         });
@@ -266,7 +266,7 @@ impl PoolCommandSender {
     /// add endorsements to pool
     pub async fn add_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, SignedEndorsement>,
+        endorsements: Map<EndorsementId, WrappedEndorsement>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_endorsements", {
             "endorsements": endorsements
@@ -281,7 +281,7 @@ impl PoolCommandSender {
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, SignedEndorsement>, PoolError> {
+    ) -> Result<Map<EndorsementId, WrappedEndorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements_by_address", {
             "address": address
         });
@@ -309,7 +309,7 @@ impl PoolCommandSender {
     pub async fn get_endorsements_by_id(
         &self,
         endorsements: Set<EndorsementId>,
-    ) -> Result<Map<EndorsementId, SignedEndorsement>, PoolError> {
+    ) -> Result<Map<EndorsementId, WrappedEndorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements_by_id", {
             "endorsements": endorsements
         });

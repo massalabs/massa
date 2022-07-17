@@ -12,9 +12,9 @@ num = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.15", features = ["full"] }
+tokio = { version = "1.19", features = ["full"] }
 tracing = "0.1"
-tempfile = { version = "3.2", optional = true }    # use with testing feature
+tempfile = { version = "3.3", optional = true }    # use with testing feature
 # custom modules
 massa_cipher = { path = "../massa-cipher" }
 massa_execution_exports = { path = "../massa-execution-exports" }

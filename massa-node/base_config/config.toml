@@ -69,7 +69,7 @@
     # number of cycles cached by the proof-of-stake selection system
     pos_draw_cached_cycles = 10
 
-    # path to your staking private keys (not encrypted)
+    # path to your staking keys (not encrypted)
     staking_keys_path = "config/staking_keys.json"
     # considered timespan for stats info
     stats_timespan = 60000
@@ -138,8 +138,8 @@
     message_timeout = 5000
     # interval in milliseconds for asking peer lists from peers we are connected to
     ask_peer_list_interval = 30000
-    # path to the node private key (not the staking key)
-    private_key_file = "config/node_privkey.key"
+    # path to the node key (not the staking key)
+    keypair_file = "config/node_privkey.key"
     # max number of asked blocks per message
     max_ask_blocks_per_message = 128
     # max number of operations per message
@@ -169,14 +169,14 @@
 [bootstrap]
     # list of bootstrap (ip, node id)
     bootstrap_list = [
-        ["149.202.86.103:31245", "2Fyi8WsZQR8QibNh5pBSdAJ8tLLo5ryVizjbipvyHAuAdRSHgm"],
-        ["149.202.89.125:31245", "2Zr27YCr8MaHTC41ZLWVquyrM8cbMt8jJi6fttHQSnMxL3g1uD"],
-        ["158.69.120.215:31245", "2Hujf2rHBquDrhixnw3dQTHaZMGp5xJq4q766dTRwy6v224CAi"],
-        ["158.69.23.120:31245", "CzhbcUMKLmnkg9vzZUHVH6buzE22oToDxW7nndnYyETSh2fYn"],
-        ["198.27.74.5:31245", "wQbN87JXJysgCLMHmHCfwQPivqj4WUTViB2NN2WBKZ2U4oLbm"],
-        ["198.27.74.52:31245", "FshA2S8YhpHBXkuFeKeq8tVF34FtYSJ3wk2LSxgvMZYkDmY23"],
-        ["54.36.174.177:31245", "xzGjgD7BBxTJZYo4p522TQzTkMUbKF3cVgfvuwjVdzo4XJgDM"],
-        ["51.75.60.228:31245", "2jSHRWDv7S1RR4TuQLYHPw4mEawQVBxVARbgoZByH4s7cYrnVN"]
+        ["149.202.86.103:31245", "P12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j"],
+        ["149.202.89.125:31245", "P12vxrYTQzS5TRzxLfFNYxn6PyEsphKWkdqx2mVfEuvJ9sPF43uq"],
+        ["158.69.120.215:31245", "P12rPDBmpnpnbECeAKDjbmeR19dYjAUwyLzsa8wmYJnkXLCNF28E"],
+        ["158.69.23.120:31245", "P1XxexKa3XNzvmakNmPawqFrE9Z2NFhfq1AhvV1Qx4zXq5p1Bp9"],
+        ["198.27.74.5:31245", "P1qxuqNnx9kyAMYxUfsYiv2gQd5viiBX126SzzexEdbbWd2vQKu"],
+        ["198.27.74.52:31245", "P1hdgsVsd4zkNp8cF1rdqqG6JPRQasAmx12QgJaJHBHFU1fRHEH"],
+        ["54.36.174.177:31245", "P1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
+        ["51.75.60.228:31245", "P13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"]
     ]
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
@@ -187,9 +187,9 @@
     # if ping is too high bootstrap will be interrupted after max_ping milliseconds
     max_ping = 10000
     # timeout for incoming message readout
-    read_timeout = 10000
+    read_timeout = 100000
     # timeout for message sending
-    write_timeout = 10000
+    write_timeout = 100000
     # timeout for incoming error message readout
     read_error_timeout = 200
     # timeout for message error sending

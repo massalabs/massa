@@ -1,24 +1,25 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::checked_operations::CheckedOperations;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::SerializeCompact;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
-    operation::{OperationIds, Operations},
+    operation::{OperationIds, OperationPrefixId, Operations},
     prehash::{BuildMap, Map, Set},
-    signed::Signable,
-    Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader,
+    BlockHeaderSerializer, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
 };
+use massa_models::{EndorsementSerializer, OperationSerializer, WrappedBlock};
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
+use massa_storage::Storage;
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
 use tokio::{
@@ -29,7 +30,7 @@ use tokio::{
 use tracing::{debug, error, info, warn};
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
-/// - generate public / private key
+/// - generate keypair
 /// - create `protocol_command/protocol_event` channels
 /// - launch `protocol_controller_fn` in an other task
 ///
@@ -44,6 +45,7 @@ pub async fn start_protocol_controller(
     max_block_gas: u64,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
+    storage: Storage,
 ) -> Result<
     (
         ProtocolCommandSender,
@@ -73,6 +75,7 @@ pub async fn start_protocol_controller(
                 controller_command_rx,
                 controller_manager_rx,
             },
+            storage,
         )
         .run_loop()
         .await;
@@ -139,13 +142,15 @@ pub struct ProtocolWorker {
     /// List of processed endorsements
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
-    pub(crate) checked_operations: OperationIds,
+    pub(crate) checked_operations: CheckedOperations,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
     /// List of ids of operations that we asked to the nodes
-    pub(crate) asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
+    pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
     pub(crate) op_batch_buffer: OperationBatchBuffer,
+    /// Shared storage.
+    pub(crate) storage: Storage,
 }
 
 /// channels used by the protocol worker
@@ -170,7 +175,6 @@ impl ProtocolWorker {
     /// # Arguments
     /// * `protocol_settings`: protocol configuration.
     /// * `max_block_gas`: max gas per block
-    /// * `self_node_id`: our private key.
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.
@@ -186,6 +190,7 @@ impl ProtocolWorker {
             controller_command_rx,
             controller_manager_rx,
         }: ProtocolWorkerChannels,
+        storage: Storage,
     ) -> ProtocolWorker {
         ProtocolWorker {
             protocol_settings,
@@ -205,6 +210,7 @@ impl ProtocolWorker {
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 protocol_settings.operation_batch_buffer_capacity,
             ),
+            storage,
         }
     }
 
@@ -503,8 +509,9 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
-                self.checked_operations
-                    .extend(operation_ids.iter().cloned());
+                for id in operation_ids.iter() {
+                    self.checked_operations.insert(id);
+                }
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_ops: OperationIds = operation_ids
                         .iter()
@@ -517,7 +524,10 @@ impl ProtocolWorker {
                     );
                     if !new_ops.is_empty() {
                         self.network_command_sender
-                            .send_operations_batch(*node, new_ops)
+                            .send_operations_batch(
+                                *node,
+                                new_ops.iter().map(|id| id.into_prefix()).collect(),
+                            )
                             .await?;
                     }
                 }
@@ -528,7 +538,7 @@ impl ProtocolWorker {
                     { "endorsements": endorsements }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: Map<EndorsementId, SignedEndorsement> = endorsements
+                    let new_endorsements: Map<EndorsementId, WrappedEndorsement> = endorsements
                         .iter()
                         .filter(|(id, _)| !node_info.knows_endorsement(id))
                         .map(|(k, v)| (*k, v.clone()))
@@ -547,10 +557,6 @@ impl ProtocolWorker {
                             .await?;
                     }
                 }
-            }
-            ProtocolCommand::GetOperationsResults((node_id, operations)) => {
-                self.on_operation_results_from_pool(node_id, operations)
-                    .await?;
             }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
@@ -787,13 +793,12 @@ impl ProtocolWorker {
     /// - Block matches that of the block.
     async fn note_header_from_node(
         &mut self,
-        header: &SignedHeader,
+        header: &WrappedHeader,
         source_node_id: &NodeId,
     ) -> Result<Option<(BlockId, Map<EndorsementId, u32>, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
-
         massa_trace!("protocol.protocol_worker.check_header.start", {
             "header": header
         });
@@ -808,13 +813,7 @@ impl ProtocolWorker {
         }
 
         // compute ID
-        let block_id = match header.content.compute_id() {
-            Ok(id) => id,
-            Err(err) => {
-                massa_trace!("protocol.protocol_worker.check_header.err_id", { "header": header, "err": format!("{}", err)});
-                return Ok(None);
-            }
-        };
+        let block_id = header.id;
 
         // check if this header was already verified
         let now = Instant::now();
@@ -870,7 +869,9 @@ impl ProtocolWorker {
         }
 
         // check header signature
-        if let Err(err) = header.verify_signature(&header.content.creator) {
+        if let Err(err) =
+            header.verify_signature(BlockHeaderSerializer::new(), &header.creator_public_key)
+        {
             massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{}", err)});
             return Ok(None);
         };
@@ -965,7 +966,7 @@ impl ProtocolWorker {
     /// - Check root hash.
     async fn note_block_from_node(
         &mut self,
-        block: &Block,
+        block: &WrappedBlock,
         source_node_id: &NodeId,
     ) -> Result<
         Option<(
@@ -979,9 +980,9 @@ impl ProtocolWorker {
 
         let (header, operations, operation_merkle_root) = {
             (
-                block.header.clone(),
-                block.operations.clone(),
-                block.header.content.operation_merkle_root,
+                block.content.header.clone(),
+                block.content.operations.clone(),
+                block.content.header.content.operation_merkle_root,
             )
         };
 
@@ -996,7 +997,7 @@ impl ProtocolWorker {
         // Perform general checks on the operations, note them into caches and send them to pool
         // but do not propagate as they are already propagating within a block
         let (seen_ops, received_operations_ids, total_gas) = self
-            .note_operations_from_node(operations.clone(), source_node_id, false, None)
+            .note_operations_from_node(operations.clone(), source_node_id, false)
             .await?;
         if total_gas > self.max_block_gas {
             // Gas usage over limit => block invalid
@@ -1048,7 +1049,6 @@ impl ProtocolWorker {
         operations: Operations,
         source_node_id: &NodeId,
         propagate: bool,
-        serialized: Option<Vec<Vec<u8>>>,
     ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, u64), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let mut total_gas = 0u64;
@@ -1056,23 +1056,8 @@ impl ProtocolWorker {
         let mut seen_ops = vec![];
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
-
-        // Ensure we have a Vec<Vec<u8>> to zip with the Operations.
-        let serialized = if let Some(serialized) = serialized {
-            serialized
-        } else {
-            let serialized: Result<Vec<Vec<u8>>, _> =
-                operations.iter().map(|op| op.to_bytes_compact()).collect();
-
-            serialized?
-        };
-
-        for ((idx, operation), serialized) in operations
-            .into_iter()
-            .enumerate()
-            .zip(serialized.into_iter())
-        {
-            let operation_id = operation.content.compute_id()?;
+        for (idx, operation) in operations.into_iter().enumerate() {
+            let operation_id = operation.id;
             seen_ops.push(operation_id);
 
             // Note: we always want to update the node's view of known operations,
@@ -1080,14 +1065,15 @@ impl ProtocolWorker {
             received_ids.insert(operation_id, (idx, operation.content.expire_period));
 
             // Accumulate gas
-            total_gas = total_gas.saturating_add(operation.content.get_gas_usage());
+            total_gas = total_gas.saturating_add(operation.get_gas_usage());
 
             // Check operation signature only if not already checked.
-            if self.checked_operations.insert(operation_id) {
+            if self.checked_operations.insert(&operation_id) {
                 // check signature
-                operation.verify_signature(&operation.content.sender_public_key)?;
+                operation
+                    .verify_signature(OperationSerializer::new(), &operation.creator_public_key)?;
 
-                new_operations.insert(operation_id, (operation, serialized));
+                new_operations.insert(operation_id, operation);
             };
         }
 
@@ -1125,7 +1111,7 @@ impl ProtocolWorker {
     /// - Valid signature.
     async fn note_endorsements_from_node(
         &mut self,
-        endorsements: Vec<SignedEndorsement>,
+        endorsements: Vec<WrappedEndorsement>,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(Map<EndorsementId, u32>, bool), ProtocolError> {
@@ -1136,7 +1122,7 @@ impl ProtocolWorker {
         let mut new_endorsements = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut endorsement_ids = Map::default();
         for endorsement in endorsements.into_iter() {
-            let endorsement_id = endorsement.content.compute_id()?;
+            let endorsement_id = endorsement.id;
             if endorsement_ids
                 .insert(endorsement_id, endorsement.content.index)
                 .is_some()
@@ -1145,7 +1131,10 @@ impl ProtocolWorker {
             }
             // check endorsement signature if not already checked
             if self.checked_endorsements.insert(endorsement_id) {
-                endorsement.verify_signature(&endorsement.content.sender_public_key)?;
+                endorsement.verify_signature(
+                    EndorsementSerializer::new(),
+                    &endorsement.creator_public_key,
+                )?;
                 new_endorsements.insert(endorsement_id, endorsement);
             }
         }
@@ -1208,21 +1197,18 @@ impl ProtocolWorker {
             NetworkEvent::ReceivedBlock {
                 node: from_node_id,
                 block,
-                serialized,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
                 if let Some((block_id, operation_set, endorsement_ids)) =
                     self.note_block_from_node(&block, &from_node_id).await?
                 {
-                    let slot = block.header.content.slot;
+                    let slot = block.content.header.content.slot;
 
                     let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
                     set.insert(block_id);
                     self.stop_asking_blocks(set)?;
                     self.send_protocol_event(ProtocolEvent::ReceivedBlock {
-                        block_id,
                         block,
-                        serialized,
                         slot,
                         operation_set,
                         endorsement_ids,
@@ -1289,14 +1275,9 @@ impl ProtocolWorker {
                 }
                 self.update_ask_block(block_ask_timer).await?;
             }
-            NetworkEvent::ReceivedOperations {
-                node,
-                operations,
-                serialized,
-            } => {
+            NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
-                self.on_operations_received(node, operations, serialized)
-                    .await;
+                self.on_operations_received(node, operations).await;
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
@@ -1311,18 +1292,18 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperationAnnouncements {
                 node,
-                operation_ids,
+                operation_prefix_ids,
             } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_announcements", { "node": node, "operation_ids": operation_ids});
-                self.on_operations_announcements_received(operation_ids, node)
+                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_announcements", { "node": node, "operation_ids": operation_prefix_ids});
+                self.on_operations_announcements_received(operation_prefix_ids, node)
                     .await?;
             }
             NetworkEvent::ReceiveAskForOperations {
                 node,
-                operation_ids,
+                operation_prefix_ids,
             } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.receive_ask_for_operations", { "node": node, "operation_ids": operation_ids});
-                self.on_asked_operations_received(node, operation_ids)
+                massa_trace!("protocol.protocol_worker.on_network_event.receive_ask_for_operations", { "node": node, "operation_ids": operation_prefix_ids});
+                self.on_asked_operations_received(node, operation_prefix_ids)
                     .await?;
             }
         }

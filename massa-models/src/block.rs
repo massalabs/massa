@@ -1,20 +1,34 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
+use crate::constants::BLOCK_ID_SIZE_BYTES;
+use crate::node_configuration::default::ENDORSEMENT_COUNT;
+use crate::node_configuration::{MAX_BLOCK_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT};
+use crate::operation::OperationDeserializer;
 use crate::prehash::{Map, PreHashed, Set};
-use crate::signed::{Id, Signable, Signed};
+use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
-    array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
-    DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementId, ModelsError, Operation,
-    OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, SignedEndorsement,
-    SignedOperation, Slot,
+    Address, Endorsement, EndorsementDeserializer, EndorsementId, ModelsError, Operation,
+    OperationId, Slot, SlotDeserializer, SlotSerializer, WrappedEndorsement, WrappedOperation,
 };
-use massa_hash::Hash;
-use massa_hash::HASH_SIZE_BYTES;
-use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
+use massa_hash::{Hash, HashDeserializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+};
+use massa_signature::{KeyPair, PublicKey, Signature};
+use nom::branch::alt;
+use nom::bytes::complete::tag;
+use nom::error::context;
+use nom::multi::{count, length_count};
+use nom::sequence::{preceded, tuple};
+use nom::Parser;
+use nom::{
+    error::{ContextError, ParseError},
+    IResult,
+};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
+use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
 
 const BLOCK_ID_STRING_PREFIX: &str = "BLO";
@@ -28,6 +42,10 @@ impl PreHashed for BlockId {}
 impl Id for BlockId {
     fn new(hash: Hash) -> Self {
         BlockId(hash)
+    }
+
+    fn hash(&self) -> Hash {
+        self.0
     }
 }
 
@@ -106,34 +124,194 @@ impl BlockId {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     /// signed header
-    pub header: SignedHeader,
+    pub header: WrappedHeader,
     /// operations
-    pub operations: Vec<SignedOperation>,
+    pub operations: Vec<WrappedOperation>,
 }
 
-impl Block {
-    /// true if given operation is included in the block
-    /// may fail if computing an id of an operation in the block
-    pub fn contains_operation(&self, op: SignedOperation) -> Result<bool, ModelsError> {
-        let op_id = op.content.compute_id()?;
-        Ok(self.operations.iter().any(|o| {
-            o.content
-                .compute_id()
-                .map(|id| id == op_id)
-                .unwrap_or(false)
-        }))
+/// Wrapped Block
+pub type WrappedBlock = Wrapped<Block, BlockId>;
+
+impl WrappedContent for Block {
+    fn new_wrapped<SC: Serializer<Self>, U: Id>(
+        content: Self,
+        content_serializer: SC,
+        keypair: &KeyPair,
+    ) -> Result<Wrapped<Self, U>, ModelsError> {
+        let public_key = keypair.get_public_key();
+        let mut content_serialized = Vec::new();
+        content_serializer.serialize(&content, &mut content_serialized)?;
+        let creator_address = Address::from_public_key(&public_key);
+
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        Ok(Wrapped {
+            signature: content.header.signature,
+            creator_public_key: public_key,
+            creator_address,
+            thread: creator_address.get_thread(thread_count),
+            id: U::new(content.header.id.hash()),
+            content,
+            serialized_data: content_serialized,
+        })
     }
 
+    fn serialize(
+        _signature: &Signature,
+        _creator_public_key: &PublicKey,
+        serialized_content: &[u8],
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        buffer.extend(serialized_content);
+        Ok(())
+    }
+
+    fn deserialize<
+        'a,
+        E: ParseError<&'a [u8]> + ContextError<&'a [u8]>,
+        DC: Deserializer<Self>,
+        U: Id,
+    >(
+        _signature_deserializer: &massa_signature::SignatureDeserializer,
+        _creator_public_key_deserializer: &massa_signature::PublicKeyDeserializer,
+        content_deserializer: &DC,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Wrapped<Self, U>, E> {
+        let (rest, content) = content_deserializer.deserialize(buffer)?;
+        Ok((
+            rest,
+            Wrapped {
+                signature: content.header.signature,
+                creator_public_key: content.header.creator_public_key,
+                creator_address: content.header.creator_address,
+                thread: content.header.thread,
+                id: U::new(content.header.id.hash()),
+                content,
+                serialized_data: buffer[..buffer.len() - rest.len()].to_vec(),
+            },
+        ))
+    }
+}
+/// Serializer for `Block`
+pub struct BlockSerializer {
+    header_serializer: WrappedSerializer,
+    operation_serializer: WrappedSerializer,
+    u32_serializer: U32VarIntSerializer,
+}
+
+impl BlockSerializer {
+    /// Creates a new `BlockSerializer`
+    pub fn new() -> Self {
+        BlockSerializer {
+            header_serializer: WrappedSerializer::new(),
+            operation_serializer: WrappedSerializer::new(),
+            u32_serializer: U32VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Default for BlockSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<Block> for BlockSerializer {
+    fn serialize(&self, value: &Block, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.header_serializer.serialize(&value.header, buffer)?;
+        self.u32_serializer.serialize(
+            &value.operations.len().try_into().map_err(|err| {
+                SerializeError::NumberTooBig(format!("too many operations: {}", err))
+            })?,
+            buffer,
+        )?;
+        for operation in value.operations.iter() {
+            self.operation_serializer.serialize(operation, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Deserializer for `Block`
+pub struct BlockDeserializer {
+    header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
+    operation_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
+    u32_deserializer: U32VarIntDeserializer,
+}
+
+impl BlockDeserializer {
+    /// Creates a new `BlockDeserializer`
+    pub const fn new() -> Self {
+        BlockDeserializer {
+            header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
+            operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(MAX_OPERATIONS_PER_BLOCK),
+            ),
+        }
+    }
+}
+
+impl Default for BlockDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<Block> for BlockDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Block, E> {
+        context(
+            "Failed Block deserialization",
+            tuple((
+                context("Failed header deserialization", |input| {
+                    self.header_deserializer.deserialize(input)
+                }),
+                length_count(
+                    context("Failed length operation deserialization", |input| {
+                        self.u32_deserializer.deserialize(input)
+                    }),
+                    context("Failed operation deserialization", |input| {
+                        let (rest, operation) = self.operation_deserializer.deserialize(input)?;
+                        if buffer.len() - rest.len() > MAX_BLOCK_SIZE as usize {
+                            return Err(nom::Err::Error(ParseError::from_error_kind(
+                                input,
+                                nom::error::ErrorKind::TooLarge,
+                            )));
+                        }
+                        Ok((rest, operation))
+                    }),
+                ),
+            )),
+        )
+        .map(|(header, operations)| Block { header, operations })
+        .parse(buffer)
+    }
+}
+
+impl WrappedBlock {
     /// size in bytes of the whole block
-    pub fn bytes_count(&self) -> Result<u64, ModelsError> {
-        Ok(self.to_bytes_compact()?.len() as u64)
+    pub fn bytes_count(&self) -> u64 {
+        self.serialized_data.len() as u64
+    }
+
+    /// true if given operation is included in the block
+    /// may fail if computing an id of an operation in the block
+    pub fn contains_operation(&self, op: WrappedOperation) -> Result<bool, ModelsError> {
+        let op_id = op.id;
+        Ok(self.content.operations.iter().any(|o| op_id == o.id))
     }
 
     /// Retrieve roll involving addresses
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut roll_involved_addrs = Set::<Address>::default();
-        for op in self.operations.iter() {
-            roll_involved_addrs.extend(op.content.get_roll_involved_addresses()?);
+        for op in self.content.operations.iter() {
+            roll_involved_addrs.extend(op.get_roll_involved_addresses()?);
         }
         Ok(roll_involved_addrs)
     }
@@ -148,8 +326,8 @@ impl Block {
         operation_set
             .iter()
             .try_for_each::<_, Result<(), ModelsError>>(|(op_id, (op_idx, _op_expiry))| {
-                let op = &self.operations[*op_idx];
-                let addrs = op.content.get_ledger_involved_addresses();
+                let op = &self.content.operations[*op_idx];
+                let addrs = op.get_ledger_involved_addresses();
                 for ad in addrs.into_iter() {
                     if let Some(entry) = addresses_to_operations.get_mut(&ad) {
                         entry.insert(*op_id);
@@ -169,17 +347,18 @@ impl Block {
         &self,
     ) -> Result<Map<Address, Set<EndorsementId>>, ModelsError> {
         let mut res: Map<Address, Set<EndorsementId>> = Map::default();
-        self.header
+        self.content
+            .header
             .content
             .endorsements
             .iter()
             .try_for_each::<_, Result<(), ModelsError>>(|e| {
-                let address = Address::from_public_key(&e.content.sender_public_key);
+                let address = Address::from_public_key(&e.creator_public_key);
                 if let Some(old) = res.get_mut(&address) {
-                    old.insert(e.content.compute_id()?);
+                    old.insert(e.id);
                 } else {
                     let mut set = Set::<EndorsementId>::default();
-                    set.insert(e.content.compute_id()?);
+                    set.insert(e.id);
                     res.insert(address, set);
                 }
                 Ok(())
@@ -207,8 +386,6 @@ impl std::fmt::Display for Block {
 /// block header
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeader {
-    /// creator's public key
-    pub creator: PublicKey,
     /// slot
     pub slot: Slot,
     /// parents
@@ -216,27 +393,171 @@ pub struct BlockHeader {
     /// all operations hash
     pub operation_merkle_root: Hash,
     /// endorsements
-    pub endorsements: Vec<SignedEndorsement>,
+    pub endorsements: Vec<WrappedEndorsement>,
+}
+// NOTE: TODO
+// impl Signable<BlockId> for BlockHeader {
+//     fn get_signature_message(&self) -> Result<Hash, ModelsError> {
+//         let hash = self.compute_hash()?;
+//         let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];
+//         res[..SLOT_KEY_SIZE].copy_from_slice(&self.slot.to_bytes_key());
+//         res[SLOT_KEY_SIZE..].copy_from_slice(hash.to_bytes());
+//         // rehash for safety
+//         Ok(Hash::compute_from(&res))
+//     }
+// }
+
+/// wrapped header
+pub type WrappedHeader = Wrapped<BlockHeader, BlockId>;
+
+impl WrappedContent for BlockHeader {}
+
+/// Serializer for `BlockHeader`
+pub struct BlockHeaderSerializer {
+    slot_serializer: SlotSerializer,
+    endorsement_serializer: WrappedSerializer,
+    u32_serializer: U32VarIntSerializer,
 }
 
-impl Signable<BlockId> for BlockHeader {
-    fn get_signature_message(&self) -> Result<Hash, ModelsError> {
-        let hash = self.compute_hash()?;
-        let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];
-        res[..SLOT_KEY_SIZE].copy_from_slice(&self.slot.to_bytes_key());
-        res[SLOT_KEY_SIZE..].copy_from_slice(hash.to_bytes());
-        // rehash for safety
-        Ok(Hash::compute_from(&res))
+impl BlockHeaderSerializer {
+    /// Creates a new `BlockHeaderSerializer`
+    pub fn new() -> Self {
+        Self {
+            slot_serializer: SlotSerializer::new(),
+            endorsement_serializer: WrappedSerializer::new(),
+            u32_serializer: U32VarIntSerializer::new(),
+        }
     }
 }
 
-/// signed header
-pub type SignedHeader = Signed<BlockHeader, BlockId>;
+impl Default for BlockHeaderSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<BlockHeader> for BlockHeaderSerializer {
+    fn serialize(&self, value: &BlockHeader, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.slot_serializer.serialize(&value.slot, buffer)?;
+        // parents (note: there should be none if slot period=0)
+        if value.parents.is_empty() {
+            buffer.push(0);
+        } else {
+            buffer.push(1);
+        }
+        for parent_h in value.parents.iter() {
+            buffer.extend(parent_h.0.to_bytes());
+        }
+
+        // operations merkle root
+        buffer.extend(value.operation_merkle_root.to_bytes());
+
+        self.u32_serializer.serialize(
+            &value.endorsements.len().try_into().map_err(|err| {
+                SerializeError::GeneralError(format!("too many endorsements: {}", err))
+            })?,
+            buffer,
+        )?;
+        for endorsement in value.endorsements.iter() {
+            self.endorsement_serializer.serialize(endorsement, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+/// Deserializer for `BlockHeader`
+pub struct BlockHeaderDeserializer {
+    slot_deserializer: SlotDeserializer,
+    endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
+    u32_deserializer: U32VarIntDeserializer,
+    hash_deserializer: HashDeserializer,
+}
+
+impl BlockHeaderDeserializer {
+    /// Creates a new `BlockHeaderDeserializer`
+    pub const fn new() -> Self {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        Self {
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Excluded(thread_count)),
+            ),
+            endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
+                ENDORSEMENT_COUNT,
+            )),
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
+            hash_deserializer: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Default for BlockHeaderDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BlockHeader, E> {
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        context(
+            "Failed BlockHeader deserialization",
+            tuple((
+                context("Failed slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed parents deserialization",
+                    alt((
+                        preceded(tag(&[0]), |input| Ok((input, Vec::new()))),
+                        preceded(
+                            tag(&[1]),
+                            count(
+                                |input| {
+                                    self.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                },
+                                thread_count as usize,
+                            ),
+                        ),
+                    )),
+                ),
+                context("Failed operation_merkle_root", |input| {
+                    self.hash_deserializer.deserialize(input)
+                }),
+                context(
+                    "Failed endorsements deserialization",
+                    length_count(
+                        |input| self.u32_deserializer.deserialize(input),
+                        |input| self.endorsement_deserializer.deserialize(input),
+                    ),
+                ),
+            )),
+        )
+        .map(
+            |(slot, parents, operation_merkle_root, endorsements)| BlockHeader {
+                slot,
+                parents,
+                operation_merkle_root,
+                endorsements,
+            },
+        )
+        .parse(buffer)
+    }
+}
 
 impl std::fmt::Display for BlockHeader {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let pk = self.creator.to_string();
-        writeln!(f, "\tCreator: {}", pk)?;
         writeln!(
             f,
             "\t(period: {}, thread: {})",
@@ -254,18 +575,10 @@ impl std::fmt::Display for BlockHeader {
         writeln!(f, "\tEndorsements:")?;
         for ed in self.endorsements.iter() {
             writeln!(f, "\t\t-----")?;
-            writeln!(
-                f,
-                "\t\tId: {}",
-                ed.content.compute_id().map_err(|_| std::fmt::Error)?
-            )?;
+            writeln!(f, "\t\tId: {}", ed.id)?;
             writeln!(f, "\t\tIndex: {}", ed.content.index)?;
             writeln!(f, "\t\tEndorsed slot: {}", ed.content.slot)?;
-            writeln!(
-                f,
-                "\t\tEndorser's public key: {}",
-                ed.content.sender_public_key
-            )?;
+            writeln!(f, "\t\tEndorser's public key: {}", ed.creator_public_key)?;
             writeln!(f, "\t\tEndorsed block: {}", ed.content.endorsed_block)?;
             writeln!(f, "\t\tSignature: {}", ed.signature)?;
         }
@@ -276,263 +589,53 @@ impl std::fmt::Display for BlockHeader {
     }
 }
 
-/// Checks performed:
-/// - Validity of header.
-/// - Number of operations.
-/// - Validity of operations.
-impl SerializeCompact for Block {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        // header
-        res.extend(self.header.to_bytes_compact()?);
-
-        let max_block_operations =
-            with_serialization_context(|context| context.max_operations_per_block);
-
-        // operations
-        let operation_count: u32 =
-            self.operations.len().try_into().map_err(|err| {
-                ModelsError::SerializeError(format!("too many operations: {}", err))
-            })?;
-        res.extend(operation_count.to_be_bytes_min(max_block_operations)?);
-        for operation in self.operations.iter() {
-            res.extend(operation.to_bytes_compact()?);
-        }
-
-        Ok(res)
-    }
-}
-
-/// Checks performed:
-/// - Validity of header.
-/// - Size of block.
-/// - Operation count.
-/// - Validity of operation.
-impl DeserializeCompact for Block {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0usize;
-
-        let (max_block_size, max_block_operations) = with_serialization_context(|context| {
-            (context.max_block_size, context.max_operations_per_block)
-        });
-
-        // header
-        let (header, delta) =
-            Signed::<BlockHeader, BlockId>::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-        if cursor > (max_block_size as usize) {
-            return Err(ModelsError::DeserializeError("block is too large".into()));
-        }
-
-        // operations
-        let (operation_count, delta) =
-            u32::from_be_bytes_min(&buffer[cursor..], max_block_operations)?;
-        cursor += delta;
-        if cursor > (max_block_size as usize) {
-            return Err(ModelsError::DeserializeError("block is too large".into()));
-        }
-        let mut operations: Vec<SignedOperation> = Vec::with_capacity(operation_count as usize);
-        for _ in 0..(operation_count as usize) {
-            let (operation, delta) =
-                Signed::<Operation, OperationId>::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            if cursor > (max_block_size as usize) {
-                return Err(ModelsError::DeserializeError("block is too large".into()));
-            }
-            operations.push(operation);
-        }
-
-        Ok((Block { header, operations }, cursor))
-    }
-}
-
-impl BlockHeader {
-    /// compute hash from block header
-    pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
-        Ok(Hash::compute_from(&self.to_bytes_compact()?))
-    }
-}
-
-/// Checks performed:
-/// - Validity of slot.
-/// - Valid length of included endorsements.
-/// - Validity of included endorsements.
-impl SerializeCompact for BlockHeader {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        // creator public key
-        res.extend(&self.creator.to_bytes());
-
-        // slot
-        res.extend(self.slot.to_bytes_compact()?);
-
-        // parents (note: there should be none if slot period=0)
-        if self.parents.is_empty() {
-            res.push(0);
-        } else {
-            res.push(1);
-        }
-        for parent_h in self.parents.iter() {
-            res.extend(parent_h.0.to_bytes());
-        }
-
-        // operations merkle root
-        res.extend(self.operation_merkle_root.to_bytes());
-
-        // endorsements
-        let endorsements_count: u32 = self.endorsements.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many endorsements: {}", err))
-        })?;
-        res.extend(endorsements_count.to_varint_bytes());
-        for endorsement in self.endorsements.iter() {
-            res.extend(endorsement.to_bytes_compact()?);
-        }
-
-        Ok(res)
-    }
-}
-
-/// Checks performed:
-/// - Validity of slot.
-/// - Presence of parent.
-/// - Valid length of included endorsements.
-/// - Validity of included endorsements.
-impl DeserializeCompact for BlockHeader {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0usize;
-
-        // creator public key
-        let creator = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += PUBLIC_KEY_SIZE_BYTES;
-
-        // slot
-        let (slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        // parents
-        let has_parents = u8_from_slice(&buffer[cursor..])?;
-        cursor += 1;
-        let parent_count = with_serialization_context(|context| context.thread_count);
-        let parents = if has_parents == 1 {
-            let mut parents: Vec<BlockId> = Vec::with_capacity(parent_count as usize);
-            for _ in 0..parent_count {
-                let parent_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-                cursor += BLOCK_ID_SIZE_BYTES;
-                parents.push(parent_id);
-            }
-            parents
-        } else if has_parents == 0 {
-            Vec::new()
-        } else {
-            return Err(ModelsError::SerializeError(
-                "BlockHeader from_bytes_compact bad has parents flags.".into(),
-            ));
-        };
-
-        // operation merkle tree root
-        let operation_merkle_root = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?);
-        cursor += HASH_SIZE_BYTES;
-
-        let max_block_endorsements =
-            with_serialization_context(|context| context.endorsement_count);
-
-        // endorsements
-        let (endorsement_count, delta) =
-            u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsements)?;
-        cursor += delta;
-
-        let mut endorsements = Vec::with_capacity(endorsement_count as usize);
-        for _ in 0..endorsement_count {
-            let (endorsement, delta) =
-                Signed::<Endorsement, EndorsementId>::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            endorsements.push(endorsement);
-        }
-
-        Ok((
-            BlockHeader {
-                creator,
-                slot,
-                parents,
-                operation_merkle_root,
-                endorsements,
-            },
-            cursor,
-        ))
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Endorsement;
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use crate::{endorsement::EndorsementSerializer, Endorsement};
+    use massa_serialization::DeserializeError;
+    use massa_signature::KeyPair;
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_block_serialization() {
-        let ctx = crate::SerializationContext {
-            max_block_size: 1024 * 1024,
-            max_operations_per_block: 1024,
-            thread_count: 3,
-            max_advertise_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_bootstrap_pos_cycles: 1000,
-            max_bootstrap_pos_entries: 1000,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_endorsements_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-            endorsement_count: 8,
-        };
-        crate::init_serialization_context(ctx);
-        let private_key = generate_random_private_key();
-        let public_key = derive_public_key(&private_key);
+        let keypair = KeyPair::generate();
+        let parents = (0..THREAD_COUNT)
+            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .collect();
 
         // create block header
-        let (orig_id, orig_header) = Signed::new_signed(
+        let orig_header = BlockHeader::new_wrapped(
             BlockHeader {
-                creator: public_key,
-                slot: Slot::new(1, 2),
-                parents: vec![
-                    BlockId(Hash::compute_from("abc".as_bytes())),
-                    BlockId(Hash::compute_from("def".as_bytes())),
-                    BlockId(Hash::compute_from("ghi".as_bytes())),
-                ],
+                slot: Slot::new(1, 1),
+                parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![
-                    Signed::new_signed(
+                    Endorsement::new_wrapped(
                         Endorsement {
-                            sender_public_key: public_key,
                             slot: Slot::new(1, 1),
                             index: 1,
                             endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
                         },
-                        &private_key,
+                        EndorsementSerializer::new(),
+                        &keypair,
                     )
-                    .unwrap()
-                    .1,
-                    Signed::new_signed(
+                    .unwrap(),
+                    Endorsement::new_wrapped(
                         Endorsement {
-                            sender_public_key: public_key,
                             slot: Slot::new(4, 0),
                             index: 3,
                             endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
                         },
-                        &private_key,
+                        EndorsementSerializer::new(),
+                        &keypair,
                     )
-                    .unwrap()
-                    .1,
+                    .unwrap(),
                 ],
             },
-            &private_key,
+            BlockHeaderSerializer::new(),
+            &keypair,
         )
         .unwrap();
 
@@ -543,17 +646,34 @@ mod test {
         };
 
         // serialize block
-        let orig_bytes = orig_block.to_bytes_compact().unwrap();
+        let wrapped_block: WrappedBlock =
+            Block::new_wrapped(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+        let mut ser_block = Vec::new();
+        WrappedSerializer::new()
+            .serialize(&wrapped_block, &mut ser_block)
+            .unwrap();
 
         // deserialize
-        let (res_block, res_size) = Block::from_bytes_compact(&orig_bytes).unwrap();
-        assert_eq!(orig_bytes.len(), res_size);
-
+        let (rest, res_block): (&[u8], WrappedBlock) =
+            WrappedDeserializer::new(BlockDeserializer::new())
+                .deserialize::<DeserializeError>(&ser_block)
+                .unwrap();
+        assert!(rest.is_empty());
         // check equality
-        let res_id = res_block.header.content.compute_id().unwrap();
-        let generated_res_id = res_block.header.content.compute_id().unwrap();
-        assert_eq!(orig_id, res_id);
-        assert_eq!(orig_id, generated_res_id);
-        assert_eq!(res_block.header.signature, orig_block.header.signature);
+        assert_eq!(orig_block.header.id, res_block.content.header.id);
+        assert_eq!(orig_block.header.id, res_block.id);
+        assert_eq!(
+            orig_block.header.content.slot,
+            res_block.content.header.content.slot
+        );
+        assert_eq!(
+            orig_block.header.serialized_data,
+            res_block.content.header.serialized_data
+        );
+        assert_eq!(
+            orig_block.header.signature,
+            res_block.content.header.signature
+        );
+        assert_eq!(orig_block.header.signature, res_block.signature);
     }
 }

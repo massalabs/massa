@@ -29,14 +29,17 @@ Launch the node, on Ubuntu:
 
 .. code-block:: bash
 
-    RUST_BACKTRACE=full cargo run --release |& tee logs.txt
+    RUST_BACKTRACE=full cargo run --release -- -p <PASSWORD> |& tee logs.txt
+
+Replace <PASSWORD> with a password that you will need to keep to restart your node
 
 **Or,** on macOS:
 
 .. code-block:: bash
 
-    RUST_BACKTRACE=full cargo run --release > logs.txt 2>&1
+    RUST_BACKTRACE=full cargo run --release -- -p <PASSWORD> > logs.txt 2>&1
 
+Replace <PASSWORD> with a password that you will need to keep to restart your node
 You should leave the window opened.
 
 **Start the client**
@@ -51,8 +54,9 @@ Then:
 
 .. code-block:: bash
 
-    cargo run --release
+    cargo run --release -- -p <PASSWORD>
 
+Replace <PASSWORD> with a password that you will need to keep to restart your client
 Please wait until the directories are built before moving to the next step.
 
 On Windows
@@ -63,8 +67,9 @@ On Windows
 - Open Windows Power Shell or Command Prompt on a first window
     - Type: :code:`cd massa`
     - Type: :code:`cd massa-node`
-    - Type: :code:`cargo run --release`
+    - Type: :code:`cargo run --release -- -p <PASSWORD>`
 
+Replace <PASSWORD> with a password that you will need to keep to restart your node
 You should leave the window opened.
 
 **Start the Client**
@@ -72,6 +77,7 @@ You should leave the window opened.
 - Open Windows Power Shell or Command Prompt on a second window
     - Type: :code:`cd massa`
     - Type: :code:`cd massa-client`
-    - Type: :code:`cargo run --release`
+    - Type: :code:`cargo run --release -- -p <PASSWORD>`
 
+Replace <PASSWORD> with a password that you will need to keep to restart your client
 Please wait until the directories are built before moving to the next step.

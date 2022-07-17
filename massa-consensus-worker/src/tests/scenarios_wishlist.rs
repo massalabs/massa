@@ -6,7 +6,7 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::Slot;
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use serial_test::serial;
 use std::collections::HashSet;
 use std::iter::FromIterator;
@@ -14,7 +14,7 @@ use std::iter::FromIterator;
 #[tokio::test]
 #[serial]
 async fn test_wishlist_delta_with_empty_remove() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -39,15 +39,14 @@ async fn test_wishlist_delta_with_empty_remove() {
                 .1
                  .0;
             let creator = get_creator_for_draw(&draw, &staking_keys.clone());
-            let (hasht0s1, t0s1, _) =
-                create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone(), creator);
+            let t0s1 = create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone(), &creator);
 
             // send header for block t0s1
             protocol_controller
-                .receive_header(t0s1.header.clone())
+                .receive_header(t0s1.content.header.clone())
                 .await;
 
-            let expected_new = HashSet::from_iter(vec![hasht0s1].into_iter());
+            let expected_new = HashSet::from_iter(vec![t0s1.id].into_iter());
             let expected_remove = HashSet::from_iter(vec![].into_iter());
             validate_wishlist(
                 &mut protocol_controller,
@@ -69,7 +68,7 @@ async fn test_wishlist_delta_with_empty_remove() {
 #[tokio::test]
 #[serial]
 async fn test_wishlist_delta_remove() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -86,18 +85,18 @@ async fn test_wishlist_delta_remove() {
                 .genesis_blocks;
 
             // create test blocks
-            let (hasht0s1, t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
             // send header for block t0s1
             protocol_controller
-                .receive_header(t0s1.header.clone())
+                .receive_header(t0s1.content.header.clone())
                 .await;
 
-            let expected_new = HashSet::from_iter(vec![hasht0s1].into_iter());
+            let expected_new = HashSet::from_iter(vec![t0s1.id].into_iter());
             let expected_remove = HashSet::from_iter(vec![].into_iter());
             validate_wishlist(
                 &mut protocol_controller,
@@ -109,7 +108,7 @@ async fn test_wishlist_delta_remove() {
 
             protocol_controller.receive_block(t0s1.clone()).await;
             let expected_new = HashSet::from_iter(vec![].into_iter());
-            let expected_remove = HashSet::from_iter(vec![hasht0s1].into_iter());
+            let expected_remove = HashSet::from_iter(vec![t0s1.id].into_iter());
             validate_wishlist(
                 &mut protocol_controller,
                 expected_new,

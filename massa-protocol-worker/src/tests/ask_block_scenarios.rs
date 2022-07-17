@@ -2,7 +2,6 @@
 
 use super::tools::protocol_test;
 use massa_models::prehash::Set;
-use massa_models::signed::Signable;
 use massa_models::BlockId;
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
@@ -37,8 +36,8 @@ async fn test_without_a_priori() {
                 .unwrap();
 
             // 2. Create a block coming from node 0.
-            let block = tools::create_block(&node_a.private_key, &node_a.id.0);
-            let hash_1 = block.header.content.compute_id().unwrap();
+            let block = tools::create_block(&node_a.keypair);
+            let hash_1 = block.id;
             // end set up
 
             // send wishlist
@@ -55,9 +54,7 @@ async fn test_without_a_priori() {
             assert_hash_asked_to_node(hash_1, node_b.id, &mut network_controller).await;
 
             // node B replied with the block
-            network_controller
-                .send_block(node_b.id, block, Default::default())
-                .await;
+            network_controller.send_block(node_b.id, block).await;
 
             // 7. Make sure protocol did not send additional ask for block commands.
             let ask_for_block_cmd_filter = |cmd| match cmd {
@@ -111,13 +108,13 @@ async fn test_someone_knows_it() {
                 .unwrap();
 
             // 2. Create a block coming from node 0.
-            let block = tools::create_block(&node_a.private_key, &node_a.id.0);
-            let hash_1 = block.header.content.compute_id().unwrap();
+            let block = tools::create_block(&node_a.keypair);
+            let hash_1 = block.id;
             // end set up
 
             // node c must know about block
             network_controller
-                .send_header(node_c.id, block.header.clone())
+                .send_header(node_c.id, block.content.header.clone())
                 .await;
 
             match protocol_event_receiver.wait_event().await.unwrap() {
@@ -137,9 +134,7 @@ async fn test_someone_knows_it() {
             assert_hash_asked_to_node(hash_1, node_c.id, &mut network_controller).await;
 
             // node C replied with the block
-            network_controller
-                .send_block(node_c.id, block, Default::default())
-                .await;
+            network_controller.send_block(node_c.id, block).await;
 
             // 7. Make sure protocol did not send additional ask for block commands.
             let ask_for_block_cmd_filter = |cmd| match cmd {
@@ -193,8 +188,8 @@ async fn test_dont_want_it_anymore() {
                 .unwrap();
 
             // 2. Create a block coming from node 0.
-            let block = tools::create_block(&node_a.private_key, &node_a.id.0);
-            let hash_1 = block.header.content.compute_id().unwrap();
+            let block = tools::create_block(&node_a.keypair);
+            let hash_1 = block.id;
             // end set up
 
             // send wishlist
@@ -271,8 +266,8 @@ async fn test_no_one_has_it() {
                 .unwrap();
 
             // 2. Create a block coming from node 0.
-            let block = tools::create_block(&node_a.private_key, &node_a.id.0);
-            let hash_1 = block.header.content.compute_id().unwrap();
+            let block = tools::create_block(&node_a.keypair);
+            let hash_1 = block.id;
             // end set up
 
             // send wishlist
@@ -350,11 +345,11 @@ async fn test_multiple_blocks_without_a_priori() {
                 .unwrap();
 
             // 2. Create two blocks coming from node 0.
-            let block_1 = tools::create_block(&node_a.private_key, &node_a.id.0);
-            let hash_1 = block_1.header.content.compute_id().unwrap();
+            let block_1 = tools::create_block(&node_a.keypair);
+            let hash_1 = block_1.id;
 
-            let block_2 = tools::create_block(&node_a.private_key, &node_a.id.0);
-            let hash_2 = block_2.header.content.compute_id().unwrap();
+            let block_2 = tools::create_block(&node_a.keypair);
+            let hash_2 = block_2.id;
 
             // node a is disconnected so no node knows about wanted blocks
             network_controller.close_connection(node_a.id).await;

@@ -9,14 +9,17 @@ edition = "2021"
 [dependencies]
 bs58 = { version = "0.4", features = ["check"] }
 displaydoc = "0.2"
-secp256k1 = { version = "0.22", features = ["rand-std", "global-context"] }
+ed25519-dalek = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
+nom = "7.1"
+rand = "0.7.0"
 # custom modules
 massa_hash = { path = "../massa-hash" }
+massa_serialization = { path = "../massa-serialization" }
 
 [dev-dependencies]
-serial_test = "0.5"
+serial_test = "0.8"
 serde_json = "1.0"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level

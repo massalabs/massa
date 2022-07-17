@@ -9,13 +9,12 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
-use massa_hash::Hash;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::{Address, Amount};
 use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use tracing::info;
 
@@ -100,11 +99,14 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * `(final_balance, active_balance)`
     fn get_final_and_active_parallel_balance(
         &self,
-        address: &Address,
-    ) -> (Option<Amount>, Option<Amount>) {
-        self.execution_state
-            .read()
-            .get_final_and_active_parallel_balance(address)
+        addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)> {
+        let lock = self.execution_state.read();
+        let mut result = Vec::new();
+        for addr in addresses {
+            result.push(lock.get_final_and_active_parallel_balance(&addr));
+        }
+        result
     }
 
     /// Get a copy of a single datastore entry with its final and active values
@@ -113,12 +115,27 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * `(final_data_entry, active_data_entry)`
     fn get_final_and_active_data_entry(
         &self,
+        input: Vec<(Address, Vec<u8>)>,
+    ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+        let lock = self.execution_state.read();
+        let mut result = Vec::new();
+        for (addr, key) in input {
+            result.push(lock.get_final_and_active_data_entry(&addr, &key));
+        }
+        result
+    }
+
+    /// Get every datastore key of the given address.
+    ///
+    /// # Returns
+    /// A vector containing all the keys
+    fn get_final_and_active_datastore_keys(
+        &self,
         addr: &Address,
-        key: &Hash,
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
         self.execution_state
             .read()
-            .get_final_and_active_data_entry(addr, key)
+            .get_final_and_active_datastore_keys(addr)
     }
 
     /// Executes a read-only request

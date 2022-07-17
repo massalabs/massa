@@ -44,7 +44,7 @@ pub struct CycleInfo {
     /// number of rolls each staking address has
     pub roll_counts: Map<Address, u64>,
     /// random seed bits of all slots in the cycle so far
-    pub rng_seed: BitVec<Lsb0, u8>,
+    pub rng_seed: BitVec<u8>,
     /// Per-address production statistics
     pub production_stats: Map<Address, ProductionStats>,
 }
@@ -84,7 +84,7 @@ impl ProductionStats {
 #[derive(Default, Debug, Clone)]
 pub struct PoSChanges {
     /// extra block seed bits added
-    pub seed_bits: BitVec<Lsb0, u8>,
+    pub seed_bits: BitVec<u8>,
 
     /// new roll counts for addresses (can be 0 to remove the address from the registry)
     pub roll_changes: Map<Address, u64>,
@@ -149,12 +149,9 @@ impl PoSChangesSerializer {
     pub fn new() -> PoSChangesSerializer {
         PoSChangesSerializer {
             bit_vec_serializer: BitVecSerializer::new(),
-            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
-            slot_serializer: SlotSerializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(THREAD_COUNT)),
-            ),
-            amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            u64_serializer: U64VarIntSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
+            amount_serializer: AmountSerializer::new(),
         }
     }
 }

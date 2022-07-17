@@ -14,17 +14,15 @@ use crate::{
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
-use massa_models::DeserializeCompact;
-use massa_models::SerializeCompact;
+use massa_models::EndorsementSerializer;
 use massa_models::{
-    node::NodeId,
-    signed::{Signable, Signed},
+    node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, SerializeCompact, Slot,
 };
-use massa_models::{BlockId, Endorsement, SignedOperation, Slot};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
 };
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -74,9 +72,8 @@ async fn test_node_worker_shutdown() {
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
-    let private_key = massa_signature::generate_random_private_key();
-    let public_key = massa_signature::derive_public_key(&private_key);
-    let mock_node_id = NodeId(public_key);
+    let keypair = KeyPair::generate();
+    let mock_node_id = NodeId(keypair.get_public_key());
     let storage: Storage = Default::default();
 
     let node_fn_handle = tokio::spawn(async move {
@@ -130,20 +127,16 @@ async fn test_node_worker_operations_message() {
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
     let (node_event_tx, _node_event_rx) = mpsc::channel::<NodeEvent>(1);
 
-    let private_key = massa_signature::generate_random_private_key();
-    let public_key = massa_signature::derive_public_key(&private_key);
-    let mock_node_id = NodeId(public_key);
+    let keypair = KeyPair::generate();
+    let mock_node_id = NodeId(keypair.get_public_key());
     let storage: Storage = Default::default();
 
     // Create transaction.
-    let (transaction, _) = get_transaction(50, 10);
+    let transaction = get_transaction(50, 10);
     let ref_id = transaction.verify_integrity().unwrap();
 
     // Add to storage.
-    let serialized = transaction
-        .to_bytes_compact()
-        .expect("Failed to serialize operation.");
-    storage.store_operation(ref_id, transaction.clone(), serialized);
+    storage.store_operation(transaction.clone());
 
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
@@ -1063,7 +1056,7 @@ async fn test_operation_messages() {
             // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
             // Send transaction message from connected peer
-            let (transaction, _) = get_transaction(50, 10);
+            let transaction = get_transaction(50, 10);
             let ref_id = transaction.verify_integrity().unwrap();
             conn1_w
                 .send(
@@ -1075,14 +1068,12 @@ async fn test_operation_messages() {
                 .unwrap();
 
             // assert it is sent to protocol
-            if let Some((operations, node, serialized)) =
+            if let Some((operations, node)) =
                 tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
                 {
-                    NetworkEvent::ReceivedOperations {
-                        operations,
-                        node,
-                        serialized,
-                    } => Some((operations, node, serialized)),
+                    NetworkEvent::ReceivedOperations { operations, node } => {
+                        Some((operations, node))
+                    }
                     _ => None,
                 })
                 .await
@@ -1090,26 +1081,16 @@ async fn test_operation_messages() {
                 assert_eq!(operations.len(), 1);
                 assert!(operations[0].verify_integrity().is_ok());
                 assert_eq!(operations[0].verify_integrity().unwrap(), ref_id);
-
-                // Check the serialized form.
-                let (serialized, _) = SignedOperation::from_bytes_compact(&(serialized[0])[0..])
-                    .expect("Failed to deserialize operation.");
-                assert!(serialized.verify_integrity().is_ok());
-                assert_eq!(serialized.verify_integrity().unwrap(), ref_id);
-
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for received operations event");
             }
 
-            let (transaction2, _) = get_transaction(10, 50);
+            let transaction2 = get_transaction(10, 50);
             let ref_id2 = transaction2.verify_integrity().unwrap();
 
             // Add to storage.
-            let serialized = transaction2
-                .to_bytes_compact()
-                .expect("Failed to serialize operation.");
-            storage.store_operation(ref_id2, transaction2, serialized);
+            storage.store_operation(transaction2);
 
             // reply with another transaction
             network_command_sender
@@ -1205,17 +1186,20 @@ async fn test_endorsements_messages() {
             .await;
             // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
-            let sender_priv = massa_signature::generate_random_private_key();
-            let sender_public_key = massa_signature::derive_public_key(&sender_priv);
+            let sender_keypair = KeyPair::generate();
 
             let content = Endorsement {
-                sender_public_key,
                 slot: Slot::new(10, 1),
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
-            let ref_id = endorsement.content.compute_id().unwrap();
+            let endorsement = Endorsement::new_wrapped(
+                content.clone(),
+                EndorsementSerializer::new(),
+                &sender_keypair,
+            )
+            .unwrap();
+            let ref_id = endorsement.id;
             conn1_w
                 .send(
                     &Message::Endorsements(vec![endorsement])
@@ -1237,24 +1221,27 @@ async fn test_endorsements_messages() {
                 .await
             {
                 assert_eq!(endorsements.len(), 1);
-                let res_id = endorsements[0].content.compute_id().unwrap();
+                let res_id = endorsements[0].id;
                 assert_eq!(ref_id, res_id);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for endorsement event.");
             }
 
-            let sender_priv = massa_signature::generate_random_private_key();
-            let sender_public_key = massa_signature::derive_public_key(&sender_priv);
+            let sender_keypair = KeyPair::generate();
 
             let content = Endorsement {
-                sender_public_key,
                 slot: Slot::new(11, 1),
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
-            let ref_id = endorsement.content.compute_id().unwrap();
+            let endorsement = Endorsement::new_wrapped(
+                content.clone(),
+                EndorsementSerializer::new(),
+                &sender_keypair,
+            )
+            .unwrap();
+            let ref_id = endorsement.id;
 
             // reply with another endorsement
             network_command_sender
@@ -1270,7 +1257,7 @@ async fn test_endorsements_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Endorsements(endorsements) = evt {
                             assert_eq!(endorsements.len(), 1);
-                            let res_id = endorsements[0].content.compute_id().unwrap();
+                            let res_id = endorsements[0].id;
                             assert_eq!(ref_id, res_id);
                             break;
                         }

@@ -9,18 +9,21 @@ use crate::{
 };
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::prehash::{BuildMap, Map, Set};
-use massa_models::signed::{Signable, Signed};
 use massa_models::{
-    active_block::ActiveBlock, api::EndorsementInfo, SignedEndorsement, SignedHeader,
+    active_block::ActiveBlock, api::EndorsementInfo, clique::Clique, wrapped::WrappedContent,
+    WrappedBlock, WrappedEndorsement,
 };
-use massa_models::{clique::Clique, SerializeCompact};
 use massa_models::{
-    Address, Block, BlockHeader, BlockId, EndorsementId, OperationId, OperationSearchResult,
-    OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
+    prehash::{BuildMap, Map, Set},
+    WrappedHeader,
+};
+use massa_models::{
+    Address, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, EndorsementId,
+    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
+    OperationSearchResultStatus, Slot,
 };
 use massa_pos_exports::SelectorController;
-use massa_signature::{derive_public_key, PublicKey};
+use massa_signature::PublicKey;
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, BTreeSet, HashMap, VecDeque};
@@ -29,8 +32,9 @@ use std::{collections::HashSet, usize};
 use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 enum HeaderOrBlock {
-    Header(SignedHeader),
+    Header(WrappedHeader),
     Block(
         BlockId,
         Slot,
@@ -83,7 +87,7 @@ enum BlockStatus {
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
         /// Just the header of that block
-        header: SignedHeader,
+        header: WrappedHeader,
         /// why it was discarded
         reason: DiscardReason,
         /// Used to limit and sort the number of blocks/headers waiting for dependencies
@@ -113,7 +117,7 @@ pub enum ExportBlockStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
     /// Header of the corresponding block.
-    pub header: SignedHeader,
+    pub header: WrappedHeader,
     /// For (i, set) in children,
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,
@@ -190,7 +194,7 @@ impl<'a> BlockGraphExport {
                         export.active_blocks.insert(
                             *hash,
                             ExportCompiledBlock {
-                                header: stored_block.block.header.clone(),
+                                header: stored_block.content.header.clone(),
                                 children: a_block
                                     .children
                                     .iter()
@@ -217,7 +221,7 @@ pub struct BlockGraphExport {
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: Map<BlockId, ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: Map<BlockId, (DiscardReason, SignedHeader)>,
+    pub discarded_blocks: Map<BlockId, (DiscardReason, WrappedHeader)>,
     /// Best parents hashes in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
@@ -310,26 +314,32 @@ enum EndorsementsCheckOutcome {
 /// * `cfg`: consensus configuration
 /// * `serialization_context`: ref to a `SerializationContext` instance
 /// * `thread_number`: thread in which we want a genesis block
-pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {
-    let private_key = cfg.genesis_key;
-    let public_key = derive_public_key(&private_key);
-    let (header_hash, header) = Signed::new_signed(
+pub fn create_genesis_block(
+    cfg: &GraphConfig,
+    thread_number: u8,
+) -> Result<(BlockId, WrappedBlock)> {
+    let keypair = &cfg.genesis_key;
+    let header = BlockHeader::new_wrapped(
         BlockHeader {
-            creator: public_key,
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
         },
-        &private_key,
+        BlockHeaderSerializer::new(),
+        keypair,
     )?;
 
     Ok((
-        header_hash,
-        Block {
-            header,
-            operations: Vec::new(),
-        },
+        header.id,
+        Block::new_wrapped(
+            Block {
+                header,
+                operations: Vec::new(),
+            },
+            BlockSerializer::new(),
+            keypair,
+        )?,
     ))
 }
 
@@ -359,7 +369,7 @@ impl BlockGraph {
             block_statuses.insert(
                 block_id,
                 BlockStatus::Active(Box::new(ActiveBlock {
-                    creator_address: Address::from_public_key(&block.header.content.creator),
+                    creator_address: block.creator_address,
                     parents: Vec::new(),
                     children: vec![Map::default(); cfg.thread_count as usize],
                     dependencies: Set::<BlockId>::default(),
@@ -370,13 +380,10 @@ impl BlockGraph {
                     addresses_to_operations: Map::with_capacity_and_hasher(0, BuildMap::default()),
                     block_id,
                     addresses_to_endorsements: Default::default(),
-                    slot: block.header.content.slot,
+                    slot: block.content.header.content.slot,
                 })),
             );
-
-            // Store in shared storage.
-            let serialized = block.to_bytes_compact()?;
-            storage.store_block(block_id, block, serialized);
+            storage.store_block(block);
         }
 
         massa_trace!("consensus.block_graph.new", {});
@@ -392,11 +399,7 @@ impl BlockGraph {
                     .map(|(b_id, exported_active_block)| {
                         // TODO: remove clone by doing a manual `into` below.
                         let block = exported_active_block.block.clone();
-
-                        // Store in shared storage.
-                        let serialized = block.to_bytes_compact()?;
-                        storage.store_block(b_id, block, serialized);
-
+                        storage.store_block(block);
                         Ok((
                             b_id,
                             BlockStatus::Active(Box::new(exported_active_block.try_into()?)),
@@ -479,25 +482,48 @@ impl BlockGraph {
 
     /// export full graph in a bootstrap compatible version
     pub fn export_bootstrap_graph(&self) -> Result<BootstrapableGraph> {
-        let required_active_blocks = self.list_required_active_blocks()?;
+        let mut required_final_blocks: Set<_> = self.list_required_active_blocks()?;
+        required_final_blocks.retain(|b_id| {
+            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(b_id) {
+                if a_block.is_final {
+                    // filter only final actives
+                    return true;
+                }
+            }
+            false
+        });
         let mut active_blocks: Map<BlockId, ExportActiveBlock> =
-            Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
-        for b_id in required_active_blocks {
-            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
-                let block = self.storage.retrieve_block(&b_id).ok_or_else(|| {
+            Map::with_capacity_and_hasher(required_final_blocks.len(), BuildMap::default());
+        for b_id in &required_final_blocks {
+            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(b_id) {
+                let block = self.storage.retrieve_block(b_id).ok_or_else(|| {
                     GraphError::MissingBlock(format!(
                         "missing block in export_bootstrap_graph: {}",
                         b_id
                     ))
                 })?;
-                let stored_block = block.read().block.clone();
+                let stored_block = block.read().clone();
                 active_blocks.insert(
-                    b_id,
+                    *b_id,
                     ExportActiveBlock {
                         block: stored_block,
-                        block_id: b_id,
+                        block_id: *b_id,
                         parents: a_block.parents.clone(),
-                        children: a_block.children.clone(),
+                        children: a_block
+                            .children
+                            .iter()
+                            .map(|thread_children| {
+                                thread_children
+                                    .iter()
+                                    .filter_map(|(child_id, child_period)| {
+                                        if !required_final_blocks.contains(child_id) {
+                                            return None;
+                                        }
+                                        Some((*child_id, *child_period))
+                                    })
+                                    .collect()
+                            })
+                            .collect(),
                         dependencies: a_block.dependencies.clone(),
                         is_final: a_block.is_final,
                     },
@@ -512,7 +538,7 @@ impl BlockGraph {
 
         Ok(BootstrapableGraph {
             active_blocks,
-            best_parents: self.best_parents.clone(),
+            best_parents: self.latest_final_blocks_periods.clone(),
             latest_final_blocks_periods: self.latest_final_blocks_periods.clone(),
             gi_head: self.gi_head.clone(),
             max_cliques: self.max_cliques.clone(),
@@ -580,7 +606,7 @@ impl BlockGraph {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
                         })?;
                         let search = OperationSearchResult {
-                            op: stored_block.block.operations[*idx].clone(),
+                            op: stored_block.content.operations[*idx].clone(),
                             in_pool: false,
                             in_blocks: vec![(*b_id, (*idx, active_block.is_final))]
                                 .into_iter()
@@ -631,9 +657,9 @@ impl BlockGraph {
                 })?;
                 let stored_block = block.read();
                 if active_block.is_final {
-                    ExportBlockStatus::Final(stored_block.block.clone())
+                    ExportBlockStatus::Final(stored_block.content.clone())
                 } else {
-                    ExportBlockStatus::Active(stored_block.block.clone())
+                    ExportBlockStatus::Active(stored_block.content.clone())
                 }
             }
             BlockStatus::Discarded { reason, .. } => ExportBlockStatus::Discarded(reason.clone()),
@@ -673,7 +699,7 @@ impl BlockGraph {
                             let stored_block = stored_block.read();
 
                             // Clone the operation.
-                            operation = Some(stored_block.block.operations[*idx].clone());
+                            operation = Some(stored_block.content.operations[*idx].clone());
                         }
                         in_blocks.insert(*block_id, (*idx, active_block.is_final));
                     }
@@ -730,7 +756,7 @@ impl BlockGraph {
     pub fn incoming_header(
         &mut self,
         block_id: BlockId,
-        header: SignedHeader,
+        header: WrappedHeader,
         current_slot: Option<Slot>,
     ) -> Result<()> {
         // ignore genesis blocks
@@ -981,7 +1007,7 @@ impl BlockGraph {
                         // count stales
                         if reason == DiscardReason::Stale {
                             self.new_stale_blocks
-                                .insert(block_id, (header.content.creator, header.content.slot));
+                                .insert(block_id, (header.creator_public_key, header.content.slot));
                         }
                         // discard
                         self.block_statuses.insert(
@@ -1029,7 +1055,7 @@ impl BlockGraph {
                             block_id
                         )));
                     };
-                match self.check_header(&block_id, &stored_block.block.header, current_slot)? {
+                match self.check_header(&block_id, &stored_block.content.header, current_slot)? {
                     HeaderCheckOutcome::Proceed {
                         parents_hash_period,
                         dependencies,
@@ -1041,9 +1067,9 @@ impl BlockGraph {
                             "block_id": block_id
                         });
                         (
-                            stored_block.block.involved_addresses(&operation_set)?,
-                            stored_block.block.addresses_to_endorsements()?,
-                            stored_block.block.header.content.creator,
+                            stored_block.involved_addresses(&operation_set)?,
+                            stored_block.addresses_to_endorsements()?,
+                            stored_block.content.header.creator_public_key,
                             slot,
                             parents_hash_period,
                             dependencies,
@@ -1105,8 +1131,8 @@ impl BlockGraph {
                             self.new_stale_blocks.insert(
                                 block_id,
                                 (
-                                    stored_block.block.header.content.creator,
-                                    stored_block.block.header.content.slot,
+                                    stored_block.content.header.creator_public_key,
+                                    stored_block.content.header.content.slot,
                                 ),
                             );
                         }
@@ -1114,7 +1140,7 @@ impl BlockGraph {
                         self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
-                                header: stored_block.block.header.clone(),
+                                header: stored_block.content.header.clone(),
                                 reason,
                                 sequence_number: BlockGraph::new_sequence_number(
                                     &mut self.sequence_counter,
@@ -1305,7 +1331,7 @@ impl BlockGraph {
     fn check_header(
         &self,
         block_id: &BlockId,
-        header: &SignedHeader,
+        header: &WrappedHeader,
         current_slot: Option<Slot>,
     ) -> Result<HeaderCheckOutcome> {
         massa_trace!("consensus.block_graph.check_header", {
@@ -1315,7 +1341,7 @@ impl BlockGraph {
         let mut deps = Set::<BlockId>::default();
         let mut incomp = Set::<BlockId>::default();
         let mut missing_deps = Set::<BlockId>::default();
-        let creator_addr = Address::from_public_key(&header.content.creator); // TODO in the future get it from storage
+        let creator_addr = header.creator_address;
 
         // basic structural checks
         if header.content.parents.len() != (self.cfg.thread_count as usize)
@@ -1551,7 +1577,7 @@ impl BlockGraph {
                             ))
                         })?;
                     let stored_block = block.read();
-                    stored_block.block.header.content.parents[header.content.slot.thread as usize]
+                    stored_block.content.header.content.parents[header.content.slot.thread as usize]
                 };
 
                 // check if the parent in tauB has a strictly lower period number than B's parent in tauB
@@ -1617,7 +1643,7 @@ impl BlockGraph {
     /// * endorsed slot is `parent_in_own_thread` slot
     fn check_endorsements(
         &self,
-        header: &SignedHeader,
+        header: &WrappedHeader,
         parent_in_own_thread: &ActiveBlock,
     ) -> Result<EndorsementsCheckOutcome> {
         // check endorsements
@@ -1630,8 +1656,7 @@ impl BlockGraph {
         };
         for endorsement in header.content.endorsements.iter() {
             // check that the draw is correct
-            if Address::from_public_key(&endorsement.content.sender_public_key)
-                != endorsement_draws[endorsement.content.index as usize]
+            if endorsement.creator_address != endorsement_draws[endorsement.content.index as usize]
             {
                 return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
                     format!(
@@ -2000,8 +2025,8 @@ impl BlockGraph {
                         })?;
                     let stored_block = block.read();
                     (
-                        stored_block.block.header.content.creator,
-                        stored_block.block.header.clone(),
+                        stored_block.content.header.creator_public_key,
+                        stored_block.content.header.clone(),
                     )
                 };
 
@@ -2329,7 +2354,7 @@ impl BlockGraph {
             self.block_statuses.insert(
                 discard_active_h,
                 BlockStatus::Discarded {
-                    header: stored_block.block.header.clone(),
+                    header: stored_block.content.header.clone(),
                     reason: DiscardReason::Final,
                     sequence_number: BlockGraph::new_sequence_number(&mut self.sequence_counter),
                 },
@@ -2510,7 +2535,7 @@ impl BlockGraph {
                             ))
                         })?;
                         let stored_block = block.read();
-                        stored_block.block.header.clone()
+                        stored_block.content.header.clone()
                     }
                 };
                 massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
@@ -2522,7 +2547,7 @@ impl BlockGraph {
                     // add to stats if reason is Stale
                     if reason == DiscardReason::Stale {
                         self.new_stale_blocks
-                            .insert(block_id, (header.content.creator, header.content.slot));
+                            .insert(block_id, (header.creator_public_key, header.content.slot));
                     }
                     // transition to Discarded only if there is a reason
                     self.block_statuses.insert(
@@ -2716,8 +2741,8 @@ impl BlockGraph {
     pub fn get_endorsement_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, SignedEndorsement>> {
-        let mut res: Map<EndorsementId, SignedEndorsement> = Default::default();
+    ) -> Result<Map<EndorsementId, WrappedEndorsement>> {
+        let mut res: Map<EndorsementId, WrappedEndorsement> = Default::default();
         for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(b_id) {
                 if let Some(eds) = ab.addresses_to_endorsements.get(&address) {
@@ -2727,9 +2752,9 @@ impl BlockGraph {
                             b_id
                         ))
                     })?;
-                    let endorsements = block.read().block.header.content.endorsements.clone();
+                    let endorsements = block.read().content.header.content.endorsements.clone();
                     for e in endorsements {
-                        let id = e.content.compute_id()?;
+                        let id = e.id;
                         if eds.contains(&id) {
                             res.insert(id, e);
                         }
@@ -2763,8 +2788,8 @@ impl BlockGraph {
                     .collect::<HashSet<_>>()
                     .is_empty()
                 {
-                    for e in stored_block.block.header.content.endorsements.iter() {
-                        let id = e.content.compute_id()?;
+                    for e in stored_block.content.header.content.endorsements.iter() {
+                        let id = e.id;
                         if endorsements.contains(&id) {
                             res.entry(id)
                                 .and_modify(|EndorsementInfo { in_blocks, .. }| {

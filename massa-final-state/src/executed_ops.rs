@@ -53,13 +53,10 @@ pub struct ExecutedOpsSerializer {
 
 impl ExecutedOpsSerializer {
     /// Create a new `ExecutedOps` Serializer
-    pub fn new(thread_count: u8) -> ExecutedOpsSerializer {
+    pub fn new() -> ExecutedOpsSerializer {
         ExecutedOpsSerializer {
-            slot_serializer: SlotSerializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
-            ),
-            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            slot_serializer: SlotSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }
