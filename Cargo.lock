@@ -1780,6 +1780,7 @@ dependencies = [
  "parking_lot 0.12.0",
  "rand 0.8.5",
  "rand_xoshiro",
+ "serde_json",
  "serial_test",
  "tempfile",
  "tracing",

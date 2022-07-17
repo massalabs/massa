@@ -8,11 +8,12 @@
 //! and does not write anything persistent to the consensus state.
 
 use crate::speculative_async_pool::SpeculativeAsyncPool;
+use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
-use massa_final_state::{FinalState, StateChanges};
+use massa_final_state::{ExecutedOps, FinalState, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::{
@@ -34,6 +35,9 @@ pub(crate) struct ExecutionContextSnapshot {
 
     /// speculative asynchronous pool messages emitted so far in the context
     pub async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
+
+    /// speculative list of operations executed (mapped to their end-of-validity slot)
+    pub executed_ops: ExecutedOps,
 
     /// speculative roll state changes caused so far in the context
     pub roll_state_changes: PoSChanges,
@@ -69,6 +73,9 @@ pub(crate) struct ExecutionContext {
     /// speculative roll state,
     /// as seen after everything that happened so far in the context
     speculative_roll_state: SpeculativeRollState,
+
+    /// speculative list of executed operations
+    speculative_executed_ops: SpeculativeExecutedOps,
 
     /// max gas for this execution
     pub max_gas: u64,
@@ -130,10 +137,11 @@ impl ExecutionContext {
                 active_history.clone(),
             ),
             speculative_roll_state: SpeculativeRollState::new(
-                final_state,
-                active_history,
+                final_state.clone(),
+                active_history.clone(),
                 selector,
             ),
+            speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
@@ -156,6 +164,7 @@ impl ExecutionContext {
             ledger_changes: self.speculative_ledger.get_snapshot(),
             async_pool_changes: self.speculative_async_pool.get_snapshot(),
             roll_state_changes: self.speculative_roll_state.get_snapshot(),
+            executed_ops: self.speculative_executed_ops.get_snapshot(),
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
             stack: self.stack.clone(),
@@ -164,20 +173,45 @@ impl ExecutionContext {
         }
     }
 
-    /// Resets context to an existing snapshot
+    /// Resets context to an existing snapshot.
+    /// Optionally emits an error as an event after restoring the snapshot.
     /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
-    pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot) {
+    ///
+    /// # Arguments
+    /// * `snapshot`: a saved snapshot to be restored
+    /// * `with_error`: an optional execution error to emit as an event conserved after snapshot reset.
+    pub fn reset_to_snapshot(
+        &mut self,
+        snapshot: ExecutionContextSnapshot,
+        with_error: Option<ExecutionError>,
+    ) {
+        // Create error event, if any.
+        let err_event = with_error.map(|err| {
+            self.event_create(
+                serde_json::json!({ "massa_execution_error": format!("{}", err) }).to_string(),
+            )
+        });
+
+        // Reset context to snapshot.
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
         self.speculative_async_pool
             .reset_to_snapshot(snapshot.async_pool_changes);
         self.speculative_roll_state
             .reset_to_snapshot(snapshot.roll_state_changes);
+        self.speculative_executed_ops
+            .reset_to_snapshot(snapshot.executed_ops);
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.stack = snapshot.stack;
         self.events = snapshot.events;
         self.unsafe_rng = snapshot.unsafe_rng;
+
+        // If there was an error, emit the corresponding event now.
+        // Note that the context event counter is properly handled by event_emit (see doc).
+        if let Some(event) = err_event {
+            self.event_emit(event);
+        }
     }
 
     /// Create a new `ExecutionContext` for read-only execution
@@ -499,19 +533,23 @@ impl ExecutionContext {
     /// * `from_addr`: optional spending address (use None for pure coin creation)
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
+    /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
     pub fn transfer_sequential_coins(
         &mut self,
         from_addr: Option<Address>,
         to_addr: Option<Address>,
         amount: Amount,
+        check_rights: bool,
     ) -> Result<(), ExecutionError> {
         // check access rights
-        if let Some(from_addr) = &from_addr {
-            if !self.has_write_rights_on(from_addr) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "spending from address {} is not allowed in this context",
-                    from_addr
-                )));
+        if check_rights {
+            if let Some(from_addr) = &from_addr {
+                if !self.has_write_rights_on(from_addr) {
+                    return Err(ExecutionError::RuntimeError(format!(
+                        "spending from address {} is not allowed in this context",
+                        from_addr
+                    )));
+                }
             }
         }
         // do the transfer
@@ -527,19 +565,23 @@ impl ExecutionContext {
     /// * `from_addr`: optional spending address (use None for pure coin creation)
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
+    /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
     pub fn transfer_parallel_coins(
         &mut self,
         from_addr: Option<Address>,
         to_addr: Option<Address>,
         amount: Amount,
+        check_rights: bool,
     ) -> Result<(), ExecutionError> {
         // check access rights
-        if let Some(from_addr) = &from_addr {
-            if !self.has_write_rights_on(from_addr) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "spending from address {} is not allowed in this context",
-                    from_addr
-                )));
+        if check_rights {
+            if let Some(from_addr) = &from_addr {
+                if !self.has_write_rights_on(from_addr) {
+                    return Err(ExecutionError::RuntimeError(format!(
+                        "spending from address {} is not allowed in this context",
+                        from_addr
+                    )));
+                }
             }
         }
         // do the transfer
@@ -560,7 +602,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
-        if let Err(e) = self.transfer_parallel_coins(None, Some(msg.sender), msg.coins) {
+        if let Err(e) = self.transfer_parallel_coins(None, Some(msg.sender), msg.coins, false) {
             debug!(
                 "async message cancel: reimbursement of {} failed: {}",
                 msg.sender, e
@@ -617,7 +659,7 @@ impl ExecutionContext {
     pub fn execute_deferred_credits(&mut self, slot: Slot) {
         let credits = self.speculative_roll_state.get_deferred_credits(slot);
         for (addr, amount) in credits {
-            if let Err(e) = self.transfer_sequential_coins(None, Some(addr), amount) {
+            if let Err(e) = self.transfer_sequential_coins(None, Some(addr), amount, false) {
                 debug!(
                     "could not credit {} deferred coins to {} at slot {}: {}",
                     amount, addr, slot, e
@@ -654,6 +696,7 @@ impl ExecutionContext {
             ledger_changes: self.speculative_ledger.take(),
             async_pool_changes: self.speculative_async_pool.take(),
             roll_state_changes: self.speculative_roll_state.take(),
+            executed_ops: self.speculative_executed_ops.take(),
         };
         ExecutionOutput {
             slot: self.slot,
@@ -686,11 +729,12 @@ impl ExecutionContext {
         self.speculative_ledger.set_bytecode(address, bytecode)
     }
 
-    /// Emits an execution event to be stored.
+    /// Creates a new event but does not emit it.
+    /// Note that this does not increments the context event counter.
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    pub fn generate_event(&mut self, data: String) -> Result<(), ExecutionError> {
+    pub fn event_create(&self, data: String) -> SCOutputEvent {
         // Gather contextual information from the execution context
         let context = EventExecutionContext {
             slot: self.slot,
@@ -701,15 +745,36 @@ impl ExecutionContext {
             origin_operation_id: self.origin_operation_id,
         };
 
-        // Generate the event
-        let event = SCOutputEvent { context, data };
+        // Return the event
+        SCOutputEvent { context, data }
+    }
+
+    /// Emits a previously created event.
+    /// Overrides the event's index with the current event counter value, and increments the event counter.
+    pub fn event_emit(&mut self, mut event: SCOutputEvent) {
+        // Set the event index
+        event.context.index_in_slot = self.created_event_index;
 
         // Increment the event counter fot this slot
         self.created_event_index += 1;
 
         // Add the event to the context store
         self.events.push(event);
+    }
 
-        Ok(())
+    /// Check if an operation was previously executed (to prevent reuse)
+    pub fn is_op_executed(&self, op_id: &OperationId) -> bool {
+        self.speculative_executed_ops.is_op_executed(op_id)
+    }
+
+    /// Insert an executed operation.
+    /// Does not check for reuse, please use `is_op_executed` before.
+    ///
+    /// # Arguments
+    /// * `op_id`: operation ID
+    /// * `op_valid_until_slot`: slot until which the operation remains valid (included)
+    pub fn insert_executed_op(&mut self, op_id: OperationId, op_valid_until_slot: Slot) {
+        self.speculative_executed_ops
+            .insert_executed_op(op_id, op_valid_until_slot)
     }
 }

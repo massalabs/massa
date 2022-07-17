@@ -2,8 +2,6 @@
 
 //! This file defines the structure representing an asynchronous message
 
-use std::ops::Bound::Included;
-
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::constants::THREAD_COUNT;
@@ -17,6 +15,7 @@ use nom::multi::length_data;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
+use std::ops::Bound::{Excluded, Included};
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
@@ -39,7 +38,7 @@ impl AsyncMessageIdSerializer {
             amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_serializer: SlotSerializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
@@ -103,9 +102,9 @@ impl AsyncMessageIdDeserializer {
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
                 #[cfg(feature = "sandbox")]
-                (Included(0), Included(*THREAD_COUNT)),
+                (Included(0), Excluded(*THREAD_COUNT)),
                 #[cfg(not(feature = "sandbox"))]
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Excluded(THREAD_COUNT)),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
@@ -235,7 +234,7 @@ impl AsyncMessageSerializer {
         Self {
             slot_serializer: SlotSerializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             amount_serializer: AmountSerializer::new(Included(0), Included(u64::MAX)),
             u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
@@ -321,7 +320,7 @@ impl AsyncMessageDeserializer {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),

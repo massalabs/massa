@@ -11,7 +11,7 @@ use massa_models::{
     operation::{OperationIds, Operations},
     prehash::{BuildMap, Map, Set},
     signed::Signable,
-    Address, Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader,
+    Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -35,14 +35,12 @@ use tracing::{debug, error, info, warn};
 ///
 /// # Arguments
 /// * `protocol_settings`: protocol settings
-/// * `operation_validity_periods`: operation validity duration in periods
 /// * `max_block_gas`: maximum gas per block
 /// * `network_command_sender`: the `NetworkCommandSender` we interact with
 /// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
     protocol_settings: &'static ProtocolSettings,
-    operation_validity_periods: u64,
     max_block_gas: u64,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
@@ -66,7 +64,6 @@ pub async fn start_protocol_controller(
     let join_handle = tokio::spawn(async move {
         let res = ProtocolWorker::new(
             protocol_settings,
-            operation_validity_periods,
             max_block_gas,
             ProtocolWorkerChannels {
                 network_command_sender,
@@ -121,8 +118,6 @@ impl BlockInfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     pub(crate) protocol_settings: &'static ProtocolSettings,
-    /// Operation validity periods
-    operation_validity_periods: u64,
     /// Max gas per block
     max_block_gas: u64,
     /// Associated network command sender.
@@ -174,7 +169,6 @@ impl ProtocolWorker {
     ///
     /// # Arguments
     /// * `protocol_settings`: protocol configuration.
-    /// * `operation_validity_periods`: operation validity periods
     /// * `max_block_gas`: max gas per block
     /// * `self_node_id`: our private key.
     /// * `network_controller`: associated network controller.
@@ -183,7 +177,6 @@ impl ProtocolWorker {
     /// * `controller_manager_rx`: Channel receiving management commands.
     pub fn new(
         protocol_settings: &'static ProtocolSettings,
-        operation_validity_periods: u64,
         max_block_gas: u64,
         ProtocolWorkerChannels {
             network_command_sender,
@@ -196,7 +189,6 @@ impl ProtocolWorker {
     ) -> ProtocolWorker {
         ProtocolWorker {
             protocol_settings,
-            operation_validity_periods,
             max_block_gas,
             network_command_sender,
             network_event_receiver,
@@ -985,12 +977,11 @@ impl ProtocolWorker {
     > {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
-        let (header, operations, operation_merkle_root, slot) = {
+        let (header, operations, operation_merkle_root) = {
             (
                 block.header.clone(),
                 block.operations.clone(),
                 block.header.content.operation_merkle_root,
-                block.header.content.slot,
             )
         };
 
@@ -1002,12 +993,9 @@ impl ProtocolWorker {
                 Err(err) => return Err(err),
             };
 
-        let serialization_context =
-            massa_models::with_serialization_context(|context| context.clone());
-
         // Perform general checks on the operations, note them into caches and send them to pool
         // but do not propagate as they are already propagating within a block
-        let (seen_ops, received_operations_ids, has_duplicate_operations, total_gas) = self
+        let (seen_ops, received_operations_ids, total_gas) = self
             .note_operations_from_node(operations.clone(), source_node_id, false, None)
             .await?;
         if total_gas > self.max_block_gas {
@@ -1017,32 +1005,7 @@ impl ProtocolWorker {
             return Ok(None);
         }
 
-        // Perform checks on the operations that relate to the block in which they have been included.
-        // We perform those checks AFTER note_operations_from_node to allow otherwise valid operations to be noted
-        if has_duplicate_operations {
-            // Block contains duplicate operations.
-            return Ok(None);
-        }
-        for op in operations.iter() {
-            // check validity period
-            if !(op
-                .content
-                .get_validity_range(self.operation_validity_periods)
-                .contains(&slot.period))
-            {
-                massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_period",
-                    { "node": source_node_id,"block_id":block_id, "op": op });
-                return Ok(None);
-            }
-
-            // check address and thread
-            let addr = Address::from_public_key(&op.content.sender_public_key);
-            if addr.get_thread(serialization_context.thread_count) != slot.thread {
-                massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_thread",
-                    { "node": source_node_id,"block_id":block_id, "op": op});
-                return Ok(None);
-            }
-        }
+        //TODO Check total operations size ! => block is invalid if too big
 
         // check root hash
         {
@@ -1076,7 +1039,6 @@ impl ProtocolWorker {
     /// Returns :
     /// - a list of seen operation ids, for use in checking the root hash of the block.
     /// - a map of seen operations with indices and validity periods to avoid recomputing them later
-    /// - a boolean indicating whether duplicate operations were noted.
     /// - the sum of all operation's `max_gas`.
     ///
     /// Checks performed:
@@ -1087,11 +1049,10 @@ impl ProtocolWorker {
         source_node_id: &NodeId,
         propagate: bool,
         serialized: Option<Vec<Vec<u8>>>,
-    ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, bool, u64), ProtocolError> {
+    ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, u64), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let mut total_gas = 0u64;
         let length = operations.len();
-        let mut has_duplicate_operations = false;
         let mut seen_ops = vec![];
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
@@ -1116,13 +1077,7 @@ impl ProtocolWorker {
 
             // Note: we always want to update the node's view of known operations,
             // even if we cached the check previously.
-            let was_present =
-                received_ids.insert(operation_id, (idx, operation.content.expire_period));
-
-            // There are duplicate operations in this batch.
-            if was_present.is_some() {
-                has_duplicate_operations = true;
-            }
+            received_ids.insert(operation_id, (idx, operation.content.expire_period));
 
             // Accumulate gas
             total_gas = total_gas.saturating_add(operation.content.get_gas_usage());
@@ -1156,7 +1111,7 @@ impl ProtocolWorker {
             self.prune_checked_operations();
         }
 
-        Ok((seen_ops, received_ids, has_duplicate_operations, total_gas))
+        Ok((seen_ops, received_ids, total_gas))
     }
 
     /// Note endorsements coming from a given node,

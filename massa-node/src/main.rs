@@ -26,7 +26,7 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::{
         END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
-        OPERATION_VALIDITY_PERIODS, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
+        ROLL_PRICE, T0, THREAD_COUNT, VERSION,
     },
     init_serialization_context,
     prehash::Map,
@@ -166,7 +166,6 @@ async fn launch(
         protocol_manager,
     ) = start_protocol_controller(
         &SETTINGS.protocol,
-        OPERATION_VALIDITY_PERIODS,
         MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,

@@ -15,7 +15,9 @@ pub use composite::{
 };
 pub use endorsement::{Endorsement, EndorsementId, SignedEndorsement};
 pub use error::ModelsError;
-pub use operation::{Operation, OperationId, OperationType, SignedOperation};
+pub use operation::{
+    Operation, OperationId, OperationIdDeserializer, OperationType, SignedOperation,
+};
 pub use serialization::{
     array_from_slice, u8_from_slice, BitVecDeserializer, BitVecSerializer, DeserializeCompact,
     DeserializeMinBEInt, DeserializeVarInt, IpAddrDeserializer, IpAddrSerializer, SerializeCompact,

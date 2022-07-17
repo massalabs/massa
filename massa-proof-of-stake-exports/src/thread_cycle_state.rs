@@ -16,7 +16,7 @@ use nom::{
     IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included};
 
 /// Rolls state for a cycle in a thread
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,7 +65,7 @@ impl ThreadCycleStateSerializer {
             u64_serializer: U64VarIntSerializer::new(Included(0), Included(u64::MAX)),
             slot_serializer: SlotSerializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             roll_update_serializer: RollUpdateSerializer::new(),
         }
@@ -166,7 +166,7 @@ impl ThreadCycleStateDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             roll_update_deserializer: RollUpdateDeserializer::new(),
             address_deserializer: AddressDeserializer::new(),

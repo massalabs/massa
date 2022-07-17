@@ -37,7 +37,7 @@ use std::{
     collections::{hash_map, BTreeSet, HashMap, VecDeque},
     convert::TryFrom,
 };
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
@@ -384,8 +384,6 @@ enum BlockCheckOutcome {
 enum BlockOperationsCheckOutcome {
     /// Everything is ok
     Proceed {
-        /// blocks that block depends on
-        dependencies: Set<BlockId>,
         /// changes caused by that block on the ledger
         block_ledger_changes: LedgerChanges,
         /// changes caused by that block on rolls
@@ -393,8 +391,6 @@ enum BlockOperationsCheckOutcome {
     },
     /// There is something wrong with that batch of operation
     Discard(DiscardReason),
-    /// it must wait for these block ids to be fully processed
-    WaitForDependencies(Set<BlockId>),
 }
 
 /// Creates genesis block in given thread.
@@ -1675,13 +1671,7 @@ impl BlockGraph {
                             block_id
                         )));
                     };
-                match self.check_block(
-                    &block_id,
-                    &stored_block.block,
-                    &operation_set,
-                    pos,
-                    current_slot,
-                )? {
+                match self.check_block(&block_id, &stored_block.block, pos, current_slot)? {
                     BlockCheckOutcome::Proceed {
                         parents_hash_period,
                         dependencies,
@@ -2355,14 +2345,13 @@ impl BlockGraph {
         &self,
         block_id: &BlockId,
         block: &Block,
-        operation_set: &Map<OperationId, (usize, u64)>,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<BlockCheckOutcome> {
         massa_trace!("consensus.block_graph.check_block", {
             "block_id": block_id
         });
-        let mut deps;
+        let deps;
         let incomp;
         let parents;
         let inherited_incomp_count;
@@ -2392,22 +2381,16 @@ impl BlockGraph {
         }
 
         // check operations
-        let (operations_deps, block_ledger_changes, roll_updates) =
-            match self.check_operations(block, operation_set, pos)? {
-                BlockOperationsCheckOutcome::Proceed {
-                    dependencies,
-                    block_ledger_changes,
-                    roll_updates,
-                } => (dependencies, block_ledger_changes, roll_updates),
-                BlockOperationsCheckOutcome::Discard(reason) => {
-                    println!("Discarding ops: {:?}", reason);
-                    return Ok(BlockCheckOutcome::Discard(reason));
-                }
-                BlockOperationsCheckOutcome::WaitForDependencies(deps) => {
-                    return Ok(BlockCheckOutcome::WaitForDependencies(deps))
-                }
-            };
-        deps.extend(operations_deps);
+        let (block_ledger_changes, roll_updates) = match self.check_operations(block, pos)? {
+            BlockOperationsCheckOutcome::Proceed {
+                block_ledger_changes,
+                roll_updates,
+            } => (block_ledger_changes, roll_updates),
+            BlockOperationsCheckOutcome::Discard(reason) => {
+                println!("Discarding ops: {:?}", reason);
+                return Ok(BlockCheckOutcome::Discard(reason));
+            }
+        };
 
         massa_trace!("consensus.block_graph.check_block.ok", {
             "block_id": block_id
@@ -2429,70 +2412,11 @@ impl BlockGraph {
     /// Returns changes done by that block to the ledger (one hashmap per thread) and rolls
     /// `consensus/pos.md#block-reception-process`
     ///
-    /// Checks performed:
-    /// - Check that ops were not reused in previous blocks.
     fn check_operations(
         &self,
         block_to_check: &Block,
-        operation_set: &Map<OperationId, (usize, u64)>,
         pos: &mut ProofOfStake,
     ) -> Result<BlockOperationsCheckOutcome> {
-        // check that ops are not reused in previous blocks. Note that in-block reuse was checked in protocol.
-        let mut dependencies: Set<BlockId> = Set::<BlockId>::default();
-        for operation in block_to_check.operations.iter() {
-            // get thread
-            let op_thread = Address::from_public_key(&operation.content.sender_public_key)
-                .get_thread(self.cfg.thread_count);
-
-            let op_start_validity_period = *operation
-                .content
-                .get_validity_range(self.cfg.operation_validity_periods)
-                .start();
-
-            let mut current_block_id = block_to_check.header.content.parents[op_thread as usize]; // non-genesis => has parents
-            loop {
-                // get block to process.
-                let current_block = match self.block_statuses.get(&current_block_id) {
-                    Some(block) => match block {
-                        BlockStatus::Active(block) => block,
-                        _ => return Err(GraphError::ContainerInconsistency(format!("block {} is not active but is an ancestor of a potentially active block", current_block_id))),
-                    },
-                    None => {
-                        let mut missing_deps = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
-                        missing_deps.insert(current_block_id);
-                        return Ok(BlockOperationsCheckOutcome::WaitForDependencies(missing_deps));
-                    }
-                };
-
-                // stop at op validity start
-                if current_block.slot.period < op_start_validity_period {
-                    break; // next op.
-                }
-
-                // check if present
-                if current_block
-                    .operation_set
-                    .keys()
-                    .any(|k| operation_set.contains_key(k))
-                {
-                    error!("block graph check_operations error, block operation already integrated in another block");
-                    return Ok(BlockOperationsCheckOutcome::Discard(
-                        DiscardReason::Invalid(
-                            "Block operation already integrated in another block".to_string(),
-                        ),
-                    ));
-                }
-                dependencies.insert(current_block_id);
-
-                if current_block.parents.is_empty() {
-                    // genesis block found
-                    break;
-                }
-
-                current_block_id = current_block.parents[op_thread as usize].0;
-            }
-        }
-
         // initialize block state accumulator
         let mut state_accu = match self.block_state_accumulator_init(&block_to_check.header, pos) {
             Ok(accu) => accu,
@@ -2533,7 +2457,6 @@ impl BlockGraph {
         }
 
         Ok(BlockOperationsCheckOutcome::Proceed {
-            dependencies,
             block_ledger_changes: state_accu.ledger_changes,
             roll_updates: state_accu.roll_updates,
         })

@@ -5,7 +5,9 @@
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
-use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
+use crate::{
+    config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges, ExecutedOps,
+};
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{constants::THREAD_COUNT, Address, Slot};
@@ -24,6 +26,8 @@ pub struct FinalState {
     pub async_pool: AsyncPool,
     /// proof of stake state containing cycle history and deferred credits
     pub pos_state: PoSFinalState,
+    /// executed operations
+    pub executed_ops: ExecutedOps,
     /// history of recent final state changes, useful for streaming bootstrap
     /// `front = oldest`, `back = newest`
     pub(crate) changes_history: VecDeque<(Slot, StateChanges)>,
@@ -47,6 +51,9 @@ impl FinalState {
         // create the pos state
         let pos_state = PoSFinalState::default();
 
+        // create a default executed ops
+        let executed_ops = ExecutedOps::default();
+
         // generate the final state
         Ok(FinalState {
             slot,
@@ -54,6 +61,7 @@ impl FinalState {
             async_pool,
             pos_state,
             config,
+            executed_ops,
             changes_history: Default::default(), // no changes in history
         })
     }
@@ -87,6 +95,8 @@ impl FinalState {
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
             .apply_changes(changes.roll_state_changes.clone(), self.slot);
+        self.executed_ops.extend(changes.executed_ops.clone());
+        self.executed_ops.prune(self.slot);
 
         // push history element and limit history size
         if self.config.final_history_length > 0 {

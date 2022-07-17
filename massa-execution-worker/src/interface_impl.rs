@@ -96,7 +96,7 @@ impl Interface for InterfaceImpl {
         // transfer coins from caller to target address
         let coins = massa_models::Amount::from_raw(raw_coins);
         if let Err(err) =
-            context.transfer_parallel_coins(Some(from_address), Some(to_address), coins)
+            context.transfer_parallel_coins(Some(from_address), Some(to_address), coins, true)
         {
             bail!(
                 "error transferring {} parallel coins from {} to {}: {}",
@@ -382,7 +382,7 @@ impl Interface for InterfaceImpl {
         let amount = massa_models::Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
-        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount)?;
+        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 
@@ -402,7 +402,7 @@ impl Interface for InterfaceImpl {
         let to_address = massa_models::Address::from_str(to_address)?;
         let amount = massa_models::Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
-        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount)?;
+        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 
@@ -448,7 +448,9 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
-        context_guard!(self).generate_event(data)?;
+        let mut context = context_guard!(self);
+        let event = context.event_create(data);
+        context.event_emit(event);
         Ok(())
     }
 

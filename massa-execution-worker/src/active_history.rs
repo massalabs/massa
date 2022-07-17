@@ -3,7 +3,7 @@ use massa_hash::Hash;
 use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_models::{prehash::Map, Address, Amount, OperationId, Slot};
 use massa_pos_exports::ProductionStats;
 use std::collections::{BTreeMap, VecDeque};
 
@@ -20,6 +20,18 @@ pub enum HistorySearchResult<T> {
 }
 
 impl ActiveHistory {
+    /// Lazily query (from end to beginning) the active list of executed ops to check if an op was executed.
+    ///
+    /// Returns a `HistorySearchResult`.
+    pub fn fetch_executed_op(&self, op_id: &OperationId) -> HistorySearchResult<()> {
+        for history_element in self.0.iter().rev() {
+            if history_element.state_changes.executed_ops.contains(op_id) {
+                return HistorySearchResult::Present(());
+            }
+        }
+        HistorySearchResult::NoInfo
+    }
+
     /// Lazily query (from end to beginning) the active sequential balance of an address after a given index.
     ///
     /// Returns a `HistorySearchResult`.

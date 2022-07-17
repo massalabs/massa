@@ -19,7 +19,7 @@ use nom::{
     IResult, Parser,
 };
 use num::rational::Ratio;
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included};
 
 use crate::SelectorController;
 
@@ -97,6 +97,39 @@ pub struct PoSChanges {
     pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
 }
 
+impl PoSChanges {
+    /// Extends the current `PosChanges` with another one
+    pub fn extend(&mut self, other: PoSChanges) {
+        // extend seed bits
+        self.seed_bits.extend(other.seed_bits);
+
+        // extend roll changes
+        self.roll_changes.extend(other.roll_changes);
+
+        // extend production stats
+        for (other_addr, other_stats) in other.production_stats {
+            self.production_stats
+                .entry(other_addr)
+                .or_insert_with(|| ProductionStats::default())
+                .chain(&other_stats);
+        }
+
+        // extend deferred credits
+        for (other_slot, other_credits) in other.deferred_credits {
+            let self_credits = self
+                .deferred_credits
+                .entry(other_slot)
+                .or_insert_with(|| Default::default());
+            for (other_addr, other_amount) in other_credits {
+                let self_amount = self_credits
+                    .entry(other_addr)
+                    .or_insert_with(|| Default::default());
+                *self_amount = self_amount.saturating_add(other_amount);
+            }
+        }
+    }
+}
+
 /// `PoSChanges` Serializer
 pub struct PoSChangesSerializer {
     bit_vec_serializer: BitVecSerializer,
@@ -119,7 +152,7 @@ impl PoSChangesSerializer {
             u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_serializer: SlotSerializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Excluded(THREAD_COUNT)),
             ),
             amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
@@ -331,7 +364,7 @@ impl DeferredCreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Excluded(THREAD_COUNT)),
             ),
             credit_deserializer: CreditDeserializer::new(),
         }

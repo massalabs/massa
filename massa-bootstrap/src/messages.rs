@@ -29,7 +29,7 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included};
 
 /// Messages used during bootstrap by server
 #[derive(Debug, Clone)]
@@ -111,11 +111,11 @@ impl BootstrapServerMessageSerializer {
             version_serializer: VersionSerializer::new(),
             peers_serializer: BootstrapPeersSerializer::new(MAX_ADVERTISE_LENGTH),
             pos_serializer: ExportProofOfStakeSerializer::new(),
-            state_changes_serializer: StateChangesSerializer::new(),
+            state_changes_serializer: StateChangesSerializer::new(thread_count),
             vec_u8_serializer: VecU8Serializer::new(Included(0), Included(u64::MAX)),
             slot_serializer: SlotSerializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
         }
     }
@@ -216,11 +216,11 @@ impl BootstrapServerMessageDeserializer {
             version_deserializer: VersionDeserializer::new(),
             peers_deserializer: BootstrapPeersDeserializer::new(MAX_ADVERTISE_LENGTH),
             pos_deserializer: ExportProofOfStakeDeserializer::new(),
-            state_changes_deserializer: StateChangesDeserializer::new(),
+            state_changes_deserializer: StateChangesDeserializer::new(thread_count),
             vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
         }
     }
@@ -352,7 +352,7 @@ impl BootstrapClientMessageSerializer {
             u32_serializer: U32VarIntSerializer::new(Included(0), Included(1000)),
             slot_serializer: SlotSerializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             async_message_id_serializer: AsyncMessageIdSerializer::new(),
             key_serializer: KeySerializer::new(),
@@ -424,7 +424,7 @@ impl BootstrapClientMessageDeserializer {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(1000)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(),
             key_deserializer: KeyDeserializer::new(),
