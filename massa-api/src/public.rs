@@ -18,6 +18,7 @@ use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
 use massa_models::{Amount, ModelsError, WrappedOperation};
+use massa_pos_exports::SelectorController;
 use massa_serialization::{DeserializeError, Deserializer};
 
 use massa_models::{
@@ -38,7 +39,7 @@ use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -46,6 +47,7 @@ impl API<Public> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         execution_controller: Box<dyn ExecutionController>,
+        selector_controller: Box<dyn SelectorController>,
         api_settings: &'static APISettings,
         consensus_settings: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
@@ -66,6 +68,7 @@ impl API<Public> {
             compensation_millis,
             node_id,
             execution_controller,
+            selector_controller,
         })
     }
 }
@@ -540,6 +543,8 @@ impl Endpoints for API<Public> {
         let api_cfg = self.0.api_settings;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let execution_controller = self.0.execution_controller.clone();
+        let compensation_millis = self.0.compensation_millis.clone();
+        let selector_controller = self.0.selector_controller.clone();
 
         let closure = async move || {
             let mut res = Vec::with_capacity(addresses.len());
@@ -652,13 +657,31 @@ impl Endpoints for API<Public> {
             // compile everything per address
             for address in addresses.into_iter() {
                 let state = states.remove(&address).ok_or(ApiError::NotFound)?;
+                let curr_slot = get_latest_block_slot_at_timestamp(
+                    cfg.thread_count,
+                    cfg.t0,
+                    cfg.genesis_timestamp,
+                    MassaTime::compensated_now(compensation_millis)?,
+                )?
+                .unwrap_or_else(|| Slot::new(0, 0));
+
+                let (block_draws, endorsement_draws) = selector_controller
+                    .filter_selection_by_address(
+                        &address,
+                        curr_slot,
+                        Slot::new(
+                            curr_slot.period + api_cfg.draw_lookahead_period_count,
+                            curr_slot.thread,
+                        ),
+                    );
+
                 res.push(AddressInfo {
                     address,
                     thread: address.get_thread(cfg.thread_count),
                     ledger_info: state.ledger_info,
                     rolls: state.rolls,
-                    block_draws: Default::default(), // TODO use PoS module
-                    endorsement_draws: Default::default(), // TODO use PoS module
+                    block_draws: HashSet::from_iter(block_draws.into_iter()),
+                    endorsement_draws: HashSet::from_iter(endorsement_draws.into_iter()),
                     blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
                     involved_in_endorsements: endorsements
                         .remove(&address)

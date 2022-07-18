@@ -105,6 +105,7 @@ pub fn start_selector_worker(
         input_data: input_data.clone(),
         cache: cache.clone(),
         periods_per_cycle: selector_config.periods_per_cycle,
+        thread_count: selector_config.thread_count,
     };
 
     // launch the selector thread

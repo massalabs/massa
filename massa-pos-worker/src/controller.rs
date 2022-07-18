@@ -6,7 +6,7 @@
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::{bail, Result};
-use massa_models::{Address, Slot};
+use massa_models::{api::IndexedSlot, prehash::Map, Address, Slot};
 
 use massa_pos_exports::{CycleInfo, PosResult, Selection, SelectorController, SelectorManager};
 use tracing::{info, warn};
@@ -22,6 +22,8 @@ pub struct SelectorControllerImpl {
     pub(crate) cache: DrawCachePtr,
     /// Continuously
     pub(crate) input_data: InputDataPtr,
+    /// thread count
+    pub(crate) thread_count: u8,
 }
 
 impl SelectorController for SelectorControllerImpl {
@@ -56,6 +58,40 @@ impl SelectorController for SelectorControllerImpl {
     fn get_producer(&self, slot: Slot) -> Result<Address> {
         let selection = self.get_selection(slot)?;
         Ok(selection.producer)
+    }
+
+    fn filter_selection_by_address(
+        &self,
+        address: &Address,
+        mut slot: Slot, /* starting slot */
+        end: Slot,
+    ) -> (Vec<Slot>, Vec<IndexedSlot>) {
+        let cache = self.cache.read();
+        let mut slot_producers = vec![];
+        let mut slot_endorsers = vec![];
+        while slot < end {
+            if let Some(selection) = cache
+                .get(&slot.get_cycle(self.periods_per_cycle))
+                .and_then(|selections| selections.get(&slot))
+            {
+                if selection.producer == *address {
+                    slot_producers.push(slot);
+                } else if let Some(index) = selection.endorsments.iter().position(|e| e == address)
+                {
+                    slot_endorsers.push(IndexedSlot { slot, index });
+                }
+            }
+            slot = match slot.get_next_slot(self.thread_count) {
+                Ok(next_slot) => next_slot,
+                _ => break,
+            };
+        }
+        (slot_producers, slot_endorsers)
+    }
+
+    fn get_cycle_selection(&self, _cycle: u64) -> Result<Map<Address, u64>> {
+        // todo find a way to retrieve address roll count
+        todo!()
     }
 
     /// Returns a boxed clone of self.
