@@ -354,8 +354,8 @@ impl ExecutionState {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
             let err = ExecutionError::RuntimeError(format!("bytecode execution error: {}", err));
             let mut context = context_guard!(self);
-            context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+            context.origin_operation_id = None;
             return Err(err);
         }
 
@@ -480,8 +480,8 @@ impl ExecutionState {
                     "failed to transfer {} call coins from {} to {}: {}",
                     coins, sender_addr, target_addr, err
                 ));
-                context.origin_operation_id = None;
                 context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+                context.origin_operation_id = None;
                 return Err(err);
             }
         };
@@ -504,8 +504,8 @@ impl ExecutionState {
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
             let err = ExecutionError::RuntimeError(format!("bytecode execution error: {}", err));
             let mut context = context_guard!(self);
-            context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot, Some(err.clone()));
+            context.origin_operation_id = None;
             return Err(err);
         }
 
