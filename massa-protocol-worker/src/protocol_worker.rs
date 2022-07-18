@@ -116,8 +116,6 @@ struct BlockInfo {
     /// Operations contained in the block,
     /// if we've received them already, and none otherwise.
     operations: Option<Set<OperationId>>,
-    /// Operation we are waiting for to be able to process the block.
-    awaiting_operations: Set<OperationId>,
     /// The header of the block.
     header: WrappedHeader,
 }
@@ -127,7 +125,6 @@ impl BlockInfo {
         BlockInfo {
             endorsements,
             operations: Default::default(),
-            awaiting_operations: Set::default(),
             header,
         }
     }
@@ -158,8 +155,6 @@ pub struct ProtocolWorker {
     /// List of wanted blocks,
     /// with the info representing their state withint the as_block workflow.
     block_wishlist: Map<BlockId, AskForBlocksInfo>,
-    /// Map of blocks waiting for operation.
-    awaiting_operations: Map<OperationId, BlockId>,
     /// List of processed endorsements
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
@@ -227,7 +222,6 @@ impl ProtocolWorker {
             controller_manager_rx,
             active_nodes: Default::default(),
             block_wishlist: Default::default(),
-            awaiting_operations: Default::default(),
             checked_endorsements: Default::default(),
             checked_operations: Default::default(),
             checked_headers: Default::default(),
@@ -1235,7 +1229,6 @@ impl ProtocolWorker {
                                     for op_id in operation_list.iter() {
                                         let op_hash = op_id.hash().into_bytes();
                                         total_hash.extend(op_hash);
-                                        info.awaiting_operations.insert(op_id.clone());
                                     }
 
                                     // Check operation_list against expected operations hash from header.
