@@ -268,6 +268,7 @@ async fn launch(
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
         execution_controller.clone(),
+        selector_controller.clone(),
         &SETTINGS.api,
         consensus_config,
         pool_command_sender.clone(),
