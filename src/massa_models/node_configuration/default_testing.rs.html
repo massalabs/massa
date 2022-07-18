@@ -277,7 +277,7 @@
 <span class="doccomment">/// block id size</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
 <span class="doccomment">/// reward for a block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_REWARD</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_raw</span>(<span class="ident">AMOUNT_DECIMAL_FACTOR</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_REWARD</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_mantissa_scale</span>(<span class="number">1</span>, <span class="number">0</span>);
 <span class="doccomment">/// random bootstrap message size</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BOOTSTRAP_RANDOMNESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
 <span class="doccomment">/// channel size</span>
@@ -351,7 +351,7 @@
 <span class="doccomment">/// proof of stake look back cycle</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_LOOKBACK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">2</span>;
 <span class="doccomment">/// roll price</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROLL_PRICE</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_raw</span>(<span class="number">100</span> <span class="op">*</span> <span class="ident">AMOUNT_DECIMAL_FACTOR</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROLL_PRICE</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_mantissa_scale</span>(<span class="number">100</span>, <span class="number">0</span>);
 <span class="doccomment">/// serialized slot size</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SLOT_KEY_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">9</span>;
 <span class="doccomment">/// thread count</span>
@@ -423,5 +423,5 @@
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">STATS_TIMESPAN</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">60000</span>.<span class="ident">into</span>();
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>

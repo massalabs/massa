@@ -251,10 +251,6 @@
 <span id="245">245</span>
 <span id="246">246</span>
 <span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::ENDORSEMENT_ID_SIZE_BYTES</span>;
@@ -426,14 +422,10 @@
 <span class="kw">impl</span> <span class="ident">EndorsementDeserializer</span> {
     <span class="doccomment">/// Creates a new `EndorsementDeserializer`</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">endorsement_count</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="ident">EndorsementDeserializer</span> {
             <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer::new</span>(
                 (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Excluded</span>(<span class="ident">thread_count</span>)),
+                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Excluded</span>(<span class="ident">THREAD_COUNT</span>)),
             ),
             <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Excluded</span>(<span class="ident">endorsement_count</span>)),
             <span class="ident">hash_deserializer</span>: <span class="ident">HashDeserializer::new</span>(),
@@ -507,5 +499,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>

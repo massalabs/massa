@@ -487,14 +487,6 @@
 <span id="481">481</span>
 <span id="482">482</span>
 <span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_async_pool</span>::{<span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessageIdDeserializer</span>, <span class="ident">AsyncMessageIdSerializer</span>};
@@ -690,10 +682,6 @@
 <span class="kw">impl</span> <span class="ident">BootstrapServerMessageDeserializer</span> {
     <span class="doccomment">/// Creates a new `BootstrapServerMessageDeserializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="self">Self</span> {
             <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="number">100</span>)),
             <span class="ident">time_deserializer</span>: <span class="ident">MassaTimeDeserializer::new</span>((
@@ -707,7 +695,7 @@
             <span class="ident">vec_u8_deserializer</span>: <span class="ident">VecU8Deserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
             <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer::new</span>(
                 (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">thread_count</span>)),
+                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">THREAD_COUNT</span>)),
             ),
         }
     }
@@ -903,15 +891,11 @@
 <span class="kw">impl</span> <span class="ident">BootstrapClientMessageDeserializer</span> {
     <span class="doccomment">/// Creates a new `BootstrapClientMessageDeserializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="self">Self</span> {
             <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="number">1000</span>)),
             <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer::new</span>(
                 (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">thread_count</span>)),
+                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">THREAD_COUNT</span>)),
             ),
             <span class="ident">async_message_id_deserializer</span>: <span class="ident">AsyncMessageIdDeserializer::new</span>(),
             <span class="ident">key_deserializer</span>: <span class="ident">KeyDeserializer::new</span>(),
@@ -987,5 +971,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>

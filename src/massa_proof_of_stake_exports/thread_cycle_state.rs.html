@@ -265,10 +265,6 @@
 <span id="259">259</span>
 <span id="260">260</span>
 <span id="261">261</span>
-<span id="262">262</span>
-<span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">bitvec::prelude::BitVec</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants</span>::{<span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>, <span class="ident">THREAD_COUNT</span>},
@@ -415,10 +411,6 @@
 <span class="kw">impl</span> <span class="ident">ThreadCycleStateDeserializer</span> {
     <span class="doccomment">/// Creates a new `ThreadCycleStateDeserializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="ident">ThreadCycleStateDeserializer</span> {
             <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(
                 <span class="ident">Included</span>(<span class="number">0</span>),
@@ -427,7 +419,7 @@
             <span class="ident">u64_deserializer</span>: <span class="ident">U64VarIntDeserializer::new</span>(<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
             <span class="ident">slot_deserializer</span>: <span class="ident">SlotDeserializer::new</span>(
                 (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">u64::MAX</span>)),
-                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">thread_count</span>)),
+                (<span class="ident">Included</span>(<span class="number">0</span>), <span class="ident">Included</span>(<span class="ident">THREAD_COUNT</span>)),
             ),
             <span class="ident">roll_update_deserializer</span>: <span class="ident">RollUpdateDeserializer::new</span>(),
             <span class="ident">address_deserializer</span>: <span class="ident">AddressDeserializer::new</span>(),
@@ -535,5 +527,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>

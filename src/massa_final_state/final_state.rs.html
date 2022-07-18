@@ -222,10 +222,6 @@
 <span id="216">216</span>
 <span id="217">217</span>
 <span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the final state of the node, which includes</span>
@@ -326,12 +322,8 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">StateChanges</span>, <span class="ident">FinalStateError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">pos_slot</span> <span class="op">=</span> <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changes_history</span>.<span class="ident">is_empty</span>() {
             <span class="comment">// Safe because we checked that there is changes just above.</span>
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-            <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-            <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
             <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">last_slot</span>
-                .<span class="ident">slots_since</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">changes_history</span>[<span class="number">0</span>].<span class="number">0</span>, <span class="ident">thread_count</span>)
+                .<span class="ident">slots_since</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">changes_history</span>[<span class="number">0</span>].<span class="number">0</span>, <span class="ident">THREAD_COUNT</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                     <span class="ident">FinalStateError::LedgerError</span>(<span class="string">&quot;Last slot is overflowing history.&quot;</span>.<span class="ident">to_string</span>())
                 })<span class="question-mark">?</span>;
@@ -449,5 +441,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>

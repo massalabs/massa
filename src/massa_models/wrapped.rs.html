@@ -275,14 +275,6 @@
 <span id="269">269</span>
 <span id="270">270</span>
 <span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node_configuration::THREAD_COUNT</span>, <span class="ident">Address</span>, <span class="ident">ModelsError</span>};
@@ -349,15 +341,11 @@
         <span class="ident">hash_data</span>.<span class="ident">extend</span>(<span class="ident">content_serialized</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">hash_data</span>);
         <span class="kw">let</span> <span class="ident">creator_address</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>);
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">Wrapped</span> {
             <span class="ident">signature</span>: <span class="ident">keypair</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>)<span class="question-mark">?</span>,
             <span class="ident">creator_public_key</span>: <span class="ident">public_key</span>,
             <span class="ident">creator_address</span>,
-            <span class="ident">thread</span>: <span class="ident">creator_address</span>.<span class="ident">get_thread</span>(<span class="ident">thread_count</span>),
+            <span class="ident">thread</span>: <span class="ident">creator_address</span>.<span class="ident">get_thread</span>(<span class="ident">THREAD_COUNT</span>),
             <span class="ident">content</span>,
             <span class="ident">serialized_data</span>: <span class="ident">content_serialized</span>,
             <span class="ident">id</span>: <span class="ident">U::new</span>(<span class="ident">hash</span>),
@@ -400,10 +388,6 @@
                 }),
             )),
         )(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="kw">let</span> (<span class="ident">rest</span>, <span class="ident">content</span>) <span class="op">=</span> <span class="ident">content_deserializer</span>.<span class="ident">deserialize</span>(<span class="ident">serialized_data</span>)<span class="question-mark">?</span>;
         <span class="comment">// Avoid getting the rest of the data in the serialized data</span>
         <span class="kw">let</span> <span class="ident">content_serialized</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">serialized_data</span>[..<span class="ident">serialized_data</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">rest</span>.<span class="ident">len</span>()];
@@ -417,7 +401,7 @@
                 <span class="ident">signature</span>,
                 <span class="ident">creator_public_key</span>,
                 <span class="ident">creator_address</span>,
-                <span class="ident">thread</span>: <span class="ident">creator_address</span>.<span class="ident">get_thread</span>(<span class="ident">thread_count</span>),
+                <span class="ident">thread</span>: <span class="ident">creator_address</span>.<span class="ident">get_thread</span>(<span class="ident">THREAD_COUNT</span>),
                 <span class="ident">serialized_data</span>: <span class="ident">content_serialized</span>.<span class="ident">to_vec</span>(),
                 <span class="ident">id</span>: <span class="ident">U::new</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_full_data</span>)),
             },
@@ -563,5 +547,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>

@@ -310,6 +310,32 @@
 <span id="304">304</span>
 <span id="305">305</span>
 <span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::AMOUNT_DECIMAL_FACTOR</span>;
@@ -336,6 +362,32 @@
     <span class="doccomment">/// Create a zero Amount</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">zero</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span>(<span class="number">0</span>)
+    }
+
+    <span class="doccomment">/// Create an Amount from the form `mantissa / (10^scale)`</span>
+    <span class="doccomment">/// Panics on any error.</span>
+    <span class="doccomment">/// Used for constant initialization.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// # use massa_models::Amount;</span>
+    <span class="doccomment">/// # use std::str::FromStr;</span>
+    <span class="doccomment">/// let amount_1: Amount = Amount::from_str(&quot;0.042&quot;).unwrap();</span>
+    <span class="doccomment">/// let amount_2: Amount = Amount::from_mantissa_scale(42, 3);</span>
+    <span class="doccomment">/// assert_eq!(amount_1, amount_2);</span>
+    <span class="doccomment">/// let amount_1: Amount = Amount::from_str(&quot;1000&quot;).unwrap();</span>
+    <span class="doccomment">/// let amount_2: Amount = Amount::from_mantissa_scale(1000, 0);</span>
+    <span class="doccomment">/// assert_eq!(amount_1, amount_2);</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">from_mantissa_scale</span>(<span class="ident">mantissa</span>: <span class="ident">u64</span>, <span class="ident">scale</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">raw_mantissa</span> <span class="op">=</span> (<span class="ident">mantissa</span> <span class="kw">as</span> <span class="ident">u128</span>) <span class="op">*</span> (<span class="ident">AMOUNT_DECIMAL_FACTOR</span> <span class="kw">as</span> <span class="ident">u128</span>);
+        <span class="kw">let</span> <span class="ident">scale_factor</span> <span class="op">=</span> <span class="kw">match</span> <span class="number">10u128</span>.<span class="ident">checked_pow</span>(<span class="ident">scale</span>) {
+            <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="macro">panic!</span>(),
+        };
+        <span class="macro">assert!</span>(<span class="ident">raw_mantissa</span> <span class="op">%</span> <span class="ident">scale_factor</span> <span class="op">==</span> <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">raw_mantissa</span> <span class="op">/</span> <span class="ident">scale_factor</span>;
+        <span class="macro">assert!</span>(<span class="ident">res</span> <span class="op">&lt;</span><span class="op">=</span> (<span class="ident">u64::MAX</span> <span class="kw">as</span> <span class="ident">u128</span>));
+        <span class="self">Self</span>(<span class="ident">res</span> <span class="kw">as</span> <span class="ident">u64</span>)
     }
 
     <span class="doccomment">/// Obtains the underlying raw `u64` representation</span>
@@ -617,5 +669,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>

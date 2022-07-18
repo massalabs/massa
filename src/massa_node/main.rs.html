@@ -482,15 +482,6 @@
 <span id="476">476</span>
 <span id="477">477</span>
 <span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -572,15 +563,6 @@
     <span class="comment">// Storage shared by multiple components.</span>
     <span class="kw">let</span> <span class="ident">shared_storage</span>: <span class="ident">Storage</span> <span class="op">=</span> <span class="ident">Default::default</span>();
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-    <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-    <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="ident">T0</span>;
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-    <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-    <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">T0</span>;
-
     <span class="comment">// init final state</span>
     <span class="kw">let</span> <span class="ident">ledger_config</span> <span class="op">=</span> <span class="ident">LedgerConfig</span> {
         <span class="ident">initial_sce_ledger_path</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">initial_sce_ledger_path</span>.<span class="ident">clone</span>(),
@@ -591,7 +573,7 @@
     };
     <span class="kw">let</span> <span class="ident">final_state_config</span> <span class="op">=</span> <span class="ident">FinalStateConfig</span> {
         <span class="ident">final_history_length</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">final_history_length</span>,
-        <span class="ident">thread_count</span>,
+        <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
         <span class="ident">ledger_config</span>: <span class="ident">ledger_config</span>.<span class="ident">clone</span>(),
         <span class="ident">async_pool_config</span>,
     };
@@ -684,8 +666,8 @@
         <span class="ident">cursor_delay</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">cursor_delay</span>,
         <span class="ident">clock_compensation</span>: <span class="ident">bootstrap_state</span>.<span class="ident">compensation_millis</span>,
         <span class="ident">max_async_gas</span>: <span class="ident">MAX_ASYNC_GAS</span>,
-        <span class="ident">thread_count</span>,
-        <span class="ident">t0</span>,
+        <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
+        <span class="ident">t0</span>: <span class="ident">T0</span>,
         <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
     };
     <span class="kw">let</span> (<span class="ident">execution_manager</span>, <span class="ident">execution_controller</span>) <span class="op">=</span> <span class="ident">start_execution_worker</span>(
@@ -979,5 +961,5 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>

@@ -130,10 +130,6 @@
 <span id="124">124</span>
 <span id="125">125</span>
 <span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 <span class="kw">use</span> <span class="ident">std::ops::Bound::Included</span>;
 
@@ -223,17 +219,13 @@
 <span class="kw">impl</span> <span class="ident">ExportProofOfStakeDeserializer</span> {
     <span class="doccomment">/// Creates a `ExportProofOfStakeDeserializer`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
         <span class="self">Self</span> {
             <span class="ident">u32_deserializer</span>: <span class="ident">U32VarIntDeserializer::new</span>(
                 <span class="ident">Included</span>(<span class="number">0</span>),
                 <span class="ident">Included</span>(<span class="ident">MAX_BOOTSTRAP_POS_CYCLES</span>),
             ),
             <span class="ident">cycle_state_deserializer</span>: <span class="ident">ThreadCycleStateDeserializer::new</span>(),
-            <span class="ident">thread_count</span>,
+            <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
         }
     }
 }
@@ -265,5 +257,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>

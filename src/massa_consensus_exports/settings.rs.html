@@ -674,22 +674,6 @@
 <span id="668">668</span>
 <span id="669">669</span>
 <span id="670">670</span>
-<span id="671">671</span>
-<span id="672">672</span>
-<span id="673">673</span>
-<span id="674">674</span>
-<span id="675">675</span>
-<span id="676">676</span>
-<span id="677">677</span>
-<span id="678">678</span>
-<span id="679">679</span>
-<span id="680">680</span>
-<span id="681">681</span>
-<span id="682">682</span>
-<span id="683">683</span>
-<span id="684">684</span>
-<span id="685">685</span>
-<span id="686">686</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::assertions_on_constants</span>)]</span>
 <span class="doccomment">//! Definition &amp; Implementation of the consensus settings</span>
@@ -1045,21 +1029,13 @@
         <span class="kw">use</span> <span class="ident">massa_models::constants::default_testing</span>::<span class="kw-2">*</span>;
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
         <span class="kw">use</span> <span class="ident">massa_models::constants</span>::<span class="kw-2">*</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="ident">T0</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">T0</span>;
         <span class="ident">ConsensusConfig</span> {
             <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
             <span class="ident">temp_files</span>: <span class="ident">TempFiles::default</span>(), <span class="comment">// No need to clone</span>
             <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
             <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
-            <span class="ident">thread_count</span>,
-            <span class="ident">t0</span>,
+            <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
+            <span class="ident">t0</span>: <span class="ident">T0</span>,
             <span class="ident">genesis_key</span>: <span class="ident">GENESIS_KEY</span>.<span class="ident">clone</span>(),
             <span class="ident">staking_keys_path</span>: <span class="ident">settings</span>.<span class="ident">staking_keys_path</span>.<span class="ident">clone</span>(),
             <span class="ident">max_discarded_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_discarded_blocks</span>,
@@ -1106,21 +1082,13 @@
         <span class="kw">use</span> <span class="ident">massa_models::constants::default_testing</span>::<span class="kw-2">*</span>;
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
         <span class="kw">use</span> <span class="ident">massa_models::constants</span>::<span class="kw-2">*</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
-        <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="ident">T0</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>;
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">T0</span>;
         <span class="ident">ConsensusConfig</span> {
             <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
             <span class="ident">temp_files</span>: <span class="ident">Default::default</span>(),
             <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
             <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
-            <span class="ident">thread_count</span>,
-            <span class="ident">t0</span>,
+            <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
+            <span class="ident">t0</span>: <span class="ident">T0</span>,
             <span class="ident">genesis_key</span>: <span class="ident">GENESIS_KEY</span>.<span class="ident">clone</span>(),
             <span class="ident">staking_keys_path</span>: <span class="ident">settings</span>.<span class="ident">staking_keys_path</span>,
             <span class="ident">max_discarded_blocks</span>: <span class="ident">settings</span>.<span class="ident">max_discarded_blocks</span>,
@@ -1377,5 +1345,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1c7b36d4d 2022-07-12)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (263edd43c 2022-07-17)" ></div>
 </body></html>
