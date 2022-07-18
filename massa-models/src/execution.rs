@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// The result of the read-only execution.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ReadOnlyResult {
     /// An error occurred during execution.
     Error(String),

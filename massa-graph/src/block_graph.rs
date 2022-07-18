@@ -92,6 +92,7 @@ pub struct BlockStateAccumulator {
 
 /// Something can be discarded
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DiscardReason {
     /// Block is invalid, either structurally, or because of some incompatibility. The String contains the reason for info or debugging.
     Invalid(String),
@@ -134,6 +135,7 @@ enum BlockStatus {
 
 /// Block status in the graph that can be exported.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ExportBlockStatus {
     /// received but not yet graph processed
     Incoming,
@@ -166,6 +168,7 @@ pub struct ExportCompiledBlock {
 
 /// Status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum Status {
     /// without enough fitness to be part of immutable history
     Active,

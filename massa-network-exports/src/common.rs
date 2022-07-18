@@ -16,6 +16,7 @@ impl std::fmt::Display for ConnectionId {
 
 /// Possible reasons for a connection closure
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ConnectionClosureReason {
     /// Connection was closed properly
     Normal,

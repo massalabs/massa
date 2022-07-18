@@ -53,6 +53,7 @@ static WRAPPED_SERIALIZER: WrappedSerializer = WrappedSerializer::new();
 /// All messages that can be sent or received.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Message {
     /// Initiates handshake.
     HandshakeInitiation {
