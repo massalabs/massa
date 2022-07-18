@@ -147,10 +147,12 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
 #[derive(
     Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Enum,
 )]
+#[serde(rename_all = "snake_case")]
 pub enum PeerType {
     /// Just a peer
     Standard,
     /// Connection from these nodes are always accepted
+    #[serde(rename = "whitelisted")]
     WhiteListed,
     /** if the peer is in bootstrap servers list
     for now it is decoupled from the real bootstrap sever list, it's just parsed

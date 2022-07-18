@@ -162,9 +162,9 @@
     max_bytes_write = 20_000_000.0
 
     [network.peer_types_config]
-    Standard = { target_out_connections = 10, max_out_attempts = 10, max_in_connections = 15}
-    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
-    WhiteListed = { target_out_connections = 2, max_out_attempts = 2, max_in_connections = 3}
+    standard = { target_out_connections = 10, max_out_attempts = 10, max_in_connections = 15}
+    bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
+    whitelisted = { target_out_connections = 2, max_out_attempts = 2, max_in_connections = 3}
 
 [bootstrap]
     # list of bootstrap (ip, node id)

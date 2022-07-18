@@ -8,6 +8,7 @@ use std::fmt::Display;
 
 /// Status in which an operation can be (derived from the block status)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum OperationSearchResultBlockStatus {
     /// the block hasn't been processed by consensus yet
     Incoming,
@@ -23,6 +24,7 @@ pub enum OperationSearchResultBlockStatus {
 
 /// Status in which an operation can be
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum OperationSearchResultStatus {
     /// in pool
     Pending,

@@ -318,6 +318,7 @@ impl Deserializer<Operation> for OperationDeserializer {
 
 /// Type specific operation content
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum OperationType {
     /// transfer coins from sender to recipient
     Transaction {
