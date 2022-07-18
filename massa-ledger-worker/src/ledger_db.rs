@@ -461,12 +461,12 @@ mod tests {
         data.insert(b"2".to_vec(), b"b".to_vec());
         data.insert(b"3".to_vec(), b"c".to_vec());
         let entry = LedgerEntry {
-            parallel_balance: Amount::from_raw(42),
+            parallel_balance: Amount::from_mantissa_scale(42, 0),
             datastore: data.clone(),
             ..Default::default()
         };
         let entry_update = LedgerEntryUpdate {
-            parallel_balance: SetOrKeep::Set(Amount::from_raw(21)),
+            parallel_balance: SetOrKeep::Set(Amount::from_mantissa_scale(21, 0)),
             bytecode: SetOrKeep::Keep,
             ..Default::default()
         };
@@ -499,7 +499,7 @@ mod tests {
             Amount::from_bytes_compact(&db.get_sub_entry(&a, LedgerSubEntry::Balance).unwrap())
                 .unwrap()
                 .0,
-            Amount::from_raw(21)
+            Amount::from_mantissa_scale(21, 0)
         );
         assert!(db.get_sub_entry(&b, LedgerSubEntry::Balance).is_none());
         assert_eq!(data, db.get_entire_datastore(&a));

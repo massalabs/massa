@@ -71,29 +71,15 @@ lazy_static::lazy_static! {
     };
 }
 
-#[cfg(feature = "sandbox")]
-lazy_static::lazy_static! {
-    /// t0
-    pub static ref T0: MassaTime = std::env::var("T0").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-        MassaTime::from(16000)
-    );
-    /// thread count
-    pub static ref THREAD_COUNT: u8 = std::env::var("THREAD_COUNT").map(|timestamp| timestamp.parse::<u8>().unwrap().into()).unwrap_or_else(|_|
-        32
-    );
-}
-
 /// Price of a roll in the network
-pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
+pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 /// Block reward is given for each block creation
-pub const BLOCK_REWARD: Amount = Amount::from_raw((0.3 * AMOUNT_DECIMAL_FACTOR as f64) as u64);
+pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
 /// Time between the periods in the same thread.
-#[cfg(not(feature = "sandbox"))]
 pub const T0: MassaTime = MassaTime::from(16000);
 /// Proof of stake seed for the initial draw
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// Number of threads
-#[cfg(not(feature = "sandbox"))]
 pub const THREAD_COUNT: u8 = 32;
 /// Number of endorsement
 pub const ENDORSEMENT_COUNT: u32 = 9;
@@ -185,7 +171,6 @@ pub const SLOT_KEY_SIZE: usize = 9;
 /// Size of the event id hash used in execution module, safe to import
 pub const EVENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
-#[cfg(not(feature = "sandbox"))]
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {
