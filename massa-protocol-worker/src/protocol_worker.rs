@@ -969,8 +969,6 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
-            for (op_id, _) in received_ids.iter() {}
-
             // Add to pool, propagate when received outside of a header.
             self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
                 operations: new_operations,
