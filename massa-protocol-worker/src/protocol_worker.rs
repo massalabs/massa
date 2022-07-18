@@ -36,13 +36,11 @@ use tracing::{debug, error, info, warn};
 ///
 /// # Arguments
 /// * `protocol_settings`: protocol settings
-/// * `max_block_gas`: maximum gas per block
 /// * `network_command_sender`: the `NetworkCommandSender` we interact with
 /// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
     protocol_settings: &'static ProtocolSettings,
-    max_block_gas: u64,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
     storage: Storage,
@@ -66,7 +64,6 @@ pub async fn start_protocol_controller(
     let join_handle = tokio::spawn(async move {
         let res = ProtocolWorker::new(
             protocol_settings,
-            max_block_gas,
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
@@ -121,8 +118,6 @@ impl BlockInfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     pub(crate) protocol_settings: &'static ProtocolSettings,
-    /// Max gas per block
-    max_block_gas: u64,
     /// Associated network command sender.
     pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
@@ -174,14 +169,12 @@ impl ProtocolWorker {
     ///
     /// # Arguments
     /// * `protocol_settings`: protocol configuration.
-    /// * `max_block_gas`: max gas per block
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.
     /// * `controller_manager_rx`: Channel receiving management commands.
     pub fn new(
         protocol_settings: &'static ProtocolSettings,
-        max_block_gas: u64,
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
@@ -194,7 +187,6 @@ impl ProtocolWorker {
     ) -> ProtocolWorker {
         ProtocolWorker {
             protocol_settings,
-            max_block_gas,
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
@@ -960,7 +952,6 @@ impl ProtocolWorker {
     /// - Check operations(see `note_operations_from_node`).
     /// - Check operations:
     ///     - Absence of duplicates.
-    ///     - Validity period includes the slot of the block.
     ///     - Address matches that of the block.
     ///     - Thread matches that of the block.
     /// - Check root hash.
@@ -996,17 +987,9 @@ impl ProtocolWorker {
 
         // Perform general checks on the operations, note them into caches and send them to pool
         // but do not propagate as they are already propagating within a block
-        let (seen_ops, received_operations_ids, total_gas) = self
+        let (seen_ops, received_operations_ids) = self
             .note_operations_from_node(operations.clone(), source_node_id, false)
             .await?;
-        if total_gas > self.max_block_gas {
-            // Gas usage over limit => block invalid
-            // TODO remove this check in the single-ledger version,
-            //      this is only here to prevent SC operations from spending gas fees while the block is unable to execute their op
-            return Ok(None);
-        }
-
-        //TODO Check total operations size ! => block is invalid if too big
 
         // check root hash
         {
@@ -1049,9 +1032,8 @@ impl ProtocolWorker {
         operations: Operations,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, u64), ProtocolError> {
+    ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
-        let mut total_gas = 0u64;
         let length = operations.len();
         let mut seen_ops = vec![];
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
@@ -1063,9 +1045,6 @@ impl ProtocolWorker {
             // Note: we always want to update the node's view of known operations,
             // even if we cached the check previously.
             received_ids.insert(operation_id, (idx, operation.content.expire_period));
-
-            // Accumulate gas
-            total_gas = total_gas.saturating_add(operation.get_gas_usage());
 
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(&operation_id) {
@@ -1097,7 +1076,7 @@ impl ProtocolWorker {
             self.prune_checked_operations();
         }
 
-        Ok((seen_ops, received_ids, total_gas))
+        Ok((seen_ops, received_ids))
     }
 
     /// Note endorsements coming from a given node,

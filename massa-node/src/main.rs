@@ -25,8 +25,9 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
-        ROLL_PRICE, T0, THREAD_COUNT, VERSION,
+        BLOCK_REWARD, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS,
+        MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, ROLL_PRICE, T0,
+        THREAD_COUNT, VERSION,
     },
     init_serialization_context,
     prehash::Map,
@@ -166,7 +167,6 @@ async fn launch(
         protocol_manager,
     ) = start_protocol_controller(
         &SETTINGS.protocol,
-        MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,
         shared_storage.clone(),
@@ -202,10 +202,14 @@ async fn launch(
         cursor_delay: SETTINGS.execution.cursor_delay,
         clock_compensation: bootstrap_state.compensation_millis,
         max_async_gas: MAX_ASYNC_GAS,
+        max_gas_per_block: MAX_GAS_PER_BLOCK,
         roll_price: ROLL_PRICE,
         thread_count,
         t0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
+        block_reward: BLOCK_REWARD,
+        endorsement_count: ENDORSEMENT_COUNT as u64,
+        operation_validity_period: OPERATION_VALIDITY_PERIODS,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,

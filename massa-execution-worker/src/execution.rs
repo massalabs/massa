@@ -19,11 +19,8 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
-use massa_models::constants::{
-    BLOCK_REWARD, ENDORSEMENT_COUNT, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, THREAD_COUNT,
-};
 use massa_models::output_event::SCOutputEvent;
-use massa_models::{Address, BlockId, OperationType, WrappedEndorsement, WrappedOperation};
+use massa_models::{Address, BlockId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::Interface;
@@ -259,18 +256,16 @@ impl ExecutionState {
     ) -> Result<(), ExecutionError> {
         // check validity period
         if !(operation
-            .get_validity_range(OPERATION_VALIDITY_PERIODS)
+            .get_validity_range(self.config.operation_validity_period)
             .contains(&block_slot.period))
         {
-            return Err(ExecutionError::BlockGasError(
-                "operation not valid at the enclosing block's period".to_string(),
-            ));
+            return Err(ExecutionError::InvalidSlotRange);
         }
 
         // check remaining block gas
         let op_gas = operation.get_gas_usage();
         let new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
-            ExecutionError::BlockGasError(
+            ExecutionError::NotEnoughGas(
                 "not enough remaining block gas to execute operation".to_string(),
             )
         })?;
@@ -279,8 +274,12 @@ impl ExecutionState {
         let sender_addr = operation.creator_address;
 
         // get the thread to which the operation belongs
-        // TODO when storage is ready, do not recompute this here, use the "thread" property of the operation itself
-        let op_thread = sender_addr.get_thread(THREAD_COUNT);
+        // When storage is ready, do not recompute this here, use the "thread"
+        // property of the operation itself
+        let op_thread = match self.storage.retrieve_operation(&operation.id) {
+            Some(op) => op.thread,
+            None => sender_addr.get_thread(self.config.thread_count),
+        };
 
         // check block/op thread compatibility
         if op_thread != block_slot.thread {
@@ -868,24 +867,27 @@ impl ExecutionState {
             let stored_block = block.read();
 
             // Set remaining block gas
-            let mut remaining_block_gas = MAX_GAS_PER_BLOCK;
+            let mut remaining_block_gas = self.config.max_gas_per_block;
 
             // Set block credits
-            let mut block_credits = BLOCK_REWARD;
+            let mut block_credits = self.config.block_reward;
 
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
             for (op_idx, operation) in stored_block.content.operations.iter().enumerate() {
-                if let Err(err) = self.execute_operation(
+                match self.execute_operation(
                     operation,
                     stored_block.content.header.content.slot,
                     &mut remaining_block_gas,
                     &mut block_credits,
                 ) {
-                    debug!(
+                    Err(ExecutionError::NotEnoughGas(_))
+                    | Err(ExecutionError::InvalidSlotRange) => debug!("Ignoring operation"),
+                    Err(err) => debug!(
                         "failed executing operation index {} in block {}: {}",
                         op_idx, block_id, err
-                    );
+                    ),
+                    _ => {}
                 }
             }
 
@@ -901,31 +903,34 @@ impl ExecutionState {
             // Credit endorsement producers
             let mut remaining_credit = block_credits;
             let block_credit_part = block_credits
-                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
+                .checked_div_u64(3 * (1 + (self.config.endorsement_count)))
                 .expect("critical: block_credits checked_div factor is 0");
-            for WrappedEndorsement {
-                creator_address, ..
-            } in &stored_block.content.header.content.endorsements
-            {
-                // credit endorsement creator with sequential coins
-                match context.transfer_sequential_coins(
-                    None,
-                    Some(*creator_address),
-                    block_credit_part,
-                    false,
-                ) {
+            for wrapped_endorsement in &stored_block.content.header.content.endorsements {
+                let endorsed_block_id = wrapped_endorsement.content.endorsed_block;
+                let to_credit = match self.storage.retrieve_block(&endorsed_block_id) {
+                    Some(endorsed_block) => Some(endorsed_block.read().creator_address),
+                    None => {
+                        debug!("cannot retrieve endorsed block {} ", endorsed_block_id);
+                        None
+                    }
+                };
+
+                // credit creator of the endorsed block with sequential coins
+                match context.transfer_sequential_coins(None, to_credit, block_credit_part, false) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
                     }
                     Err(err) => {
+                        let to_credit_addr = match to_credit {
+                            Some(addr) => format!("{addr}"),
+                            None => String::from("None"),
+                        };
                         debug!(
-                            "failed to credit {} sequential coins to {} for an endorsement production: {}",
-                            block_credit_part, creator_address, err
+                            "failed to credit {} sequential coins to {} for an endorsed block production: {}",
+                            block_credit_part, to_credit_addr, err
                         )
                     }
                 }
-
-                //TODO credit the creator of the endorsed block with sequential coins
             }
 
             // Credit block creator with remaining_credit
