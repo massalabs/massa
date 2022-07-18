@@ -1191,8 +1191,8 @@
             <span class="comment">// cancel the effects of the execution by resetting the context to the previously saved snapshot</span>
             <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(<span class="string">&quot;bytecode execution error: {}&quot;</span>, <span class="ident">err</span>));
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
             <span class="ident">context</span>.<span class="ident">reset_to_snapshot</span>(<span class="ident">context_snapshot</span>, <span class="prelude-val">Some</span>(<span class="ident">err</span>.<span class="ident">clone</span>()));
+            <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
         }
 
@@ -1317,8 +1317,8 @@
                     <span class="string">&quot;failed to transfer {} call coins from {} to {}: {}&quot;</span>,
                     <span class="ident">coins</span>, <span class="ident">sender_addr</span>, <span class="ident">target_addr</span>, <span class="ident">err</span>
                 ));
-                <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
                 <span class="ident">context</span>.<span class="ident">reset_to_snapshot</span>(<span class="ident">context_snapshot</span>, <span class="prelude-val">Some</span>(<span class="ident">err</span>.<span class="ident">clone</span>()));
+                <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
             }
         };
@@ -1341,8 +1341,8 @@
             <span class="comment">// cancel the effects of the execution by resetting the context to the previously saved snapshot</span>
             <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">ExecutionError::RuntimeError</span>(<span class="macro">format!</span>(<span class="string">&quot;bytecode execution error: {}&quot;</span>, <span class="ident">err</span>));
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
             <span class="ident">context</span>.<span class="ident">reset_to_snapshot</span>(<span class="ident">context_snapshot</span>, <span class="prelude-val">Some</span>(<span class="ident">err</span>.<span class="ident">clone</span>()));
+            <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
         }
 
