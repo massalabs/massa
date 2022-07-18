@@ -446,51 +446,6 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::GetBlocksResults(results) => {
-                for (block_id, block_info) in results.into_iter() {
-                    massa_trace!("protocol.protocol_worker.process_command.found_block.begin", { "block_id": block_id, "block_info": block_info });
-                    match block_info {
-                        Some((opt_operation_ids, opt_endorsement_ids)) => {
-                            // Send the block once to all nodes who asked for it.
-                            for (node_id, node_info) in self.active_nodes.iter_mut() {
-                                if node_info.remove_wanted_block(&block_id) {
-                                    node_info.insert_known_blocks(
-                                        &[block_id],
-                                        true,
-                                        Instant::now(),
-                                        self.protocol_settings.max_node_known_blocks_size,
-                                    );
-                                    if let Some(ref operation_ids) = opt_operation_ids {
-                                        // Send block info.
-                                    }
-                                }
-                            }
-                            massa_trace!(
-                                "protocol.protocol_worker.process_command.found_block.end",
-                                {}
-                            );
-                        }
-                        None => {
-                            massa_trace!(
-                                "protocol.protocol_worker.process_command.block_not_found.begin",
-                                { "block_id": block_id }
-                            );
-                            for (node_id, node_info) in self.active_nodes.iter_mut() {
-                                if node_info.contains_wanted_block_update_timestamp(&block_id) {
-                                    massa_trace!("protocol.protocol_worker.process_command.block_not_found.notify_node", { "node": node_id, "block_id": block_id });
-                                    self.network_command_sender
-                                        .block_not_found(*node_id, block_id)
-                                        .await?
-                                }
-                            }
-                            massa_trace!(
-                                "protocol.protocol_worker.process_command.block_not_found.end",
-                                {}
-                            );
-                        }
-                    }
-                }
-            }
             ProtocolCommand::WishlistDelta { new, remove } => {
                 massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                 self.stop_asking_blocks(remove)?;

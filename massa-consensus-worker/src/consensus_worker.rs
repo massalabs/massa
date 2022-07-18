@@ -1161,33 +1161,6 @@ impl ConsensusWorker {
                 )?;
                 self.block_db_changed().await?;
             }
-            ProtocolEvent::GetBlocks(list) => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_protocol_event.get_blocks",
-                    { "list": list }
-                );
-                let mut results = Map::default();
-                for block_hash in list {
-                    if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
-                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
-                        results.insert(
-                            block_hash,
-                            Some((
-                                Some(a_block.operation_set.keys().copied().collect()),
-                                Some(a_block.endorsement_ids.keys().copied().collect()),
-                            )),
-                        );
-                    } else {
-                        // not found in consensus
-                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_not_found", { "hash": block_hash});
-                        results.insert(block_hash, None);
-                    }
-                }
-                self.channels
-                    .protocol_command_sender
-                    .send_get_blocks_results(results)
-                    .await?;
-            }
         }
         Ok(())
     }

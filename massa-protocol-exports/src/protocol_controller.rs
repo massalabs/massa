@@ -43,8 +43,6 @@ pub enum ProtocolEvent {
         /// The header
         header: WrappedHeader,
     },
-    /// Ask for a list of blocks from consensus.
-    GetBlocks(Vec<BlockId>),
 }
 /// Possible types of pool events that can happen.
 #[derive(Debug)]
@@ -96,8 +94,6 @@ pub enum ProtocolCommand {
         /// remove from wish list
         remove: Set<BlockId>,
     },
-    /// The response to a `[ProtocolEvent::GetBlocks]`.
-    GetBlocksResults(BlocksResults),
     /// Propagate operations (send batches)
     /// note: OperationIds are replaced with OperationPrefixIds
     ///       by the controller
@@ -148,22 +144,6 @@ impl ProtocolCommandSender {
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("notify_block_attack command send error".into())
-            })
-    }
-
-    /// Send the response to a `ProtocolEvent::GetBlocks`.
-    pub async fn send_get_blocks_results(
-        &mut self,
-        results: BlocksResults,
-    ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.command_sender.send_get_blocks_results", {
-            "results": results
-        });
-        self.0
-            .send(ProtocolCommand::GetBlocksResults(results))
-            .await
-            .map_err(|_| {
-                ProtocolError::ChannelError("send_get_blocks_results command send error".into())
             })
     }
 
