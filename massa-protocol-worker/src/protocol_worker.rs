@@ -1279,6 +1279,7 @@ impl ProtocolWorker {
                         let operations_ids = match self.storage.retrieve_block(hash) {
                             Some(wrapped_block) => wrapped_block.read().content.operations.clone(),
                             None => {
+                                // let the node know we don't have the block.
                                 all_blocks_info.push((hash.clone(), ReplyForBlocksInfo::NotFound));
                                 continue;
                             }
@@ -1286,6 +1287,15 @@ impl ProtocolWorker {
                         let block_info = match info_wanted {
                             AskForBlocksInfo::Info => ReplyForBlocksInfo::Info(operations_ids),
                             AskForBlocksInfo::Operations(op_ids) => {
+                                // Mark the node as having the block.
+                                node_info.insert_known_blocks(
+                                    &[hash.clone()],
+                                    true,
+                                    Instant::now(),
+                                    self.protocol_settings.max_node_known_blocks_size,
+                                );
+
+                                // Send only the missing operations.
                                 let needed_ops = operations_ids
                                     .into_iter()
                                     .filter(|id| op_ids.contains(id))
