@@ -1136,7 +1136,8 @@ impl ProtocolWorker {
                         }
                         BlockInfoReply::Operations(operations) => {
                             // Send operations to pool,
-                            // and wait for them to have been procesed(and added to storage).
+                            // before performing the below checks,
+                            // and wait for them to have been procesed(i.e. added to storage).
                             let (tx, rx) = oneshot::channel();
                             self.note_operations_from_node(
                                 operations.clone(),
@@ -1155,12 +1156,8 @@ impl ProtocolWorker {
                                 ) =
                                     self.checked_headers.get_mut(&block_id)
                                 {
+                                    let mut received_ids: OperationIds = Default::default();
                                     for op in operations.iter() {
-                                        if !wanted_operation_ids.contains(&op.id) {
-                                            should_be_banned = true;
-                                            break;
-                                        }
-
                                         // check validity period
                                         if !(op
                                             .get_validity_range(self.operation_validity_periods)
@@ -1177,6 +1174,17 @@ impl ProtocolWorker {
                                             should_be_banned = true;
                                             break;
                                         }
+
+                                        // Check for duplicates
+                                        if !received_ids.insert(op.id) {
+                                            should_be_banned = true;
+                                            break;
+                                        }
+                                    }
+
+                                    // Check the ids are exactly what is expected.
+                                    if !(wanted_operation_ids == &received_ids) {
+                                        should_be_banned = true;
                                     }
 
                                     if should_be_banned {
