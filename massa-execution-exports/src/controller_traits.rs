@@ -64,9 +64,6 @@ pub trait ExecutionController: Send + Sync {
         addr: &Address,
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>);
 
-    /// Return the active rolls for a list of address.
-    fn get_active_addresses_rolls(&self, addresses: Vec<Address>) -> Map<Address, u64>;
-
     /// Returns for a given cycle the stakers taken into account
     /// by the selector. That correspond to the roll_counts in `cycle - 1`.
     ///

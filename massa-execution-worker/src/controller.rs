@@ -139,13 +139,6 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_final_and_active_datastore_keys(addr)
     }
 
-    /// Return the final stored rolls for a list of address.
-    fn get_active_addresses_rolls(&self, addresses: Vec<Address>) -> Map<Address, u64> {
-        self.execution_state
-            .read()
-            .get_active_addresses_rolls(addresses)
-    }
-
     /// Return the final rolls distribution for the given `cycle`
     fn get_cycle_rolls(&self, cycle: u64) -> Map<Address, u64> {
         self.execution_state.read().get_cycle_rolls(cycle)

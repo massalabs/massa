@@ -1129,19 +1129,6 @@ impl ExecutionState {
             .collect()
     }
 
-    /// Return the active rolls in active history for each given address.
-    pub fn get_active_addresses_rolls(&self, addresses: Vec<Address>) -> Map<Address, u64> {
-        let mut ret = Map::default();
-        let active_history = self.active_history.read();
-        for address in addresses {
-            match active_history.fetch_roll_count(&address) {
-                Some(roll_count) => ret.insert(address, roll_count),
-                _ => ret.insert(address, 0),
-            };
-        }
-        ret
-    }
-
     /// Returns for a given cycle the stakers taken into account
     /// by the selector. That correspond to the roll_counts in `cycle - 1`.
     ///
