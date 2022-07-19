@@ -373,49 +373,21 @@ impl ProtocolWorker {
                 );
                 let now = Instant::now();
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
-                    // if we know that a node wants a block we send the full block
-                    if node_info.remove_wanted_block(&block_id) {
-                        node_info.insert_known_blocks(
-                            &[block_id],
-                            true,
-                            now,
-                            self.protocol_settings.max_node_known_blocks_size,
-                        );
-                        node_info.insert_known_endorsements(
-                            endorsement_ids.clone(),
-                            self.protocol_settings.max_node_known_endorsements_size,
-                        );
-                        node_info.insert_known_ops(
-                            operation_ids.clone(),
-                            self.protocol_settings.max_node_known_ops_size,
-                        );
-                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id });
+                    // node that isn't asking for that block
+                    let cond = node_info.get_known_block(&block_id);
+                    // if we don't know if that node knows that hash or if we know it doesn't
+                    if !cond.map_or_else(|| false, |v| v.0) {
+                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id});
                         self.network_command_sender
-                            .send_block(*node_id, block_id)
+                            .send_block_header(*node_id, block_id)
                             .await
                             .map_err(|_| {
                                 ProtocolError::ChannelError(
-                                    "send block node command send failed".into(),
+                                    "send block header network command send failed".into(),
                                 )
                             })?;
                     } else {
-                        // node that isn't asking for that block
-                        let cond = node_info.get_known_block(&block_id);
-                        // if we don't know if that node knows that hash or if we know it doesn't
-                        if !cond.map_or_else(|| false, |v| v.0) {
-                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id});
-                            self.network_command_sender
-                                .send_block_header(*node_id, block_id)
-                                .await
-                                .map_err(|_| {
-                                    ProtocolError::ChannelError(
-                                        "send block header network command send failed".into(),
-                                    )
-                                })?;
-                        } else {
-                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.do_not_send", { "node": node_id, "block_id": block_id });
-                            // Optimization: broadcast block id
-                        }
+                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.do_not_send", { "node": node_id, "block_id": block_id });
                     }
                 }
                 massa_trace!(
