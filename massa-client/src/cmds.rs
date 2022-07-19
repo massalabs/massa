@@ -710,6 +710,11 @@ impl Command {
                             client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
+                    if let Ok(staked_keys) = client.private.get_staking_addresses().await {
+                        if staked_keys.is_empty() {
+                            client_warning!("No staked keys found: did you issued the node_add_staking_secret_keys command?");
+                        }
+                    }
                 }
                 send_operation(
                     client,
