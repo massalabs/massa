@@ -6,12 +6,12 @@
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::{bail, Result};
-use massa_models::{api::IndexedSlot, prehash::Map, Address, Slot};
+use massa_models::{api::IndexedSlot, Address, Slot};
 
 use massa_pos_exports::{CycleInfo, PosResult, Selection, SelectorController, SelectorManager};
 use tracing::{info, warn};
 
-use crate::{DrawCachePtr, InputDataPtr};
+use crate::{CycleStatesPtr, DrawCachePtr, InputDataPtr};
 
 #[derive(Clone)]
 /// implementation of the selector controller
@@ -22,6 +22,9 @@ pub struct SelectorControllerImpl {
     pub(crate) cache: DrawCachePtr,
     /// Continuously
     pub(crate) input_data: InputDataPtr,
+    /// Computed cycle rolls cumulative distribution to keep in memory,
+    /// Map<Cycle, CumulativeDistrib>
+    pub(crate) cycle_states: CycleStatesPtr,
     /// thread count
     pub(crate) thread_count: u8,
 }
@@ -60,6 +63,9 @@ impl SelectorController for SelectorControllerImpl {
         Ok(selection.producer)
     }
 
+    /// Return a list of slots where `address` has been choosen to produce a
+    /// block and a list where he is choosen for the endorsements.
+    /// Look from the `start` slot to the `end` slot.
     fn filter_selection_by_address(
         &self,
         address: &Address,
@@ -89,9 +95,17 @@ impl SelectorController for SelectorControllerImpl {
         (slot_producers, slot_endorsers)
     }
 
-    fn get_cycle_selection(&self, _cycle: u64) -> Result<Map<Address, u64>> {
-        // todo find a way to retrieve address roll count
-        todo!()
+    /// Get candidate stakers for the given `cycle`.
+    /// If cycle not found it will return an empty vector.
+    fn get_cycle_stakers(&self, cycle: u64) -> Vec<Address> {
+        match self.cycle_states.read().get(&(cycle - 1)) {
+            Some(cumulative_func) => cumulative_func
+                .iter()
+                .map(|(_, addr)| addr)
+                .cloned()
+                .collect(),
+            _ => vec![],
+        }
     }
 
     /// Returns a boxed clone of self.

@@ -315,8 +315,28 @@ impl Endpoints for API<Public> {
     }
 
     fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
+        let selector_controller = self.0.selector_controller.clone();
+        let execution_controller = self.0.execution_controller.clone();
+        let cfg = self.0.consensus_config.clone();
+        let compensation_millis = self.0.compensation_millis;
         let closure = async move || {
-            let staker_vec = Default::default(); // TODO use PoS module
+            let curr_slot = get_latest_block_slot_at_timestamp(
+                cfg.thread_count,
+                cfg.t0,
+                cfg.genesis_timestamp,
+                MassaTime::compensated_now(compensation_millis)?,
+            )?
+            .unwrap_or_else(|| Slot::new(0, 0));
+            let stakers = execution_controller.get_active_addresses_rolls(
+                selector_controller.get_cycle_stakers(curr_slot.get_cycle(cfg.periods_per_cycle)),
+            );
+
+            let mut staker_vec = stakers
+                .into_iter()
+                .map(|(addr, rolls)| (addr, rolls))
+                .collect::<Vec<(Address, u64)>>();
+            staker_vec.sort_by_key(|(_, roll)| *roll);
+
             Ok(staker_vec)
         };
         Box::pin(closure())

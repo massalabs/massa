@@ -7,6 +7,7 @@ use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::Amount;
 use massa_models::BlockId;
@@ -62,6 +63,9 @@ pub trait ExecutionController: Send + Sync {
         &self,
         addr: &Address,
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>);
+
+    /// Return the active rolls for a list of address.
+    fn get_active_addresses_rolls(&self, addresses: Vec<Address>) -> Map<Address, u64>;
 
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///

@@ -20,6 +20,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
 use massa_models::{Address, BlockId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_pos_exports::SelectorController;
@@ -1126,5 +1127,18 @@ impl ExecutionState {
                     .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
             )
             .collect()
+    }
+
+    /// Return the active rolls in active history for each given address.
+    pub fn get_active_addresses_rolls(&self, addresses: Vec<Address>) -> Map<Address, u64> {
+        let mut ret = Map::default();
+        let active_history = self.active_history.read();
+        for address in addresses {
+            match active_history.fetch_roll_count(&address) {
+                Some(roll_count) => ret.insert(address, roll_count),
+                _ => ret.insert(address, 0),
+            };
+        }
+        ret
     }
 }
