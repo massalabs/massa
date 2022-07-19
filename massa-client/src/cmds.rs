@@ -711,8 +711,8 @@ impl Command {
                         }
                     }
                     if let Ok(staked_keys) = client.private.get_staking_addresses().await {
-                        if staked_keys.is_empty() {
-                            client_warning!("No staked keys found: did you issued the node_add_staking_secret_keys command?");
+                        if !staked_keys.contains(&addr) {
+                            client_warning!("You are buying rolls with an address not registered for staking. Don't forget to run 'node_add_staking_secret_keys <your_secret_key'");
                         }
                     }
                 }
