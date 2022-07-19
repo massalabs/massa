@@ -1236,6 +1236,7 @@ impl ProtocolWorker {
                                     return Ok(());
                                 };
 
+                                // Send to graph.
                                 self.send_protocol_event(ProtocolEvent::ReceivedBlock {
                                     block,
                                     slot,
