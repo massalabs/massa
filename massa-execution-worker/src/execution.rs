@@ -1141,4 +1141,22 @@ impl ExecutionState {
         }
         ret
     }
+
+    /// Returns for a given cycle the stakers taken into account
+    /// by the selector. That correspond to the roll_counts in `cycle - 1`.
+    ///
+    /// By default it returns an empty map.
+    pub fn get_cycle_rolls(&self, mut cycle: u64) -> Map<Address, u64> {
+        let final_state = self.final_state.read();
+        cycle = match cycle.checked_sub(1) {
+            Some(c) => c,
+            _ => return Map::default(),
+        };
+        for cycle_info in final_state.pos_state.cycle_history.iter() {
+            if cycle_info.cycle == cycle {
+                return cycle_info.roll_counts.clone();
+            }
+        }
+        Map::default()
+    }
 }

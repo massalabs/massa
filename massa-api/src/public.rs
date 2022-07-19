@@ -315,28 +315,24 @@ impl Endpoints for API<Public> {
     }
 
     fn get_stakers(&self) -> BoxFuture<Result<Vec<(Address, u64)>, ApiError>> {
-        let selector_controller = self.0.selector_controller.clone();
         let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.consensus_config.clone();
         let compensation_millis = self.0.compensation_millis;
+
         let closure = async move || {
-            let curr_slot = get_latest_block_slot_at_timestamp(
+            let curr_cycle = get_latest_block_slot_at_timestamp(
                 cfg.thread_count,
                 cfg.t0,
                 cfg.genesis_timestamp,
                 MassaTime::compensated_now(compensation_millis)?,
             )?
-            .unwrap_or_else(|| Slot::new(0, 0));
-            let stakers = execution_controller.get_active_addresses_rolls(
-                selector_controller.get_cycle_stakers(curr_slot.get_cycle(cfg.periods_per_cycle)),
-            );
-
-            let mut staker_vec = stakers
+            .unwrap_or_else(|| Slot::new(0, 0))
+            .get_cycle(cfg.periods_per_cycle);
+            let mut staker_vec = execution_controller
+                .get_cycle_rolls(curr_cycle)
                 .into_iter()
-                .map(|(addr, rolls)| (addr, rolls))
                 .collect::<Vec<(Address, u64)>>();
-            staker_vec.sort_by_key(|(_, roll)| *roll);
-
+            staker_vec.sort_by_key(|(_, rolls)| *rolls);
             Ok(staker_vec)
         };
         Box::pin(closure())
@@ -674,26 +670,24 @@ impl Endpoints for API<Public> {
                 candidate_datastore_keys.insert(addr, candidate_keys);
             }
 
+            let curr_slot = get_latest_block_slot_at_timestamp(
+                cfg.thread_count,
+                cfg.t0,
+                cfg.genesis_timestamp,
+                MassaTime::compensated_now(compensation_millis)?,
+            )?
+            .unwrap_or_else(|| Slot::new(0, 0));
+
+            let end_slot = Slot::new(
+                curr_slot.period + api_cfg.draw_lookahead_period_count,
+                curr_slot.thread,
+            );
+
             // compile everything per address
             for address in addresses.into_iter() {
                 let state = states.remove(&address).ok_or(ApiError::NotFound)?;
-                let curr_slot = get_latest_block_slot_at_timestamp(
-                    cfg.thread_count,
-                    cfg.t0,
-                    cfg.genesis_timestamp,
-                    MassaTime::compensated_now(compensation_millis)?,
-                )?
-                .unwrap_or_else(|| Slot::new(0, 0));
-
-                let (block_draws, endorsement_draws) = selector_controller
-                    .filter_selection_by_address(
-                        &address,
-                        curr_slot,
-                        Slot::new(
-                            curr_slot.period + api_cfg.draw_lookahead_period_count,
-                            curr_slot.thread,
-                        ),
-                    );
+                let (block_draws, endorsement_draws) =
+                    selector_controller.filter_selection_by_address(&address, curr_slot, end_slot);
 
                 res.push(AddressInfo {
                     address,

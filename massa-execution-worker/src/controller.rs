@@ -146,6 +146,11 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_active_addresses_rolls(addresses)
     }
 
+    /// Return the final rolls distribution for the given `cycle`
+    fn get_cycle_rolls(&self, cycle: u64) -> Map<Address, u64> {
+        self.execution_state.read().get_cycle_rolls(cycle)
+    }
+
     /// Executes a read-only request
     /// Read-only requests do not modify consensus state
     fn execute_readonly_request(
