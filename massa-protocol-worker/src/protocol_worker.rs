@@ -1075,6 +1075,9 @@ impl ProtocolWorker {
                                     if info.header.content.operation_merkle_root
                                         == Hash::compute_from(&total_hash)
                                     {
+                                        // Add the ops of info.
+                                        info.operations = Some(operation_list.clone());
+                                        
                                         let missing_operations = operation_list
                                             .into_iter()
                                             .filter(|op| {
