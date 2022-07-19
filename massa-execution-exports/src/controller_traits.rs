@@ -67,6 +67,12 @@ pub trait ExecutionController: Send + Sync {
     /// Return the active rolls for a list of address.
     fn get_active_addresses_rolls(&self, addresses: Vec<Address>) -> Map<Address, u64>;
 
+    /// Returns for a given cycle the stakers taken into account
+    /// by the selector. That correspond to the roll_counts in `cycle - 1`.
+    ///
+    /// By default it returns an empty map.
+    fn get_cycle_rolls(&self, cycle: u64) -> Map<Address, u64>;
+
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///
     /// # arguments
