@@ -1095,9 +1095,6 @@ impl ProtocolWorker {
                                             block_id.clone(),
                                             AskForBlocksInfo::Operations(missing_operations),
                                         );
-
-                                        // Re-run the ask block algorithm.
-                                        self.update_ask_block(block_ask_timer).await?;
                                     } else {
                                         let _ = self.ban_node(&from_node_id).await;
                                     }
@@ -1235,10 +1232,11 @@ impl ProtocolWorker {
                                     self.protocol_settings.max_node_known_blocks_size,
                                 );
                             }
-                            self.update_ask_block(block_ask_timer).await?;
                         }
                     }
                 }
+                // Re-run the ask block algorithm.
+                self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::AskedForBlocks {
                 node: from_node_id,
