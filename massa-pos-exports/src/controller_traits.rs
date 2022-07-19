@@ -39,10 +39,6 @@ pub trait SelectorController: Send + Sync {
     /// * `slot`: target slot of the selection
     fn get_producer(&self, slot: Slot) -> Result<Address>;
 
-    /// Get candidate stakers for the given `cycle`.
-    /// If cycle not found it will return an empty vector.
-    fn get_cycle_stakers(&self, cycle: u64) -> Vec<Address>;
-
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn SelectorController>`.
     fn clone_box(&self) -> Box<dyn SelectorController>;

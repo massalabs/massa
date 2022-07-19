@@ -1,14 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 // Features used for draining cache in selector thread
-#![feature(btree_drain_filter)]
 #![feature(map_first_last)]
 
 mod controller;
 mod draw;
 mod worker;
 
-use massa_models::{Address, Slot};
+use massa_models::Slot;
 use massa_pos_exports::{CycleInfo, Selection};
 
 use parking_lot::{Condvar, Mutex, RwLock};
@@ -24,11 +23,6 @@ pub(crate) type InputDataPtr = Arc<(Condvar, Mutex<VecDeque<CycleInfo>>)>;
 
 /// Structure of the shared pointer to the computed draws.
 pub(crate) type DrawCachePtr = Arc<RwLock<BTreeMap<u64, HashMap<Slot, Selection>>>>;
-
-/// Shared container of cached cumulative function mainly used by the selector
-/// thread and occasionally required by the controller for UI.
-/// BTreeMap : <Cycle, CumulativeDistrib>
-pub(crate) type CycleStatesPtr = Arc<RwLock<BTreeMap<u64, Vec<(u64, Address)>>>>;
 
 /// Start thread selector
 pub use worker::start_selector_worker;
