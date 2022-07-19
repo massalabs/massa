@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::BTreeMap;
 use std::sync::{atomic::AtomicBool, Arc};
 use std::thread::JoinHandle;
 
@@ -14,8 +15,8 @@ use massa_pos_exports::SelectorManager;
 
 use crate::controller::SelectorControllerImpl;
 use crate::controller::SelectorManagerImpl;
+use crate::DrawCachePtr;
 use crate::InputDataPtr;
-use crate::{CycleStatesPtr, DrawCachePtr};
 
 /// Structure gathering all elements needed by the selector thread
 #[allow(dead_code)]
@@ -34,7 +35,7 @@ pub(crate) struct SelectorThread {
     pub(crate) initial_seeds: Vec<Vec<u8>>,
     /// Computed cycle rolls cumulative distribution to keep in memory,
     /// Map<Cycle, CumulativeDistrib>
-    pub(crate) cycle_states: CycleStatesPtr,
+    pub(crate) cycle_states: BTreeMap<u64, Vec<(u64, Address)>>,
 }
 
 impl SelectorThread {
@@ -46,7 +47,6 @@ impl SelectorThread {
     pub(crate) fn spawn(
         input_data: InputDataPtr,
         cache: DrawCachePtr,
-        cycle_states: CycleStatesPtr,
         initial_rolls: Vec<Map<Address, u64>>,
         stop_flag: Arc<AtomicBool>,
         cfg: SelectorConfig,
@@ -57,7 +57,7 @@ impl SelectorThread {
                 cache,
                 initial_seeds: generate_initial_seeds(&cfg),
                 cfg,
-                cycle_states,
+                cycle_states: Default::default(),
                 initial_rolls,
             };
 
@@ -101,13 +101,11 @@ pub fn start_selector_worker(
 ) -> (Box<dyn SelectorManager>, Box<dyn SelectorController>) {
     let input_data = InputDataPtr::default();
     let cache = DrawCachePtr::default();
-    let cycle_states = CycleStatesPtr::default();
     let controller = SelectorControllerImpl {
         input_data: input_data.clone(),
         cache: cache.clone(),
         periods_per_cycle: selector_config.periods_per_cycle,
         thread_count: selector_config.thread_count,
-        cycle_states: cycle_states.clone(),
     };
 
     // launch the selector thread
@@ -116,7 +114,6 @@ pub fn start_selector_worker(
     let thread_handle = SelectorThread::spawn(
         input_data,
         cache,
-        cycle_states,
         get_initial_rolls(&selector_config).unwrap(),
         stop_flag_clone,
         selector_config,

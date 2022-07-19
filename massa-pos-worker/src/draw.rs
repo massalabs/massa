@@ -23,12 +23,12 @@ impl SelectorThread {
     /// - Tried to get an unavailable cycle or thread
     /// - Tried to get seed of a not finalized cycle
     fn get_params_from_finals(&mut self, cycle_info: &CycleInfo) -> PosResult<DrawParameters> {
-        let mut cycle_states = self.cycle_states.write();
-        let cumulated_func = match cycle_states.get(&(cycle_info.cycle - 1)) {
+        let cumulated_func = match self.cycle_states.get(&(cycle_info.cycle - 1)) {
             Some(cumulated_func) => cumulated_func.clone(),
             _ => return Err(CycleUnavailable(cycle_info.cycle)),
         };
-        cycle_states.insert(cycle_info.cycle, cumulate_sum(&cycle_info.roll_counts));
+        self.cycle_states
+            .insert(cycle_info.cycle, cumulate_sum(&cycle_info.roll_counts));
         Ok(DrawParameters {
             seed: Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
                 .to_bytes()
@@ -45,7 +45,6 @@ impl SelectorThread {
         };
         let cumulated_func = cumulate_sum(init_rolls);
         self.cycle_states
-            .write()
             .insert(cycle_info.cycle, cumulated_func.clone());
         let seed = match self.initial_seeds.get(cycle_info.cycle as usize) {
             Some(hash) => hash.clone(),
@@ -166,9 +165,8 @@ impl SelectorThread {
                 .0,
         );
 
-        let mut cycle_states = self.cycle_states.write();
-        while cycle_states.len() > self.cfg.max_draw_cache {
-            cycle_states.pop_first();
+        while self.cycle_states.len() > self.cfg.max_draw_cache {
+            self.cycle_states.pop_first();
         }
 
         let mut cache = self.cache.write();
