@@ -11,6 +11,7 @@ use massa_execution_exports::{
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
 use massa_models::{Address, Amount};
 use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
@@ -136,6 +137,13 @@ impl ExecutionController for ExecutionControllerImpl {
         self.execution_state
             .read()
             .get_final_and_active_datastore_keys(addr)
+    }
+
+    /// Return the final stored rolls for a list of address.
+    fn get_active_addresses_rolls(&self, addresses: Vec<Address>) -> Map<Address, u64> {
+        self.execution_state
+            .read()
+            .get_active_addresses_rolls(addresses)
     }
 
     /// Executes a read-only request

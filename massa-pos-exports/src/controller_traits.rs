@@ -7,7 +7,6 @@ use crate::CycleInfo;
 use crate::Selection;
 use anyhow::Result;
 use massa_models::api::IndexedSlot;
-use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::Slot;
 
@@ -40,8 +39,9 @@ pub trait SelectorController: Send + Sync {
     /// * `slot`: target slot of the selection
     fn get_producer(&self, slot: Slot) -> Result<Address>;
 
-    /// Get selection for the given `cycle`
-    fn get_cycle_selection(&self, cycle: u64) -> Result<Map<Address, u64>>;
+    /// Get candidate stakers for the given `cycle`.
+    /// If cycle not found it will return an empty vector.
+    fn get_cycle_stakers(&self, cycle: u64) -> Vec<Address>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn SelectorController>`.
