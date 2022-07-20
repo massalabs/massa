@@ -687,7 +687,7 @@ impl Endpoints for API<Public> {
             for address in addresses.into_iter() {
                 let state = states.remove(&address).ok_or(ApiError::NotFound)?;
                 let (block_draws, endorsement_draws) =
-                    selector_controller.filter_selection_by_address(&address, curr_slot, end_slot);
+                    selector_controller.get_address_selections(&address, curr_slot, end_slot);
 
                 res.push(AddressInfo {
                     address,
