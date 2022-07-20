@@ -174,7 +174,6 @@ impl SelectorThread {
 
         // truncate cache to keep only the desired number of elements
         // we do it first to free memory space
-        let cache = &mut self.cache.write();
         while cache.len() > self.cfg.max_draw_cache {
             cache.pop_first();
         }
