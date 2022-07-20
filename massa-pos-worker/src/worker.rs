@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use std::collections::BTreeMap;
-use std::sync::{atomic::AtomicBool, Arc};
 use std::thread::JoinHandle;
 
 use massa_hash::Hash;
@@ -15,8 +14,7 @@ use massa_pos_exports::SelectorManager;
 
 use crate::controller::SelectorControllerImpl;
 use crate::controller::SelectorManagerImpl;
-use crate::DrawCachePtr;
-use crate::InputDataPtr;
+use crate::{Command, DrawCachePtr, InputDataPtr};
 
 /// Structure gathering all elements needed by the selector thread
 #[allow(dead_code)]
@@ -48,7 +46,6 @@ impl SelectorThread {
         input_data: InputDataPtr,
         cache: DrawCachePtr,
         initial_rolls: Vec<Map<Address, u64>>,
-        stop_flag: Arc<AtomicBool>,
         cfg: SelectorConfig,
     ) -> JoinHandle<PosResult<()>> {
         std::thread::spawn(|| {
@@ -61,7 +58,7 @@ impl SelectorThread {
                 initial_rolls,
             };
 
-            this.run(stop_flag)
+            this.run()
         })
     }
 
@@ -69,15 +66,14 @@ impl SelectorThread {
     /// for future cycle.
     /// # Arguments
     /// * `cycle_info`: a cycle info with roll counts, seed, etc...
-    fn run(mut self, stop_flag: Arc<AtomicBool>) -> PosResult<()> {
+    fn run(mut self) -> PosResult<()> {
         loop {
-            if stop_flag.load(std::sync::atomic::Ordering::Relaxed) {
-                break;
-            }
             let input_data = self.input_data.clone();
             let mut data = input_data.1.lock();
-            if let Some(cycle_info) = data.pop_front() {
-                self.draws(cycle_info)?
+            match data.pop_front() {
+                Some(Command::CycleInfo(cycle_info)) => self.draws(cycle_info)?,
+                Some(Command::Stop) => break,
+                None => {}
             }
             // Wait to be notified of new input
             // The return value is ignored because we don't care what woke up the condition variable.
@@ -109,18 +105,15 @@ pub fn start_selector_worker(
     };
 
     // launch the selector thread
-    let stop_flag = Arc::new(AtomicBool::new(false));
-    let stop_flag_clone = stop_flag.clone();
     let thread_handle = SelectorThread::spawn(
-        input_data,
+        input_data.clone(),
         cache,
         get_initial_rolls(&selector_config).unwrap(),
-        stop_flag_clone,
         selector_config,
     );
     let manager = SelectorManagerImpl {
         thread_handle: Some(thread_handle),
-        stop_flag,
+        input_data,
     };
     (Box::new(manager), Box::new(controller))
 }

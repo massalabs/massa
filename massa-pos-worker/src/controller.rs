@@ -3,15 +3,13 @@
 //! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
 
-use std::sync::{atomic::AtomicBool, Arc};
-
 use anyhow::{bail, Result};
 use massa_models::{api::IndexedSlot, Address, Slot};
 
 use massa_pos_exports::{CycleInfo, PosResult, Selection, SelectorController, SelectorManager};
 use tracing::{info, warn};
 
-use crate::{DrawCachePtr, InputDataPtr};
+use crate::{Command, DrawCachePtr, InputDataPtr};
 
 #[derive(Clone)]
 /// implementation of the selector controller
@@ -33,7 +31,10 @@ impl SelectorController for SelectorControllerImpl {
     /// * `cycle_info`: give or regive a cycle info for a background
     ///                 computation of the draws.
     fn feed_cycle(&self, cycle_info: CycleInfo) {
-        self.input_data.1.lock().push_back(cycle_info);
+        self.input_data
+            .1
+            .lock()
+            .push_back(Command::CycleInfo(cycle_info));
         self.input_data.0.notify_one();
     }
 
@@ -107,15 +108,18 @@ pub struct SelectorManagerImpl {
     //       thread to stop.
     /// handle used to join the worker thread
     pub(crate) thread_handle: Option<std::thread::JoinHandle<PosResult<()>>>,
-    pub(crate) stop_flag: Arc<AtomicBool>,
+    /// Input data pointer used to stop the selector thread
+    pub(crate) input_data: InputDataPtr,
 }
 
 impl SelectorManager for SelectorManagerImpl {
     /// stops the worker
     fn stop(&mut self) {
         info!("stopping selector worker...");
-        self.stop_flag
-            .store(true, std::sync::atomic::Ordering::Relaxed);
+        {
+            self.input_data.1.lock().push_front(Command::Stop);
+            self.input_data.0.notify_one();
+        }
         // join the selector thread
         if let Some(join_handle) = self.thread_handle.take() {
             if let Err(err) = join_handle
