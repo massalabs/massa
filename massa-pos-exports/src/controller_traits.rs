@@ -27,7 +27,7 @@ pub trait SelectorController: Send + Sync {
     /// Return a list of slots where `address` has been choosen to produce a
     /// block and a list where he is choosen for the endorsements.
     /// Look from the `start` slot to the `end` slot.
-    fn filter_selection_by_address(
+    fn get_address_selections(
         &self,
         address: &Address,
         start: Slot,
