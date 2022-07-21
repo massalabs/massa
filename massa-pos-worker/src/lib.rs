@@ -17,8 +17,13 @@ use std::{
     sync::Arc,
 };
 
+/// Enumeration of internal commands sent to the selector thread as input
+/// datas. `CycleInfo`, Look at [InputDataPtr]
 pub(crate) enum Command {
+    /// CycleInfo inserted in the queue
     CycleInfo(CycleInfo),
+    /// Stop the thread (usually sent by the manager and pushed at the top
+    /// of the command queue)
     Stop,
 }
 
