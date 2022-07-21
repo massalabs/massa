@@ -5,13 +5,13 @@
 use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
-use massa_hash::Hash;
-use massa_ledger::LedgerEntry;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
+use massa_models::Amount;
 use massa_models::BlockId;
 use massa_models::Slot;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 /// interface that communicates with the execution worker thread
@@ -35,24 +35,33 @@ pub trait ExecutionController: Send + Sync {
     /// * operation id
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent>;
 
+    /// Get a balance final and active values
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    fn get_final_and_active_parallel_balance(
+        &self,
+        addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)>;
+
     /// Get a copy of a single datastore entry with its final and active values
     ///
     /// # Return value
     /// * `(final_data_entry, active_data_entry)`
+    #[allow(clippy::type_complexity)]
     fn get_final_and_active_data_entry(
         &self,
-        addr: &Address,
-        key: &Hash,
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>);
+        input: Vec<(Address, Vec<u8>)>,
+    ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)>;
 
-    /// Get a copy of a full ledger entry with its final and active values
+    /// Get every datastore key of the given address.
     ///
-    /// # Return value
-    /// * `(final_entry, active_entry)`
-    fn get_final_and_active_ledger_entry(
+    /// # Returns
+    /// A vector containing all the keys
+    fn get_final_and_active_datastore_keys(
         &self,
         addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>);
+    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>);
 
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///

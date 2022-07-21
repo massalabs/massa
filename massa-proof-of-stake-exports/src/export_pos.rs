@@ -1,13 +1,23 @@
 use std::collections::VecDeque;
+use std::ops::Bound::Included;
 
-use massa_models::{
-    with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt,
+use massa_models::constants::{MAX_BOOTSTRAP_POS_CYCLES, THREAD_COUNT};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+};
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::{count, length_count},
+    IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{proof_of_stake::ProofOfStake, thread_cycle_state::ThreadCycleState};
-
+use crate::{
+    proof_of_stake::ProofOfStake,
+    thread_cycle_state::{
+        ThreadCycleState, ThreadCycleStateDeserializer, ThreadCycleStateSerializer,
+    },
+};
 /// serializable version of the proof of stake
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportProofOfStake {
@@ -23,49 +33,94 @@ impl From<&ProofOfStake> for ExportProofOfStake {
     }
 }
 
-impl SerializeCompact for ExportProofOfStake {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-        for thread_lst in self.cycle_states.iter() {
+/// Serializer for `ExportProofOfStake`
+pub struct ExportProofOfStakeSerializer {
+    u32_serializer: U32VarIntSerializer,
+    cycle_state_serializer: ThreadCycleStateSerializer,
+}
+
+impl ExportProofOfStakeSerializer {
+    /// Creates a `ExportProofOfStakeSerializer`
+    pub fn new() -> Self {
+        Self {
+            u32_serializer: U32VarIntSerializer::new(),
+            cycle_state_serializer: ThreadCycleStateSerializer::new(),
+        }
+    }
+}
+
+impl Default for ExportProofOfStakeSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<ExportProofOfStake> for ExportProofOfStakeSerializer {
+    fn serialize(
+        &self,
+        value: &ExportProofOfStake,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        for thread_lst in value.cycle_states.iter() {
             let cycle_count: u32 = thread_lst.len().try_into().map_err(|err| {
-                ModelsError::SerializeError(format!(
+                SerializeError::NumberTooBig(format!(
                     "too many cycles when serializing ExportProofOfStake: {}",
                     err
                 ))
             })?;
-            res.extend(cycle_count.to_varint_bytes());
-            for itm in thread_lst.iter() {
-                res.extend(itm.to_bytes_compact()?);
+            self.u32_serializer.serialize(&cycle_count, buffer)?;
+            for cycle_state in thread_lst.iter() {
+                self.cycle_state_serializer.serialize(cycle_state, buffer)?;
             }
         }
-        Ok(res)
+        Ok(())
     }
 }
 
-impl DeserializeCompact for ExportProofOfStake {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let (thread_count, max_cycles) = with_serialization_context(|context| {
-            (context.thread_count, context.max_bootstrap_pos_cycles)
-        });
-        let mut cursor = 0usize;
+/// Deserializer for `ExportProofOfStake`
+pub struct ExportProofOfStakeDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+    thread_count: u8,
+    cycle_state_deserializer: ThreadCycleStateDeserializer,
+}
 
-        let mut cycle_states = Vec::with_capacity(thread_count as usize);
-        for thread in 0..thread_count {
-            let (n_cycles, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-            cursor += delta;
-            if n_cycles == 0 || n_cycles > max_cycles {
-                return Err(ModelsError::SerializeError(
-                    "number of cycles invalid when deserializing ExportProofOfStake".into(),
-                ));
-            }
-            cycle_states.push(VecDeque::with_capacity(n_cycles as usize));
-            for _ in 0..n_cycles {
-                let (thread_cycle_state, delta) =
-                    ThreadCycleState::from_bytes_compact(&buffer[cursor..])?;
-                cursor += delta;
-                cycle_states[thread as usize].push_back(thread_cycle_state);
-            }
+impl ExportProofOfStakeDeserializer {
+    /// Creates a `ExportProofOfStakeDeserializer`
+    pub fn new() -> Self {
+        Self {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(MAX_BOOTSTRAP_POS_CYCLES),
+            ),
+            cycle_state_deserializer: ThreadCycleStateDeserializer::new(),
+            thread_count: THREAD_COUNT,
         }
-        Ok((ExportProofOfStake { cycle_states }, cursor))
+    }
+}
+
+impl Default for ExportProofOfStakeDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<ExportProofOfStake> for ExportProofOfStakeDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], ExportProofOfStake, E> {
+        context(
+            "Failed ExportProofOfStake deserialization",
+            count(
+                length_count(
+                    |input| self.u32_deserializer.deserialize(input),
+                    |input| self.cycle_state_deserializer.deserialize(input),
+                )
+                .map(|cycles| cycles.into_iter().collect()),
+                self.thread_count.into(),
+            ),
+        )
+        .map(|cycle_states| ExportProofOfStake { cycle_states })
+        .parse(buffer)
     }
 }

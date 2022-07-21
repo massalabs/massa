@@ -7,7 +7,7 @@ mass adoption.
 [![CI](https://github.com/massalabs/massa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/massalabs/massa/actions/workflows/ci.yml?query=branch%3Amain)
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/39543)
 [![Coverage Status](https://coveralls.io/repos/github/massalabs/massa/badge.svg?branch=main)](https://coveralls.io/github/massalabs/massa?branch=main)
-[![Docs](https://img.shields.io/static/v1?label=Docs&message=docs.massa.net&color=blue)](https://massalabs.github.io/massa/massa_node/)
+[![Docs](https://img.shields.io/static/v1?label=Docs&message=massa&color=blue)](https://massalabs.github.io/massa/massa_node/)
 
 ## Introduction
 
@@ -47,7 +47,7 @@ For project announcements, we mainly use
 -   [Creating a wallet](https://massa.readthedocs.io/en/latest/testnet/wallet.html)
 -   [Staking](https://massa.readthedocs.io/en/latest/testnet/staking.html)
 -   [Routability tutorial](https://massa.readthedocs.io/en/latest/testnet/routability.html) (Optional)
--   [Testnet rewards program]((https://massa.readthedocs.io/en/latest/testnet/rewards.html) (Optional)
+-   [Testnet rewards program](https://massa.readthedocs.io/en/latest/testnet/rewards.html) (Optional)
 
 ## More tutorials
 

@@ -1,6 +1,6 @@
 use std::collections::{hash_map, BTreeMap, HashMap, VecDeque};
 
-use bitvec::{order::Lsb0, prelude::BitVec};
+use bitvec::prelude::BitVec;
 use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
@@ -8,7 +8,6 @@ use massa_models::{
     rolls::{RollCounts, RollUpdates},
     Address, Amount, BlockId, Slot, StakersCycleProductionStats,
 };
-use massa_signature::derive_public_key;
 use num::rational::Ratio;
 use rand::{distributions::Uniform, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -72,7 +71,7 @@ impl ProofOfStake {
             let initial_rolls = ProofOfStake::get_initial_rolls(&cfg).await?;
             for (thread, thread_rolls) in initial_rolls.iter().enumerate() {
                 // init thread history with one cycle
-                let mut rng_seed = BitVec::<Lsb0, u8>::new();
+                let mut rng_seed = BitVec::<u8>::new();
                 rng_seed.push(genesis_block_ids[thread].get_first_bit());
                 let mut history = VecDeque::with_capacity(
                     (cfg.pos_lock_cycles + cfg.pos_lock_cycles + 2 + 1) as usize,
@@ -193,7 +192,7 @@ impl ProofOfStake {
             let target_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
 
             // get final data for all threads
-            let mut rng_seed_bits = BitVec::<Lsb0, u8>::with_capacity(blocks_in_cycle);
+            let mut rng_seed_bits = BitVec::<u8>::with_capacity(blocks_in_cycle);
 
             let mut cum_sum: Vec<(u64, Address)> = Vec::new(); // amount, thread, address
             let mut cum_sum_cursor = 0u64;
@@ -274,7 +273,7 @@ impl ProofOfStake {
         let cycle_last_period = (cycle + 1) * self.cfg.periods_per_cycle - 1;
         if cycle_first_period == 0 {
             // genesis slots: force block creator and endorsement creator address draw
-            let genesis_addr = Address::from_public_key(&derive_public_key(&self.cfg.genesis_key));
+            let genesis_addr = Address::from_public_key(&self.cfg.genesis_key.get_public_key());
             for draw_thread in 0..self.cfg.thread_count {
                 draws.insert(
                     Slot::new(0, draw_thread),
@@ -382,7 +381,7 @@ impl ProofOfStake {
                         last_final_slot: slot,
                         cycle_updates: RollUpdates::default(),
                         roll_count,
-                        rng_seed: BitVec::<Lsb0, u8>::new(),
+                        rng_seed: BitVec::<u8>::new(),
                         production_stats: Default::default(),
                     });
                     // If cycle_states becomes longer than pos_lookback_cycles+pos_lock_cycles+1, truncate it by removing the back elements

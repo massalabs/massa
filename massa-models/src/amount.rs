@@ -1,9 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::AMOUNT_DECIMAL_FACTOR;
-use crate::serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use crate::ModelsError;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
+use massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
+use nom::error::{context, ContextError, ParseError};
 use nom::IResult;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
@@ -16,13 +17,39 @@ use std::str::FromStr;
 /// while providing a convenient decimal interface for users
 /// The underlying `u64` raw representation if a fixed-point value with factor `AMOUNT_DECIMAL_FACTOR`
 /// The minimal value is 0 and the maximal value is 18446744073.709551615
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
 impl Amount {
     /// Create a zero Amount
     pub const fn zero() -> Self {
         Self(0)
+    }
+
+    /// Create an Amount from the form `mantissa / (10^scale)`
+    /// Panics on any error.
+    /// Used for constant initialization.
+    ///
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1: Amount = Amount::from_str("0.042").unwrap();
+    /// let amount_2: Amount = Amount::from_mantissa_scale(42, 3);
+    /// assert_eq!(amount_1, amount_2);
+    /// let amount_1: Amount = Amount::from_str("1000").unwrap();
+    /// let amount_2: Amount = Amount::from_mantissa_scale(1000, 0);
+    /// assert_eq!(amount_1, amount_2);
+    /// ```
+    pub const fn from_mantissa_scale(mantissa: u64, scale: u32) -> Self {
+        let raw_mantissa = (mantissa as u128) * (AMOUNT_DECIMAL_FACTOR as u128);
+        let scale_factor = match 10u128.checked_pow(scale) {
+            Some(v) => v,
+            None => panic!(),
+        };
+        assert!(raw_mantissa % scale_factor == 0);
+        let res = raw_mantissa / scale_factor;
+        assert!(res <= (u64::MAX as u128));
+        Self(res as u64)
     }
 
     /// Obtains the underlying raw `u64` representation
@@ -140,6 +167,13 @@ impl fmt::Display for Amount {
     }
 }
 
+/// Use display impl in debug to get the decimal representation
+impl fmt::Debug for Amount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
 /// build an Amount from decimal string form (like "10.33")
 /// note that this will fail if the string format is invalid
 /// or if the conversion would cause an overflow, underflow or precision loss
@@ -188,16 +222,33 @@ pub struct AmountSerializer {
 
 impl AmountSerializer {
     /// Create a new `AmountSerializer`
-    pub fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
+    pub fn new() -> Self {
         Self {
-            u64_serializer: U64VarIntSerializer::new(min_amount, max_amount),
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }
 
+impl Default for AmountSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<Amount> for AmountSerializer {
-    fn serialize(&self, value: &Amount) -> Result<Vec<u8>, SerializeError> {
-        self.u64_serializer.serialize(&value.0)
+    /// ```
+    /// use massa_models::{Amount, AmountSerializer};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    /// use std::ops::Bound::Included;
+    ///
+    /// let amount = Amount::from_str("11.111").unwrap();
+    /// let serializer = AmountSerializer::new();
+    /// let mut serialized = vec![];
+    /// serializer.serialize(&amount, &mut serialized).unwrap();
+    /// ```
+    fn serialize(&self, value: &Amount, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.u64_serializer.serialize(&value.0, buffer)
     }
 }
 
@@ -208,7 +259,7 @@ pub struct AmountDeserializer {
 
 impl AmountDeserializer {
     /// Create a new `AmountDeserializer`
-    pub fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
+    pub const fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(min_amount, max_amount),
         }
@@ -216,9 +267,29 @@ impl AmountDeserializer {
 }
 
 impl Deserializer<Amount> for AmountDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], Amount> {
-        let (rest, raw) = self.u64_deserializer.deserialize(buffer)?;
-        Ok((rest, Amount::from_raw(raw)))
+    /// ```
+    /// use massa_models::{Amount, AmountSerializer, AmountDeserializer};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    /// use std::ops::Bound::Included;
+    ///
+    /// let amount = Amount::from_str("11.111").unwrap();
+    /// let serializer = AmountSerializer::new();
+    /// let deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));
+    /// let mut serialized = vec![];
+    /// serializer.serialize(&amount, &mut serialized).unwrap();
+    /// let (rest, amount_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(amount_deser, amount);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Amount, E> {
+        context("Failed Amount deserialization", |input| {
+            let (rest, raw) = self.u64_deserializer.deserialize(input)?;
+            Ok((rest, Amount::from_raw(raw)))
+        })(buffer)
     }
 }
 

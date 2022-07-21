@@ -49,6 +49,7 @@ jobs:
           cp -rv ../massa-node/config massa-node/config
           cp -rv ../massa-node/base_config massa-node/base_config
           cp -rv ../massa-node/storage massa-node/storage
+          cp -rv ../massa-client/config massa-client/config
           cp -rv ../massa-client/base_config massa-client/base_config
           cd ..
           if [[ "${{ matrix.os }}" == "windows-latest" ]]
@@ -62,14 +63,3 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: 'massa_*'
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: "recursive"
-    - run: |
-       apt install python3 poetry
-       cd massa-deploy/testnet
-       poetry install
-       python3 deploy.py

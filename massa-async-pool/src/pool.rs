@@ -6,13 +6,11 @@ use crate::{
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
+    AsyncMessageDeserializer, AsyncMessageSerializer,
 };
-use massa_models::{
-    constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, DeserializeCompact, ModelsError,
-    SerializeCompact, Slot,
-};
+use massa_models::{constants::default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, ModelsError, Slot};
 use massa_serialization::{Deserializer, Serializer};
-use nom::multi::many0;
+use nom::{multi::many0, sequence::tuple};
 use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Unbounded};
 
@@ -42,17 +40,17 @@ impl AsyncPool {
     ///
     /// # arguments
     /// * `changes`: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)
-    pub fn apply_changes_unchecked(&mut self, changes: AsyncPoolChanges) {
-        for change in changes.0.into_iter() {
+    pub fn apply_changes_unchecked(&mut self, changes: &AsyncPoolChanges) {
+        for change in changes.0.iter() {
             match change {
                 // add a new message to the pool
                 Change::Add(msg_id, msg) => {
-                    self.messages.insert(msg_id, msg);
+                    self.messages.insert(*msg_id, msg.clone());
                 }
 
                 // delete a message from the pool
                 Change::Delete(msg_id) => {
-                    self.messages.remove(&msg_id);
+                    self.messages.remove(msg_id);
                 }
             }
         }
@@ -149,11 +147,11 @@ impl AsyncPool {
         let mut part = Vec::new();
         let mut next_last_id = None;
         let id_async_message_serializer = AsyncMessageIdSerializer::new();
-
+        let async_message_serializer = AsyncMessageSerializer::new();
         for (id, message) in self.messages.range((last_id, Unbounded)) {
             if part.len() < ASYNC_POOL_PART_SIZE_MESSAGE_BYTES as usize {
-                part.extend(id_async_message_serializer.serialize(id)?);
-                part.extend(message.to_bytes_compact()?);
+                id_async_message_serializer.serialize(id, &mut part)?;
+                async_message_serializer.serialize(message, &mut part)?;
                 next_last_id = Some(*id);
             }
         }
@@ -174,6 +172,7 @@ impl AsyncPool {
         part: &'a [u8],
     ) -> Result<Option<AsyncMessageId>, ModelsError> {
         let async_message_id_deserializer = AsyncMessageIdDeserializer::new();
+        let async_message_deserializer = AsyncMessageDeserializer::new();
         let (rest, messages) = many0(|input: &'a [u8]| {
             if input.is_empty() {
                 return Err(nom::Err::Error(nom::error::Error::new(
@@ -181,16 +180,10 @@ impl AsyncPool {
                     nom::error::ErrorKind::LengthValue,
                 )));
             }
-            let (rest, id) = async_message_id_deserializer.deserialize(input)?;
-            //TODO: Change when async message has new serialize form
-            let (message, delta) = AsyncMessage::from_bytes_compact(rest).map_err(|_| {
-                nom::Err::Error(nom::error::Error::new(
-                    input,
-                    nom::error::ErrorKind::LengthValue,
-                ))
-            })?;
-            // Safe because we obtain delta by moving forward in the buffer.
-            Ok((&rest[delta..], (id, message)))
+            tuple((
+                |input| async_message_id_deserializer.deserialize(input),
+                |input| async_message_deserializer.deserialize(input),
+            ))(input)
         })(part)?;
         if rest.is_empty() {
             self.messages.extend(messages);
@@ -207,13 +200,18 @@ impl AsyncPool {
 fn test_take_batch() {
     use massa_hash::Hash;
     use massa_models::{Address, Amount, Slot};
+    use std::str::FromStr;
 
     let config = AsyncPoolConfig { max_length: 10 };
     let mut pool = AsyncPool::new(config);
     let address = Address(Hash::compute_from(b"abc"));
     for i in 1..10 {
         pool.messages.insert(
-            (std::cmp::Reverse(Amount::from_raw(i)), Slot::new(0, 0), 0),
+            (
+                std::cmp::Reverse(Amount::from_mantissa_scale(i, 0)),
+                Slot::new(0, 0),
+                0,
+            ),
             AsyncMessage {
                 emission_slot: Slot::new(0, 0),
                 emission_index: 0,
@@ -223,8 +221,8 @@ fn test_take_batch() {
                 validity_start: Slot::new(1, 0),
                 validity_end: Slot::new(3, 0),
                 max_gas: i,
-                gas_price: Amount::from_raw(1),
-                coins: Amount::from_raw(0),
+                gas_price: Amount::from_str("0.1".into()).unwrap(),
+                coins: Amount::from_str("0.3".into()).unwrap(),
                 data: Vec::new(),
             },
         );

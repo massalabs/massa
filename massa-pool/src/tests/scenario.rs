@@ -4,12 +4,11 @@ use super::{settings::POOL_CONFIG, tools::get_transaction};
 use crate::tests::tools::create_executesc;
 use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signable;
+use massa_models::Address;
 use massa_models::OperationId;
-use massa_models::{Address, SerializeCompact};
-use massa_models::{SignedOperation, Slot};
+use massa_models::{Slot, WrappedOperation};
 use massa_protocol_exports::ProtocolCommand;
-use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_signature::KeyPair;
 use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;
@@ -32,7 +31,7 @@ async fn test_pool() {
                 let expire_period: u64 = 40 + i;
                 let start_period =
                     expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
-                let (op, thread) = get_transaction(expire_period, fee);
+                let op = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
 
                 let mut ops = Map::default();
@@ -69,7 +68,7 @@ async fn test_pool() {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
 
-                thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
+                thread_tx_lists[op.thread as usize].push((op, start_period..=expire_period));
             }
             // sort from bigger fee to smaller and truncate
             for lst in thread_tx_lists.iter_mut() {
@@ -93,12 +92,12 @@ async fn test_pool() {
                         .unwrap();
                     assert!(res
                         .iter()
-                        .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
+                        .map(|(op, _)| (op.id, op.serialized_data.clone()))
                         .eq(thread_tx_lists[target_slot.thread as usize]
                             .iter()
-                            .filter(|(_, _, r)| r.contains(&target_slot.period))
+                            .filter(|(_, r)| r.contains(&target_slot.period))
                             .take(max_count)
-                            .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
+                            .map(|(op, _)| (op.id, op.serialized_data.clone()))));
                 }
             }
             // op ending before or at period 45 won't appear in the block due to incompatible validity range
@@ -109,7 +108,7 @@ async fn test_pool() {
                 .await
                 .unwrap();
             for lst in thread_tx_lists.iter_mut() {
-                lst.retain(|(_, op, _)| op.content.expire_period > final_period);
+                lst.retain(|(op, _)| op.content.expire_period > final_period);
             }
             // checks ops are the expected ones for thread 0 and 1 and various periods
             for thread in 0u8..=1 {
@@ -127,12 +126,12 @@ async fn test_pool() {
                         .unwrap();
                     assert!(res
                         .iter()
-                        .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
+                        .map(|(op, _)| (op.id, op.serialized_data.clone()))
                         .eq(thread_tx_lists[target_slot.thread as usize]
                             .iter()
-                            .filter(|(_, _, r)| r.contains(&target_slot.period))
+                            .filter(|(_, r)| r.contains(&target_slot.period))
                             .take(max_count)
-                            .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
+                            .map(|(op, _)| (op.id, op.serialized_data.clone()))));
                 }
             }
             // Add transactions that should be ignored despite their high fees, due to them being too far in the future
@@ -143,10 +142,10 @@ async fn test_pool() {
                     .unwrap();
                 let fee = 1000;
                 let expire_period: u64 = 300;
-                let (op, thread) = get_transaction(expire_period, fee);
+                let op = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
                 let mut ops = Map::default();
-                ops.insert(id, op);
+                ops.insert(id, op.clone());
 
                 pool_command_sender.add_operations(ops).await.unwrap();
 
@@ -158,7 +157,7 @@ async fn test_pool() {
                 };
                 let res = pool_command_sender
                     .send_get_operations_announcement(
-                        Slot::new(expire_period - 1, thread),
+                        Slot::new(expire_period - 1, op.thread),
                         Set::<OperationId>::default(),
                         10,
                         10000,
@@ -190,7 +189,7 @@ async fn test_pool_with_execute_sc() {
                 let expire_period: u64 = 40 + i;
                 let start_period =
                     expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
-                let (op, thread) = create_executesc(expire_period, fee, 100, 1); // Only the fee determines the rentability
+                let op = create_executesc(expire_period, fee, 100, 1); // Only the fee determines the rentability
                 let id = op.verify_integrity().unwrap();
 
                 let mut ops = Map::default();
@@ -227,7 +226,7 @@ async fn test_pool_with_execute_sc() {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
 
-                thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
+                thread_tx_lists[op.thread as usize].push((op, start_period..=expire_period));
             }
             // sort from bigger fee to smaller and truncate
             for lst in thread_tx_lists.iter_mut() {
@@ -251,12 +250,12 @@ async fn test_pool_with_execute_sc() {
                         .unwrap();
                     assert!(res
                         .iter()
-                        .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
+                        .map(|(op, _)| (op.id, op.serialized_data.clone()))
                         .eq(thread_tx_lists[target_slot.thread as usize]
                             .iter()
-                            .filter(|(_, _, r)| r.contains(&target_slot.period))
+                            .filter(|(_, r)| r.contains(&target_slot.period))
                             .take(max_count)
-                            .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
+                            .map(|(op, _)| (op.id, op.serialized_data.clone()))));
                 }
             }
             // op ending before or at period 45 won't appear in the block due to incompatible validity range
@@ -267,7 +266,7 @@ async fn test_pool_with_execute_sc() {
                 .await
                 .unwrap();
             for lst in thread_tx_lists.iter_mut() {
-                lst.retain(|(_, op, _)| op.content.expire_period > final_period);
+                lst.retain(|(op, _)| op.content.expire_period > final_period);
             }
             // checks ops are the expected ones for thread 0 and 1 and various periods
             for thread in 0u8..=1 {
@@ -285,12 +284,12 @@ async fn test_pool_with_execute_sc() {
                         .unwrap();
                     assert!(res
                         .iter()
-                        .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))
+                        .map(|(op, _)| (op.id, op.serialized_data.clone()))
                         .eq(thread_tx_lists[target_slot.thread as usize]
                             .iter()
-                            .filter(|(_, _, r)| r.contains(&target_slot.period))
+                            .filter(|(_, r)| r.contains(&target_slot.period))
                             .take(max_count)
-                            .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
+                            .map(|(op, _)| (op.id, op.serialized_data.clone()))));
                 }
             }
             // Add transactions that should be ignored despite their high fees, due to them being too far in the future
@@ -301,10 +300,10 @@ async fn test_pool_with_execute_sc() {
                     .unwrap();
                 let fee = 1000;
                 let expire_period: u64 = 300;
-                let (op, thread) = get_transaction(expire_period, fee);
+                let op = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
                 let mut ops = Map::default();
-                ops.insert(id, op);
+                ops.insert(id, op.clone());
 
                 pool_command_sender.add_operations(ops).await.unwrap();
 
@@ -316,7 +315,7 @@ async fn test_pool_with_execute_sc() {
                 };
                 let res = pool_command_sender
                     .send_get_operations_announcement(
-                        Slot::new(expire_period - 1, thread),
+                        Slot::new(expire_period - 1, op.thread),
                         Set::default(),
                         10,
                         10000,
@@ -349,7 +348,7 @@ async fn test_pool_with_protocol_events() {
                 let expire_period: u64 = 40 + i;
                 let start_period =
                     expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
-                let (op, thread) = get_transaction(expire_period, fee);
+                let op = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
 
                 let mut ops = Map::default();
@@ -380,7 +379,7 @@ async fn test_pool_with_protocol_events() {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
 
-                thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
+                thread_tx_lists[op.thread as usize].push((id, op, start_period..=expire_period));
             }
 
             (protocol_controller, pool_command_sender, pool_manager)
@@ -402,7 +401,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
             let target_slot = Slot::new(10, 0);
             let endorsement = tools::create_endorsement(target_slot);
             let mut endorsements = Map::default();
-            let id = endorsement.content.compute_id().unwrap();
+            let id = endorsement.id;
             endorsements.insert(id, endorsement.clone());
 
             protocol_controller
@@ -436,14 +435,12 @@ async fn test_pool_propagate_newly_added_endorsements() {
                 .get_endorsements(
                     target_slot,
                     endorsement.content.endorsed_block,
-                    vec![Address::from_public_key(
-                        &endorsement.content.sender_public_key,
-                    )],
+                    vec![endorsement.creator_address],
                 )
                 .await
                 .unwrap();
             assert_eq!(res.len(), 1);
-            assert_eq!(res[0].0, endorsement.content.compute_id().unwrap());
+            assert_eq!(res[0].id, endorsement.id);
             (protocol_controller, pool_command_sender, pool_manager)
         },
     )
@@ -463,7 +460,7 @@ async fn test_pool_add_old_endorsements() {
 
             let endorsement = tools::create_endorsement(Slot::new(1, 0));
             let mut endorsements = Map::default();
-            let id = endorsement.content.compute_id().unwrap();
+            let id = endorsement.id;
             endorsements.insert(id, endorsement.clone());
 
             pool_command_sender
@@ -494,23 +491,19 @@ async fn test_get_involved_operations() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = generate_random_private_key();
-    let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a);
+    let mut keypair_a = KeyPair::generate();
+    let mut address_a = Address::from_public_key(&keypair_a.get_public_key());
     while 1 != address_a.get_thread(thread_count) {
-        priv_a = generate_random_private_key();
-        pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a);
+        keypair_a = KeyPair::generate();
+        address_a = Address::from_public_key(&keypair_a.get_public_key());
     }
     assert_eq!(1, address_a.get_thread(thread_count));
 
-    let mut priv_b = generate_random_private_key();
-    let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b);
+    let mut keypair_b = KeyPair::generate();
+    let mut address_b = Address::from_public_key(&keypair_b.get_public_key());
     while 1 != address_b.get_thread(thread_count) {
-        priv_b = generate_random_private_key();
-        pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b);
+        keypair_b = KeyPair::generate();
+        address_b = Address::from_public_key(&keypair_b.get_public_key());
     }
     assert_eq!(1, address_b.get_thread(thread_count));
 
@@ -526,12 +519,13 @@ async fn test_get_involved_operations() {
                 .update_current_slot(Slot::new(1, 0))
                 .await
                 .unwrap();
-            let (op1, _) = get_transaction_with_addresses(1, 1, pubkey_a, priv_a, pubkey_b);
-            let (op2, _) = get_transaction_with_addresses(2, 10, pubkey_b, priv_b, pubkey_b);
-            let (op3, _) = get_transaction_with_addresses(3, 100, pubkey_a, priv_a, pubkey_a);
-            let op1_id = op1.content.compute_id().unwrap();
-            let op2_id = op2.content.compute_id().unwrap();
-            let op3_id = op3.content.compute_id().unwrap();
+            let op1 = get_transaction_with_addresses(1, 1, &keypair_a, keypair_b.get_public_key());
+            let op2 = get_transaction_with_addresses(2, 10, &keypair_b, keypair_b.get_public_key());
+            let op3 =
+                get_transaction_with_addresses(3, 100, &keypair_a, keypair_a.get_public_key());
+            let op1_id = op1.id;
+            let op2_id = op2.id;
+            let op3_id = op3.id;
             let mut ops = Map::default();
             for (op, id) in vec![op1, op2, op3]
                 .into_iter()
@@ -645,23 +639,19 @@ async fn test_new_final_ops() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = generate_random_private_key();
-    let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a);
+    let mut keypair_a = KeyPair::generate();
+    let mut address_a = Address::from_public_key(&keypair_a.get_public_key());
     while 0 != address_a.get_thread(thread_count) {
-        priv_a = generate_random_private_key();
-        pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a);
+        keypair_a = KeyPair::generate();
+        address_a = Address::from_public_key(&keypair_a.get_public_key());
     }
     assert_eq!(0, address_a.get_thread(thread_count));
 
-    let mut priv_b = generate_random_private_key();
-    let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b);
+    let mut keypair_b = KeyPair::generate();
+    let mut address_b = Address::from_public_key(&keypair_b.get_public_key());
     while 0 != address_b.get_thread(thread_count) {
-        priv_b = generate_random_private_key();
-        pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b);
+        keypair_b = KeyPair::generate();
+        address_b = Address::from_public_key(&keypair_b.get_public_key());
     }
     assert_eq!(0, address_b.get_thread(thread_count));
 
@@ -673,15 +663,21 @@ async fn test_new_final_ops() {
                 _ => None,
             };
 
-            let mut ops: Vec<(OperationId, SignedOperation)> = Vec::new();
+            let mut ops: Vec<WrappedOperation> = Vec::new();
             for i in 0..10 {
-                let (op, _) = get_transaction_with_addresses(8, i, pubkey_a, priv_a, pubkey_b);
-                ops.push((op.content.compute_id().unwrap(), op));
+                let op =
+                    get_transaction_with_addresses(8, i, &keypair_a, keypair_b.get_public_key());
+                ops.push(op);
             }
 
             // Add ops to pool
             protocol_controller
-                .received_operations(ops.clone().into_iter().collect::<Map<OperationId, _>>())
+                .received_operations(
+                    ops.clone()
+                        .into_iter()
+                        .map(|op| (op.id, op.clone()))
+                        .collect::<Map<OperationId, _>>(),
+                )
                 .await;
 
             let newly_added = match protocol_controller
@@ -694,7 +690,7 @@ async fn test_new_final_ops() {
             };
             assert_eq!(
                 newly_added.iter().copied().collect::<HashSet<_>>(),
-                ops.iter().map(|(id, _)| *id).collect::<HashSet<_>>()
+                ops.iter().map(|op| op.id).collect::<HashSet<_>>()
             );
 
             pool_command_sender
@@ -702,7 +698,7 @@ async fn test_new_final_ops() {
                     ops[..4]
                         .to_vec()
                         .iter()
-                        .map(|(id, _)| (*id, (8u64, 0u8)))
+                        .map(|op| (op.id, (8u64, 0u8)))
                         .collect::<Map<OperationId, (u64, u8)>>(),
                 )
                 .await
@@ -717,7 +713,7 @@ async fn test_new_final_ops() {
                 ops[4..]
                     .to_vec()
                     .iter()
-                    .map(|(id, _)| *id)
+                    .map(|op| op.id)
                     .collect::<HashSet<_>>()
             );
 
@@ -728,6 +724,7 @@ async fn test_new_final_ops() {
                         .to_vec()
                         .clone()
                         .into_iter()
+                        .map(|op| (op.id, op))
                         .collect::<Map<OperationId, _>>(),
                 )
                 .await;

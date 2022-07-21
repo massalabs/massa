@@ -11,11 +11,14 @@ use massa_execution_exports::{
 };
 use massa_graph::{DiscardReason, ExportBlockStatus};
 use massa_models::api::{
-    DatastoreEntryInput, DatastoreEntryOutput, ReadOnlyBytecodeExecution, ReadOnlyCall,
-    SCELedgerInfo,
+    DatastoreEntryInput, DatastoreEntryOutput, OperationInput, ReadOnlyBytecodeExecution,
+    ReadOnlyCall,
 };
 use massa_models::execution::ReadOnlyResult;
-use massa_models::SignedOperation;
+use massa_models::operation::OperationDeserializer;
+use massa_models::wrapped::WrappedDeserializer;
+use massa_models::{Amount, ModelsError, WrappedOperation};
+use massa_serialization::{DeserializeError, Deserializer};
 
 use massa_models::{
     api::{
@@ -33,8 +36,9 @@ use massa_models::{
 };
 use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use std::collections::BTreeSet;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -82,7 +86,7 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<PubkeySig>()
     }
 
-    fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>> {
+    fn add_staking_secret_keys(&self, _: Vec<KeyPair>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
     }
 
@@ -106,7 +110,7 @@ impl Endpoints for API<Public> {
         {
             let address = address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&derive_public_key(&generate_random_private_key()))
+                Address::from_public_key(&KeyPair::generate().get_public_key())
             });
 
             // TODO:
@@ -169,7 +173,7 @@ impl Endpoints for API<Public> {
         {
             let caller_address = caller_address.unwrap_or_else(|| {
                 // if no addr provided, use a random one
-                Address::from_public_key(&derive_public_key(&generate_random_private_key()))
+                Address::from_public_key(&KeyPair::generate().get_public_key())
             });
 
             // TODO:
@@ -485,7 +489,7 @@ impl Endpoints for API<Public> {
                     is_stale: false,
                     is_in_blockclique: blockclique.block_ids.contains(&id),
                     slot: exported_block.header.content.slot,
-                    creator: Address::from_public_key(&exported_block.header.content.creator),
+                    creator: exported_block.header.creator_address,
                     parents: exported_block.header.content.parents,
                 });
             }
@@ -497,7 +501,7 @@ impl Endpoints for API<Public> {
                         is_stale: true,
                         is_in_blockclique: false,
                         slot: header.content.slot,
-                        creator: Address::from_public_key(&header.content.creator),
+                        creator: header.creator_address,
                         parents: header.content.parents,
                     });
                 }
@@ -507,18 +511,25 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_datastore_entry(
+    fn get_datastore_entries(
         &self,
-        entry: DatastoreEntryInput,
-    ) -> BoxFuture<Result<DatastoreEntryOutput, ApiError>> {
+        entries: Vec<DatastoreEntryInput>,
+    ) -> BoxFuture<Result<Vec<DatastoreEntryOutput>, ApiError>> {
         let execution_controller = self.0.execution_controller.clone();
         let closure = async move || {
-            let data =
-                execution_controller.get_final_and_active_data_entry(&entry.address, &entry.key);
-            Ok(DatastoreEntryOutput {
-                final_value: data.0,
-                active_value: data.1,
-            })
+            Ok(execution_controller
+                .get_final_and_active_data_entry(
+                    entries
+                        .into_iter()
+                        .map(|input| (input.address, input.key))
+                        .collect::<Vec<_>>(),
+                )
+                .into_iter()
+                .map(|output| DatastoreEntryOutput {
+                    final_value: output.0,
+                    candidate_value: output.1,
+                })
+                .collect())
         };
         Box::pin(closure())
     }
@@ -572,9 +583,13 @@ impl Endpoints for API<Public> {
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
             let mut endorsements: Map<Address, Set<EndorsementId>> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut final_sce_ledger_info: Map<Address, SCELedgerInfo> =
+            let mut final_balance_info: Map<Address, Option<Amount>> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut candidate_sce_ledger_info: Map<Address, SCELedgerInfo> =
+            let mut candidate_balance_info: Map<Address, Option<Amount>> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut final_datastore_keys: Map<Address, BTreeSet<Vec<u8>>> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut candidate_datastore_keys: Map<Address, BTreeSet<Vec<u8>>> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
 
             let mut concurrent_getters = FuturesUnordered::new();
@@ -607,38 +622,10 @@ impl Endpoints for API<Public> {
                         .chain(get_consensus_eds?.into_keys())
                         .collect();
 
-                    let (final_sce, candidate_sce) =
-                        match exec_snd.get_final_and_active_ledger_entry(&address) {
-                            (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
-                            (None, Some(candidate)) => (
-                                SCELedgerInfo::default(),
-                                SCELedgerInfo {
-                                    balance: candidate.parallel_balance,
-                                    module: candidate.bytecode,
-                                    datastore: candidate.datastore.into_iter().collect(),
-                                },
-                            ),
-                            (Some(final_entry), None) => (
-                                SCELedgerInfo {
-                                    balance: final_entry.parallel_balance,
-                                    module: final_entry.bytecode,
-                                    datastore: final_entry.datastore.into_iter().collect(),
-                                },
-                                SCELedgerInfo::default(),
-                            ),
-                            (Some(final_entry), Some(candidate)) => (
-                                SCELedgerInfo {
-                                    balance: final_entry.parallel_balance,
-                                    module: final_entry.bytecode,
-                                    datastore: final_entry.datastore.into_iter().collect(),
-                                },
-                                SCELedgerInfo {
-                                    balance: candidate.parallel_balance,
-                                    module: candidate.bytecode,
-                                    datastore: candidate.datastore.into_iter().collect(),
-                                },
-                            ),
-                        };
+                    let balances = exec_snd.get_final_and_active_parallel_balance(vec![address]);
+                    let balances_result = balances.first().unwrap();
+                    let (final_keys, candidate_keys) =
+                        exec_snd.get_final_and_active_datastore_keys(&address);
 
                     Result::<
                         (
@@ -646,8 +633,10 @@ impl Endpoints for API<Public> {
                             Set<BlockId>,
                             Set<OperationId>,
                             Set<EndorsementId>,
-                            SCELedgerInfo,
-                            SCELedgerInfo,
+                            Option<Amount>,
+                            Option<Amount>,
+                            BTreeSet<Vec<u8>>,
+                            BTreeSet<Vec<u8>>,
                         ),
                         ApiError,
                     >::Ok((
@@ -655,18 +644,31 @@ impl Endpoints for API<Public> {
                         blocks,
                         gathered,
                         gathered_ed,
-                        final_sce,
-                        candidate_sce,
+                        balances_result.0,
+                        balances_result.1,
+                        final_keys,
+                        candidate_keys,
                     ))
                 });
             }
             while let Some(res) = concurrent_getters.next().await {
-                let (a, bl_set, op_set, ed_set, final_sce, candidate_sce) = res?;
-                operations.insert(a, op_set);
-                blocks.insert(a, bl_set);
-                endorsements.insert(a, ed_set);
-                final_sce_ledger_info.insert(a, final_sce);
-                candidate_sce_ledger_info.insert(a, candidate_sce);
+                let (
+                    addr,
+                    block_set,
+                    operation_set,
+                    endorsement_set,
+                    final_balance,
+                    candidate_balance,
+                    final_keys,
+                    candidate_keys,
+                ) = res?;
+                blocks.insert(addr, block_set);
+                operations.insert(addr, operation_set);
+                endorsements.insert(addr, endorsement_set);
+                final_balance_info.insert(addr, final_balance);
+                candidate_balance_info.insert(addr, candidate_balance);
+                final_datastore_keys.insert(addr, final_keys);
+                candidate_datastore_keys.insert(addr, candidate_keys);
             }
 
             // compile everything per address
@@ -702,10 +704,16 @@ impl Endpoints for API<Public> {
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                     production_stats: state.production_stats,
-                    final_sce_ledger_info: final_sce_ledger_info
+                    final_balance_info: final_balance_info
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
-                    candidate_sce_ledger_info: candidate_sce_ledger_info
+                    candidate_balance_info: candidate_balance_info
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
+                    final_datastore_keys: final_datastore_keys
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
+                    candidate_datastore_keys: candidate_datastore_keys
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                 })
@@ -717,7 +725,7 @@ impl Endpoints for API<Public> {
 
     fn send_operations(
         &self,
-        ops: Vec<SignedOperation>,
+        ops: Vec<OperationInput>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let api_cfg = self.0.api_settings;
@@ -725,9 +733,31 @@ impl Endpoints for API<Public> {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
+            let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new());
             let to_send = ops
                 .into_iter()
-                .map(|op| Ok((op.verify_integrity()?, op)))
+                .map(|op_input| {
+                    let mut op_serialized = Vec::new();
+                    op_serialized.extend(op_input.signature.to_bytes());
+                    op_serialized.extend(op_input.creator_public_key.to_bytes());
+                    op_serialized.extend(op_input.serialized_content);
+                    let (rest, op): (&[u8], WrappedOperation) = operation_deserializer
+                        .deserialize::<DeserializeError>(&op_serialized)
+                        .map_err(|err| {
+                            ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
+                        })?;
+                    if rest.is_empty() {
+                        Ok(op)
+                    } else {
+                        Err(ApiError::ModelsError(ModelsError::DeserializeError(
+                            "There is data left after operation deserialization".to_owned(),
+                        )))
+                    }
+                })
+                .map(|op| match op {
+                    Ok(operation) => Ok((operation.verify_integrity()?, operation)),
+                    Err(e) => Err(e),
+                })
                 .collect::<Result<Map<OperationId, _>, ApiError>>()?;
             let ids = to_send.keys().copied().collect();
             cmd_sender.add_operations(to_send).await?;

@@ -5,28 +5,36 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub use address::Address;
-pub use amount::Amount;
-pub use block::{Block, BlockHeader, BlockId, SignedHeader};
+pub use address::{Address, AddressDeserializer};
+pub use amount::{Amount, AmountDeserializer, AmountSerializer};
+pub use block::{
+    Block, BlockDeserializer, BlockHeader, BlockHeaderDeserializer, BlockHeaderSerializer, BlockId,
+    BlockSerializer, WrappedBlock, WrappedHeader,
+};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
 };
-pub use endorsement::{Endorsement, EndorsementId, SignedEndorsement};
+pub use endorsement::{
+    Endorsement, EndorsementDeserializer, EndorsementId, EndorsementSerializer, WrappedEndorsement,
+};
 pub use error::ModelsError;
-pub use operation::{Operation, OperationId, OperationType, SignedOperation};
+pub use operation::{
+    Operation, OperationId, OperationIdsDeserializer, OperationPrefixId,
+    OperationPrefixIdDeserializer, OperationPrefixIds, OperationPrefixIdsDeserializer,
+    OperationPrefixIdsSerializer, OperationSerializer, OperationType, WrappedOperation,
+};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
-    SerializeCompact, SerializeMinBEInt, SerializeVarInt, U16VarIntDeserializer,
-    U16VarIntSerializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
-    U64VarIntSerializer, VecU8Deserializer, VecU8Serializer,
+    IpAddrDeserializer, IpAddrSerializer, SerializeCompact, SerializeMinBEInt, SerializeVarInt,
+    StringDeserializer, StringSerializer, VecU8Deserializer, VecU8Serializer,
 };
 pub use serialization_context::{
     get_serialization_context, init_serialization_context, with_serialization_context,
     SerializationContext,
 };
-pub use slot::Slot;
-pub use version::Version;
+pub use slot::{Slot, SlotDeserializer, SlotSerializer};
+pub use version::{Version, VersionDeserializer, VersionSerializer};
 /// active blocks related structures
 pub mod active_block;
 /// address related structures
@@ -60,8 +68,6 @@ pub mod prehash;
 pub mod rolls;
 mod serialization;
 mod serialization_context;
-/// trait for signed structure
-pub mod signed;
 /// slots
 pub mod slot;
 /// various statistics
@@ -69,6 +75,8 @@ pub mod stats;
 /// management of the relation between time and slots
 pub mod timeslots;
 mod version;
+/// trait for signed structure
+pub mod wrapped;
 pub use node_configuration::CompactConfig;
 /// Expose constants
 pub mod constants {

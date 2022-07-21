@@ -4,13 +4,13 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::{BlockId, Slot};
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_pruning_of_discarded_blocks() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -39,7 +39,7 @@ async fn test_pruning_of_discarded_blocks() {
                     parents.clone(),
                     false,
                     false,
-                    staking_keys[0],
+                    &staking_keys[0],
                 )
                 .await;
             }
@@ -63,7 +63,7 @@ async fn test_pruning_of_discarded_blocks() {
 #[tokio::test]
 #[serial]
 async fn test_pruning_of_awaiting_slot_blocks() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -92,7 +92,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
                     parents.clone(),
                     false,
                     false,
-                    staking_keys[0],
+                    &staking_keys[0],
                 )
                 .await;
             }
@@ -115,7 +115,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 #[tokio::test]
 #[serial]
 async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 200.into(),
         future_block_processing_max_periods: 50,
@@ -135,8 +135,8 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                 .collect();
 
             // Too far into the future.
-            let (bad_parent, bad_block, _) =
-                create_block(&cfg, Slot::new(10000, 0), parents.clone(), staking_keys[0]);
+            let bad_block =
+                create_block(&cfg, Slot::new(10000, 0), parents.clone(), &staking_keys[0]);
 
             for i in 1..4 {
                 // Sent several headers with the bad parent as dependency.
@@ -144,17 +144,19 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                     &mut protocol_controller,
                     &cfg,
                     Slot::new(i, 0),
-                    vec![bad_parent, parents.clone()[0]],
+                    vec![bad_block.id, parents.clone()[0]],
                     false,
                     false,
-                    staking_keys[0],
+                    &staking_keys[0],
                 )
                 .await;
             }
 
             // Now, send the bad parent.
-            protocol_controller.receive_header(bad_block.header).await;
-            validate_notpropagate_block_in_list(&mut protocol_controller, &vec![bad_parent], 10)
+            protocol_controller
+                .receive_header(bad_block.content.header)
+                .await;
+            validate_notpropagate_block_in_list(&mut protocol_controller, &vec![bad_block.id], 10)
                 .await;
 
             // Eventually, all blocks will be discarded due to their bad parent.

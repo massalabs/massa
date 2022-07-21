@@ -4,18 +4,18 @@
 
 use std::ops::Bound::Included;
 
+use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::constants::{ADDRESS_SIZE_BYTES, THREAD_COUNT};
+use massa_models::constants::THREAD_COUNT;
 use massa_models::slot::{SlotDeserializer, SlotSerializer};
-use massa_models::{
-    array_from_slice, Address, Amount, DeserializeVarInt, ModelsError, SerializeVarInt, Slot,
-    U64VarIntDeserializer, U64VarIntSerializer,
+use massa_models::{Address, Amount, Slot, VecU8Deserializer, VecU8Serializer};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_models::{DeserializeCompact, SerializeCompact};
-use massa_serialization::{Deserializer, Serializer};
-use nom::error::context;
+use nom::error::{context, ContextError, ParseError};
+use nom::multi::length_data;
 use nom::sequence::tuple;
-use nom::IResult;
+use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier of a message.
@@ -31,17 +31,10 @@ pub struct AsyncMessageIdSerializer {
 
 impl AsyncMessageIdSerializer {
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
-            amount_serializer: AmountSerializer::new(Included(u64::MIN), Included(u64::MAX)),
-            slot_serializer: SlotSerializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
-            ),
-            u64_serializer: U64VarIntSerializer::new(Included(u64::MIN), Included(u64::MAX)),
+            amount_serializer: AmountSerializer::new(),
+            slot_serializer: SlotSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
         }
     }
 }
@@ -53,18 +46,40 @@ impl Default for AsyncMessageIdSerializer {
 }
 
 impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::Serializer;
+    /// use massa_models::{Address, Amount, Slot};
+    /// use std::str::FromStr;
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer};
+    ///
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let id: AsyncMessageId = message.compute_id();
+    /// let mut serialized = Vec::new();
+    /// let serializer = AsyncMessageIdSerializer::new();
+    /// serializer.serialize(&id, &mut serialized).unwrap();
+    /// ```
     fn serialize(
         &self,
         value: &AsyncMessageId,
-    ) -> Result<Vec<u8>, massa_serialization::SerializeError> {
-        let amount = self.amount_serializer.serialize(&value.0 .0)?;
-        let slot = self.slot_serializer.serialize(&value.1)?;
-        let index = self.u64_serializer.serialize(&value.2)?;
-        let mut res = Vec::with_capacity(amount.len() + slot.len() + index.len());
-        res.extend(amount);
-        res.extend(slot);
-        res.extend(index);
-        Ok(res)
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
+        self.amount_serializer.serialize(&value.0 .0, buffer)?;
+        self.slot_serializer.serialize(&value.1, buffer)?;
+        self.u64_serializer.serialize(&value.2, buffer)?;
+        Ok(())
     }
 }
 
@@ -80,9 +95,6 @@ impl AsyncMessageIdDeserializer {
             amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                #[cfg(feature = "sandbox")]
-                (Included(0), Included(*THREAD_COUNT)),
-                #[cfg(not(feature = "sandbox"))]
                 (Included(0), Included(THREAD_COUNT)),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
@@ -97,30 +109,54 @@ impl Default for AsyncMessageIdDeserializer {
 }
 
 impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
-    fn deserialize<'a>(&self, buffer: &'a [u8]) -> IResult<&'a [u8], AsyncMessageId> {
-        let mut parser = tuple((
-            context("amount in async message id", |input| {
-                self.amount_deserializer.deserialize(input)
-            }),
-            context("slot in async message id", |input| {
-                self.slot_deserializer.deserialize(input)
-            }),
-            context("index in async message id", |input| {
-                self.u64_deserializer.deserialize(input)
-            }),
-        ));
-
-        match parser(buffer) {
-            Ok((rest, (amount, slot, index))) => {
-                Ok((rest, (std::cmp::Reverse(amount), slot, index)))
-            }
-            Err(e) => Err(e),
-        }
+    /// ```
+    /// use std::ops::Bound::Included;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use massa_models::{Address, Amount, Slot};
+    /// use std::str::FromStr;
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer, AsyncMessageIdDeserializer};
+    ///
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let id: AsyncMessageId = message.compute_id();
+    /// let mut serialized = Vec::new();
+    /// let serializer = AsyncMessageIdSerializer::new();
+    /// let deserializer = AsyncMessageIdDeserializer::new();
+    /// serializer.serialize(&id, &mut serialized).unwrap();
+    /// let (rest, id_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(id, id_deser);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], AsyncMessageId, E> {
+        context(
+            "Failed AsyncMessageId deserialization",
+            tuple((
+                |input| self.amount_deserializer.deserialize(input),
+                |input| self.slot_deserializer.deserialize(input),
+                |input| self.u64_deserializer.deserialize(input),
+            )),
+        )
+        .map(|(amount, slot, index)| (std::cmp::Reverse(amount), slot, index))
+        .parse(buffer)
     }
 }
 
 /// Structure defining an asynchronous smart contract message
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct AsyncMessage {
     /// Slot at which the message was emitted
     pub emission_slot: Slot,
@@ -173,137 +209,211 @@ impl AsyncMessage {
     }
 }
 
-impl SerializeCompact for AsyncMessage {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
+pub struct AsyncMessageSerializer {
+    slot_serializer: SlotSerializer,
+    amount_serializer: AmountSerializer,
+    u64_serializer: U64VarIntSerializer,
+    vec_u8_serializer: VecU8Serializer,
+}
 
-        // emission slot
-        res.extend(self.emission_slot.to_bytes_compact()?);
-
-        // emission index
-        res.extend(self.emission_index.to_varint_bytes());
-
-        // sender address
-        res.extend(self.sender.to_bytes());
-
-        // destination address
-        res.extend(self.destination.to_bytes());
-
-        // handler name length
-        let handler_name_len: u8 = self.handler.len().try_into().map_err(|_| {
-            ModelsError::SerializeError("could not convert handler name length to u8".into())
-        })?;
-        res.extend(&[handler_name_len]);
-
-        // handler name
-        res.extend(self.handler.as_bytes());
-
-        // max gas
-        res.extend(&self.max_gas.to_varint_bytes());
-
-        // gas price
-        res.extend(&self.gas_price.to_bytes_compact()?);
-
-        // coins
-        res.extend(&self.coins.to_bytes_compact()?);
-
-        // validity_start
-        res.extend(&self.validity_start.to_bytes_compact()?);
-
-        // validity_end
-        res.extend(&self.validity_end.to_bytes_compact()?);
-
-        // data length
-        let data_len: u64 = self.data.len().try_into().map_err(|_| {
-            ModelsError::SerializeError("could not convert data size to u64".into())
-        })?;
-        res.extend(data_len.to_varint_bytes());
-
-        // data
-        res.extend(&self.data);
-
-        Ok(res)
+impl AsyncMessageSerializer {
+    pub fn new() -> Self {
+        Self {
+            slot_serializer: SlotSerializer::new(),
+            amount_serializer: AmountSerializer::new(),
+            u64_serializer: U64VarIntSerializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(),
+        }
     }
 }
 
-impl DeserializeCompact for AsyncMessage {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
-        let mut cursor = 0usize;
+impl Default for AsyncMessageSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-        // emission slot
-        let (emission_slot, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
+impl Serializer<AsyncMessage> for AsyncMessageSerializer {
+    /// ```
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer};
+    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_serialization::Serializer;
+    /// use std::str::FromStr;
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let mut buffer = Vec::new();
+    /// let message_serializer = AsyncMessageSerializer::new();
+    /// message_serializer.serialize(&message, &mut buffer).unwrap();
+    /// ```
+    fn serialize(
+        &self,
+        value: &AsyncMessage,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), massa_serialization::SerializeError> {
+        self.slot_serializer
+            .serialize(&value.emission_slot, buffer)?;
+        self.u64_serializer
+            .serialize(&value.emission_index, buffer)?;
+        buffer.extend(value.sender.to_bytes());
+        buffer.extend(value.destination.to_bytes());
 
-        // emission index
-        let (emission_index, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-
-        // sender address
-        let sender = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-        cursor += ADDRESS_SIZE_BYTES;
-
-        // destination address
-        let destination = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
-        cursor += ADDRESS_SIZE_BYTES;
-
-        // handler name length
-        let handler_name_len = *buffer
-            .get(cursor)
-            .ok_or_else(|| ModelsError::SerializeError("buffer ended prematurely".into()))?;
-        cursor += 1;
-
-        // handler name
-        let handler = if let Some(range) = buffer.get(cursor..(cursor + handler_name_len as usize))
-        {
-            cursor += handler_name_len as usize;
-            String::from_utf8(range.to_vec())
-                .map_err(|_| ModelsError::SerializeError("handler name is not utf-8".into()))?
-        } else {
-            return Err(ModelsError::SerializeError(
-                "buffer ended prematurely".into(),
-            ));
-        };
-
-        // max gas
-        let (max_gas, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        cursor += delta;
-
-        // gas price
-        let (gas_price, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        // coins
-        let (coins, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        // validity_start
-        let (validity_start, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        // validity_end
-        let (validity_end, delta) = Slot::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        // data length
-        let (data_len, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        let data_len: usize = data_len.try_into().map_err(|_| {
-            ModelsError::SerializeError("could not convert data size to usize".into())
+        let handler_bytes = value.handler.as_bytes();
+        let handler_name_len: u8 = handler_bytes.len().try_into().map_err(|_| {
+            SerializeError::GeneralError("could not convert handler name length to u8".into())
         })?;
-        //TODO cap data length https://github.com/massalabs/massa/issues/1200
-        cursor += delta;
+        buffer.extend(&[handler_name_len]);
+        buffer.extend(handler_bytes);
 
-        // data
-        let data = if let Some(slice) = buffer.get(cursor..(cursor + data_len)) {
-            cursor += data_len as usize;
-            slice.to_vec()
-        } else {
-            return Err(ModelsError::SerializeError(
-                "buffer ended prematurely".into(),
-            ));
-        };
+        self.u64_serializer.serialize(&value.max_gas, buffer)?;
+        self.amount_serializer.serialize(&value.gas_price, buffer)?;
+        self.amount_serializer.serialize(&value.coins, buffer)?;
+        self.slot_serializer
+            .serialize(&value.validity_start, buffer)?;
+        self.slot_serializer
+            .serialize(&value.validity_end, buffer)?;
+        self.vec_u8_serializer.serialize(&value.data, buffer)?;
+        Ok(())
+    }
+}
 
-        Ok((
-            AsyncMessage {
+pub struct AsyncMessageDeserializer {
+    slot_deserializer: SlotDeserializer,
+    amount_deserializer: AmountDeserializer,
+    u64_deserializer: U64VarIntDeserializer,
+    vec_u8_deserializer: VecU8Deserializer,
+    address_deserializer: AddressDeserializer,
+}
+
+impl AsyncMessageDeserializer {
+    pub fn new() -> Self {
+        Self {
+            slot_deserializer: SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Included(THREAD_COUNT)),
+            ),
+            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
+            address_deserializer: AddressDeserializer::new(),
+        }
+    }
+}
+
+impl Default for AsyncMessageDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
+    /// ```
+    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer};
+    /// use massa_models::{Address, Amount, Slot};
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
+    /// use std::str::FromStr;
+    /// let message = AsyncMessage {
+    ///     emission_slot: Slot::new(1, 0),
+    ///     emission_index: 0,
+    ///     sender:  Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     handler: String::from("test"),
+    ///     max_gas: 10000000,
+    ///     gas_price: Amount::from_str("1").unwrap(),
+    ///     coins: Amount::from_str("1").unwrap(),
+    ///     validity_start: Slot::new(2, 0),
+    ///     validity_end: Slot::new(3, 0),
+    ///     data: vec![1, 2, 3, 4]
+    /// };
+    /// let message_serializer = AsyncMessageSerializer::new();
+    /// let mut serialized = Vec::new();
+    /// message_serializer.serialize(&message, &mut serialized).unwrap();
+    /// let message_deserializer = AsyncMessageDeserializer::new();
+    /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert!(rest.is_empty());
+    /// assert_eq!(message, message_deserialized);
+    /// ```
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], AsyncMessage, E> {
+        context(
+            "Failed AsyncMessage deserialization",
+            tuple((
+                context("Failed emission_slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed emission_index deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed sender deserialization", |input| {
+                    self.address_deserializer.deserialize(input)
+                }),
+                context("Failed destination deserialization", |input| {
+                    self.address_deserializer.deserialize(input)
+                }),
+                context("Failed handler deserialization", |input| {
+                    let (rest, array) = length_data(|input: &'a [u8]| match input.first() {
+                        Some(len) => Ok((&input[1..], *len)),
+                        None => Err(nom::Err::Error(ParseError::from_error_kind(
+                            input,
+                            nom::error::ErrorKind::LengthValue,
+                        ))),
+                    })(input)?;
+                    Ok((
+                        rest,
+                        String::from_utf8(array.to_vec()).map_err(|_| {
+                            nom::Err::Error(ParseError::from_error_kind(
+                                input,
+                                nom::error::ErrorKind::Fail,
+                            ))
+                        })?,
+                    ))
+                }),
+                context("Failed max_gas deserialization", |input| {
+                    self.u64_deserializer.deserialize(input)
+                }),
+                context("Failed gas_price deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed coins deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed validity_start deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed validity_end deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed data deserialization", |input| {
+                    self.vec_u8_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(
+            |(
+                emission_slot,
+                emission_index,
+                sender,
+                destination,
+                handler,
+                max_gas,
+                gas_price,
+                coins,
+                validity_start,
+                validity_end,
+                data,
+            )| AsyncMessage {
                 emission_slot,
                 emission_index,
                 sender,
@@ -316,7 +426,45 @@ impl DeserializeCompact for AsyncMessage {
                 validity_end,
                 data,
             },
-            cursor,
-        ))
+        )
+        .parse(buffer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
+
+    use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
+    use massa_models::{Address, Amount, Slot};
+    use std::str::FromStr;
+
+    #[test]
+    fn bad_serialization_version() {
+        let message = AsyncMessage {
+            emission_slot: Slot::new(1, 2),
+            emission_index: 0,
+            sender: Address::from_str("A12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                .unwrap(),
+            destination: Address::from_str("A12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                .unwrap(),
+            handler: String::from("test"),
+            max_gas: 10000000,
+            gas_price: Amount::from_str("1").unwrap(),
+            coins: Amount::from_str("1").unwrap(),
+            validity_start: Slot::new(2, 0),
+            validity_end: Slot::new(3, 0),
+            data: vec![1, 2, 3, 4],
+        };
+        let message_serializer = AsyncMessageSerializer::new();
+        let mut serialized = Vec::new();
+        message_serializer
+            .serialize(&message, &mut serialized)
+            .unwrap();
+        let message_deserializer = AsyncMessageDeserializer::new();
+        serialized[1] = 50;
+        message_deserializer
+            .deserialize::<DeserializeError>(&serialized)
+            .unwrap_err();
     }
 }

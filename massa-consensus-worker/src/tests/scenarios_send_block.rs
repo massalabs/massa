@@ -6,13 +6,13 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::Slot;
-use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_signature::KeyPair;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -38,18 +38,18 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
                 .1
                  .0;
             let creator = get_creator_for_draw(&draw, &staking_keys.clone());
-            let (hasht0s1, t0s1, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1 + start_slot, 0),
                 genesis_hashes.clone(),
-                creator,
+                &creator,
             );
 
             // Send the actual block.
-            protocol_controller.receive_block(t0s1).await;
+            protocol_controller.receive_block(t0s1.clone()).await;
 
             // block t0s1 is propagated
-            let hash_list = vec![hasht0s1];
+            let hash_list = vec![t0s1.id];
             validate_propagate_block_in_list(
                 &mut protocol_controller,
                 &hash_list,
@@ -59,11 +59,11 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
             // Ask for the block to consensus.
             protocol_controller
-                .receive_get_active_blocks(vec![hasht0s1])
+                .receive_get_active_blocks(vec![t0s1.id])
                 .await;
 
             // Consensus should respond with results including the block.
-            validate_block_found(&mut protocol_controller, &hasht0s1, 100).await;
+            validate_block_found(&mut protocol_controller, &t0s1.id, 100).await;
             (
                 protocol_controller,
                 consensus_command_sender,
@@ -77,7 +77,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 #[tokio::test]
 #[serial]
 async fn test_consensus_block_not_found() {
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),
         future_block_processing_max_periods: 50,
@@ -95,20 +95,20 @@ async fn test_consensus_block_not_found() {
                 .genesis_blocks;
 
             // create test blocks
-            let (hasht0s1, _, _) = create_block(
+            let t0s1 = create_block(
                 &cfg,
                 Slot::new(1 + start_slot, 0),
                 genesis_hashes.clone(),
-                staking_keys[0],
+                &staking_keys[0],
             );
 
             // Ask for the block to consensus.
             protocol_controller
-                .receive_get_active_blocks(vec![hasht0s1])
+                .receive_get_active_blocks(vec![t0s1.id])
                 .await;
 
             // Consensus should not have the block.
-            validate_block_not_found(&mut protocol_controller, &hasht0s1, 100).await;
+            validate_block_not_found(&mut protocol_controller, &t0s1.id, 100).await;
             (
                 protocol_controller,
                 consensus_command_sender,

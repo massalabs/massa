@@ -4,10 +4,11 @@ use massa_models::{
     constants::*,
     ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
-    rolls::{RollUpdate, RollUpdates},
-    signed::Signable,
+    rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
+    wrapped::{WrappedDeserializer, WrappedSerializer},
     *,
 };
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +17,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
     /// The block.
-    pub block: Block,
+    pub block: WrappedBlock,
     /// The Id of the block.
     pub block_id: BlockId,
     /// one `(block id, period)` per thread ( if not genesis )
@@ -35,32 +36,32 @@ pub struct ExportActiveBlock {
     /// list of `(period, address, did_create)` for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
 }
+
 impl TryFrom<ExportActiveBlock> for ActiveBlock {
     fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
         let operation_set = a_block
             .block
+            .content
             .operations
             .iter()
             .enumerate()
-            .map(|(idx, op)| match op.content.compute_id() {
-                Ok(id) => Ok((id, (idx, op.content.expire_period))),
-                Err(e) => Err(e),
-            })
-            .collect::<Result<_, _>>()?;
+            .map(|(idx, op)| (op.id, (idx, op.content.expire_period)))
+            .collect();
 
         let endorsement_ids = a_block
             .block
+            .content
             .header
             .content
             .endorsements
             .iter()
-            .map(|endo| Ok((endo.content.compute_id()?, endo.content.index)))
-            .collect::<Result<_>>()?;
+            .map(|endo| (endo.id, endo.content.index))
+            .collect();
 
         let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
         let addresses_to_endorsements = a_block.block.addresses_to_endorsements()?;
         Ok(ActiveBlock {
-            creator_address: Address::from_public_key(&a_block.block.header.content.creator),
+            creator_address: a_block.block.creator_address,
             block_id: a_block.block_id,
             parents: a_block.parents.clone(),
             children: a_block.children.clone(),
@@ -74,7 +75,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             roll_updates: a_block.roll_updates.clone(),
             production_events: a_block.production_events.clone(),
             addresses_to_endorsements,
-            slot: a_block.block.header.content.slot,
+            slot: a_block.block.content.header.content.slot,
         })
     }
     type Error = GraphError;
@@ -91,7 +92,7 @@ impl ExportActiveBlock {
         })?;
         let stored_block = block.read();
         Ok(ExportActiveBlock {
-            block: stored_block.block.clone(),
+            block: stored_block.clone(),
             block_id: a_block.block_id,
             parents: a_block.parents.clone(),
             children: a_block.children.clone(),
@@ -116,10 +117,7 @@ impl SerializeCompact for ExportActiveBlock {
         }
 
         // block
-        res.extend(self.block.to_bytes_compact()?);
-
-        // block id
-        res.extend(self.block_id.to_bytes());
+        WrappedSerializer::new().serialize(&self.block, &mut res)?;
 
         // parents (note: there should be none if slot period=0)
         if self.parents.is_empty() {
@@ -183,9 +181,11 @@ impl SerializeCompact for ExportActiveBlock {
             ModelsError::SerializeError(format!("too many roll updates in ActiveBlock: {}", err))
         })?;
         res.extend(roll_updates_count.to_varint_bytes());
+        // TODO: Temp before serialization is everywhere
+        let roll_updates_serializer = RollUpdateSerializer::new();
         for (addr, roll_update) in self.roll_updates.0.iter() {
             res.extend(addr.to_bytes());
-            res.extend(roll_update.to_bytes_compact()?);
+            roll_updates_serializer.serialize(roll_update, &mut res)?;
         }
 
         // creation events
@@ -226,12 +226,9 @@ impl DeserializeCompact for ExportActiveBlock {
         let is_final = is_final_u8 != 0;
 
         // block
-        let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        // block id
-        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-        cursor += BLOCK_ID_SIZE_BYTES;
+        let (rest, block): (&[u8], WrappedBlock) =
+            WrappedDeserializer::new(BlockDeserializer::new()).deserialize(&buffer[cursor..])?;
+        cursor += buffer[cursor..].len() - rest.len();
 
         // parents
         let has_parents = u8_from_slice(&buffer[cursor..])?;
@@ -331,11 +328,19 @@ impl DeserializeCompact for ExportActiveBlock {
             roll_updates_count as usize,
             BuildMap::default(),
         ));
+        // TODO: Temp before serialization is everywhere
+        let roll_update_deserializer = RollUpdateDeserializer::new();
         for _ in 0..roll_updates_count {
             let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?);
             cursor += ADDRESS_SIZE_BYTES;
-            let (roll_update, delta) = RollUpdate::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
+            let (rest, roll_update) = roll_update_deserializer
+                .deserialize::<DeserializeError>(&buffer[cursor..])
+                .map_err(|_| {
+                    ModelsError::DeserializeError(
+                        "Error while deserializing roll_update".to_string(),
+                    )
+                })?;
+            cursor += buffer[cursor..].len() - rest.len();
             roll_updates.0.insert(address, roll_update);
         }
 
@@ -366,8 +371,8 @@ impl DeserializeCompact for ExportActiveBlock {
         Ok((
             ExportActiveBlock {
                 is_final,
+                block_id: block.id,
                 block,
-                block_id,
                 parents,
                 children,
                 dependencies,

@@ -5,7 +5,7 @@
 use std::collections::VecDeque;
 
 use massa_async_pool::AsyncPool;
-use massa_ledger::FinalLedger;
+use massa_ledger_exports::LedgerController;
 use massa_models::Slot;
 
 use crate::{FinalState, FinalStateConfig, StateChanges};
@@ -14,7 +14,7 @@ use crate::{FinalState, FinalStateConfig, StateChanges};
 pub fn create_final_state(
     config: FinalStateConfig,
     slot: Slot,
-    ledger: FinalLedger,
+    ledger: Box<dyn LedgerController>,
     async_pool: AsyncPool,
     changes_history: VecDeque<(Slot, StateChanges)>,
 ) -> FinalState {
@@ -33,7 +33,7 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     assert_eq!(v1.slot, v2.slot, "final slot mismatch");
 
     // compare ledger states
-    massa_ledger::test_exports::assert_eq_ledger(&v1.ledger, &v2.ledger);
+    massa_ledger_worker::test_exports::assert_eq_ledger(&v1.ledger, &v2.ledger);
     massa_async_pool::test_exports::assert_eq_async_pool_bootstrap_state(
         &v1.async_pool,
         &v2.async_pool,

@@ -9,12 +9,13 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
-    signed::Signable,
+    wrapped::{Id, WrappedSerializer},
 };
-use massa_models::{BlockId, SerializeCompact, SerializeVarInt};
+use massa_models::{BlockId, OperationId, SerializeCompact, SerializeVarInt};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
 };
+use massa_serialization::Serializer;
 use massa_storage::Storage;
 use tokio::{
     sync::mpsc,
@@ -45,12 +46,16 @@ pub struct NodeWorker {
     storage: Storage,
 }
 
-//TODO: Find a consensus on "do we need to resolve that".
+/// The message to send,
+/// or the id(s) of the objects required to construct such a message,
+/// so the actual object(s) can be retrieved from shared storage.
+/// TODO: decide whether to address the clippy warning.
 #[allow(clippy::large_enum_variant)]
 pub enum ToSend {
     Msg(Message),
     Block(BlockId),
     Header(BlockId),
+    Operations(Vec<OperationId>),
 }
 
 impl NodeWorker {
@@ -148,31 +153,52 @@ impl NodeWorker {
                         let bytes_vec: Vec<u8> = match to_send {
                             ToSend::Msg(msg) => msg.to_bytes_compact().unwrap(),
                             ToSend::Block(block_id) => {
+                                // Construct the message,
+                                // using the serialized block retrieved from shared storage.
                                 let mut res: Vec<u8> = Vec::new();
                                 res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
                                 let block = storage
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
                                 let stored_block = block.read();
-                                res.extend(&stored_block.serialized);
+                                WrappedSerializer::new().serialize(&stored_block, &mut res)?;
                                 res
                             }
                             ToSend::Header(block_id) => {
+                                // Construct the message,
+                                // using the serialized header retrieved from shared storage.
                                 let mut res: Vec<u8> = Vec::new();
                                 res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
 
                                 let block = storage
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
-                                let mut stored_block = block.write();
-                                if let Some(serialized) = stored_block.serialized_header.as_ref() {
-                                    res.extend(serialized);
-                                } else {
-                                    let serialized =
-                                        stored_block.block.header.to_bytes_compact()?;
-                                    res.extend(&serialized);
-                                    stored_block.serialized_header = Some(serialized);
-                                }
+                                let stored_block = block.read();
+                                WrappedSerializer::new()
+                                    .serialize(&stored_block.content.header, &mut res)?;
+                                res
+                            }
+                            ToSend::Operations(operation_ids) => {
+                                // Construct the message,
+                                // using the serialized operations retrieved from shared storage.
+                                let mut res: Vec<u8> = Vec::new();
+                                res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
+                                let len = (operation_ids.len() as u32).to_varint_bytes();
+                                res.extend(len);
+                                let wrapped_operation_serializer = WrappedSerializer::new();
+
+                                storage.with_operations(&operation_ids, |operations| {
+                                    for operation in operations {
+                                        match operation {
+                                            Some(operation) => {
+                                                wrapped_operation_serializer
+                                                    .serialize(*operation, &mut res)?;
+                                            }
+                                            None => return Err(NetworkError::MissingOperation),
+                                        }
+                                    }
+                                    Ok(())
+                                })?;
 
                                 res
                             }
@@ -255,21 +281,21 @@ impl NodeWorker {
 
                 // incoming socket data
                 res = self.socket_reader.next() => match res {
-                    Ok(Some((index, msg, serialized))) => {
+                    Ok(Some((index, msg))) => {
                         massa_trace!(
                             "node_worker.run_loop. receive self.socket_reader.next()", {"index": index});
                         match msg {
                             Message::Block(block) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::Block",
-                                    {"block_id": block.header.content.compute_id()?, "block": block, "node": self.node_id}
+                                    {"block_id": block.id.hash(), "block": block, "node": self.node_id}
                                 );
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block, serialized.expect("Block should come with its serialized form.")))).await;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
                             },
                             Message::BlockHeader(header) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::BlockHeader",
-                                    {"block_id": header.content.compute_id()?, "header": header, "node": self.node_id}
+                                    {"block_id": header.id.hash(), "header": header, "node": self.node_id}
                                 );
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))).await;
                             },
@@ -296,17 +322,17 @@ impl NodeWorker {
                                 //massa_trace!("node_worker.run_loop. receive Message::Operations", {"node": self.node_id, "operations": operations});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
                             }
-                            Message::AskForOperations(operation_ids) => {
+                            Message::AskForOperations(operation_prefix_ids) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::AskForOperations: ",
-                                    {"node": self.node_id, "operation_ids": operation_ids}
+                                    {"node": self.node_id, "operation_ids": operation_prefix_ids}
                                 );
                                 //massa_trace!("node_worker.run_loop. receive Message::AskForOperations", {"node": self.node_id, "operations": operation_ids});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForOperations(operation_ids))).await;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForOperations(operation_prefix_ids))).await;
                             }
-                            Message::OperationsAnnouncement(operation_ids) => {
-                                massa_trace!("node_worker.run_loop. receive Message::OperationsBatch", {"node": self.node_id, "operation_ids": operation_ids});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperationAnnouncements(operation_ids))).await;
+                            Message::OperationsAnnouncement(operation_prefix_ids) => {
+                                massa_trace!("node_worker.run_loop. receive Message::OperationsBatch", {"node": self.node_id, "operation_prefix_ids": operation_prefix_ids});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperationAnnouncements(operation_prefix_ids))).await;
                             }
                             Message::Endorsements(endorsements) => {
                                 massa_trace!("node_worker.run_loop. receive Message::Endorsement", {"node": self.node_id, "endorsements": endorsements});
@@ -372,15 +398,16 @@ impl NodeWorker {
                         },
                         Some(NodeCommand::SendOperations(operations)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
-                            for chunk in operations.chunks(self.cfg.max_operations_per_message as usize) {
-                                if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::Operations(chunk.into()))).is_err() {
+                            let ops: Vec<OperationId> = operations.into_iter().collect();
+                            for chunk in ops.chunks(self.cfg.max_operations_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, ToSend::Operations(chunk.into())).is_err() {
                                     break 'select_loop;
                                 }
                             }
                         },
-                        Some(NodeCommand::SendOperationAnnouncements(operation_ids)) => {
-                            massa_trace!("node_worker.run_loop. send Message::OperationsAnnouncement", {"node": self.node_id, "operation_ids": operation_ids});
-                            for chunk in operation_ids
+                        Some(NodeCommand::SendOperationAnnouncements(operation_prefix_ids)) => {
+                            massa_trace!("node_worker.run_loop. send Message::OperationsAnnouncement", {"node": self.node_id, "operation_ids": operation_prefix_ids});
+                            for chunk in operation_prefix_ids
                             .into_iter()
                             .chunks(self.cfg.max_operations_per_message as usize)
                             .into_iter()
@@ -390,13 +417,13 @@ impl NodeWorker {
                                 }
                             }
                         }
-                        Some(NodeCommand::AskForOperations(operation_ids)) => {
+                        Some(NodeCommand::AskForOperations(operation_prefix_ids)) => {
                             //massa_trace!("node_worker.run_loop. send Message::AskForOperations", {"node": self.node_id, "operation_ids": operation_ids});
                             massa_trace!(
                                 "node_worker.run_loop. send Message::AskForOperations",
-                                {"node": self.node_id, "operation_ids": operation_ids}
+                                {"node": self.node_id, "operation_ids": operation_prefix_ids}
                             );
-                            for chunk in operation_ids
+                            for chunk in operation_prefix_ids
                             .into_iter()
                             .chunks(self.cfg.max_operations_per_message as usize)
                             .into_iter()

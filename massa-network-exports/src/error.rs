@@ -3,6 +3,7 @@
 use crate::{peers::PeerType, ConnectionId};
 use displaydoc::Display;
 use massa_models::ModelsError;
+use massa_serialization::SerializeError;
 use std::net::IpAddr;
 use thiserror::Error;
 
@@ -46,8 +47,12 @@ pub enum NetworkError {
     MissingPeersError,
     /// missing block
     MissingBlock,
+    /// missing operation
+    MissingOperation,
     /// models error: {0}
     ModelsError(#[from] ModelsError),
+    /// serialize error: {0}
+    SerializeError(#[from] SerializeError),
     /// container inconsistency error: {0}
     ContainerInconsistencyError(String),
 }

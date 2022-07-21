@@ -4,7 +4,7 @@ use std::{cmp::Reverse, collections::BTreeMap, str::FromStr};
 
 use crate::{AsyncMessage, AsyncPool, AsyncPoolConfig};
 use massa_models::{constants::THREAD_COUNT, Address, Amount, Slot};
-use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_signature::KeyPair;
 use rand::Rng;
 
 /// This file defines tools to test the asynchronous pool bootstrap
@@ -20,9 +20,8 @@ pub fn create_async_pool(
 }
 
 fn get_random_address() -> Address {
-    let priv_key = generate_random_private_key();
-    let pub_key = derive_public_key(&priv_key);
-    Address::from_public_key(&pub_key)
+    let keypair = KeyPair::generate();
+    Address::from_public_key(&keypair.get_public_key())
 }
 
 pub fn get_random_message() -> AsyncMessage {

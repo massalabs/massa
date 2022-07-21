@@ -3,11 +3,10 @@
 //! This file defines utilities to mock the crate for testing purposes
 
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
-use massa_hash::Hash;
-use massa_ledger::LedgerEntry;
-use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, BlockId, Slot};
+use massa_ledger_exports::LedgerEntry;
+use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, Amount, BlockId, Slot};
 use std::{
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     sync::{
         mpsc::{self, Receiver},
         Arc, Mutex,
@@ -107,28 +106,25 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn get_final_and_active_data_entry(
+    fn get_final_and_active_parallel_balance(
         &self,
-        _addr: &Address,
-        _key: &Hash,
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        (None, None)
+        _address: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)> {
+        Vec::default()
     }
 
-    fn get_final_and_active_ledger_entry(
+    fn get_final_and_active_data_entry(
         &self,
-        addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        let (response_tx, response_rx) = mpsc::channel();
-        self.0
-            .lock()
-            .unwrap()
-            .send(MockExecutionControllerMessage::GetFullLedgerEntry {
-                addr: *addr,
-                response_tx,
-            })
-            .unwrap();
-        response_rx.recv().unwrap()
+        _: Vec<(Address, Vec<u8>)>,
+    ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+        Vec::default()
+    }
+
+    fn get_final_and_active_datastore_keys(
+        &self,
+        _addr: &Address,
+    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
+        (BTreeSet::default(), BTreeSet::default())
     }
 
     fn execute_readonly_request(
