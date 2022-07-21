@@ -68,16 +68,22 @@ impl SelectorThread {
     /// * `cycle_info`: a cycle info with roll counts, seed, etc...
     fn run(mut self) -> PosResult<()> {
         loop {
-            let input_data = self.input_data.clone();
-            let mut data = input_data.1.lock();
-            match data.pop_front() {
-                Some(Command::CycleInfo(cycle_info)) => self.draws(cycle_info)?,
-                Some(Command::Stop) => break,
-                None => {}
+            let cycle_info = {
+                let mut data = self.input_data.1.lock();
+                match data.pop_front() {
+                    Some(Command::CycleInfo(cycle_info)) => Some(cycle_info),
+                    Some(Command::Stop) => break,
+                    None => None,
+                }
+            };
+
+            if let Some(cycle_info) = cycle_info {
+                self.draws(cycle_info)?;
             }
+
             // Wait to be notified of new input
             // The return value is ignored because we don't care what woke up the condition variable.
-            self.input_data.0.wait(&mut data);
+            self.input_data.0.wait(&mut self.input_data.1.lock());
         }
         Ok(())
     }
