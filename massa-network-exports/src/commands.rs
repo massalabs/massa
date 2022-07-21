@@ -97,8 +97,10 @@ pub enum NodeCommand {
     },
     /// Send the header of a block to a node.
     SendBlockHeader(BlockId),
-    /// Ask for a block from that node.
-    AskForBlocks(Vec<BlockId>),
+    /// Ask for info on a list of blocks.
+    AskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
+    /// Reply with info on a list of blocks.
+    ReplyForBlocks(Vec<(BlockId, ReplyForBlocksInfo)>),
     /// Close the node worker.
     Close(ConnectionClosureReason),
     /// Block not found
@@ -127,8 +129,10 @@ pub enum NodeEventType {
     ReceivedBlock(WrappedBlock),
     /// Node we are connected to sent block header
     ReceivedBlockHeader(WrappedHeader),
-    /// Node we are connected to asks for a block.
-    ReceivedAskForBlocks(Vec<BlockId>),
+    /// Node we are connected asked for info on a list of blocks.
+    ReceivedAskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
+    /// Node we are connected sent info on a list of blocks.
+    ReceivedReplyForBlocks(Vec<(BlockId, ReplyForBlocksInfo)>),
     /// Didn't found given block,
     BlockNotFound(BlockId),
     /// Info about the contents of a block.

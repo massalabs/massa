@@ -1077,7 +1077,7 @@ impl ProtocolWorker {
                                     {
                                         // Add the ops of info.
                                         info.operations = Some(operation_list.clone());
-                                        
+
                                         let missing_operations = operation_list
                                             .into_iter()
                                             .filter(|op| {

@@ -16,6 +16,7 @@ use massa_models::{
     SerializeVarInt, Version, VersionDeserializer, VersionSerializer, WrappedBlock,
     WrappedEndorsement, WrappedHeader,
 };
+use massa_network_exports::{AskForBlocksInfo, ReplyForBlocksInfo};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -50,8 +51,10 @@ pub enum Message {
     Block(WrappedBlock),
     /// Block header
     BlockHeader(WrappedHeader),
-    /// Message asking the peer for a block.
-    AskForBlocks(Vec<BlockId>),
+    /// Message asking the peer for info on a list of blocks.
+    AskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
+    /// Message replying with info on a list of blocks.
+    ReplyForBlocks(Vec<(BlockId, ReplyForBlocksInfo)>),
     /// Message asking the peer for its advertisable peers list.
     AskPeerList,
     /// Reply to a `AskPeerList` message
@@ -87,6 +90,7 @@ pub(crate) enum MessageTypeId {
     AskForOperations = 10,
     OperationsAnnouncement = 11,
     BlockInfo = 12,
+    ReplyForBlocks = 13,
 }
 
 /// For more details on how incoming objects are checked for validity at this stage,
@@ -134,9 +138,14 @@ impl SerializeCompact for Message {
                     )
                 })?;
                 res.extend(list_len.to_varint_bytes());
-                for hash in list {
+
+                // FIXME: serialize info.
+                for (hash, _info) in list {
                     res.extend(hash.to_bytes());
                 }
+            }
+            Message::ReplyForBlocks(list) => {
+                // TODO: serialize.
             }
             Message::AskPeerList => {
                 res.extend(u32::from(MessageTypeId::AskPeerList).to_varint_bytes());
@@ -246,13 +255,19 @@ impl DeserializeCompact for Message {
                     u32::from_varint_bytes_bounded(&buffer[cursor..], max_ask_blocks_per_message)?;
                 cursor += delta;
                 // hash list
-                let mut list: Vec<BlockId> = Vec::with_capacity(length as usize);
+                let mut list = Vec::with_capacity(length as usize);
                 for _ in 0..length {
                     let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
                     cursor += BLOCK_ID_SIZE_BYTES;
-                    list.push(b_id);
+
+                    // FIXME: deserialize info.
+                    list.push((b_id, AskForBlocksInfo::Info));
                 }
                 Message::AskForBlocks(list)
+            }
+            MessageTypeId::ReplyForBlocks => {
+                // TODO: deserialize.
+                Message::ReplyForBlocks(Default::default())
             }
             MessageTypeId::BlockInfo => {
                 let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
