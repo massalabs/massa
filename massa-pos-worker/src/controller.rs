@@ -104,11 +104,9 @@ impl SelectorController for SelectorControllerImpl {
 /// Implementation of the Selector manager
 /// Allows stopping the selector worker
 pub struct SelectorManagerImpl {
-    // todo: message passing may be enough to signal to the
-    //       thread to stop.
     /// handle used to join the worker thread
     pub(crate) thread_handle: Option<std::thread::JoinHandle<PosResult<()>>>,
-    /// Input data pointer used to stop the selector thread
+    /// Input data pointer (used to stop the selector thread)
     pub(crate) input_data: InputDataPtr,
 }
 

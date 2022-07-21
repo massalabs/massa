@@ -62,10 +62,10 @@ impl SelectorThread {
         })
     }
 
-    /// Check if cycle info changed or new and compute the draws
-    /// for future cycle.
-    /// # Arguments
-    /// * `cycle_info`: a cycle info with roll counts, seed, etc...
+    /// Thread loop.
+    ///
+    /// While a `Stop` command isn't sent, pop `input_data` and compute
+    /// draws for future cycle.
     fn run(mut self) -> PosResult<()> {
         loop {
             let cycle_info = {
@@ -89,7 +89,7 @@ impl SelectorThread {
     }
 }
 
-/// Launches an selector worker thread and returns a pair to interact with it.
+/// Launches a selector worker thread and returns a pair to interact with it.
 ///
 /// # parameters
 /// * none
