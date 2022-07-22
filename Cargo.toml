@@ -9,6 +9,8 @@ members = [
   "massa-consensus-worker",
   "massa-execution-exports",
   "massa-execution-worker",
+  "massa-factory-exports",
+  "massa-factory-worker",
   "massa-graph",
   "massa-hash",
   "massa-logging",

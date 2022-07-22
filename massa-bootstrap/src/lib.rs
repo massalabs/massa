@@ -11,6 +11,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
+#![feature(let_chains)]
 #![feature(map_first_last)]
 pub use establisher::types::Establisher;
 use massa_final_state::FinalState;
