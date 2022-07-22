@@ -1133,6 +1133,11 @@
 <span id="1127">1127</span>
 <span id="1128">1128</span>
 <span id="1129">1129</span>
+<span id="1130">1130</span>
+<span id="1131">1131</span>
+<span id="1132">1132</span>
+<span id="1133">1133</span>
+<span id="1134">1134</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -1845,6 +1850,11 @@
                             <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>);
                         }
                     }
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">staked_keys</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">get_staking_addresses</span>().<span class="kw">await</span> {
+                        <span class="kw">if</span> <span class="op">!</span><span class="ident">staked_keys</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>) {
+                            <span class="macro">client_warning!</span>(<span class="string">&quot;You are buying rolls with an address not registered for staking. Don&#39;t forget to run &#39;node_add_staking_secret_keys &lt;your_secret_key&#39;&quot;</span>);
+                        }
+                    }
                 }
                 <span class="ident">send_operation</span>(
                     <span class="ident">client</span>,
@@ -2263,5 +2273,5 @@
     })
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (d68e7ebc3 2022-07-20)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (62b272d25 2022-07-21)" ></div>
 </body></html>
