@@ -70,22 +70,16 @@ impl SelectorThread {
         loop {
             let cycle_info = {
                 let mut data = self.input_data.1.lock();
-                match data.pop_front() {
-                    Some(Command::CycleInfo(cycle_info)) => Some(cycle_info),
-                    Some(Command::Stop) => break,
-                    None => None,
+                loop {
+                    match data.pop_front() {
+                        Some(Command::CycleInfo(cycle_info)) => break cycle_info,
+                        Some(Command::Stop) => return Ok(()),
+                        None => self.input_data.0.wait(&mut data),
+                    }
                 }
             };
-
-            if let Some(cycle_info) = cycle_info {
-                self.draws(cycle_info)?;
-            }
-
-            // Wait to be notified of new input
-            // The return value is ignored because we don't care what woke up the condition variable.
-            self.input_data.0.wait(&mut self.input_data.1.lock());
+            self.draws(cycle_info)?;
         }
-        Ok(())
     }
 }
 
