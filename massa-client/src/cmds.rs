@@ -323,6 +323,10 @@ impl ExtendedWallet {
 
 impl Display for ExtendedWallet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            client_warning!("your wallet does not contain any key, use 'wallet_generate_secret_key' to generate a new key and add it to your wallet");
+        }
+
         for entry in self.0.values() {
             writeln!(f, "{}", entry)?;
         }
