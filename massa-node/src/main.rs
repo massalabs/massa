@@ -401,6 +401,16 @@ async fn main(args: Args) -> anyhow::Result<()> {
         .with(tracing_layer)
         .init();
 
+    // Setup panic handlers,
+    // and when a panic occurs,
+    // run default handler,
+    // and then shutdown.
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     // run
     let (password, staking_keys) =
         load_or_create_staking_keys_file(args.password, &SETTINGS.consensus.staking_keys_path)
