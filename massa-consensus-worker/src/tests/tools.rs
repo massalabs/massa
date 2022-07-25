@@ -23,7 +23,6 @@ use massa_models::{
     Endorsement, EndorsementSerializer, Operation, OperationSerializer, OperationType, Slot,
     WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
-use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::KeyPair;
 use massa_storage::Storage;

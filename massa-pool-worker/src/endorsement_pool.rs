@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{settings::PoolConfig, PoolError};
+use crate::{config::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
 use massa_models::wrapped::Wrapped;
 use massa_models::{Address, BlockId, Endorsement, EndorsementId, Slot, WrappedEndorsement};
@@ -74,13 +74,11 @@ impl EndorsementPool {
     ) -> Result<Set<EndorsementId>, PoolError> {
         let mut newly_added = Set::<EndorsementId>::default();
         for (endorsement_id, endorsement) in endorsements.into_iter() {
-            massa_trace!("pool add_endorsements endorsement", {
                 "endorsement": endorsement
             });
 
             // Already present
             if self.endorsements.contains_key(&endorsement_id) {
-                massa_trace!("pool add_endorsement endorsement already present", {});
                 continue;
             }
 
@@ -88,7 +86,6 @@ impl EndorsementPool {
             if endorsement.content.slot.period
                 < self.latest_final_periods[endorsement.content.slot.thread as usize]
             {
-                massa_trace!("pool add_endorsement endorsement too old", {});
                 continue;
             }
 
@@ -143,7 +140,6 @@ impl EndorsementPool {
                 removed.insert(c_id);
             }
         }
-        massa_trace!("pool.endorsement_pool.prune", { "removed": removed });
         removed
     }
 

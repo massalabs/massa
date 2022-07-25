@@ -31,7 +31,7 @@ massa_execution_exports = { path = "../massa-execution-exports", features = [
 massa_consensus_exports = { path = "../massa-consensus-exports", features = [
     "testing",
 ] }
-massa_pool = { path = "../massa-pool" }
+massa_pool_exports = { path = "../massa-pool-exports" }
 num = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 futures = "0.3"

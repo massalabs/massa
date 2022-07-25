@@ -12,6 +12,6 @@ mod error;
 mod types;
 
 pub use config::FactoryConfig;
-pub use controller_traits::{FactoryController, FactoryManager};
+pub use controller_traits::FactoryManager;
 pub use error::*;
 pub use types::*;

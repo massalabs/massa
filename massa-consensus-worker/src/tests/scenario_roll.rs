@@ -4,7 +4,6 @@ use massa_consensus_exports::tools;
 use massa_consensus_exports::{settings::ConsensusChannels, tools::TEST_PASSWORD, ConsensusConfig};
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::{prehash::Map, Address, Amount, BlockId, Slot};
-use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
 use massa_storage::Storage;
 use massa_time::MassaTime;

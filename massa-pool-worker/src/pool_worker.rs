@@ -2,7 +2,7 @@
 
 use super::error::PoolError;
 use crate::operation_pool::OperationPool;
-use crate::{endorsement_pool::EndorsementPool, settings::PoolConfig};
+use crate::{config::PoolConfig, endorsement_pool::EndorsementPool};
 use massa_models::prehash::{Map, Set};
 use massa_models::stats::PoolStats;
 use massa_models::{
@@ -11,7 +11,6 @@ use massa_models::{
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use massa_storage::Storage;
-use tokio::sync::{mpsc, oneshot};
 use tracing::warn;
 
 /// Commands that can be processed by pool.
@@ -124,7 +123,6 @@ impl PoolWorker {
         controller_manager_rx: mpsc::Receiver<PoolManagementCommand>,
         storage: Storage,
     ) -> Result<PoolWorker, PoolError> {
-        massa_trace!("pool.pool_worker.new", {});
         Ok(PoolWorker {
             protocol_command_sender,
             protocol_pool_event_receiver,
@@ -139,7 +137,6 @@ impl PoolWorker {
     /// It's mostly a tokio::select within a loop.
     pub async fn run_loop(mut self) -> Result<ProtocolPoolEventReceiver, PoolError> {
         loop {
-            massa_trace!("pool.pool_worker.run_loop.select", {});
             /*
                 select! without the "biased" modifier will randomly select the 1st branch to check,
                 then will check the next ones in the order they are written.
@@ -151,7 +148,6 @@ impl PoolWorker {
             tokio::select! {
                 // listen to manager commands
                 cmd = self.controller_manager_rx.recv() => {
-                    massa_trace!("pool.pool_worker.run_loop.select.manager", {});
                     match cmd {
                     None => break,
                     Some(_) => {}
@@ -159,13 +155,11 @@ impl PoolWorker {
 
                 // listen pool commands
                 Some(cmd) = self.controller_command_rx.recv() => {
-                    massa_trace!("pool.pool_worker.run_loop.pool_command", {});
                     self.process_pool_command(cmd).await?
                 },
 
                 // receive protocol controller pool events
                 evt = self.protocol_pool_event_receiver.wait_event() => {
-                    massa_trace!("pool.pool_worker.run_loop.select.protocol_event", {});
                     match evt {
                         Ok(event) => {
                             self.process_protocol_pool_event(event).await?},

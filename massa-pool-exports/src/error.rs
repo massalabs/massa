@@ -15,8 +15,6 @@ pub enum PoolError {
     ProtocolError(#[from] Box<ProtocolError>),
     /// channel error : {0}
     ChannelError(String),
-    /// Join error {0}
-    JoinError(#[from] tokio::task::JoinError),
     /// models error: {0}
     ModelsError(#[from] ModelsError),
     /// missing operation error: {0}

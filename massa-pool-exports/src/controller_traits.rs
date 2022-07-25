@@ -1,0 +1,421 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
+use crate::config::PoolConfig;
+
+use super::{
+    error::PoolError,
+};
+use massa_logging::massa_trace;
+use massa_models::{
+    constants::CHANNEL_SIZE,
+    prehash::{Map, Set},
+    stats::PoolStats,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, Slot, WrappedEndorsement,
+    WrappedOperation,
+};
+use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
+use massa_storage::Storage;
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
+use tracing::{debug, error, info};
+
+
+
+
+
+
+/// Creates a new pool controller.
+///
+/// # Arguments
+/// * `pool_settings`: pool configuration
+/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.
+/// * `protocol_pool_event_receiver`: a `ProtocolPoolEventReceiver` instance to receive pool events from `Protocol`.
+pub async fn start_pool_controller(
+    cfg: &'static PoolConfig,
+    protocol_command_sender: ProtocolCommandSender,
+    protocol_pool_event_receiver: ProtocolPoolEventReceiver,
+    storage: Storage,
+) -> Result<(PoolCommandSender, PoolManager), PoolError> {
+    debug!("starting pool controller");
+    massa_trace!("pool.pool_controller.start_pool_controller", {});
+
+    // start worker
+    let (command_tx, command_rx) = mpsc::channel::<PoolCommand>(CHANNEL_SIZE);
+    let (manager_tx, manager_rx) = mpsc::channel::<PoolManagementCommand>(1);
+    let join_handle = tokio::spawn(async move {
+        let res = PoolWorker::new(
+            cfg,
+            protocol_command_sender,
+            protocol_pool_event_receiver,
+            command_rx,
+            manager_rx,
+            storage,
+        )?
+        .run_loop()
+        .await;
+        match res {
+            Err(err) => {
+                error!("pool worker crashed: {}", err);
+                Err(err)
+            }
+            Ok(v) => {
+                info!("pool worker finished cleanly");
+                Ok(v)
+            }
+        }
+    });
+    Ok((
+        PoolCommandSender(command_tx),
+        PoolManager {
+            join_handle,
+            manager_tx,
+        },
+    ))
+}
+
+/// Pool command sender
+#[derive(Clone)]
+pub struct PoolCommandSender(pub mpsc::Sender<PoolCommand>);
+
+impl PoolCommandSender {
+    /// add operations to pool
+    pub async fn add_operations(
+        &mut self,
+        operations: Map<OperationId, WrappedOperation>,
+    ) -> Result<(), PoolError> {
+        massa_trace!("pool.command_sender.add_operations", { "ops": operations });
+        self.0
+            .send(PoolCommand::AddOperations(operations))
+            .await
+            .map_err(|_| PoolError::ChannelError("add_operations command send error".into()))
+    }
+
+    /// update current slots
+    pub async fn update_current_slot(&mut self, slot: Slot) -> Result<(), PoolError> {
+        massa_trace!("pool.command_sender.update_current_slot", { "slot": slot });
+        self.0
+            .send(PoolCommand::UpdateCurrentSlot(slot))
+            .await
+            .map_err(|_| PoolError::ChannelError("update_current_slot command send error".into()))
+    }
+
+    /// get pool stats
+    pub async fn get_pool_stats(&mut self) -> Result<PoolStats, PoolError> {
+        massa_trace!("pool.command_sender.get_pool_stats", {});
+        let (response_tx, response_rx) = oneshot::channel();
+
+        self.0
+            .send(PoolCommand::GetStats(response_tx))
+            .await
+            .map_err(|_| PoolError::ChannelError("get_pool_stats command send error".into()))?;
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_pool_stats {}",
+                e
+            ))
+        })
+    }
+
+    /// mark operations as final
+    pub async fn final_operations(
+        &mut self,
+        ops: Map<OperationId, (u64, u8)>,
+    ) -> Result<(), PoolError> {
+        massa_trace!("pool.command_sender.final_operations", { "ops": ops });
+        self.0
+            .send(PoolCommand::FinalOperations(ops))
+            .await
+            .map_err(|_| PoolError::ChannelError("final_operations command send error".into()))
+    }
+
+    /// update latest final periods
+    pub async fn update_latest_final_periods(
+        &mut self,
+        periods: Vec<u64>,
+    ) -> Result<(), PoolError> {
+        massa_trace!("pool.command_sender.update_latest_final_periods", {
+            "periods": periods
+        });
+        self.0
+            .send(PoolCommand::UpdateLatestFinalPeriods(periods))
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError("update_latest_final_periods command send error".into())
+            })
+    }
+
+    /// Returns a batch of operations ordered from highest to lowest rentability
+    /// Return value: vector of `(Operation, operation_size: u64)`
+    pub async fn send_get_operations_announcement(
+        &mut self,
+        target_slot: Slot,
+        exclude: Set<OperationId>,
+        batch_size: usize,
+        max_size: u64,
+    ) -> Result<Vec<(WrappedOperation, u64)>, PoolError> {
+        massa_trace!("pool.command_sender.get_operation_batch", {
+            "target_slot": target_slot
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetOperationBatch {
+                target_slot,
+                exclude,
+                batch_size,
+                max_size,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError("get_operation_batch command send error".into())
+            })?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_operation_batch {}",
+                e
+            ))
+        })
+    }
+
+    /// get endorsements for block creation
+    pub async fn get_endorsements(
+        &mut self,
+        target_slot: Slot,
+        parent: BlockId,
+        creators: Vec<Address>,
+    ) -> Result<Vec<WrappedEndorsement>, PoolError> {
+        massa_trace!("pool.command_sender.get_endorsements", {
+            "target_slot": target_slot
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetEndorsements {
+                target_slot,
+                response_tx,
+                parent,
+                creators,
+            })
+            .await
+            .map_err(|_| PoolError::ChannelError("get_endorsements command send error".into()))?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_endorsements {}",
+                e
+            ))
+        })
+    }
+
+    /// get operations by ids
+    pub async fn get_operations(
+        &mut self,
+        operation_ids: Set<OperationId>,
+    ) -> Result<Map<OperationId, WrappedOperation>, PoolError> {
+        massa_trace!("pool.command_sender.get_operations", {
+            "operation_ids": operation_ids
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetOperations {
+                operation_ids,
+                response_tx,
+            })
+            .await
+            .map_err(|_| PoolError::ChannelError("get_operation command send error".into()))?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_operations {}",
+                e
+            ))
+        })
+    }
+
+    /// get operation by involved addresses
+    pub async fn get_operations_involving_address(
+        &mut self,
+        address: Address,
+    ) -> Result<Map<OperationId, OperationSearchResult>, PoolError> {
+        massa_trace!("pool.command_sender.get_operations_involving_address", {
+            "address": address
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetRecentOperations {
+                address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError(
+                    "get_operations_involving_address command send error".into(),
+                )
+            })?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_operations_involving_address {}",
+                e
+            ))
+        })
+    }
+
+    /// add endorsements to pool
+    pub async fn add_endorsements(
+        &mut self,
+        endorsements: Map<EndorsementId, WrappedEndorsement>,
+    ) -> Result<(), PoolError> {
+        massa_trace!("pool.command_sender.add_endorsements", {
+            "endorsements": endorsements
+        });
+        self.0
+            .send(PoolCommand::AddEndorsements(endorsements))
+            .await
+            .map_err(|_| PoolError::ChannelError("add_endorsements command send error".into()))
+    }
+
+    /// get endorsements by address
+    pub async fn get_endorsements_by_address(
+        &self,
+        address: Address,
+    ) -> Result<Map<EndorsementId, WrappedEndorsement>, PoolError> {
+        massa_trace!("pool.command_sender.get_endorsements_by_address", {
+            "address": address
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetEndorsementsByAddress {
+                address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError("get_endorsements_by_address command send error".into())
+            })?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_endorsements_by_address {:?}",
+                e
+            ))
+        })
+    }
+
+    /// get endorsements by id
+    pub async fn get_endorsements_by_id(
+        &self,
+        endorsements: Set<EndorsementId>,
+    ) -> Result<Map<EndorsementId, WrappedEndorsement>, PoolError> {
+        massa_trace!("pool.command_sender.get_endorsements_by_id", {
+            "endorsements": endorsements
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetEndorsementsById {
+                endorsements,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError("get_endorsements_by_id command send error".into())
+            })?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_endorsements_by_id {:?}",
+                e
+            ))
+        })
+    }
+}
+
+/// pool management handle
+pub struct PoolManager {
+    join_handle: JoinHandle<Result<ProtocolPoolEventReceiver, PoolError>>,
+    manager_tx: mpsc::Sender<PoolManagementCommand>,
+}
+
+impl PoolManager {
+    /// stop pool
+    pub async fn stop(self) -> Result<ProtocolPoolEventReceiver, PoolError> {
+        massa_trace!("pool.pool_controller.stop", {});
+        drop(self.manager_tx);
+        let protocol_pool_event_receiver = self.join_handle.await??;
+        Ok(protocol_pool_event_receiver)
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
+
+//! This module exports generic traits representing interfaces for interacting
+//! with the factory worker.
+
+use massa_models::{prehash::Set, Address};
+use massa_signature::KeyPair;
+
+use crate::{FactoryResult, ProductionHistory};
+
+/// interface that communicates with the factory worker thread
+pub trait FactoryController: Send + Sync {
+    /// Get the production history
+    ///
+    /// todo: redesign inputs
+    fn get_production_history(&self) -> ProductionHistory;
+
+    /// Enable or disable production
+    fn set_production(&self, enable: bool);
+
+    /// Register staking keys
+    fn register_staking_keys(&self, keys: Vec<KeyPair>) -> FactoryResult<()>;
+
+    /// remove some keys from staking keys by associated address
+    /// the node won't be able to stake with these keys anymore
+    /// They will be erased from the staking keys file
+    fn remove_staking_addresses(&self, addresses: Set<Address>) -> FactoryResult<()>;
+
+    /// get staking addresses
+    fn get_staking_addresses(&self) -> FactoryResult<Set<Address>>;
+
+    /// Returns a boxed clone of self.
+    /// Useful to allow cloning `Box<dyn FactoryController>`.
+    fn clone_box(&self) -> Box<dyn FactoryController>;
+}
+
+/// Allow cloning `Box<dyn FactoryController>`
+/// Uses `FactoryController::clone_box` internally
+impl Clone for Box<dyn FactoryController> {
+    fn clone(&self) -> Box<dyn FactoryController> {
+        self.clone_box()
+    }
+}
+
+/// Factory manager used to stop the factory thread
+pub trait FactoryManager {
+    /// Stop the factory thread
+    /// Note that we do not take self by value to consume it
+    /// because it is not allowed to move out of Box<dyn FactoryManager>
+    /// This will improve if the `unsized_fn_params` feature stabilizes enough to be safely usable.
+    fn stop(&mut self);
+}

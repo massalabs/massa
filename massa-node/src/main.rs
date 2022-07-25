@@ -35,7 +35,8 @@ use massa_models::{
 };
 use massa_network_exports::{Establisher, NetworkManager};
 use massa_network_worker::start_network_controller;
-use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
+use massa_pool_exports::{PoolController, PoolManager};
+use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::ProtocolManager;

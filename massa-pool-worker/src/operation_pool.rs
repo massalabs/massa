@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{settings::PoolConfig, PoolError};
+use crate::{config::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
 use massa_models::{
     Address, OperationId, OperationSearchResult, OperationSearchResultStatus, Slot,
@@ -117,18 +117,14 @@ impl OperationPool {
     ) -> Result<Set<OperationId>, PoolError> {
         let mut removed = Set::<OperationId>::default();
         for (op_id, op) in operations.iter() {
-            massa_trace!("pool add_operations op", { "op_id": op_id });
-
             // Already present
             if self.ops.contains_key(op_id) {
-                massa_trace!("pool add_operations op already present", {});
                 removed.insert(*op_id);
                 continue;
             }
 
             // already final
             if self.final_operations.contains_key(op_id) {
-                massa_trace!("pool add_operations op already final", {});
                 removed.insert(*op_id);
                 continue;
             }
@@ -157,10 +153,6 @@ impl OperationPool {
                         .settings
                         .max_operation_future_validity_start_periods
                 {
-                    massa_trace!("pool add_operations validity_start_period >  self.cfg.max_operation_future_validity_start_periods", {
-                        "range": validity_start_period.saturating_sub(cur_period_in_thread),
-                        "max_operation_future_validity_start_periods": self.cfg.settings.max_operation_future_validity_start_periods
-                    });
                     removed.insert(*op_id);
                     continue;
                 }
@@ -168,10 +160,6 @@ impl OperationPool {
 
             // check if expired
             if wrapped_op.expire_period <= self.last_final_periods[wrapped_op.thread as usize] {
-                massa_trace!("pool add_operations wrapped_op.expire_period <= self.last_final_periods[wrapped_op.thread as usize]", {
-                    "expire_period": wrapped_op.expire_period,
-                    "self.last_final_periods[wrapped_op.thread as usize]": self.last_final_periods[wrapped_op.thread as usize]
-                });
                 removed.insert(*op_id);
                 continue;
             }
@@ -318,13 +306,6 @@ impl OperationPool {
                 if let Some(w_op) = self.ops.get(id) {
                     if !w_op.validity_range
                         .contains(&block_slot.period) || w_op.byte_count > max_size {
-                            massa_trace!("pool get_operation_batch not added to batch w_op.op.content.get_validity_range incorrect not added", {
-                                "range": w_op.validity_range,
-                                "block_slot.period": block_slot.period,
-                                "operation_id": id,
-                                "max_size_overflow": w_op.byte_count > max_size,
-                                "byte_count": w_op.byte_count,
-                            });
                         return None;
                     }
                     let stored_operation = self

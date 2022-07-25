@@ -12,7 +12,6 @@ use massa_models::{
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, Slot,
     WrappedBlock, WrappedEndorsement,
 };
-use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;

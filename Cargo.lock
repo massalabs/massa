@@ -1577,7 +1577,8 @@ dependencies = [
  "massa_models",
  "massa_network_exports",
  "massa_network_worker",
- "massa_pool",
+ "massa_pool_exports",
+ "massa_pool_worker",
  "massa_pos_exports",
  "massa_pos_worker",
  "massa_protocol_exports",
@@ -1630,7 +1631,7 @@ dependencies = [
  "massa_hash",
  "massa_models",
  "massa_network_exports",
- "massa_pool",
+ "massa_pool_exports",
  "massa_pos_exports",
  "massa_serialization",
  "massa_signature",
@@ -1726,7 +1727,7 @@ dependencies = [
  "massa_graph",
  "massa_logging",
  "massa_models",
- "massa_pool",
+ "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
  "massa_signature",
@@ -1751,7 +1752,7 @@ dependencies = [
  "massa_graph",
  "massa_logging",
  "massa_models",
- "massa_pool",
+ "massa_pool_exports",
  "massa_protocol_exports",
  "massa_signature",
  "massa_storage",
@@ -1815,7 +1816,7 @@ dependencies = [
  "massa_hash",
  "massa_ledger_exports",
  "massa_models",
- "massa_pool",
+ "massa_pool_exports",
  "massa_pos_exports",
  "massa_serialization",
  "massa_signature",
@@ -1837,7 +1838,7 @@ dependencies = [
  "massa_factory_exports",
  "massa_hash",
  "massa_models",
- "massa_pool",
+ "massa_pool_exports",
  "massa_pos_exports",
  "massa_serialization",
  "massa_signature",
@@ -2012,7 +2013,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_pool"
+name = "massa_pool_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
@@ -2030,7 +2031,28 @@ dependencies = [
  "serde_json",
  "serial_test",
  "thiserror",
- "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_pool_worker"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.21",
+ "lazy_static",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_protocol_exports",
+ "massa_signature",
+ "massa_storage",
+ "massa_time",
+ "num",
+ "serde 1.0.139",
+ "serde_json",
+ "serial_test",
+ "thiserror",
  "tracing",
 ]
 
