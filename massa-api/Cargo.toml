@@ -37,5 +37,4 @@ instrument = [
     "massa_models/instrument",
     "massa_network_exports/instrument",
     "massa_pool/instrument",
-    "massa_time/instrument",
 ]

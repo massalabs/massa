@@ -38,7 +38,6 @@ instrument = [
     "massa_models/instrument",
     "massa_pool/instrument",
     "massa_protocol_exports/instrument",
-    "massa_time/instrument",
 ]
 sandbox = []
 testing = [

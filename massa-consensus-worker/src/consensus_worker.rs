@@ -189,15 +189,14 @@ impl ConsensusWorker {
             .await?;
 
         // set slot timer
-        let next_slot_timer = sleep_until(
-            get_block_slot_timestamp(
-                self.cfg.thread_count,
-                self.cfg.t0,
-                self.cfg.genesis_timestamp,
-                self.next_slot,
-            )?
-            .estimate_instant(self.clock_compensation)?,
-        );
+        let slot_deadline = get_block_slot_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            self.next_slot,
+        )?
+        .estimate_instant(self.clock_compensation)?;
+        let next_slot_timer = sleep_until(tokio::time::Instant::from(slot_deadline));
 
         tokio::pin!(next_slot_timer);
 
@@ -285,15 +284,14 @@ impl ConsensusWorker {
 
         if observed_slot < Some(self.next_slot) {
             // reset timer for next slot
-            next_slot_timer.set(sleep_until(
-                get_block_slot_timestamp(
-                    self.cfg.thread_count,
-                    self.cfg.t0,
-                    self.cfg.genesis_timestamp,
-                    self.next_slot,
-                )?
-                .estimate_instant(self.clock_compensation)?,
-            ));
+            let sleep_deadline = get_block_slot_timestamp(
+                self.cfg.thread_count,
+                self.cfg.t0,
+                self.cfg.genesis_timestamp,
+                self.next_slot,
+            )?
+            .estimate_instant(self.clock_compensation)?;
+            next_slot_timer.set(sleep_until(tokio::time::Instant::from(sleep_deadline)));
             return Ok(());
         }
 
@@ -398,15 +396,14 @@ impl ConsensusWorker {
         self.block_db_changed().await?;
 
         // reset timer for next slot
-        next_slot_timer.set(sleep_until(
-            get_block_slot_timestamp(
-                self.cfg.thread_count,
-                self.cfg.t0,
-                self.cfg.genesis_timestamp,
-                self.next_slot,
-            )?
-            .estimate_instant(self.clock_compensation)?,
-        ));
+        let sleep_deadline = get_block_slot_timestamp(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            self.next_slot,
+        )?
+        .estimate_instant(self.clock_compensation)?;
+        next_slot_timer.set(sleep_until(tokio::time::Instant::from(sleep_deadline)));
 
         // prune stats
         self.prune_stats()?;

@@ -6,12 +6,12 @@
 
 #![warn(missing_docs)]
 
+mod config;
 mod controller_traits;
 mod error;
-mod settings;
 mod types;
 
+pub use config::FactoryConfig;
 pub use controller_traits::{FactoryController, FactoryManager};
 pub use error::*;
-pub use settings::FactoryConfig;
 pub use types::*;

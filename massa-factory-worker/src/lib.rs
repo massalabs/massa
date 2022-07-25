@@ -1,7 +1,10 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-mod controller;
-mod worker;
+#![feature(deadline_api)]
 
-/// Start thread factory
-pub use worker::start_factory_worker;
+mod block_factory;
+mod endorsement_factory;
+mod manager;
+mod run;
+
+pub use run::start_factory;

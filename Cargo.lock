@@ -1810,9 +1810,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "displaydoc",
+ "massa_consensus_exports",
+ "massa_execution_exports",
  "massa_hash",
  "massa_ledger_exports",
  "massa_models",
+ "massa_pool",
+ "massa_pos_exports",
  "massa_serialization",
  "massa_signature",
  "massa_time",
@@ -1829,10 +1833,16 @@ name = "massa_factory_worker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "massa_consensus_exports",
  "massa_factory_exports",
+ "massa_hash",
  "massa_models",
+ "massa_pool",
+ "massa_pos_exports",
+ "massa_serialization",
  "massa_signature",
  "massa_time",
+ "massa_wallet",
  "parking_lot 0.12.1",
  "serde 1.0.139",
  "serde_json",
@@ -2165,7 +2175,6 @@ dependencies = [
  "serde 1.0.139",
  "thiserror",
  "time",
- "tokio",
 ]
 
 [[package]]

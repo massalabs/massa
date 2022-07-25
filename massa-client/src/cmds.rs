@@ -492,7 +492,7 @@ impl Command {
                 let addr = parameters[0].parse::<Address>()?;
                 let msg = parameters[1].as_bytes().to_vec();
                 // get address signature
-                if let Some(addr_sig) = wallet.sign_message(addr, msg.clone()) {
+                if let Some(addr_sig) = wallet.sign_message(&addr, msg.clone()) {
                     // get node signature
                     match client.private.node_sign_message(msg).await {
                         // print concatenation
@@ -654,7 +654,7 @@ impl Command {
             Command::wallet_remove_addresses => {
                 let mut res = "".to_string();
                 for key in parse_vec::<Address>(parameters)?.into_iter() {
-                    match wallet.remove_address(key) {
+                    match wallet.remove_address(&key) {
                         Ok(_) => {
                             let _ = writeln!(res, "Removed address {} from the wallet", key);
                         }
@@ -960,7 +960,7 @@ impl Command {
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let msg = parameters[1].clone();
-                if let Some(signed) = wallet.sign_message(addr, msg.into_bytes()) {
+                if let Some(signed) = wallet.sign_message(&addr, msg.into_bytes()) {
                     Ok(Box::new(signed))
                 } else {
                     bail!("Missing public key")
