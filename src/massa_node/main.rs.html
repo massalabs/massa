@@ -482,6 +482,16 @@
 <span id="476">476</span>
 <span id="477">477</span>
 <span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -885,6 +895,16 @@
         .<span class="ident">with</span>(<span class="ident">tracing_layer</span>)
         .<span class="ident">init</span>();
 
+    <span class="comment">// Setup panic handlers,</span>
+    <span class="comment">// and when a panic occurs,</span>
+    <span class="comment">// run default handler,</span>
+    <span class="comment">// and then shutdown.</span>
+    <span class="kw">let</span> <span class="ident">default_panic</span> <span class="op">=</span> <span class="ident">std::panic::take_hook</span>();
+    <span class="ident">std::panic::set_hook</span>(<span class="ident">Box::new</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">info</span><span class="op">|</span> {
+        <span class="ident">default_panic</span>(<span class="ident">info</span>);
+        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+    }));
+
     <span class="comment">// run</span>
     <span class="kw">let</span> (<span class="ident">password</span>, <span class="ident">staking_keys</span>) <span class="op">=</span>
         <span class="ident">load_or_create_staking_keys_file</span>(<span class="ident">args</span>.<span class="ident">password</span>, <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">staking_keys_path</span>)
@@ -961,5 +981,5 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (62b272d25 2022-07-21)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (4d6d601c8 2022-07-26)" ></div>
 </body></html>
