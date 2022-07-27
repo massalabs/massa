@@ -3,9 +3,9 @@
 //! This module exports generic traits representing interfaces for interacting
 //! with the factory worker.
 
+use crate::FactoryResult;
 use massa_models::{prehash::Set, Address};
 use massa_signature::KeyPair;
-use crate::FactoryResult;
 
 /// Factory manager used to stop the factory thread
 pub trait FactoryManager {

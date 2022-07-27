@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{config::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
@@ -74,9 +74,6 @@ impl EndorsementPool {
     ) -> Result<Set<EndorsementId>, PoolError> {
         let mut newly_added = Set::<EndorsementId>::default();
         for (endorsement_id, endorsement) in endorsements.into_iter() {
-                "endorsement": endorsement
-            });
-
             // Already present
             if self.endorsements.contains_key(&endorsement_id) {
                 continue;

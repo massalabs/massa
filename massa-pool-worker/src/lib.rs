@@ -4,10 +4,10 @@
 #![warn(unused_crate_dependencies)]
 #![feature(map_first_last)]
 
+mod controller_impl;
 mod endorsement_pool;
 mod operation_pool;
 mod pool_worker;
-mod controller_impl;
 mod run;
 
 pub use run::start_pool_controller;

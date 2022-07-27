@@ -2,9 +2,7 @@
 
 use crate::config::PoolConfig;
 
-use super::{
-    error::PoolError,
-};
+use super::error::PoolError;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::CHANNEL_SIZE,
@@ -21,10 +19,22 @@ use tokio::{
 };
 use tracing::{debug, error, info};
 
+/// Trait defining a pool controller
+pub trait PoolController {
+    /// add operations to pool
+    pub fn add_operations(ops: Set<OperationId>);
 
+    /// notify of new final slot
+    pub fn notify_final_slot(slot: Slot);
 
-
-
+    /// get a batch of operations for block creation
+    pub fn get_operation_batch(
+        slot: &Slot,
+        max_gas: u64,
+        max_size: u64,
+        iterate_from: Option<PoolOperationCursor>,
+    ) -> (Vec<OperationId>, Option<PoolOperationCursor>);
+}
 
 /// Creates a new pool controller.
 ///
@@ -353,24 +363,6 @@ impl PoolManager {
         Ok(protocol_pool_event_receiver)
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//! Copyright (c) 2022 MASSA LABS <info@massa.net>
-
-//! This module exports generic traits representing interfaces for interacting
-//! with the factory worker.
 
 use massa_models::{prehash::Set, Address};
 use massa_signature::KeyPair;

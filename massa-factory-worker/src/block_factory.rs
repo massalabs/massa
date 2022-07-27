@@ -143,6 +143,7 @@ impl BlockFactoryWorker {
         loop {
             // get operations
             let op_batch = self.channels.pool.get_operation_batch(
+                slot,
                 remaining_gas,
                 remaining_space,
                 &excluded_ops,
@@ -158,8 +159,8 @@ impl BlockFactoryWorker {
                 let missing_balance_ids = op_batch
                     .iter()
                     .filter_map(|op_info| {
-                        if !sequential_balance_cache.contains_key(&op_info.id) {
-                            return Some(op_info.id);
+                        if !sequential_balance_cache.contains_key(&op_info.sender_id) {
+                            return Some(op_info.sender_id);
                         }
                         None
                     })
@@ -169,7 +170,7 @@ impl BlockFactoryWorker {
                     .execution
                     .get_sequential_balances(missing_balance_ids)
                     .into_iter()
-                    .map(|id, opt_balance| (id, opt_balance.unwrap_or_default()))
+                    .map(|sender_id, opt_balance| (sender_id, opt_balance.unwrap_or_default()))
                     .collect();
                 sequential_balance_cache.extend(missing_balances);
             }

@@ -5,6 +5,7 @@ use massa_hash::Hash;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_signature::{
     KeyPair, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
+    PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -173,6 +174,14 @@ where
         hash_data.extend(content_serialized.clone());
         let hash = Hash::compute_from(&hash_data);
         Ok(public_key.verify_signature(&hash, &self.signature)?)
+    }
+
+    /// get full serialized size
+    pub fn serialized_size(&self) -> usize {
+        self.serialized_data
+            .len()
+            .saturating_add(SIGNATURE_SIZE_BYTES)
+            .saturating_add(PUBLIC_KEY_SIZE_BYTES)
     }
 }
 

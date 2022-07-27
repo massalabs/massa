@@ -711,7 +711,7 @@ impl WrappedOperation {
         start..=self.content.expire_period
     }
 
-    /// Get the amount of gas used by the operation
+    /// Get the max amount of gas used by the operation (max_gas)
     pub fn get_gas_usage(&self) -> u64 {
         match &self.content.op {
             OperationType::ExecuteSC { max_gas, .. } => *max_gas,
@@ -737,6 +737,11 @@ impl WrappedOperation {
     pub fn get_gas_coins(&self) -> Amount {
         self.get_gas_price()
             .saturating_mul_u64(self.get_gas_usage())
+    }
+
+    /// Get the total fee paid by the creator
+    pub fn get_total_fee(&self) -> Amount {
+        self.get_gas_coins().saturating_add(self.fee)
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view
