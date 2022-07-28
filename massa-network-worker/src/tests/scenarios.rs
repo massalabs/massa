@@ -18,7 +18,10 @@ use massa_models::EndorsementSerializer;
 use massa_models::{
     node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, SerializeCompact, Slot,
 };
-use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
+use massa_network_exports::{
+    settings::PeerTypeConnectionConfig, AskForBlocksInfo, NodeCommand, NodeEvent,
+    ReplyForBlocksInfo,
+};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
 };
@@ -763,7 +766,7 @@ async fn test_block_not_found() {
             let wanted_hash = get_dummy_block_id("default_val");
             conn1_w
                 .send(
-                    &Message::AskForBlocks(vec![wanted_hash])
+                    &Message::AskForBlocks(vec![(wanted_hash, AskForBlocksInfo::Info)])
                         .to_bytes_compact()
                         .expect("Fail to serialize message"),
                 )
@@ -779,7 +782,7 @@ async fn test_block_not_found() {
                 })
                 .await
             {
-                assert!(list.contains(&wanted_hash));
+                assert_eq!(list.pop().unwrap().0, wanted_hash);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for asked for block event");
@@ -809,12 +812,12 @@ async fn test_block_not_found() {
             }
 
             // test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
-            let mut block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
+            let mut block_list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>> = HashMap::new();
             let hash_list = vec![
-                get_dummy_block_id("default_val1"),
-                get_dummy_block_id("default_val2"),
-                get_dummy_block_id("default_val3"),
-                get_dummy_block_id("default_val4"),
+                (get_dummy_block_id("default_val1"), AskForBlocksInfo::Info),
+                (get_dummy_block_id("default_val2"), AskForBlocksInfo::Info),
+                (get_dummy_block_id("default_val3"), AskForBlocksInfo::Info),
+                (get_dummy_block_id("default_val4"), AskForBlocksInfo::Info),
             ];
             block_list.insert(conn1_id, hash_list);
 
@@ -830,6 +833,7 @@ async fn test_block_not_found() {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::AskForBlocks(list1) = evt {
+                            let list1: Vec<BlockId> = list1.iter().cloned().map(|(id, _)| id).collect();
                             assert!(list1.contains(&get_dummy_block_id("default_val1")));
                             assert!(list1.contains(&get_dummy_block_id("default_val2")));
                             assert!(list1.contains(&get_dummy_block_id("default_val3")));
@@ -845,6 +849,7 @@ async fn test_block_not_found() {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::AskForBlocks(list2) = evt {
+                            let list2: Vec<BlockId> = list2.iter().cloned().map(|(id, _)| id).collect();
                             assert!(list2.contains(&get_dummy_block_id("default_val4")));
                             break;
                         }
@@ -855,10 +860,10 @@ async fn test_block_not_found() {
 
             // test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
             // the message is rejected by the receiver.
-            let wanted_hash1 = get_dummy_block_id("default_val1");
-            let wanted_hash2 = get_dummy_block_id("default_val2");
-            let wanted_hash3 = get_dummy_block_id("default_val3");
-            let wanted_hash4 = get_dummy_block_id("default_val4");
+            let wanted_hash1 = (get_dummy_block_id("default_val1"), AskForBlocksInfo::Info);
+            let wanted_hash2 = (get_dummy_block_id("default_val2"), AskForBlocksInfo::Info);
+            let wanted_hash3 = (get_dummy_block_id("default_val3"), AskForBlocksInfo::Info);
+            let wanted_hash4 = (get_dummy_block_id("default_val4"), AskForBlocksInfo::Info);
             conn1_w
                 .send(
                     &Message::AskForBlocks(vec![
