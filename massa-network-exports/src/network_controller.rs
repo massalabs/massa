@@ -1,8 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
-    commands::NetworkManagementCommand, error::NetworkError, BootstrapPeers, NetworkCommand,
-    NetworkEvent, Peers,
+    commands::{AskForBlocksInfo, NetworkManagementCommand, ReplyForBlocksInfo},
+    error::NetworkError,
+    BootstrapPeers, NetworkCommand, NetworkEvent, Peers,
 };
 use massa_models::{
     composite::PubkeySig,
@@ -81,6 +82,21 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// Send info about the contents of a block.
+    pub async fn send_block_info(
+        &self,
+        node: NodeId,
+        info: Vec<(BlockId, ReplyForBlocksInfo)>,
+    ) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::SendBlockInfo { node, info })
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send SendBlockInfo command".into())
+            })?;
+        Ok(())
+    }
+
     /// Send the order to send block.
     pub async fn send_block(&self, node: NodeId, block_id: BlockId) -> Result<(), NetworkError> {
         self.0
@@ -93,7 +109,7 @@ impl NetworkCommandSender {
     /// Send the order to ask for a block.
     pub async fn ask_for_block_list(
         &self,
-        list: HashMap<NodeId, Vec<BlockId>>,
+        list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::AskForBlocks { list })

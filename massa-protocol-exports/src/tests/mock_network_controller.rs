@@ -8,7 +8,7 @@ use massa_models::{
 };
 use massa_models::{BlockId, WrappedEndorsement, WrappedHeader};
 use massa_network_exports::{
-    NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
+    AskForBlocksInfo, NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
@@ -154,7 +154,11 @@ impl MockNetworkController {
     }
 
     ///ask for block
-    pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, list: Vec<BlockId>) {
+    pub async fn send_ask_for_block(
+        &mut self,
+        source_node_id: NodeId,
+        list: Vec<(BlockId, AskForBlocksInfo)>,
+    ) {
         self.network_event_tx
             .send(NetworkEvent::AskedForBlocks {
                 node: source_node_id,

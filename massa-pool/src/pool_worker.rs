@@ -321,17 +321,19 @@ impl PoolWorker {
         match event {
             ProtocolPoolEvent::ReceivedOperations {
                 operations,
-                propagate,
+                done_signal,
             } => {
-                if propagate {
+                if let Some(done_signal) = done_signal {
+                    let err = self.operation_pool.process_operations(operations);
+                    let _ = done_signal.send(());
+                    err?;
+                } else {
                     let newly_added = self.operation_pool.process_operations(operations)?;
                     if !newly_added.is_empty() {
                         self.protocol_command_sender
                             .propagate_operations(newly_added)
                             .await?;
                     }
-                } else {
-                    self.operation_pool.process_operations(operations)?;
                 }
             }
             ProtocolPoolEvent::ReceivedEndorsements {

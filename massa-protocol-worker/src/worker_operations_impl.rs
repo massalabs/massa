@@ -134,7 +134,7 @@ impl ProtocolWorker {
     /// - Notify the operations to he local node, to be propagated
     pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
         if self
-            .note_operations_from_node(operations, &node_id, true)
+            .note_operations_from_node(operations, &node_id, None)
             .await
             .is_err()
         {

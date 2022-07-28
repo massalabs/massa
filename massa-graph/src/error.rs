@@ -24,6 +24,8 @@ pub enum GraphError {
     GenesisCreationError(String),
     /// missing block {0}
     MissingBlock(String),
+    /// missing operation {0}
+    MissingOperation(String),
     /// there was an inconsistency between containers {0}
     ContainerInconsistency(String),
     /// fitness overflow

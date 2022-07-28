@@ -487,7 +487,7 @@ impl ConsensusWorker {
         let block: WrappedBlock = Block::new_wrapped(
             Block {
                 header,
-                operations: Vec::new(),
+                operations: Default::default(),
             },
             BlockSerializer::new(),
             creator_keypair,
@@ -539,7 +539,7 @@ impl ConsensusWorker {
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<WrappedOperation> = Vec::new();
-        let mut operation_set: Map<OperationId, (usize, u64)> = Map::default(); // (index, validity end period)
+        let mut operation_set: Map<OperationId, usize> = Map::default(); // (index, validity end period)
         let mut finished = remaining_block_space == 0
             || remaining_operation_count == 0
             || self.cfg.max_operations_fill_attempts == 0;
@@ -598,8 +598,8 @@ impl ConsensusWorker {
 
                 // add operation
                 let op_hash = op.id.hash().into_bytes();
-                operation_set.insert(op.id, (operation_set.len(), op.content.expire_period));
-                operations.push(op);
+                operation_set.insert(op.id, operation_set.len());
+                operations.push(op.clone());
                 remaining_block_space -= op_size;
                 remaining_operation_count -= 1;
                 total_gas += op_gas;
@@ -610,6 +610,7 @@ impl ConsensusWorker {
                     finished = true;
                     break;
                 }
+                self.block_db.storage.store_operation(op);
             }
         }
 
@@ -624,8 +625,12 @@ impl ConsensusWorker {
             BlockHeaderSerializer::new(),
             creator_keypair,
         )?;
+
         let block = Block::new_wrapped(
-            Block { header, operations },
+            Block {
+                header,
+                operations: operations.iter().map(|op| op.id).collect(),
+            },
             BlockSerializer::new(),
             creator_keypair,
         )?;
@@ -1157,33 +1162,6 @@ impl ConsensusWorker {
                 )?;
                 self.block_db_changed().await?;
             }
-            ProtocolEvent::GetBlocks(list) => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_protocol_event.get_blocks",
-                    { "list": list }
-                );
-                let mut results = Map::default();
-                for block_hash in list {
-                    if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
-                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
-                        results.insert(
-                            block_hash,
-                            Some((
-                                Some(a_block.operation_set.keys().copied().collect()),
-                                Some(a_block.endorsement_ids.keys().copied().collect()),
-                            )),
-                        );
-                    } else {
-                        // not found in consensus
-                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_not_found", { "hash": block_hash});
-                        results.insert(block_hash, None);
-                    }
-                }
-                self.channels
-                    .protocol_command_sender
-                    .send_get_blocks_results(results)
-                    .await?;
-            }
         }
         Ok(())
     }
@@ -1279,12 +1257,11 @@ impl ConsensusWorker {
         for b_id in new_final_block_ids.into_iter() {
             if let Some(a_block) = self.block_db.get_active_block(&b_id) {
                 // List new final ops
-                new_final_ops.extend(
-                    a_block
-                        .operation_set
-                        .iter()
-                        .map(|(id, (_, exp))| (*id, (*exp, a_block.slot.thread))),
-                );
+                new_final_ops.extend(a_block.operation_set.iter().map(|(id, _)| {
+                    // TODO: Discuss this get
+                    let op = self.block_db.storage.retrieve_operation(id).unwrap();
+                    (*id, (op.content.expire_period, a_block.slot.thread))
+                }));
                 // List final block
                 new_final_blocks.insert(b_id, a_block);
                 // add to stats

@@ -13,7 +13,8 @@ use massa_models::{
 };
 use massa_models::{BlockId, OperationId, SerializeCompact, SerializeVarInt};
 use massa_network_exports::{
-    ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
+    AskForBlocksInfo, ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand,
+    NodeEvent, NodeEventType, ReplyForBlocksInfo,
 };
 use massa_serialization::Serializer;
 use massa_storage::Storage;
@@ -55,6 +56,8 @@ pub enum ToSend {
     Msg(Message),
     Block(BlockId),
     Header(BlockId),
+    AskForBlocksInfo(Vec<(BlockId, AskForBlocksInfo)>),
+    ReplyForBlocksInfo(Vec<(BlockId, ReplyForBlocksInfo)>),
     Operations(Vec<OperationId>),
 }
 
@@ -152,6 +155,9 @@ impl NodeWorker {
                     Some(to_send) => {
                         let bytes_vec: Vec<u8> = match to_send {
                             ToSend::Msg(msg) => msg.to_bytes_compact().unwrap(),
+                            // TODO: create message.
+                            ToSend::AskForBlocksInfo(ask_list) => Vec::new(),
+                            ToSend::ReplyForBlocksInfo(reply_list) => Vec::new(),
                             ToSend::Block(block_id) => {
                                 // Construct the message,
                                 // using the serialized block retrieved from shared storage.
@@ -292,6 +298,9 @@ impl NodeWorker {
                                 );
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
                             },
+                            Message::BlockInfo {block_id, operation_list } => {
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockInfo{block_id, operation_list})).await;
+                            },
                             Message::BlockHeader(header) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::BlockHeader",
@@ -302,6 +311,10 @@ impl NodeWorker {
                             Message::AskForBlocks(list) => {
                                 massa_trace!("node_worker.run_loop. receive Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForBlocks(list))).await;
+                            }
+                            Message::ReplyForBlocks(list) => {
+                                massa_trace!("node_worker.run_loop. receive Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedReplyForBlocks(list))).await;
                             }
                             Message::PeerList(pl) =>  {
                                 massa_trace!("node_worker.run_loop. receive Message::PeerList", {"peerlist": pl, "node": self.node_id});
@@ -381,11 +394,27 @@ impl NodeWorker {
                             }
                             trace!("after sending Message::Block from writer_command_tx in node_worker run_loop");
                         },
+                        Some(NodeCommand::SendBlockInfo {block_id, operation_list }) => {
+                            massa_trace!("node_worker.run_loop. send Message::BlockInfo", {"hash": block_id, "node": self.node_id});
+                            if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::BlockInfo{ block_id, operation_list })).is_err() {
+                                break;
+                            }
+                            trace!("after sending Message::BlockInfo from writer_command_tx in node_worker run_loop");
+                        },
                         Some(NodeCommand::AskForBlocks(list)) => {
                             // cut hash list on sub list if exceed max_ask_blocks_per_message
                             massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
                             for to_send_list in list.chunks(MAX_ASK_BLOCKS_PER_MESSAGE as usize) {
                                 if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::AskForBlocks(to_send_list.to_vec()))).is_err() {
+                                    break 'select_loop;
+                                }
+                            }
+                        },
+                        Some(NodeCommand::ReplyForBlocks(list)) => {
+                            // cut hash list on sub list if exceed max_ask_blocks_per_message
+                            massa_trace!("node_worker.run_loop. send Message::ReplyForBlocks", {"hashlist": list, "node": self.node_id});
+                            for to_send_list in list.chunks(MAX_ASK_BLOCKS_PER_MESSAGE as usize) {
+                                if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::ReplyForBlocks(to_send_list.to_vec()))).is_err() {
                                     break 'select_loop;
                                 }
                             }

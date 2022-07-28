@@ -31,7 +31,8 @@ use massa_models::{
     BlockId, WrappedEndorsement,
 };
 use massa_network_exports::{
-    BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
+    AskForBlocksInfo, BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError,
+    NodeCommand, Peer, Peers, ReplyForBlocksInfo,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -187,7 +188,10 @@ pub async fn on_send_block_header_cmd(
     Ok(())
 }
 
-pub async fn on_ask_for_block_cmd(worker: &mut NetworkWorker, map: HashMap<NodeId, Vec<BlockId>>) {
+pub async fn on_ask_for_block_cmd(
+    worker: &mut NetworkWorker,
+    map: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
+) {
     for (node, hash_list) in map.into_iter() {
         massa_trace!(
             "network_worker.manage_network_command receive NetworkCommand::AskForBlocks",
@@ -198,7 +202,7 @@ pub async fn on_ask_for_block_cmd(worker: &mut NetworkWorker, map: HashMap<NodeI
             .forward(
                 node,
                 worker.active_nodes.get(&node),
-                NodeCommand::AskForBlocks(hash_list.clone()),
+                NodeCommand::AskForBlocks(hash_list),
             )
             .await;
     }
@@ -221,6 +225,14 @@ pub async fn on_send_block_cmd(
             NodeCommand::SendBlock(block_id),
         )
         .await;
+    Ok(())
+}
+
+pub async fn on_send_block_info_cmd(
+    worker: &mut NetworkWorker,
+    node: NodeId,
+    info: Vec<(BlockId, ReplyForBlocksInfo)>,
+) -> Result<(), NetworkError> {
     Ok(())
 }
 
