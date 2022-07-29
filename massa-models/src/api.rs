@@ -245,42 +245,107 @@ impl std::fmt::Display for AddressInfo {
                 .map(|v| std::str::from_utf8(v).unwrap_or("(non-utf8 key)"))
                 .collect::<Vec<&str>>()
         )?;
+        let mut b = false;
         writeln!(
             f,
-            "Block draws: {}",
+            "\nBlock draws:{}",
             self.block_draws
                 .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+                .fold("\n".to_string(), |acc, s| format!(
+                    "{}{}{}",
+                    acc,
+                    {
+                        b = !b;
+                        if !b {
+                            ' '
+                        } else {
+                            '\n'
+                        }
+                    },
+                    s
+                ))
         )?;
+        b = false;
         writeln!(
             f,
-            "Endorsement draws: {}",
+            "\nEndorsement draws:{}",
             self.endorsement_draws
                 .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+                .fold("\n".to_string(), |acc, s| format!(
+                    "{}{}{}",
+                    acc,
+                    {
+                        b = !b;
+                        if !b {
+                            ' '
+                        } else {
+                            '\n'
+                        }
+                    },
+                    s
+                ))
         )?;
+        b = false;
         writeln!(
             f,
-            "Blocks created: {}",
+            "\nBlocks created:{}",
             self.blocks_created
                 .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+                .fold("\n".to_string(), |acc, s| format!(
+                    "{}{}{}",
+                    acc,
+                    {
+                        b = !b;
+                        if !b {
+                            ' '
+                        } else {
+                            '\n'
+                        }
+                    },
+                    s
+                ))
         )?;
+        b = false;
         writeln!(
             f,
-            "Involved in endorsements: {}",
+            "\nInvolved in endorsements:{}",
             self.involved_in_endorsements
                 .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+                .fold("\n".to_string(), |acc, s| format!(
+                    "{}{}{}",
+                    acc,
+                    {
+                        b = !b;
+                        if !b {
+                            ' '
+                        } else {
+                            '\n'
+                        }
+                    },
+                    s
+                ))
         )?;
+        b = false;
         writeln!(
             f,
-            "Involved in operations: {}",
+            "\nInvolved in operations:{}",
             self.involved_in_operations
                 .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+                .fold("\n".to_string(), |acc, s| format!(
+                    "{}{}{}",
+                    acc,
+                    {
+                        b = !b;
+                        if !b {
+                            ' '
+                        } else {
+                            '\n'
+                        }
+                    },
+                    s
+                ))
         )?;
-        writeln!(f, "Production stats:")?;
+        writeln!(f, "\nProduction stats:")?;
         let mut sorted_production_stats = self.production_stats.clone();
         sorted_production_stats.sort_unstable_by_key(|v| v.cycle);
         for cycle_stat in sorted_production_stats.into_iter() {
