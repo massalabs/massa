@@ -134,7 +134,7 @@ impl OperationPool {
         // cache of sequential balances
         let mut sequential_balance_cache: Map<Address, Amount> = Default::default();
         // list of previously excluded operation IDs
-        let executed_ops: Set<OperationId> = self.execution.get_executed_ops(slot.thread);
+        let executed_ops: Set<OperationId> = self.execution.get_executed_ops();
 
         // iterate over pool operations in the right thread, from best to worst
         for (_cursor, op_info) in self.sorted_ops_per_thread[slot.thread as usize].iter() {
