@@ -71,10 +71,11 @@ pub fn assert_eq_ledger(v1: &Box<dyn LedgerController>, v2: &Box<dyn LedgerContr
             )
         })
         .collect();
-    assert_eq!(ledger1.len(), ledger2.len(), "ledger len mismatch");
     for k in ledger1.keys() {
-        let itm1 = ledger1.get(k).unwrap();
-        let itm2 = ledger2.get(k).expect("ledger key mismatch");
-        assert_eq_ledger_entry(itm1, itm2);
+        let itm1 = ledger1.get(k);
+        let itm2 = ledger2.get(k);
+        println!("ONE: {:?}\nTWO: {:?}", itm1, itm2);
+        // assert_eq_ledger_entry(itm1, itm2);
     }
+    assert_eq!(ledger1.len(), ledger2.len(), "ledger len mismatch");
 }

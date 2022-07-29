@@ -63,7 +63,7 @@ pub trait LedgerController: Send + Sync + Debug {
     /// Set a part of the ledger
     /// Used for bootstrap
     /// Return: Last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError>;
+    fn set_ledger_part(&mut self, data: Vec<u8>) -> Result<Option<Vec<u8>>, ModelsError>;
 
     /// Get every address and their corresponding balance.
     ///
