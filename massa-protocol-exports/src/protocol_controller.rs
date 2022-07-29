@@ -20,6 +20,7 @@ use tracing::debug;
 /// Possible types of events that can happen.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
@@ -44,6 +45,7 @@ pub enum ProtocolEvent {
 }
 /// Possible types of pool events that can happen.
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
@@ -73,6 +75,7 @@ pub type BlocksResults =
 
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
@@ -104,6 +107,7 @@ pub enum ProtocolCommand {
 
 /// protocol management commands
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ProtocolManagementCommand {}
 
 /// protocol command sender
