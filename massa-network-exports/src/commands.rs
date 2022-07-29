@@ -156,9 +156,10 @@ pub enum NodeEventType {
 pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
 /// Ask for the info about a block.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum AskForBlocksInfo {
     // The info about the block is required(list of operations ids).
+    #[default]
     Info,
     // The actual operations are required.
     Operations(OperationIds),

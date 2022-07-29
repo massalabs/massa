@@ -80,7 +80,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
                 .expect("Protocol didn't send network command.")
             {
                 NetworkCommand::AskForBlocks { list } => {
-                    assert!(list.get(&creator_node.id).unwrap().contains(&expected_hash));
+                    assert_eq!(list.get(&creator_node.id).unwrap().clone().pop().unwrap().0, expected_hash);
                 }
                 _ => panic!("Unexpected network command."),
             };
@@ -138,36 +138,13 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             // 3. Simulate two nodes asking for a block.
             for node in nodes.iter().take(2) {
                 network_controller
-                    .send_ask_for_block(node.id, vec![expected_hash])
+                    .send_ask_for_block(node.id, vec![(expected_hash, Default::default())])
                     .await;
-
-                // Check protocol sends get block event to consensus.
-                let received_hash =
-                    match wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                        match evt {
-                            evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
-                            _ => None,
-                        }
-                    })
-                    .await
-                    {
-                        Some(ProtocolEvent::GetBlocks(mut list)) => {
-                            list.pop().expect("Empty list of hashes.")
-                        }
-                        _ => panic!("Unexpected or no protocol event."),
-                    };
-
-                // Check that protocol sent the right hash to consensus.
-                assert_eq!(expected_hash, received_hash);
             }
 
             // 4. Simulate consensus sending block.
             let mut results: BlocksResults = Map::default();
             results.insert(expected_hash, Some((None, None)));
-            protocol_command_sender
-                .send_get_blocks_results(results)
-                .await
-                .expect("Failed to send get block results");
 
             // 5. Check that protocol sends the nodes the full block.
             let mut expecting_block = HashSet::new();
@@ -265,28 +242,14 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
             };
 
             network_controller
-                .send_ask_for_block(node_b.id, vec![ref_hash])
+                .send_ask_for_block(node_b.id, vec![(ref_hash, Default::default())])
                 .await;
-
-            match wait_protocol_event(&mut protocol_event_receiver, 200.into(), |evt| match evt {
-                evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
-                _ => None,
-            })
-            .await
-            {
-                Some(ProtocolEvent::GetBlocks(mut list)) => {
-                    assert_eq!(list.pop().expect("Empty list of hashes."), ref_hash)
-                }
-                _ => panic!("timeout reached while sending get block"),
-            }
 
             // 5. Propagate header.
             let op_ids = ref_block
                 .content
                 .operations
-                .iter()
-                .map(|op| op.id)
-                .collect();
+                .clone();
             let endo_ids = ref_block
                 .content
                 .header
@@ -425,49 +388,24 @@ async fn test_protocol_block_not_found() {
 
             // 3. Ask block to protocol.
             network_controller
-                .send_ask_for_block(creator_node.id, vec![expected_hash])
+                .send_ask_for_block(creator_node.id, vec![(expected_hash, Default::default())])
                 .await;
 
-            // Check protocol sends ask block to consensus.
-            let hash =
-                match wait_protocol_event(
-                    &mut protocol_event_receiver,
-                    1000.into(),
-                    |evt| match evt {
-                        evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
-                        _ => None,
-                    },
-                )
-                .await
-                {
-                    Some(ProtocolEvent::GetBlocks(mut list)) => {
-                        list.pop().expect("Empty list of hashes.")
-                    }
-                    _ => panic!("Unexpected or no protocol event."),
-                };
-            assert_eq!(expected_hash, hash);
-
-            // consensus didn't found block
-            let mut results = Map::default();
-            results.insert(expected_hash, None);
-            protocol_command_sender
-                .send_get_blocks_results(results)
-                .await
-                .unwrap();
-
             // protocol transmits blockNotFound
-            let (node, hash) = match network_controller
+            let (node, mut info) = match network_controller
                 .wait_command(100.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::BlockNotFound { .. } => Some(cmd),
+                    cmd @ NetworkCommand::SendBlockInfo { .. } => Some(cmd),
                     _ => None,
                 })
                 .await
             {
-                Some(NetworkCommand::BlockNotFound { node, block_id }) => (node, block_id),
+                Some(NetworkCommand::SendBlockInfo { node, info }) => (node, info),
                 _ => panic!("Unexpected or no network command."),
             };
+            
+            let (block_id, _block_info) = info.pop().unwrap();
 
-            assert_eq!(expected_hash, hash);
+            assert_eq!(expected_hash, block_id);
             assert_eq!(creator_node.id, node);
 
             (

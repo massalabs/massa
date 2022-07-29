@@ -233,25 +233,7 @@ pub async fn validate_block_found(
     valid_hash: &BlockId,
     timeout_ms: u64,
 ) {
-    let param = protocol_controller
-        .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => Some(results),
-            _ => None,
-        })
-        .await;
-    match param {
-        Some(results) => {
-            let found = results
-                .get(valid_hash)
-                .expect("Hash not found in results")
-                .is_some();
-            assert!(
-                found,
-                "Get blocks results does not contain the expected results."
-            );
-        }
-        None => panic!("Get blocks results not sent before timeout."),
-    }
+    
 }
 
 pub async fn validate_block_not_found(
@@ -259,25 +241,7 @@ pub async fn validate_block_not_found(
     valid_hash: &BlockId,
     timeout_ms: u64,
 ) {
-    let param = protocol_controller
-        .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => Some(results),
-            _ => None,
-        })
-        .await;
-    match param {
-        Some(results) => {
-            let not_found = results
-                .get(valid_hash)
-                .expect("Hash not found in results")
-                .is_none();
-            assert!(
-                not_found,
-                "Get blocks results does not contain the expected results."
-            );
-        }
-        None => panic!("Get blocks results not sent before timeout."),
-    }
+    
 }
 
 pub async fn create_and_test_block(
@@ -480,7 +444,7 @@ pub fn create_block_with_merkle_root(
     let block = Block::new_wrapped(
         Block {
             header,
-            operations: Vec::new(),
+            operations: Default::default(),
         },
         BlockSerializer::new(),
         &creator,
@@ -530,7 +494,7 @@ pub fn get_export_active_test_block(
                 &keypair,
             )
             .unwrap(),
-            operations: operations.clone(),
+            operations: operations.iter().cloned().map(|op| op.id).collect(),
         },
         BlockSerializer::new(),
         &keypair,
@@ -576,7 +540,7 @@ pub fn create_block_with_operations(
     .unwrap();
 
     let block = Block::new_wrapped(
-        Block { header, operations },
+        Block { header, operations: operations.into_iter().map(|op| op.id).collect()},
         BlockSerializer::new(),
         creator,
     )
@@ -612,7 +576,7 @@ pub fn create_block_with_operations_and_endorsements(
     .unwrap();
 
     let block = Block::new_wrapped(
-        Block { header, operations },
+        Block { header, operations: operations.into_iter().map(|op| op.id).collect() },
         BlockSerializer::new(),
         creator,
     )

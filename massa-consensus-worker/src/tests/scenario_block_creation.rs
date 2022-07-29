@@ -571,7 +571,7 @@ async fn test_order_of_inclusion() {
             let res = block.content.operations.clone();
             assert_eq!(block.content.operations.len(), 2);
             for i in 0..2 {
-                assert_eq!(expected[i].id, res[i].id);
+                assert!(res.contains(&expected[i].id));
             }
             (
                 pool_controller,
@@ -802,12 +802,6 @@ async fn test_block_filling() {
             // assert it's the expected block
             assert_eq!(block.content.header.content.slot, Slot::new(2, 0));
 
-            // assert it has included the sc operation first
-            match block.content.operations[0].content.op {
-                OperationType::ExecuteSC { .. } => {}
-                _ => panic!("unexpected operation included first"),
-            }
-
             // assert it includes the sent endorsements
             assert_eq!(block.content.header.content.endorsements.len(), eds.len());
             for (e_found, e_expected) in block
@@ -837,7 +831,7 @@ async fn test_block_filling() {
             let empty: WrappedBlock = Block::new_wrapped(
                 Block {
                     header,
-                    operations: Vec::new(),
+                    operations: Default::default(),
                 },
                 BlockSerializer::new(),
                 &keypair_a,

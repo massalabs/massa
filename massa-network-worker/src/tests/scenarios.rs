@@ -774,7 +774,7 @@ async fn test_block_not_found() {
                 .unwrap();
 
             // assert it is sent to protocol
-            if let Some((list, node)) =
+            if let Some((mut list, node)) =
                 tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
                 {
                     NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),

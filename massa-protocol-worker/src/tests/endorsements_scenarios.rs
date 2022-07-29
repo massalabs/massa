@@ -306,18 +306,8 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let expected_block_id = block.id;
 
             network_controller
-                .send_ask_for_block(nodes[0].id, vec![expected_block_id])
+                .send_ask_for_block(nodes[0].id, vec![(expected_block_id, Default::default())])
                 .await;
-
-            // Wait for the event to be sure that the node is connected,
-            // and noted as interested in the block.
-            let _ = tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                match evt {
-                    evt @ ProtocolEvent::GetBlocks { .. } => Some(evt),
-                    _ => None,
-                }
-            })
-            .await;
 
             // Integrate the block,
             // this should note the node as knowing about the endorsement.
@@ -410,27 +400,8 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let expected_block_id = block.id;
 
             network_controller
-                .send_ask_for_block(nodes[0].id, vec![expected_block_id])
+                .send_ask_for_block(nodes[0].id, vec![(expected_block_id, Default::default())])
                 .await;
-
-            // Wait for the event to be sure that the node is connected,
-            // and noted as interested in the block.
-            let _ = tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                match evt {
-                    evt @ ProtocolEvent::GetBlocks { .. } => Some(evt),
-                    _ => None,
-                }
-            })
-            .await;
-
-            // Send the block as search results.
-            let mut results: BlocksResults = Map::default();
-            results.insert(expected_block_id, Some((None, Some(vec![endorsement_id]))));
-
-            protocol_command_sender
-                .send_get_blocks_results(results)
-                .await
-                .unwrap();
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {

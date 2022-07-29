@@ -93,8 +93,7 @@ pub fn create_block(keypair: &KeyPair) -> WrappedBlock {
 pub fn create_block_with_operations(
     keypair: &KeyPair,
     slot: Slot,
-    operations: Vec<WrappedOperation>,
-    storage: Storage,
+    operations: Vec<WrappedOperation>
 ) -> WrappedBlock {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
@@ -118,11 +117,7 @@ pub fn create_block_with_operations(
 
     let op_ids = operations
         .into_iter()
-        .map(|op| {
-            let op_id = op.id;
-            storage.store_operation(op);
-            op_id
-        })
+        .map(|op| op.id)
         .collect();
     Block::new_wrapped(
         Block {

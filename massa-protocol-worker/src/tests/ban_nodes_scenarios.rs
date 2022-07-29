@@ -323,28 +323,8 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
             // 3. Simulate two nodes asking for a block.
             for node in nodes.iter().take(2) {
                 network_controller
-                    .send_ask_for_block(node.id, vec![expected_hash])
+                    .send_ask_for_block(node.id, vec![(expected_hash, Default::default())])
                     .await;
-
-                // Check protocol sends get block event to consensus.
-                let received_hash = match tools::wait_protocol_event(
-                    &mut protocol_event_receiver,
-                    1000.into(),
-                    |evt| match evt {
-                        evt @ ProtocolEvent::GetBlocks(..) => Some(evt),
-                        _ => None,
-                    },
-                )
-                .await
-                {
-                    Some(ProtocolEvent::GetBlocks(mut list)) => {
-                        list.pop().expect("Received empty list of hashes.")
-                    }
-                    _ => panic!("Unexpected or no protocol event."),
-                };
-
-                // Check that protocol sent the right hash to consensus.
-                assert_eq!(expected_hash, received_hash);
             }
 
             // Get one node banned.
@@ -355,15 +335,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
                 .await;
             tools::assert_banned_nodes(vec![nodes[1].id], &mut network_controller).await;
 
-            // 4. Simulate consensus sending block.
-            let mut results: BlocksResults = Map::default();
-            results.insert(expected_hash, Some((None, None)));
-            protocol_command_sender
-                .send_get_blocks_results(results)
-                .await
-                .expect("Failed to send get block results");
-
-            // 5. Check that protocol sends the non-banned node the full block.
+            // 4. Check that protocol sends the non-banned node the full block.
             let mut expecting_block = HashSet::new();
             expecting_block.insert(nodes[0].id);
             loop {

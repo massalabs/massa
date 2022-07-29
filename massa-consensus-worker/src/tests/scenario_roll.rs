@@ -615,7 +615,7 @@ async fn test_roll_block_creation() {
     // assert it's the expected block
     assert_eq!(block.content.header.content.slot, Slot::new(1, 0));
     assert_eq!(block.content.operations.len(), 1);
-    assert_eq!(block.content.operations[0].id, rb_a2_r1.id);
+    assert!(block.content.operations.contains(&rb_a2_r1.id));
 
     let addr_state = consensus_command_sender
         .get_addresses_info(addresses.clone())
@@ -720,7 +720,7 @@ async fn test_roll_block_creation() {
     // assert it's the expected block
     assert_eq!(block.content.header.content.slot, Slot::new(2, 0));
     assert_eq!(block.content.operations.len(), 1);
-    assert_eq!(block.content.operations[0].id, rs_a2_r1.id);
+    assert!(block.content.operations.contains(&rs_a2_r1.id));
 
     let addr_state = consensus_command_sender
         .get_addresses_info(addresses.clone())

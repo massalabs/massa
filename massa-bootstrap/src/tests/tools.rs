@@ -430,43 +430,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                 &keypair,
             )
             .unwrap(),
-            operations: vec![
-                Operation::new_wrapped(
-                    Operation {
-                        fee: Amount::from_str("1524878").unwrap(),
-                        expire_period: 5787899,
-                        op: massa_models::OperationType::Transaction {
-                            recipient_address: get_random_address(),
-                            amount: Amount::from_str("1259787").unwrap(),
-                        },
-                    },
-                    OperationSerializer::new(),
-                    &keypair,
-                )
-                .unwrap(),
-                Operation::new_wrapped(
-                    Operation {
-                        fee: Amount::from_str("878763222").unwrap(),
-                        expire_period: 4557887,
-                        op: massa_models::OperationType::RollBuy { roll_count: 45544 },
-                    },
-                    OperationSerializer::new(),
-                    &keypair,
-                )
-                .unwrap(),
-                Operation::new_wrapped(
-                    Operation {
-                        fee: Amount::from_str("4545").unwrap(),
-                        expire_period: 452524,
-                        op: massa_models::OperationType::RollSell {
-                            roll_count: 4888787,
-                        },
-                    },
-                    OperationSerializer::new(),
-                    &keypair,
-                )
-                .unwrap(),
-            ],
+            operations: Default::default(),
         },
         BlockSerializer::new(),
         &keypair,
