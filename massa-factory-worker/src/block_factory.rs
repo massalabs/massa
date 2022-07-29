@@ -119,128 +119,6 @@ impl BlockFactoryWorker {
         }
     }
 
-    /// gather operations
-    fn gather_operations(&self, slot: &Slot) -> (Vec<OperationId>, Hash) {
-        // init list of selected operation IDs
-        let mut op_ids = Vec::new();
-        // init concatenated hashes for global operations hash computation
-        let mut concatenated_hashes = Vec::new();
-        // init remaining space
-        let mut remaining_space = self.cfg.max_block_size;
-        // init remaining gas
-        let mut remaining_gas = self.cfg.max_block_gas;
-        // cache of sequential balances
-        let mut sequential_balance_cache: Map<Address, Amount> = Default::default();
-        // list of excluded operation IDs
-        let mut excluded_ops: Set<OperationId> =
-            self.channels.execution.get_executed_ops(slot.thread);
-        // production timeout instant
-        let timeout_instant = Instant::now()
-            .checked_add(self.cfg.production_timeout.to_duration())
-            .expect("could not set production timeout instant");
-
-        // loop over operations
-        loop {
-            // get operations
-            let op_batch = self.channels.pool.get_operation_batch(
-                slot,
-                remaining_gas,
-                remaining_space,
-                &excluded_ops,
-            );
-
-            // stop if there are no more suitable operations in the pool
-            if op_batch.is_empty() {
-                break;
-            }
-
-            // get balance for uncached addresses in a single batch
-            {
-                let missing_balance_ids = op_batch
-                    .iter()
-                    .filter_map(|op_info| {
-                        if !sequential_balance_cache.contains_key(&op_info.sender_id) {
-                            return Some(op_info.sender_id);
-                        }
-                        None
-                    })
-                    .collect();
-                let missing_balances = self
-                    .channels
-                    .execution
-                    .get_sequential_balances(missing_balance_ids)
-                    .into_iter()
-                    .map(|sender_id, opt_balance| (sender_id, opt_balance.unwrap_or_default()))
-                    .collect();
-                sequential_balance_cache.extend(missing_balances);
-            }
-
-            // process ops
-            for OperationInfo {
-                id,
-                size,
-                max_gas,
-                sender_address,
-                fees,
-                ..
-            } in op_batch
-            {
-                // exclude from future batches
-                excluded_ops.insert(id);
-
-                // check remaining space
-                if remaining_space < size {
-                    continue;
-                }
-
-                // check remaining gas
-                if remaining_gas < max_gas {
-                    continue;
-                }
-
-                // check remaining sequential balance
-                // won't panic because all missing balances from cache were filled above
-                let seq_balance = sequential_balance_cache
-                    .get_mut(&sender_address)
-                    .expect("could not get sequential balance from cache for block creation");
-                if seq_balance < fees {
-                    continue;
-                }
-
-                // from here, we consider the operation as accepted
-
-                // update remaining space
-                remaining_space -= size;
-
-                // update remaining gas
-                remaining_gas -= max_gas;
-
-                // update balance cache
-                *seq_balance = seq_balance - fees;
-
-                // add operation to list
-                op_ids.push(id);
-
-                // extend concatenated hashes
-                concatenated_hashes.extend(id.to_bytes());
-            }
-
-            // if we took too much time, stop the loop
-            if Instant::now() > timeout_instant {
-                info!(
-                    "operation gathering timeout reached for block creation at slot {}",
-                    slot
-                );
-                break;
-            }
-        }
-
-        // compute global operations hash
-        let global_hash = Hash::compute_from(&concatenated_hashes);
-
-        (op_ids, global_hash)
-    }
-
     /// Process a slot: produce a block at that slot if one of the managed keys is drawn.
     fn process_slot(&mut self, slot: Slot) {
         // get block producer address for that slot
@@ -279,13 +157,14 @@ impl BlockFactoryWorker {
         // TODO make pool non-async
         // TODO change get_endorsements in pool so that it reads PoS by itself and takes parameters (endorsed_id, endorsed_slot)
         // TODO this should never fail
-        let endorsements: Vec<Option<WrappedEndorsement>> = self.channels.pool.get_endorsements(
+        let endorsements: Vec<Option<WrappedEndorsement>> = self.channels.pool.get_block_endorsements(
             same_thread_parent_id,
             Slot::new(same_thread_parent_period, slot.thread),
         );
 
-        // gather operations
-        let (operations, global_operations_hash) = self.gather_operations(&slot);
+        // gather operations and compute global operations hash
+        let op_ids = self.channels.pool.get_block_operations(&slot);
+        let global_operations_hash = Hash::compute_from(&op_ids.iter().map(|op_id| op_id.as_bytes()).flatten().collect::<Vec<u8>>);
 
         // create header
         let header = BlockHeader::new_wrapped(

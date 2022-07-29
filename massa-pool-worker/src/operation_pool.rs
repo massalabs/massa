@@ -1,371 +1,191 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{config::PoolConfig, PoolError};
-use massa_models::prehash::{Map, Set};
 use massa_models::{
-    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, Slot,
-    WrappedOperation,
+    prehash::{Map, Set},
+    timeslots::get_current_latest_block_slot,
+    Address, Amount, OperationId, Slot,
 };
+use massa_pool_exports::{PoolConfig, PoolOperationCursor};
 use massa_storage::Storage;
-use num::rational::Ratio;
-use std::ops::RangeInclusive;
-use std::{collections::BTreeSet, usize};
+use std::{
+    collections::{btree_map, hash_map, BTreeMap, BTreeSet},
+    ops::RangeInclusive,
+};
+use tracing::warn;
 
-struct OperationIndex(Map<Address, Set<OperationId>>);
-
-impl OperationIndex {
-    fn new() -> OperationIndex {
-        OperationIndex(Map::default())
-    }
-    fn insert_op(&mut self, addr: Address, op_id: OperationId) {
-        self.0
-            .entry(addr)
-            .or_insert_with(Set::<OperationId>::default)
-            .insert(op_id);
-    }
-
-    fn get_ops_for_address(&self, address: &Address) -> Option<&Set<OperationId>> {
-        self.0.get(address)
-    }
-
-    fn remove_op_for_address(&mut self, address: &Address, op_id: &OperationId) {
-        if let Some(old) = self.0.get_mut(address) {
-            old.remove(op_id);
-            if old.is_empty() {
-                self.0.remove(address);
-            }
-        }
-    }
-}
-
-struct OperationMetadata {
-    byte_count: u64,
-    thread: u8,
-    /// After `expire_period` slot the operation won't be included in a block.
-    expire_period: u64,
-    /// The addresses that are involved in this operation from a ledger point of view.
-    ledger_involved_addresses: Set<Address>,
-    /// The priority of the operation based on how much it profits the block producer
-    /// vs how much space it takes in the block
-    fee_density: Ratio<u64>,
-    /// The range of periods during which an operation is valid.
-    validity_range: RangeInclusive<u64>,
-}
-
-impl OperationMetadata {
-    fn new(operation: &WrappedOperation, byte_count: u64, operation_validity_periods: u64) -> Self {
-        // Fee density
-        // add inclusion fee and gas fees
-        let total_return = operation
-            .content
-            .fee
-            .saturating_add(operation.get_gas_coins());
-        // return ratio with size
-        let fee_density = Ratio::new(total_return.to_raw(), byte_count);
-        let thread = operation.thread;
-        let ledger_involved_addresses = operation.get_ledger_involved_addresses();
-        let validity_range = operation.get_validity_range(operation_validity_periods);
-        OperationMetadata {
-            byte_count,
-            thread,
-            expire_period: operation.content.expire_period,
-            ledger_involved_addresses,
-            fee_density,
-            validity_range,
-        }
-    }
-}
+use crate::types::{build_cursor, OperationInfo};
 
 pub struct OperationPool {
-    ops: Map<OperationId, OperationMetadata>,
-    /// one vector per thread
-    ops_by_thread_and_interest:
-        Vec<BTreeSet<(std::cmp::Reverse<num::rational::Ratio<u64>>, OperationId)>>, // [thread][order by: (rev rentability, OperationId)]
-    /// Maps Address -> Op id
-    ops_by_address: OperationIndex,
-    /// latest final blocks periods
-    last_final_periods: Vec<u64>,
-    /// current slot
-    current_slot: Option<Slot>,
-    /// configuration
-    cfg: &'static PoolConfig,
-    /// ids of operations that are final with expire period and thread
-    final_operations: Map<OperationId, (u64, u8)>,
-    /// Shared storage.
-    storage: Storage,
+    /// config
+    pub config: PoolConfig,
+
+    /// operations sorted by decreasing quality, per thread
+    pub sorted_ops_per_thread: Vec<BTreeMap<PoolOperationCursor, OperationInfo>>,
+
+    /// operations sorted by increasing expiration slot
+    pub ops_per_expiration: BTreeSet<(Slot, PoolOperationCursor)>,
+
+    /// storage
+    pub storage: Storage,
+
+    /// last final slot
+    pub last_final_slot: Slot,
 }
 
 impl OperationPool {
-    pub fn new(cfg: &'static PoolConfig, storage: Storage) -> OperationPool {
+    pub fn init(config: PoolConfig, storage: Storage) -> Self {
         OperationPool {
-            ops: Default::default(),
-            ops_by_thread_and_interest: vec![BTreeSet::new(); cfg.thread_count as usize],
-            current_slot: None,
-            last_final_periods: vec![0; cfg.thread_count as usize],
-            cfg,
-            final_operations: Default::default(),
-            ops_by_address: OperationIndex::new(),
+            last_final_slot: Slot::new(0, config.thread_count.saturating_sub(1)),
+            sorted_ops_per_thread: vec![Default::default(); config.thread_count as usize],
+            ops_per_expiration: Default::default(),
+            config,
             storage,
         }
     }
 
-    /// Process incoming operations.
-    /// Returns newly added.
-    pub fn process_operations(
-        &mut self,
-        mut operations: Map<OperationId, WrappedOperation>,
-    ) -> Result<Set<OperationId>, PoolError> {
-        let mut removed = Set::<OperationId>::default();
-        for (op_id, op) in operations.iter() {
-            // Already present
-            if self.ops.contains_key(op_id) {
-                removed.insert(*op_id);
-                continue;
+    /// notify of new final slot
+    pub fn notify_final_slot(&mut self, slot: &Slot) {
+        // update internal final slot counter
+        self.last_final_slot = *slot;
+        
+        // prune old ops
+        let removed_ops = Vec::new();
+        while let Some((expire_slot, key)) = self.ops_per_expiration.first().copied() {
+            if expire_slot > self.last_final_slot {
+                break;
             }
-
-            // already final
-            if self.final_operations.contains_key(op_id) {
-                removed.insert(*op_id);
-                continue;
-            }
-
-            // wrap
-            let operation_validity_periods = self.cfg.operation_validity_periods;
-            let (wrapped_op, validity_start_period) = {
-                let byte_count = op.serialized_data.len() as u64;
-                let wrapped = OperationMetadata::new(op, byte_count, operation_validity_periods);
-                let validity_range = op.get_validity_range(operation_validity_periods);
-                let validity_start_period = validity_range.start();
-                (wrapped, *validity_start_period)
-            };
-
-            // check if too much in the future
-            if let Some(cur_slot) = self.current_slot {
-                let cur_period_in_thread = if cur_slot.thread >= wrapped_op.thread {
-                    cur_slot.period
-                } else {
-                    cur_slot.period.saturating_sub(1)
-                };
-
-                if validity_start_period.saturating_sub(cur_period_in_thread)
-                    > self
-                        .cfg
-                        .settings
-                        .max_operation_future_validity_start_periods
-                {
-                    removed.insert(*op_id);
-                    continue;
-                }
-            }
-
-            // check if expired
-            if wrapped_op.expire_period <= self.last_final_periods[wrapped_op.thread as usize] {
-                removed.insert(*op_id);
-                continue;
-            }
-
-            // insert
-            let interest = (std::cmp::Reverse(wrapped_op.fee_density), *op_id);
-
-            self.ops_by_thread_and_interest[wrapped_op.thread as usize].insert(interest);
-            wrapped_op
-                .ledger_involved_addresses
-                .iter()
-                .for_each(|addr| {
-                    self.ops_by_address.insert_op(*addr, *op_id);
-                });
-            self.ops.insert(*op_id, wrapped_op);
-            self.storage.store_operation(op.clone());
+            self.ops_per_expiration.pop_first();
+            let info = self.sorted_ops_per_thread[expire_slot.thread as usize].remove(&key).expect("expected op presence in sorted list");
+            removed_ops.push(info.id);
         }
 
-        // remove excess operations if pool is full
-        for thread in 0..self.cfg.thread_count {
-            while self.ops_by_thread_and_interest[thread as usize].len()
-                > self.cfg.settings.max_pool_size_per_thread as usize
-            {
-                let (_removed_rentability, removed_id) = self.ops_by_thread_and_interest
-                    [thread as usize]
-                    .pop_last()
-                    .unwrap(); // will not panic because of the while condition. complexity = log or better
-                if let Some(removed_op) = self.ops.remove(&removed_id) {
-                    // complexity: const
-                    for addr in removed_op.ledger_involved_addresses {
-                        self.ops_by_address
-                            .remove_op_for_address(&addr, &removed_id);
-                    }
-                    self.storage.remove_operations(vec![removed_id].as_slice());
-                }
-                operations.remove(&removed_id);
-            }
-        }
-
-        let newly_added_ids = operations
-            .keys()
-            .filter(|id| !removed.contains(id))
-            .copied()
-            .collect();
-
-        Ok(newly_added_ids)
+        // notify storage that pool has lost ownership on removed_ops
+        // TODO
     }
 
-    pub fn new_final_operations(
-        &mut self,
-        ops: Map<OperationId, (u64, u8)>,
-    ) -> Result<(), PoolError> {
-        for (id, _) in ops.iter() {
-            if let Some(wrapped) = self.ops.remove(id) {
-                self.ops_by_thread_and_interest[wrapped.thread as usize]
-                    .remove(&(std::cmp::Reverse(wrapped.fee_density), *id));
-                for addr in wrapped.ledger_involved_addresses {
-                    self.ops_by_address.remove_op_for_address(&addr, id);
-                }
-            } // else final op wasn't in pool.
-        }
-        self.storage
-            .remove_operations(ops.keys().cloned().collect::<Vec<OperationId>>().as_slice());
-        self.final_operations.extend(ops);
-        Ok(())
+    /// Checks if an operation is relevant according to its period validity range
+    fn is_operation_relevant(&self, period_validity_range: &RangeInclusive<u64>) -> bool {
+        &self.last_final_slot.period <= period_validity_range.end()
     }
 
-    pub fn update_current_slot(&mut self, slot: Slot) {
-        self.current_slot = Some(slot);
-    }
-
-    pub fn len(&self) -> usize {
-        self.ops.len()
-    }
-
-    fn prune(&mut self) -> Result<(), PoolError> {
-        let ids = self
-            .ops
-            .iter()
-            .filter(|(_id, w_op)| {
-                w_op.expire_period <= self.last_final_periods[w_op.thread as usize]
-            })
-            .map(|(id, _)| *id)
-            .collect();
-
-        self.remove_ops(ids)?;
-
-        let ids = self
-            .final_operations
-            .iter()
-            .filter(|(_, (exp, thread))| *exp <= self.last_final_periods[*thread as usize])
-            .map(|(id, _)| *id);
-
-        for id in ids.collect::<Vec<_>>() {
-            self.final_operations.remove(&id);
-        }
-
-        Ok(())
-    }
-
-    pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) -> Result<(), PoolError> {
-        self.last_final_periods = periods;
-        self.prune()
-    }
-
-    // Removes a list of operations from the pool.
-    fn remove_ops(&mut self, op_ids: Vec<OperationId>) -> Result<(), PoolError> {
-        // Remove from shared storage.
-        self.storage.remove_operations(&op_ids);
-
-        // Remove from internal structures.
-        for &op_id in op_ids.iter() {
-            if let Some(wrapped_op) = self.ops.remove(&op_id) {
-                // complexity: const
-                let interest = (std::cmp::Reverse(wrapped_op.fee_density), op_id);
-                self.ops_by_thread_and_interest[wrapped_op.thread as usize].remove(&interest);
-                // complexity: log
-
-                for addr in wrapped_op.ledger_involved_addresses {
-                    self.ops_by_address.remove_op_for_address(&addr, &op_id);
-                }
-            }
-        }
-        self.storage.remove_operations(&op_ids);
-
-        Ok(())
-    }
-
-    /// Get `max_count` operation for thread `block_slot.thread`
-    /// if vector is not full that means that there is no more interesting transactions left
-    pub fn get_operation_batch(
-        &mut self,
-        block_slot: Slot,
-        exclude: Set<OperationId>,
-        batch_size: usize,
-        max_size: u64,
-    ) -> Result<Vec<(WrappedOperation, u64)>, PoolError> {
-        self.ops_by_thread_and_interest[block_slot.thread as usize]
-            .iter()
-            .filter_map(|(_rentability, id)| {
-                if exclude.contains(id) {
-                    return None;
-                }
-                if let Some(w_op) = self.ops.get(id) {
-                    if !w_op.validity_range
-                        .contains(&block_slot.period) || w_op.byte_count > max_size {
-                        return None;
-                    }
-                    let stored_operation = self
-                        .storage
-                        .retrieve_operation(id)?;
-                    Some(Ok((stored_operation, w_op.byte_count)))
-                } else {
-                    Some(Err(PoolError::ContainerInconsistency(
-                        format!("operation pool get_ops inconsistency: op_id={} is in ops_by_thread_and_interest but not in ops", id)
-                    )))
-                }
-            })
-            .take(batch_size)
-            .collect()
-    }
-
-    pub fn get_operations(
-        &self,
-        operation_ids: &Set<OperationId>,
-    ) -> Map<OperationId, WrappedOperation> {
-        operation_ids
-            .iter()
-            .filter_map(|op_id| {
-                self.storage
-                    .retrieve_operation(op_id)
-                    .map(|stored| (*op_id, stored))
-            })
-            .collect()
-    }
-
-    pub fn get_operations_involving_address(
-        &self,
-        address: &Address,
-    ) -> Result<Map<OperationId, OperationSearchResult>, PoolError> {
-        if let Some(ids) = self.ops_by_address.get_ops_for_address(address) {
-            ids.iter()
-                .take(self.cfg.settings.max_item_return_count)
-                .map(|op_id| {
-                    self.storage
-                        .retrieve_operation(op_id)
-                        .ok_or_else(|| {
-                            PoolError::ContainerInconsistency(
-                                "op in ops by address is not in ops".to_string(),
-                            )
-                        })
-                        .map(|op| {
-                            (
-                                *op_id,
-                                OperationSearchResult {
+    /// Add a list of operations to the pool
+    pub fn add_operations(&mut self, ops: &[OperationId]) {
+        // add operations to pool
+        let mut added_ops = Vec::with_capacity(ops.len());
+        self.storage.with_operations(&ops, |op_refs| {
+            op_refs.iter().zip(ops.iter()).for_each(|op_ref| {
+                match op_ref {
+                    (Some(op), id) => {
+                        let op_validity = op.get_validity_range(self.config.operation_validity_period);
+                        if !self.is_operation_relevant(&op_validity) {
+                            return;
+                        }
+                        let key = build_cursor(op);
+                        // thread index won't panic because it was checked at op production or deserialization
+                        match self.sorted_ops_per_thread[op.thread as usize].entry(key) {
+                            btree_map::Entry::Occupied(occ) => {}
+                            btree_map::Entry::Vacant(vac) => {
+                                self.ops_per_expiration.insert((Slot::new(*op_validity.end(), op.thread), key));
+                                vac.insert(OperationInfo::from_op(
                                     op,
-                                    in_pool: true,
-                                    in_blocks: Map::default(),
-                                    status: OperationSearchResultStatus::Pending,
-                                },
-                            )
-                        })
-                })
-                .collect()
-        } else {
-            Ok(Map::default())
+                                    self.config.operation_validity_periods,
+                                ));
+                                added_ops.push(id);
+                            }
+                        }
+                    }
+                    (None, id) => {
+                        warn!(
+                            "attempting to add operation {} to pool, but it is absent from storage",
+                            id
+                        );
+                    }
+                }
+            });
+        });
+
+        // prune excess operations
+        let removed_ops = Vec::with_capacity(ops.len());
+        self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
+            while ops.len() > self.config.max_ops_pool_size_per_thread {
+                // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
+                let (key, op_info) = ops.pop_last().unwrap();
+                let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
+                self.ops_per_expiration.remove(&(end_slot, key));
+                removed_ops.push(op_info.id);
+            }
+        });
+
+        // TODO signal to storage that:
+        // * pool owns added_ops
+        // * pool disowns removed_ops
+        // IN THAT ORDER BECAUSE SOME MIGHT HAVE BEEN ADDED THEN REMOVED, BUT THIS IS A RARE THING
+    }
+
+    /// get operations for block creation
+    pub fn get_block_operations(&self, slot: &Slot) -> Vec<OperationId> {
+        // init list of selected operation IDs
+        let mut op_ids = Vec::new();
+
+        // init remaining space
+        let mut remaining_space = self.config.max_block_size;
+        // init remaining gas
+        let mut remaining_gas = self.config.max_block_gas;
+        // cache of sequential balances
+        let mut sequential_balance_cache: Map<Address, Amount> = Default::default();
+        // list of previously excluded operation IDs
+        let executed_ops: Set<OperationId> = self.execution.get_executed_ops(slot.thread);
+
+        // iterate over pool operations in the right thread, from best to worst
+        for (_cursor, op_info) in self.sorted_ops_per_thread[slot.thread as usize].iter() {
+            // exclude ops for which the block slot is outside of their validity range
+            if !op_info.validity_period_range.contains(&slot.period) {
+                continue;
+            }
+
+            // exclude ops that are too large
+            if op_info.size > remaining_space {
+                continue;
+            }
+
+            // exclude ops that require too much gas
+            if op_info.max_gas > remaining_gas {
+                continue;
+            }
+
+            // exclude ops that have been executed previously
+            if executed_ops.contains(&op_info.id) {
+                continue;
+            }
+
+            // check sequential balance
+            let mut creator_seq_balance = sequential_balance_cache
+                .entry(op_info.creator_address)
+                .or_insert_with(|| {
+                    self.execution
+                        .get_sequential_balance(&op_info.creator_address)
+                        .unwrap_or_default()
+                });
+            if creator_seq_balance < op_info.max_sequential_spending {
+                continue;
+            }
+
+            // here we consider the operation as accepted
+            op_ids.push(op_info.id);
+
+            // update remaining block space
+            remaining_space -= op_info.size;
+
+            // update remaining block gas
+            remaining_gas -= op_info.max_gas;
+
+            // update sequential balance cache
+            *creator_seq_balance =
+                creator_seq_balance.saturating_sub(op_info.max_sequential_spending);
         }
+
+        op_ids
     }
 }
+
+/// TODO when OperationPool is destroyed, notify storage that it has lost ownership on all the stored ops
