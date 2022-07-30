@@ -59,8 +59,8 @@ impl OperationPool {
             removed_ops.push(info.id);
         }
 
-        // notify storage that pool has lost ownership on removed_ops
-        // TODO
+        // notify storage that pool has lost references to removed_ops
+        self.storage.drop_operation_refs(&removed_ops);
     }
 
     /// Checks if an operation is relevant according to its period validity range
@@ -71,7 +71,7 @@ impl OperationPool {
     /// Add a list of operations to the pool
     pub fn add_operations(&mut self, ops: &[OperationId]) {
         // add operations to pool
-        let mut added_ops = Vec::with_capacity(ops.len());
+        let mut added_ops = Set::with_capacity(ops.len());
         self.storage.with_operations(&ops, |op_refs| {
             op_refs.iter().zip(ops.iter()).for_each(|op_ref| {
                 match op_ref {
@@ -90,7 +90,7 @@ impl OperationPool {
                                     op,
                                     self.config.operation_validity_periods,
                                 ));
-                                added_ops.push(id);
+                                added_ops.insert(id);
                             }
                         }
                     }
@@ -112,14 +112,17 @@ impl OperationPool {
                 let (key, op_info) = ops.pop_last().unwrap();
                 let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
                 self.ops_per_expiration.remove(&(end_slot, key));
-                removed_ops.push(op_info.id);
+                if !added_ops.remove(&op_info.id) {
+                    removed_ops.push(op_info.id);
+                }
             }
         });
 
-        // TODO signal to storage that:
-        // * pool owns added_ops
-        // * pool disowns removed_ops
-        // IN THAT ORDER BECAUSE SOME MIGHT HAVE BEEN ADDED THEN REMOVED, BUT THIS IS A RARE THING
+        // claim storage ownership on added ops
+        self.storage.claim_operation_refs(&added_ops.into_iter().collect::<Vec<_>>());
+
+        // drop storage ownership on removed ops
+        self.storage.drop_operation_refs(&removed_ops);
     }
 
     /// get operations for block creation
@@ -187,5 +190,3 @@ impl OperationPool {
         op_ids
     }
 }
-
-/// TODO when OperationPool is destroyed, notify storage that it has lost ownership on all the stored ops

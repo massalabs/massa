@@ -1599,7 +1599,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.6.9"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.9#81fed4fb122229db2a368696808ad0736ef1726e"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.10#504acde47f2097affebeec16dab7aef5feecc42f"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -3929,9 +3929,11 @@ dependencies = [
  "byteorder",
  "dynasm",
  "dynasmrt",
+ "gimli",
  "lazy_static",
  "loupe",
  "more-asserts",
+ "rayon",
  "smallvec",
  "wasmer-compiler",
  "wasmer-types",

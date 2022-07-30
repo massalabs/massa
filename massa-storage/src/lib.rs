@@ -68,11 +68,17 @@ impl Storage {
 
     /// Claim block references for the current module
     pub fn claim_block_refs(&mut self, ids: &[BlockId]) {
+        if ids.is_empty() {
+            return;
+        }
         Storage::internal_claim_refs(ids, self.block_owners.write(), &mut self.local_used_blocks);
     }
 
     /// Drop block references in the current module
     pub fn drop_block_refs(&mut self, ids: &[BlockId]) {
+        if ids.is_empty() {
+            return;
+        }
         let mut owners = self.block_owners.write();
         let mut orphaned_ids = Vec::new();
         for id in ids {
@@ -133,11 +139,17 @@ impl Storage {
 
     /// Claim operation references
     pub fn claim_operation_refs(&mut self, ids: &[OperationId]) {
+        if ids.is_empty() {
+            return;
+        }
         Storage::internal_claim_refs(ids, self.operation_owners.write(), &mut self.local_used_ops);
     }
 
     /// Drop local operation references
     pub fn drop_operation_refs(&mut self, ids: &[OperationId]) {
+        if ids.is_empty() {
+            return;
+        }
         let mut owners = self.operation_owners.write();
         let mut orphaned_ids = Vec::new();
         for id in ids {
@@ -178,6 +190,9 @@ impl Storage {
     /// Store operations
     /// Claims a local reference to the added operation
     pub fn store_operations(&mut self, operations: Vec<WrappedOperation>) {
+        if operations.is_empty() {
+            return;
+        }
         let mut op_store = self.operations.write();
         let owners = self.operation_owners.write();
         let ids: Vec<OperationId> = operations.iter().map(|op| op.id).collect();
