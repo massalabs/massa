@@ -7,6 +7,7 @@
 //! On server side, the server will query consensus for the graph and the ledger,
 //! execution for execution related data and network for the peer list.
 //!
+#![feature(let_chains)]
 #![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
