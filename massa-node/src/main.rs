@@ -82,15 +82,6 @@ async fn launch(
     // Storage shared by multiple components.
     let shared_storage: Storage = Default::default();
 
-    #[cfg(not(feature = "sandbox"))]
-    let thread_count = THREAD_COUNT;
-    #[cfg(not(feature = "sandbox"))]
-    let t0 = T0;
-    #[cfg(feature = "sandbox")]
-    let thread_count = *THREAD_COUNT;
-    #[cfg(feature = "sandbox")]
-    let t0 = *T0;
-
     // init final state
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
@@ -101,7 +92,7 @@ async fn launch(
     };
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
-        thread_count,
+        thread_count: THREAD_COUNT,
         ledger_config: ledger_config.clone(),
         async_pool_config,
     };
@@ -432,6 +423,16 @@ async fn main(args: Args) -> anyhow::Result<()> {
         // add the console layer to the subscriber or default layers...
         .with(tracing_layer)
         .init();
+
+    // Setup panic handlers,
+    // and when a panic occurs,
+    // run default handler,
+    // and then shutdown.
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
 
     // run
     let (password, staking_keys) =

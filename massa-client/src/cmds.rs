@@ -710,6 +710,11 @@ impl Command {
                             client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
+                    if let Ok(staked_keys) = client.private.get_staking_addresses().await {
+                        if !staked_keys.contains(&addr) {
+                            client_warning!("You are buying rolls with an address not registered for staking. Don't forget to run 'node_add_staking_secret_keys <your_secret_key'");
+                        }
+                    }
                 }
                 send_operation(
                     client,
@@ -944,7 +949,7 @@ impl Command {
                         target_func,
                         param,
                         max_gas,
-                        sequential_coins: Amount::from_raw(0),
+                        sequential_coins: Amount::zero(),
                         parallel_coins: coins,
                         gas_price,
                     },

@@ -200,13 +200,18 @@ impl AsyncPool {
 fn test_take_batch() {
     use massa_hash::Hash;
     use massa_models::{Address, Amount, Slot};
+    use std::str::FromStr;
 
     let config = AsyncPoolConfig { max_length: 10 };
     let mut pool = AsyncPool::new(config);
     let address = Address(Hash::compute_from(b"abc"));
     for i in 1..10 {
         pool.messages.insert(
-            (std::cmp::Reverse(Amount::from_raw(i)), Slot::new(0, 0), 0),
+            (
+                std::cmp::Reverse(Amount::from_mantissa_scale(i, 0)),
+                Slot::new(0, 0),
+                0,
+            ),
             AsyncMessage {
                 emission_slot: Slot::new(0, 0),
                 emission_index: 0,
@@ -216,8 +221,8 @@ fn test_take_batch() {
                 validity_start: Slot::new(1, 0),
                 validity_end: Slot::new(3, 0),
                 max_gas: i,
-                gas_price: Amount::from_raw(1),
-                coins: Amount::from_raw(0),
+                gas_price: Amount::from_str("0.1".into()).unwrap(),
+                coins: Amount::from_str("0.3".into()).unwrap(),
                 data: Vec::new(),
             },
         );

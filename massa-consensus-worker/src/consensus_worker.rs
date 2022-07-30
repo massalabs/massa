@@ -53,6 +53,7 @@ pub struct ConsensusWorker {
     /// the time span considered for stats
     stats_history_timespan: MassaTime,
     /// the time span considered for desynchronization detection
+    #[allow(dead_code)]
     stats_desync_detection_timespan: MassaTime,
     /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,

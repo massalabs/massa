@@ -94,9 +94,6 @@ impl AsyncMessageIdDeserializer {
             amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                #[cfg(feature = "sandbox")]
-                (Included(0), Excluded(*THREAD_COUNT)),
-                #[cfg(not(feature = "sandbox"))]
                 (Included(0), Excluded(THREAD_COUNT)),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
@@ -299,29 +296,13 @@ pub struct AsyncMessageDeserializer {
 
 impl AsyncMessageDeserializer {
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(THREAD_COUNT)),
             ),
             amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
-            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
-            vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
-            address_deserializer: AddressDeserializer::new(),
-        }
-    }
-}
-
-impl Default for AsyncMessageDeserializer {
-    fn default() -> Self {
         Self::new()
-    }
-}
-
 impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer};
