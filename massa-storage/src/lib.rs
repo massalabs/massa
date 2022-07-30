@@ -1,6 +1,12 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
-
-//! This crate is used to share objects (blocks, operations...) across the node
+//!
+//! # Overview
+//!
+//! This crate is used to store shared objects (blocks, operations...) across different modules.
+//! The clonable `Storage` module has thread-safe shared access to the stored objects.
+//!
+//! The `Storage` module also has lists of object references held by the current instance of `Storage`.
+//! When no instance of `Storage` claims a reference to a given object anymore, that object is automatically removed from storage.
 
 #![warn(missing_docs)]
 
@@ -12,20 +18,23 @@ use parking_lot::{RwLock, RwLockWriteGuard};
 use std::hash::Hash;
 use std::{collections::hash_map, sync::Arc};
 
-/// A storage of block, shared by various components.
+/// A storage system for objects (blocks, operations...), shared by various components.
 #[derive(Default)]
 pub struct Storage {
-    /// global storage
+    /// global block storage
     blocks: Arc<RwLock<Map<BlockId, Arc<RwLock<WrappedBlock>>>>>,
+    /// global operation storage
     operations: Arc<RwLock<Map<OperationId, WrappedOperation>>>,
 
-    /// global reference counters
-    operation_owners: Arc<RwLock<Map<OperationId, usize>>>,
+    /// global block reference counter
     block_owners: Arc<RwLock<Map<BlockId, usize>>>,
+    /// global operation reference counter
+    operation_owners: Arc<RwLock<Map<OperationId, usize>>>,
 
-    /// locally used references
-    local_used_ops: Set<OperationId>,
+    /// locally used block references
     local_used_blocks: Set<BlockId>,
+    /// locally used block references
+    local_used_ops: Set<OperationId>,
 }
 
 impl Clone for Storage {
@@ -37,6 +46,8 @@ impl Clone for Storage {
             operations: self.operations.clone(),
             operation_owners: self.operation_owners.clone(),
             block_owners: self.block_owners.clone(),
+
+            // local reference lists are not cloned
             local_used_ops: Default::default(),
             local_used_blocks: Default::default(),
         }
@@ -57,12 +68,12 @@ impl Storage {
         }
     }
 
-    /// Claim block references
+    /// Claim block references for the current module
     pub fn claim_block_refs(&mut self, ids: &[BlockId]) {
         Storage::internal_claim_refs(ids, self.block_owners.write(), &mut self.local_used_blocks);
     }
 
-    /// Drop block references
+    /// Drop block references in the current module
     pub fn drop_block_refs(&mut self, ids: &[BlockId]) {
         let mut owners = self.block_owners.write();
         let mut orphaned_ids = Vec::new();
@@ -102,7 +113,7 @@ impl Storage {
     }
 
     /// Store a block
-    /// Note that this also makes the block locally-owned
+    /// Note that this also claims a local reference to the block
     pub fn store_block(&mut self, block: WrappedBlock) {
         massa_trace!("storage.storage.store_block", { "block_id": block.id });
         let id = block.id;
@@ -127,7 +138,7 @@ impl Storage {
         Storage::internal_claim_refs(ids, self.operation_owners.write(), &mut self.local_used_ops);
     }
 
-    /// Drop operation references
+    /// Drop local operation references
     pub fn drop_operation_refs(&mut self, ids: &[OperationId]) {
         let mut owners = self.operation_owners.write();
         let mut orphaned_ids = Vec::new();
