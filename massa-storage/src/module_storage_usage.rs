@@ -70,7 +70,7 @@ impl ModuleStorageUsage {
                         let cnt = occ.get_mut();
                         *cnt = cnt
                             .checked_sub(1)
-                            .expect("less than 1 owner on op pointer drop");
+                            .expect("less than 1 owner on storage object reference drop");
                         *cnt
                     };
                     if res_count == 0 {
@@ -79,7 +79,7 @@ impl ModuleStorageUsage {
                     }
                 }
                 hash_map::Entry::Vacant(_vac) => {
-                    panic!("missing operation in storage on pointer drop");
+                    panic!("missing object in storage on storage object reference drop");
                 }
             }
         }
