@@ -187,7 +187,7 @@ impl OperationPool {
                     self.ops_by_address.insert_op(*addr, *op_id);
                 });
             self.ops.insert(*op_id, wrapped_op);
-            self.storage.store_operation(op.clone());
+            self.storage.store_operations(vec![op.clone()]);
         }
 
         // remove excess operations if pool is full
