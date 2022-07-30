@@ -1,7 +1,5 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //!
-//! # Overview
-//!
 //! This crate is used to store shared objects (blocks, operations...) across different modules.
 //! The clonable `Storage` module has thread-safe shared access to the stored objects.
 //!
@@ -63,7 +61,7 @@ impl Storage {
     ) {
         for &id in ids {
             if local_used_ids.insert(id) {
-                owners.entry(id).and_modify(|v| *v = *v + 1).or_insert(1);
+                owners.entry(id).and_modify(|v| *v += 1).or_insert(1);
             }
         }
     }
