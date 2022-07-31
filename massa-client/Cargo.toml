@@ -40,5 +40,4 @@ hash-prefix = ["massa_models/hash-prefix", "massa_signature/hash-prefix"]
 instrument = [
     "tokio/tracing",
     "massa_models/instrument",
-    "massa_time/instrument",
 ]

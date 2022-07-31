@@ -184,10 +184,6 @@ pub struct BootstrapServerMessageDeserializer {
 impl BootstrapServerMessageDeserializer {
     /// Creates a new `BootstrapServerMessageDeserializer`
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(100)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -200,7 +196,7 @@ impl BootstrapServerMessageDeserializer {
             vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(THREAD_COUNT)),
             ),
         }
     }
@@ -393,15 +389,11 @@ pub struct BootstrapClientMessageDeserializer {
 impl BootstrapClientMessageDeserializer {
     /// Creates a new `BootstrapClientMessageDeserializer`
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(1000)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(THREAD_COUNT)),
             ),
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(),
             key_deserializer: KeyDeserializer::new(),

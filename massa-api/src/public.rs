@@ -36,7 +36,7 @@ use massa_models::{
     Address, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkSettings};
-use massa_pool::PoolCommandSender;
+use massa_pool_exports::PoolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::collections::{BTreeSet, HashSet};
@@ -50,7 +50,7 @@ impl API<Public> {
         selector_controller: Box<dyn SelectorController>,
         api_settings: &'static APISettings,
         consensus_settings: ConsensusConfig,
-        pool_command_sender: PoolCommandSender,
+        pool_command_sender: PoolController,
         network_settings: &'static NetworkSettings,
         version: Version,
         network_command_sender: NetworkCommandSender,

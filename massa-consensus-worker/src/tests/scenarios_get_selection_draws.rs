@@ -27,7 +27,7 @@ async fn test_get_selection_draws_high_end_slot() {
         t0: 500.into(),
         delta_f0: 3,
         block_reward: Amount::default(),
-        roll_price: Amount::from_raw(1000),
+        roll_price: Amount::from_mantissa_scale(1000, 0),
         operation_validity_periods: 100,
         genesis_timestamp: MassaTime::now().unwrap().saturating_add(300.into()),
         ..Default::default()

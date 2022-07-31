@@ -96,6 +96,17 @@ async fn main(args: Args) -> Result<()> {
         Some(private_port) => private_port,
         None => settings.default_node.private_port,
     };
+
+    // Setup panic handlers,
+    // and when a panic occurs,
+    // run default handler,
+    // and then shutdown.
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
     // ...
     let password = args.password.unwrap_or_else(|| ask_password(&args.wallet));
     let mut wallet = Wallet::new(args.wallet, password)?;

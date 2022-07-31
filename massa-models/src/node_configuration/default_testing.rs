@@ -62,7 +62,7 @@ pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202
 /// block id size
 pub const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 /// reward for a block
-pub const BLOCK_REWARD: Amount = Amount::from_raw(AMOUNT_DECIMAL_FACTOR);
+pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(1, 0);
 /// random bootstrap message size
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// channel size
@@ -136,7 +136,7 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 /// proof of stake look back cycle
 pub const POS_LOOKBACK_CYCLES: u64 = 2;
 /// roll price
-pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
+pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 /// serialized slot size
 pub const SLOT_KEY_SIZE: usize = 9;
 /// thread count

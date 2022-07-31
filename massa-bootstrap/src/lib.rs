@@ -12,6 +12,7 @@
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
 #![feature(map_first_last)]
+
 pub use establisher::types::Establisher;
 use massa_final_state::FinalState;
 use massa_graph::BootstrapableGraph;

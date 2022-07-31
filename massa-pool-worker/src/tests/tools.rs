@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_protocol_controller::MockProtocolController;
-use crate::{pool_controller, settings::PoolConfig, PoolCommandSender, PoolManager};
+use crate::{config::PoolConfig, pool_controller, PoolCommandSender, PoolManager};
 use futures::Future;
 use massa_hash::Hash;
 use massa_models::{

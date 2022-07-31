@@ -53,7 +53,6 @@ instrument = [
     "massa_graph/instrument",
     "massa_models/instrument",
     "massa_network_exports/instrument",
-    "massa_time/instrument",
 ]
 testing = [
     "massa_final_state/testing",

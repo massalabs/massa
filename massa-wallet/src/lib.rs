@@ -57,8 +57,8 @@ impl Wallet {
     /// Sign arbitrary message with the associated keypair
     /// returns none if the address isn't in the wallet or if an error occurred during the signature
     /// else returns the public key that signed the message and the signature
-    pub fn sign_message(&self, address: Address, msg: Vec<u8>) -> Option<PubkeySig> {
-        if let Some(key) = self.keys.get(&address) {
+    pub fn sign_message(&self, address: &Address, msg: Vec<u8>) -> Option<PubkeySig> {
+        if let Some(key) = self.keys.get(address) {
             if let Ok(signature) = key.sign(&Hash::compute_from(&msg)) {
                 Some(PubkeySig {
                     public_key: key.get_public_key(),
@@ -97,22 +97,22 @@ impl Wallet {
 
     /// Remove a wallet entry (keys and address) given the address
     /// The file is overwritten
-    pub fn remove_address(&mut self, address: Address) -> Result<(), WalletError> {
+    pub fn remove_address(&mut self, address: &Address) -> Result<(), WalletError> {
         self.keys
-            .remove(&address)
-            .ok_or(WalletError::MissingKeyError(address))?;
+            .remove(address)
+            .ok_or(WalletError::MissingKeyError(*address))?;
         self.save()
     }
 
     /// Finds the keypair associated with given address
-    pub fn find_associated_keypair(&self, address: Address) -> Option<&KeyPair> {
-        self.keys.get(&address)
+    pub fn find_associated_keypair(&self, address: &Address) -> Option<&KeyPair> {
+        self.keys.get(address)
     }
 
     /// Finds the public key associated with given address
-    pub fn find_associated_public_key(&self, address: Address) -> Option<PublicKey> {
+    pub fn find_associated_public_key(&self, address: &Address) -> Option<PublicKey> {
         self.keys
-            .get(&address)
+            .get(address)
             .map(|keypair| keypair.get_public_key())
     }
 
@@ -142,7 +142,7 @@ impl Wallet {
         address: Address,
     ) -> Result<WrappedOperation, WalletError> {
         let sender_keypair = self
-            .find_associated_keypair(address)
+            .find_associated_keypair(&address)
             .ok_or(WalletError::MissingKeyError(address))?;
         Ok(Operation::new_wrapped(content, OperationSerializer::new(), sender_keypair).unwrap())
     }

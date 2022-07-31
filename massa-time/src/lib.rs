@@ -12,14 +12,13 @@ use nom::IResult;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Bound;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{
     convert::{TryFrom, TryInto},
     str::FromStr,
 };
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use tokio::time::Instant;
 
 /// Time structure used everywhere.
 /// milliseconds since 01/01/1970.

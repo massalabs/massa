@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::constants::CHANNEL_SIZE;
-use massa_pool::{PoolCommand, PoolCommandSender};
+use massa_pool_exports::{PoolCommand, PoolController};
 use massa_time::MassaTime;
 use tokio::{
     sync::{mpsc, oneshot},
@@ -14,11 +14,11 @@ pub struct MockPoolController {
 }
 
 impl MockPoolController {
-    pub fn new() -> (Self, PoolCommandSender) {
+    pub fn new() -> (Self, PoolController) {
         let (pool_command_tx, pool_command_rx) = mpsc::channel::<PoolCommand>(CHANNEL_SIZE);
         (
             MockPoolController { pool_command_rx },
-            PoolCommandSender(pool_command_tx),
+            PoolController(pool_command_tx),
         )
     }
 
