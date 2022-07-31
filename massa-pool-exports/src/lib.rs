@@ -11,10 +11,10 @@ mod controller_traits;
 mod error;
 mod types;
 
-pub use types::PoolOperationCursor;
-pub use controller_traits::PoolController;
 pub use config::PoolConfig;
+pub use controller_traits::PoolController;
 pub use error::PoolError;
+pub use types::PoolOperationCursor;
 
 #[cfg(test)]
 mod tests;

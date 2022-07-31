@@ -157,14 +157,21 @@ impl BlockFactoryWorker {
         // TODO make pool non-async
         // TODO change get_endorsements in pool so that it reads PoS by itself and takes parameters (endorsed_id, endorsed_slot)
         // TODO this should never fail
-        let endorsements: Vec<Option<WrappedEndorsement>> = self.channels.pool.get_block_endorsements(
-            same_thread_parent_id,
-            Slot::new(same_thread_parent_period, slot.thread),
-        );
+        let endorsements: Vec<Option<WrappedEndorsement>> =
+            self.channels.pool.get_block_endorsements(
+                same_thread_parent_id,
+                Slot::new(same_thread_parent_period, slot.thread),
+            );
 
         // gather operations and compute global operations hash
         let op_ids = self.channels.pool.get_block_operations(&slot);
-        let global_operations_hash = Hash::compute_from(&op_ids.iter().map(|op_id| op_id.as_bytes()).flatten().collect::<Vec<u8>>);
+        let global_operations_hash = Hash::compute_from(
+            &op_ids
+                .iter()
+                .map(|op_id| op_id.as_bytes())
+                .flatten()
+                .collect::<Vec<u8>>(),
+        );
 
         // create header
         let header = BlockHeader::new_wrapped(

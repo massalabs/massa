@@ -302,7 +302,13 @@ impl AsyncMessageDeserializer {
                 (Included(0), Excluded(THREAD_COUNT)),
             ),
             amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
-        Self::new()
+            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
+            address_deserializer: AddressDeserializer::new(),
+        }
+    }
+}
+
 impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// ```
     /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer};

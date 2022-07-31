@@ -14,7 +14,10 @@ pub struct PoolControllerImpl {
 impl PoolController for PoolControllerImpl {
     /// add operations to pool
     fn add_operations(&mut self, ops: &[OperationId]) {
-        self.operation_pool.write().expect("could not w-lock operation pool").add_operations(ops);
+        self.operation_pool
+            .write()
+            .expect("could not w-lock operation pool")
+            .add_operations(ops);
     }
 
     /// add endorsements to pool
@@ -22,12 +25,18 @@ impl PoolController for PoolControllerImpl {
 
     /// notify of new final slot
     fn notify_final_slot(&mut self, slot: &Slot) {
-        self.operation_pool.write().expect("could not w-lock operation pool").notify_final_slot(slot);
+        self.operation_pool
+            .write()
+            .expect("could not w-lock operation pool")
+            .notify_final_slot(slot);
     }
 
     /// get operations for block creation
     fn get_block_operations(&self, slot: &Slot) -> Vec<OperationId> {
-        self.operation_pool.write().expect("could not w-lock operation pool").get_block_operations(slot)
+        self.operation_pool
+            .write()
+            .expect("could not w-lock operation pool")
+            .get_block_operations(slot)
     }
 
     /// get endorsements for a block

@@ -47,7 +47,7 @@ impl OperationPool {
     pub fn notify_final_slot(&mut self, slot: &Slot) {
         // update internal final slot counter
         self.last_final_slot = *slot;
-        
+
         // prune old ops
         let removed_ops = Vec::new();
         while let Some((expire_slot, key)) = self.ops_per_expiration.first().copied() {
@@ -55,7 +55,9 @@ impl OperationPool {
                 break;
             }
             self.ops_per_expiration.pop_first();
-            let info = self.sorted_ops_per_thread[expire_slot.thread as usize].remove(&key).expect("expected op presence in sorted list");
+            let info = self.sorted_ops_per_thread[expire_slot.thread as usize]
+                .remove(&key)
+                .expect("expected op presence in sorted list");
             removed_ops.push(info.id);
         }
 
@@ -69,14 +71,16 @@ impl OperationPool {
     }
 
     /// Add a list of operations to the pool
-    pub fn add_operations(&mut self, ops: &[OperationId]) {
+    /// Returns newly added operations
+    pub fn add_operations(&mut self, ops: &[OperationId]) -> Set<OperationId> {
         // add operations to pool
         let mut added_ops = Set::with_capacity(ops.len());
         self.storage.with_operations(&ops, |op_refs| {
             op_refs.iter().zip(ops.iter()).for_each(|op_ref| {
                 match op_ref {
                     (Some(op), id) => {
-                        let op_validity = op.get_validity_range(self.config.operation_validity_period);
+                        let op_validity =
+                            op.get_validity_range(self.config.operation_validity_period);
                         if !self.is_operation_relevant(&op_validity) {
                             return;
                         }
@@ -85,7 +89,8 @@ impl OperationPool {
                         match self.sorted_ops_per_thread[op.thread as usize].entry(key) {
                             btree_map::Entry::Occupied(occ) => {}
                             btree_map::Entry::Vacant(vac) => {
-                                self.ops_per_expiration.insert((Slot::new(*op_validity.end(), op.thread), key));
+                                self.ops_per_expiration
+                                    .insert((Slot::new(*op_validity.end(), op.thread), key));
                                 vac.insert(OperationInfo::from_op(
                                     op,
                                     self.config.operation_validity_periods,
@@ -119,10 +124,13 @@ impl OperationPool {
         });
 
         // claim storage ownership on added ops
-        self.storage.claim_operation_refs(&added_ops.into_iter().collect::<Vec<_>>());
+        self.storage
+            .claim_operation_refs(&added_ops.iter().copied().collect::<Vec<_>>());
 
         // drop storage ownership on removed ops
         self.storage.drop_operation_refs(&removed_ops);
+
+        added_ops
     }
 
     /// get operations for block creation
@@ -169,7 +177,7 @@ impl OperationPool {
                         .get_sequential_balance(&op_info.creator_address)
                         .unwrap_or_default()
                 });
-            if creator_seq_balance < op_info.max_sequential_spending {
+            if &creator_seq_balance < op_info.max_sequential_spending {
                 continue;
             }
 

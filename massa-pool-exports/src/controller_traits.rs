@@ -1,9 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{
-    prehash::Set,
-    BlockId, EndorsementId, OperationId, Slot,
-};
+use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot};
 
 use crate::PoolOperationCursor;
 
@@ -20,9 +17,13 @@ pub trait PoolController: Send + Sync {
 
     /// get operations for block creation
     fn get_block_operations(&self, slot: &Slot) -> Vec<OperationId>;
-    
+
     /// get endorsements for a block
-    fn get_endorsements(&self, target_block: &BlockId,  target_slot: &Slot) -> Vec<Option<EndorsementId>>;
+    fn get_endorsements(
+        &self,
+        target_block: &BlockId,
+        target_slot: &Slot,
+    ) -> Vec<Option<EndorsementId>>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.

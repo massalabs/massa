@@ -17,4 +17,3 @@ pub enum PoolError {
     /// missing operation error: {0}
     MissingOperation(String),
 }
-
