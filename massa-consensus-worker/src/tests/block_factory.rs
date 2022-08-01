@@ -62,7 +62,12 @@ impl BlockFactory {
         let block = Block::new_wrapped(
             Block {
                 header,
-                operations: self.operations.clone().into_iter().map(|op| op.id).collect(),
+                operations: self
+                    .operations
+                    .clone()
+                    .into_iter()
+                    .map(|op| op.id)
+                    .collect(),
             },
             BlockSerializer::new(),
             &self.creator_keypair,
@@ -88,7 +93,12 @@ impl BlockFactory {
         Block::new_wrapped(
             Block {
                 header,
-                operations: self.operations.clone().into_iter().map(|op| op.id).collect(),
+                operations: self
+                    .operations
+                    .clone()
+                    .into_iter()
+                    .map(|op| op.id)
+                    .collect(),
             },
             BlockSerializer::new(),
             &self.creator_keypair,

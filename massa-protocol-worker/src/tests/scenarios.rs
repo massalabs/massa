@@ -80,7 +80,10 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
                 .expect("Protocol didn't send network command.")
             {
                 NetworkCommand::AskForBlocks { list } => {
-                    assert_eq!(list.get(&creator_node.id).unwrap().clone().pop().unwrap().0, expected_hash);
+                    assert_eq!(
+                        list.get(&creator_node.id).unwrap().clone().pop().unwrap().0,
+                        expected_hash
+                    );
                 }
                 _ => panic!("Unexpected network command."),
             };
@@ -246,10 +249,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 .await;
 
             // 5. Propagate header.
-            let op_ids = ref_block
-                .content
-                .operations
-                .clone();
+            let op_ids = ref_block.content.operations.clone();
             let endo_ids = ref_block
                 .content
                 .header
@@ -402,7 +402,7 @@ async fn test_protocol_block_not_found() {
                 Some(NetworkCommand::SendBlockInfo { node, info }) => (node, info),
                 _ => panic!("Unexpected or no network command."),
             };
-            
+
             let (block_id, _block_info) = info.pop().unwrap();
 
             assert_eq!(expected_hash, block_id);

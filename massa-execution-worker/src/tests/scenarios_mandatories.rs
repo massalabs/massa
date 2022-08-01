@@ -378,7 +378,10 @@ fn create_block(
     )?;
 
     Ok(Block::new_wrapped(
-        Block { header, operations: operations.into_iter().map(|op| op.id).collect() },
+        Block {
+            header,
+            operations: operations.into_iter().map(|op| op.id).collect(),
+        },
         BlockSerializer::new(),
         &creator_keypair,
     )?)

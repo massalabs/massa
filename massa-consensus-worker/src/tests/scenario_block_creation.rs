@@ -174,7 +174,8 @@ async fn test_block_creation_with_draw() {
     let operation_fee = 0;
     tools::consensus_without_pool_test_with_storage(
         cfg.clone(),
-        async move |mut protocol_controller,
+        async move |mut pool_controller,
+                    mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
                     storage| {
@@ -267,6 +268,7 @@ async fn test_block_creation_with_draw() {
             }
 
             (
+                pool_controller,
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
@@ -333,7 +335,8 @@ async fn test_interleaving_block_creation_with_reception() {
 
     tools::consensus_without_pool_test_with_storage(
         cfg.clone(),
-        async move |mut protocol_controller,
+        async move |mut pool_controller,
+                    mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
                     storage| {
@@ -415,6 +418,7 @@ async fn test_interleaving_block_creation_with_reception() {
             }
 
             (
+                pool_controller,
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,

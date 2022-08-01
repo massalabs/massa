@@ -233,7 +233,6 @@ pub async fn validate_block_found(
     valid_hash: &BlockId,
     timeout_ms: u64,
 ) {
-    
 }
 
 pub async fn validate_block_not_found(
@@ -241,7 +240,6 @@ pub async fn validate_block_not_found(
     valid_hash: &BlockId,
     timeout_ms: u64,
 ) {
-    
 }
 
 pub async fn create_and_test_block(
@@ -540,7 +538,10 @@ pub fn create_block_with_operations(
     .unwrap();
 
     let block = Block::new_wrapped(
-        Block { header, operations: operations.into_iter().map(|op| op.id).collect()},
+        Block {
+            header,
+            operations: operations.into_iter().map(|op| op.id).collect(),
+        },
         BlockSerializer::new(),
         creator,
     )
@@ -576,7 +577,10 @@ pub fn create_block_with_operations_and_endorsements(
     .unwrap();
 
     let block = Block::new_wrapped(
-        Block { header, operations: operations.into_iter().map(|op| op.id).collect() },
+        Block {
+            header,
+            operations: operations.into_iter().map(|op| op.id).collect(),
+        },
         BlockSerializer::new(),
         creator,
     )
@@ -873,9 +877,16 @@ where
 /// Runs a consensus test, without passing a mock pool controller to it.
 pub async fn consensus_without_pool_test_with_storage<F, V>(cfg: ConsensusConfig, test: F)
 where
-    F: FnOnce(MockProtocolController, ConsensusCommandSender, ConsensusEventReceiver, Storage) -> V,
+    F: FnOnce(
+        MockPoolController,
+        MockProtocolController,
+        ConsensusCommandSender,
+        ConsensusEventReceiver,
+        Storage,
+    ) -> V,
     V: Future<
         Output = (
+            MockPoolController,
             MockProtocolController,
             ConsensusCommandSender,
             ConsensusEventReceiver,
@@ -896,7 +907,7 @@ where
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+
     // launch consensus controller
     let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -921,7 +932,13 @@ where
         .expect("could not start consensus controller");
 
     // Call test func.
-    let (mut protocol_controller, _consensus_command_sender, consensus_event_receiver) = test(
+    let (
+        pool_controller,
+        mut protocol_controller,
+        _consensus_command_sender,
+        consensus_event_receiver,
+    ) = test(
+        pool_controller,
         protocol_controller,
         consensus_command_sender,
         consensus_event_receiver,
@@ -936,6 +953,7 @@ where
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
+    let pool_sink = PoolCommandSink::new(pool_controller).await;
     pool_sink.stop().await;
 
     // stop sinks

@@ -614,7 +614,10 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             );
 
             // Change the root operation hash
-            block.content.operations = vec![operation_2.clone()].into_iter().map(|op| op.id).collect();
+            block.content.operations = vec![operation_2.clone()]
+                .into_iter()
+                .map(|op| op.id)
+                .collect();
 
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.

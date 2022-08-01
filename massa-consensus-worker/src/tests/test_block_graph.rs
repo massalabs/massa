@@ -134,22 +134,22 @@ pub async fn test_get_ledger_at_parents() {
     storage.store_block(block.clone());
     warn!("Store block default!");
     let active_block = ActiveBlock {
-                    creator_address: block.creator_address.clone(),
-                    parents: export_active_block.parents,
-                    children: Default::default(),
-                    dependencies: export_active_block.dependencies,
-                    descendants: Default::default(),
-                    is_final: export_active_block.is_final,
-                    block_ledger_changes: export_active_block.block_ledger_changes,
-                    operation_set: Default::default(),
-                    endorsement_ids: Default::default(),
-                    addresses_to_operations: Default::default(),
-                    roll_updates: export_active_block.roll_updates, // no roll updates in genesis blocks
-                    production_events: export_active_block.production_events,
-                    block_id: export_active_block.block_id,
-                    addresses_to_endorsements: Default::default(),
-                    slot: block.content.header.content.slot,
-                };
+        creator_address: block.creator_address.clone(),
+        parents: export_active_block.parents,
+        children: Default::default(),
+        dependencies: export_active_block.dependencies,
+        descendants: Default::default(),
+        is_final: export_active_block.is_final,
+        block_ledger_changes: export_active_block.block_ledger_changes,
+        operation_set: Default::default(),
+        endorsement_ids: Default::default(),
+        addresses_to_operations: Default::default(),
+        roll_updates: export_active_block.roll_updates, // no roll updates in genesis blocks
+        production_events: export_active_block.production_events,
+        block_id: export_active_block.block_id,
+        addresses_to_endorsements: Default::default(),
+        slot: block.content.header.content.slot,
+    };
     let ledger_file = generate_ledger_file(&Map::default());
     let mut cfg = ConsensusConfig::from(ledger_file.path());
     cfg.thread_count = thread_count;
