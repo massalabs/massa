@@ -1,9 +1,9 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //!
 //! This crate is used to store shared objects (blocks, operations...) across different modules.
-//! The clonable `Storage` module has thread-safe shared access to the stored objects.
+//! The clonable `Storage` struct has thread-safe shared access to the stored objects.
 //!
-//! The `Storage` module also has lists of object references held by the current instance of `Storage`.
+//! The `Storage` struct also has lists of object references held by the current instance of `Storage`.
 //! When no instance of `Storage` claims a reference to a given object anymore, that object is automatically removed from storage.
 
 #![warn(missing_docs)]
@@ -36,38 +36,62 @@ pub struct Storage {
     local_used_ops: Set<OperationId>,
 }
 
-impl Clone for Storage {
-    /// Clones the Storage instance
-    /// Note that the local references are reset for the new instance.
-    fn clone(&self) -> Self {
+impl Storage {
+    /// Clones the object to a new one that has the same references
+    pub fn clone_with_refs(&mut self) -> Self {
+        // claim one more user of the op refs
+        Storage::internal_claim_refs(
+            &self.local_used_ops.iter().copied().collect::<Vec<_>>(),
+            &mut self.operation_owners.write(),
+            &mut self.local_used_ops,
+        );
+
+        // claim one more user of the block refs
+        Storage::internal_claim_refs(
+            &self.local_used_blocks.iter().copied().collect::<Vec<_>>(),
+            &mut self.block_owners.write(),
+            &mut self.local_used_blocks,
+        );
+
         Self {
             blocks: self.blocks.clone(),
             operations: self.operations.clone(),
             operation_owners: self.operation_owners.clone(),
             block_owners: self.block_owners.clone(),
 
-            // local reference lists are not cloned
+            local_used_ops: self.local_used_ops.clone(),
+            local_used_blocks: self.local_used_blocks.clone(),
+        }
+    }
+
+    /// Clones the object to a new one that has no references
+    pub fn clone_without_refs(&mut self) -> Self {
+        Self {
+            blocks: self.blocks.clone(),
+            operations: self.operations.clone(),
+            operation_owners: self.operation_owners.clone(),
+            block_owners: self.block_owners.clone(),
+
+            // do not clone local ref lists
             local_used_ops: Default::default(),
             local_used_blocks: Default::default(),
         }
     }
-}
 
-impl Storage {
     /// Efficiently extends the current Storage by consuming the refs of another's.
     pub fn extend(&mut self, mut other: Storage) {
         // Transfer ownership of objects `other` has but we don't: no need to update counters as counts don't change.
         // Objects owned by both require a counter decrement and are handled when `other` is dropped.
-        self.local_used_blocks.extend(
-            other
-                .local_used_blocks
-                .drain_filter(|id| !self.local_used_blocks.contains(id))
-                .collect::<Set<_>>(),
-        );
         self.local_used_ops.extend(
             other
                 .local_used_ops
                 .drain_filter(|id| !self.local_used_ops.contains(id))
+                .collect::<Set<_>>(),
+        );
+        self.local_used_blocks.extend(
+            other
+                .local_used_blocks
+                .drain_filter(|id| !self.local_used_blocks.contains(id))
                 .collect::<Set<_>>(),
         );
     }
@@ -76,17 +100,17 @@ impl Storage {
     /// Elements to which `self` held no reference are ignored.
     pub fn split_off(&mut self, blocks: &Set<BlockId>, operations: &Set<OperationId>) -> Storage {
         // Make a clone of self, which has no ref ownership.
-        let mut res = self.clone();
+        let mut res = self.clone_without_refs();
 
         // Define the ref ownership of the new Storage as all the listed objects that we managed to remove from `self`.
         // Note that this does not require updating counters.
-        res.local_used_blocks = blocks
-            .iter()
-            .filter_map(|id| self.local_used_blocks.take(id))
-            .collect();
         res.local_used_ops = operations
             .iter()
             .filter_map(|id| self.local_used_ops.take(id))
+            .collect();
+        res.local_used_blocks = blocks
+            .iter()
+            .filter_map(|id| self.local_used_blocks.take(id))
             .collect();
 
         res
@@ -95,7 +119,7 @@ impl Storage {
     /// internal helper to locally claim a reference to an object
     fn internal_claim_refs<IdT: Id + PartialEq + Eq + Hash + PreHashed + Copy>(
         ids: &[IdT],
-        mut owners: RwLockWriteGuard<Map<IdT, usize>>,
+        owners: &mut RwLockWriteGuard<Map<IdT, usize>>,
         local_used_ids: &mut Set<IdT>,
     ) {
         for &id in ids {
@@ -110,15 +134,23 @@ impl Storage {
         &self.local_used_blocks
     }
 
-    /// Claim block references for the current module
-    pub fn claim_block_refs(&mut self, ids: &[BlockId]) {
+    /// Claim block references.
+    /// Refs not owned by the source are ignored.
+    pub fn claim_block_refs(&mut self, source: &Storage, ids: &[BlockId]) {
         if ids.is_empty() {
             return;
         }
-        Storage::internal_claim_refs(ids, self.block_owners.write(), &mut self.local_used_blocks);
+        Storage::internal_claim_refs(
+            &ids.iter()
+                .filter(|id| source.local_used_blocks.contains(id))
+                .copied()
+                .collect::<Vec<_>>(),
+            &mut self.block_owners.write(),
+            &mut self.local_used_blocks,
+        );
     }
 
-    /// Drop block references in the current module
+    /// Drop block references
     pub fn drop_block_refs(&mut self, ids: &[BlockId]) {
         if ids.is_empty() {
             return;
@@ -166,13 +198,13 @@ impl Storage {
         massa_trace!("storage.storage.store_block", { "block_id": block.id });
         let id = block.id;
         let mut blocks = self.blocks.write();
-        let owners = self.block_owners.write();
+        let mut owners = self.block_owners.write();
         // insert block
         blocks
             .entry(id)
             .or_insert_with(|| Arc::new(RwLock::new(block)));
         // update local reference counters
-        Storage::internal_claim_refs(&vec![id], owners, &mut self.local_used_blocks);
+        Storage::internal_claim_refs(&vec![id], &mut owners, &mut self.local_used_blocks);
     }
 
     /// Get a (mutable) reference to a stored block.
@@ -181,12 +213,20 @@ impl Storage {
         self.blocks.read().get(block_id).map(Arc::clone)
     }
 
-    /// Claim operation references
-    pub fn claim_operation_refs(&mut self, ids: &[OperationId]) {
+    /// Claim operation references.
+    /// Refs not owned by the source are ignored.
+    pub fn claim_operation_refs(&mut self, source: &Storage, ids: &[OperationId]) {
         if ids.is_empty() {
             return;
         }
-        Storage::internal_claim_refs(ids, self.operation_owners.write(), &mut self.local_used_ops);
+        Storage::internal_claim_refs(
+            &ids.iter()
+                .filter(|id| source.local_used_ops.contains(id))
+                .copied()
+                .collect::<Vec<_>>(),
+            &mut self.operation_owners.write(),
+            &mut self.local_used_ops,
+        );
     }
 
     /// get the operation reference ownership
@@ -243,12 +283,12 @@ impl Storage {
             return;
         }
         let mut op_store = self.operations.write();
-        let owners = self.operation_owners.write();
+        let mut owners = self.operation_owners.write();
         let ids: Vec<OperationId> = operations.iter().map(|op| op.id).collect();
         for op in operations {
             op_store.entry(op.id).or_insert(op);
         }
-        Storage::internal_claim_refs(&ids, owners, &mut self.local_used_ops);
+        Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_ops);
     }
 
     /// Return a set of operation ids that are found in storage.
