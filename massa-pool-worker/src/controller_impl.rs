@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot};
+use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedEndorsement};
 use massa_pool_exports::{PoolConfig, PoolController, PoolOperationCursor};
 use massa_storage::Storage;
 #[derive(Clone)]
@@ -19,7 +19,9 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// add endorsements to pool
-    fn add_endorsements(&mut self, endorsements: Storage) {}
+    fn add_endorsements(&mut self, endorsements: Vec<WrappedEndorsement>) {
+        //TODO
+    }
 
     /// notify of new final slot
     fn notify_final_slot(&mut self, slot: &Slot) {
@@ -42,7 +44,7 @@ impl PoolController for PoolControllerImpl {
         &self,
         target_block: &BlockId,
         target_slot: &Slot,
-    ) -> (Vec<Option<EndorsementId>>, Storage) {
+    ) -> Vec<Option<WrappedEndorsement>> {
         Default::default() //TODO
     }
 

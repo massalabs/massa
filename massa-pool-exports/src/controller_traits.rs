@@ -1,9 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot};
+use massa_models::{BlockId, OperationId, Slot, WrappedEndorsement};
 use massa_storage::Storage;
-
-use crate::PoolOperationCursor;
 
 /// Trait defining a pool controller
 pub trait PoolController: Send + Sync {
@@ -11,7 +9,7 @@ pub trait PoolController: Send + Sync {
     fn add_operations(&mut self, ops: Storage);
 
     /// add endorsements to pool
-    fn add_endorsements(&mut self, endorsements: Storage);
+    fn add_endorsements(&mut self, endorsements: Vec<WrappedEndorsement>);
 
     /// notify of new final slot
     fn notify_final_slot(&mut self, slot: &Slot);
@@ -24,7 +22,7 @@ pub trait PoolController: Send + Sync {
         &self,
         target_block: &BlockId,
         target_slot: &Slot,
-    ) -> (Vec<Option<EndorsementId>>, Storage);
+    ) -> Vec<Option<WrappedEndorsement>>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.
