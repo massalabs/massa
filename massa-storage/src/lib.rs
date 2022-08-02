@@ -7,6 +7,7 @@
 //! When no instance of `Storage` claims a reference to a given object anymore, that object is automatically removed from storage.
 
 #![warn(missing_docs)]
+#![feature(hash_drain_filter)]
 
 use massa_logging::massa_trace;
 use massa_models::prehash::{Map, PreHashed, Set};
@@ -53,6 +54,44 @@ impl Clone for Storage {
 }
 
 impl Storage {
+    /// Efficiently extends the current Storage by consuming the refs of another's.
+    pub fn extend(&mut self, mut other: Storage) {
+        // Transfer ownership of objects `other` has but we don't: no need to update counters as counts don't change.
+        // Objects owned by both require a counter decrement and are handled when `other` is dropped.
+        self.local_used_blocks.extend(
+            other
+                .local_used_blocks
+                .drain_filter(|id| !self.local_used_blocks.contains(id))
+                .collect::<Set<_>>(),
+        );
+        self.local_used_ops.extend(
+            other
+                .local_used_ops
+                .drain_filter(|id| !self.local_used_ops.contains(id))
+                .collect::<Set<_>>(),
+        );
+    }
+
+    /// Efficiently splits off a subset of the reference ownership into a new Storage object.
+    /// Elements to which `self` held no reference are ignored.
+    pub fn split_off(&mut self, blocks: &Set<BlockId>, operations: &Set<OperationId>) -> Storage {
+        // Make a clone of self, which has no ref ownership.
+        let mut res = self.clone();
+
+        // Define the ref ownership of the new Storage as all the listed objects that we managed to remove from `self`.
+        // Note that this does not require updating counters.
+        res.local_used_blocks = blocks
+            .iter()
+            .filter_map(|id| self.local_used_blocks.take(id))
+            .collect();
+        res.local_used_ops = operations
+            .iter()
+            .filter_map(|id| self.local_used_ops.take(id))
+            .collect();
+
+        res
+    }
+
     /// internal helper to locally claim a reference to an object
     fn internal_claim_refs<IdT: Id + PartialEq + Eq + Hash + PreHashed + Copy>(
         ids: &[IdT],
@@ -64,6 +103,11 @@ impl Storage {
                 owners.entry(id).and_modify(|v| *v += 1).or_insert(1);
             }
         }
+    }
+
+    /// get the block reference ownership
+    pub fn get_block_refs(&self) -> &Set<BlockId> {
+        &self.local_used_blocks
     }
 
     /// Claim block references for the current module
@@ -143,6 +187,11 @@ impl Storage {
             return;
         }
         Storage::internal_claim_refs(ids, self.operation_owners.write(), &mut self.local_used_ops);
+    }
+
+    /// get the operation reference ownership
+    pub fn get_op_refs(&self) -> &Set<OperationId> {
+        &self.local_used_ops
     }
 
     /// Drop local operation references
