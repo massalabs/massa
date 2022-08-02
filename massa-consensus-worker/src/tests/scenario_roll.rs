@@ -20,7 +20,7 @@ use crate::{
         mock_pool_controller::MockPoolController,
         mock_protocol_controller::MockProtocolController,
         tools::{
-            consensus_pool_test, consensus_without_pool_test_with_storage, create_block,
+            consensus_pool_test, consensus_pool_test_with_storage, create_block,
             create_block_with_operations, create_roll_buy, create_roll_sell, get_creator_for_draw,
             propagate_block, random_address_on_thread, wait_pool_slot,
         },
@@ -72,8 +72,10 @@ async fn test_roll() {
     let initial_rolls_file = tools::generate_default_roll_counts_file(vec![keypair_1.clone()]);
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
-    consensus_without_pool_test_with_storage(
+    consensus_pool_test_with_storage(
         cfg.clone(),
+        None,
+        None,
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,

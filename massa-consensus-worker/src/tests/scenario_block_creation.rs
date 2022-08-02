@@ -172,9 +172,11 @@ async fn test_block_creation_with_draw() {
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     let operation_fee = 0;
-    tools::consensus_without_pool_test_with_storage(
+    tools::consensus_pool_test_with_storage(
         cfg.clone(),
-        async move |mut pool_controller,
+        None,
+        None,
+        async move |pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
@@ -333,9 +335,11 @@ async fn test_interleaving_block_creation_with_reception() {
     let temp_roll_file = generate_roll_counts_file(&roll_counts);
     cfg.initial_rolls_path = temp_roll_file.path().to_path_buf();
 
-    tools::consensus_without_pool_test_with_storage(
+    tools::consensus_pool_test_with_storage(
         cfg.clone(),
-        async move |mut pool_controller,
+        None,
+        None,
+        async move |pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
