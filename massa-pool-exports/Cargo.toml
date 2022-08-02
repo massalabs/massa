@@ -19,6 +19,7 @@ massa_signature = { path = "../massa-signature" }
 massa_hash = { path = "../massa-hash" }
 futures = "0.3"
 massa_time = { path = "../massa-time" }
+massa_storage = { path = "../massa-storage" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

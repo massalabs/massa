@@ -2,9 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot};
 use massa_pool_exports::{PoolConfig, PoolController, PoolOperationCursor};
-
-use crate::operation_pool::OperationPool;
-
+use massa_storage::Storage;
 #[derive(Clone)]
 pub struct PoolControllerImpl {
     config: PoolConfig,
@@ -13,7 +11,7 @@ pub struct PoolControllerImpl {
 
 impl PoolController for PoolControllerImpl {
     /// add operations to pool
-    fn add_operations(&mut self, ops: &[OperationId]) {
+    fn add_operations(&mut self, ops: Storage) {
         self.operation_pool
             .write()
             .expect("could not w-lock operation pool")
@@ -21,7 +19,7 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// add endorsements to pool
-    fn add_endorsements(&mut self, endorsements: Set<EndorsementId>) {}
+    fn add_endorsements(&mut self, endorsements: Storage) {}
 
     /// notify of new final slot
     fn notify_final_slot(&mut self, slot: &Slot) {
@@ -32,7 +30,7 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// get operations for block creation
-    fn get_block_operations(&self, slot: &Slot) -> Vec<OperationId> {
+    fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
         self.operation_pool
             .write()
             .expect("could not w-lock operation pool")
@@ -44,8 +42,8 @@ impl PoolController for PoolControllerImpl {
         &self,
         target_block: &BlockId,
         target_slot: &Slot,
-    ) -> Vec<Option<EndorsementId>> {
-        Default::default()
+    ) -> (Vec<Option<EndorsementId>>, Storage) {
+        Default::default() //TODO
     }
 
     /// Returns a boxed clone of self.

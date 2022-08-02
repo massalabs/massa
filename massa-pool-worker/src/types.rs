@@ -27,6 +27,7 @@ impl OperationInfo {
             fee: op.get_total_fee(),
             thread: op.thread,
             validity_period_range: op.get_validity_range(operation_validity_periods),
+            max_sequential_spending: op.get_max_sequential_spending(),
         }
     }
 }

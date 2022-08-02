@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
@@ -9,6 +9,7 @@ use massa_models::{
     Address, Amount, Block, BlockHeader, BlockId, BlockSerializer, OperationId, Slot,
     WrappedEndorsement,
 };
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use std::{
@@ -146,6 +147,9 @@ impl BlockFactoryWorker {
             None => return,
         };
 
+        // generate the local storage object
+        let mut block_storage = self.channels.storage.clone_without_refs();
+
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
 
@@ -157,14 +161,15 @@ impl BlockFactoryWorker {
         // TODO make pool non-async
         // TODO change get_endorsements in pool so that it reads PoS by itself and takes parameters (endorsed_id, endorsed_slot)
         // TODO this should never fail
-        let endorsements: Vec<Option<WrappedEndorsement>> =
-            self.channels.pool.get_block_endorsements(
-                same_thread_parent_id,
-                Slot::new(same_thread_parent_period, slot.thread),
-            );
+        // TODO endorsements from storage
+        let endorsements = self.channels.pool.get_block_endorsements(
+            same_thread_parent_id,
+            Slot::new(same_thread_parent_period, slot.thread),
+        );
 
         // gather operations and compute global operations hash
-        let op_ids = self.channels.pool.get_block_operations(&slot);
+        let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
+        block_storage.extend(op_storage);
         let global_operations_hash = Hash::compute_from(
             &op_ids
                 .iter()
@@ -188,18 +193,20 @@ impl BlockFactoryWorker {
 
         // create block
         let block = Block::new_wrapped(
-            Block { header, operations },
+            Block { header, op_ids },
             self.block_serializer,
             block_producer_keypair,
         )
         .expect("error while producing block");
+        let block_id = block.id;
 
-        // TODO should we store block in storage here ?
+        // store block in storage here
+        op_storage.store_block(block);
 
         // log block creation
         info!(
             "block {} created at slot {} by address {}",
-            block.id, slot, block.creator_address
+            block_id, slot, block_producer_addr
         );
 
         // send block to consensus

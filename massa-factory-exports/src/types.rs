@@ -3,6 +3,7 @@ use massa_execution_exports::ExecutionController;
 use massa_models::Block;
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
+use massa_storage::Storage;
 
 /// History of block production from latest to oldest
 /// todo: redesign type (maybe add slots, draws...)
@@ -19,4 +20,6 @@ pub struct FactoryChannels {
     pub pool: Box<dyn PoolController>,
     /// execution controller
     pub execution: Box<dyn ExecutionController>,
+    /// storage instance
+    pub storage: Storage,
 }

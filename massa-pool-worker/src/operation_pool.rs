@@ -71,46 +71,41 @@ impl OperationPool {
     }
 
     /// Add a list of operations to the pool
-    /// Returns newly added operations
-    pub fn add_operations(&mut self, ops: &[OperationId]) -> Set<OperationId> {
+    pub fn add_operations(&mut self, mut ops_storage: Storage) {
         // add operations to pool
+        let ops = ops_storage
+            .get_op_refs()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
         let mut added_ops = Set::with_capacity(ops.len());
-        self.storage.with_operations(&ops, |op_refs| {
-            op_refs.iter().zip(ops.iter()).for_each(|op_ref| {
-                match op_ref {
-                    (Some(op), id) => {
-                        let op_validity =
-                            op.get_validity_range(self.config.operation_validity_period);
-                        if !self.is_operation_relevant(&op_validity) {
-                            return;
-                        }
-                        let key = build_cursor(op);
-                        // thread index won't panic because it was checked at op production or deserialization
-                        match self.sorted_ops_per_thread[op.thread as usize].entry(key) {
-                            btree_map::Entry::Occupied(occ) => {}
-                            btree_map::Entry::Vacant(vac) => {
-                                self.ops_per_expiration
-                                    .insert((Slot::new(*op_validity.end(), op.thread), key));
-                                vac.insert(OperationInfo::from_op(
-                                    op,
-                                    self.config.operation_validity_periods,
-                                ));
-                                added_ops.insert(id);
-                            }
-                        }
-                    }
-                    (None, id) => {
-                        warn!(
-                            "attempting to add operation {} to pool, but it is absent from storage",
-                            id
-                        );
+        ops_storage.with_operations(&ops, |op_refs| {
+            op_refs.iter().zip(ops.iter()).for_each(|(op_ref, id)| {
+                let op = op_ref
+                    .expect("attempting to add operation to pool, but it is absent from storage");
+                let op_validity = op.get_validity_range(self.config.operation_validity_period);
+                if !self.is_operation_relevant(&op_validity) {
+                    return;
+                }
+                let key = build_cursor(op);
+                // thread index won't panic because it was checked at op production or deserialization
+                match self.sorted_ops_per_thread[op.thread as usize].entry(key) {
+                    btree_map::Entry::Occupied(occ) => {}
+                    btree_map::Entry::Vacant(vac) => {
+                        self.ops_per_expiration
+                            .insert((Slot::new(*op_validity.end(), op.thread), key));
+                        vac.insert(OperationInfo::from_op(
+                            op,
+                            self.config.operation_validity_periods,
+                        ));
+                        added_ops.insert(id);
                     }
                 }
             });
         });
 
         // prune excess operations
-        let removed_ops = Vec::with_capacity(ops.len());
+        let removed_ops = Set::with_capacity(ops.len());
         self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
             while ops.len() > self.config.max_ops_pool_size_per_thread {
                 // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
@@ -118,23 +113,21 @@ impl OperationPool {
                 let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
                 self.ops_per_expiration.remove(&(end_slot, key));
                 if !added_ops.remove(&op_info.id) {
-                    removed_ops.push(op_info.id);
+                    removed_ops.insert(op_info.id);
                 }
             }
         });
 
-        // claim storage ownership on added ops
+        // take ownership on added ops
         self.storage
-            .claim_operation_refs(&added_ops.iter().copied().collect::<Vec<_>>());
+            .extend(ops_storage.split_off(Default::default(), added_ops));
 
-        // drop storage ownership on removed ops
+        // drop removed ops from storage
         self.storage.drop_operation_refs(&removed_ops);
-
-        added_ops
     }
 
     /// get operations for block creation
-    pub fn get_block_operations(&self, slot: &Slot) -> Vec<OperationId> {
+    pub fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
         // init list of selected operation IDs
         let mut op_ids = Vec::new();
 
@@ -145,7 +138,7 @@ impl OperationPool {
         // cache of sequential balances
         let mut sequential_balance_cache: Map<Address, Amount> = Default::default();
         // list of previously excluded operation IDs
-        let executed_ops: Set<OperationId> = self.execution.get_executed_ops();
+        let executed_ops = self.execution.get_executed_ops();
 
         // iterate over pool operations in the right thread, from best to worst
         for (_cursor, op_info) in self.sorted_ops_per_thread[slot.thread as usize].iter() {
@@ -195,6 +188,10 @@ impl OperationPool {
                 creator_seq_balance.saturating_sub(op_info.max_sequential_spending);
         }
 
-        op_ids
+        // generate storage
+        let mut res_storage = self.storage.clone_without_refs();
+        res_storage.claim_operation_refs(&self.storage, &op_ids.iter().copied().collect());
+
+        (op_ids, res_storage)
     }
 }
