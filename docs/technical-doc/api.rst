@@ -388,53 +388,59 @@ Get addresses.
 
 .. code-block:: javascript
 
-    [
-        {
-            address: String,
-            balance: {
-                candidate_balance: String, // represent an Amount in coins
-                final_balance: String, // represent an Amount in coins
-                locked_balance: String, // represent an Amount in coins
-            },
-            block_draws: [
-                {
-                    period: Number,
-                    thread: Number,
-                },
-            ],
-            blocks_created: [String], // Block ids
-            endorsement_draws: [
-                {
-                    slot: {
-                        period: Number,
-                        thread: Number,
-                    },
-                    index: Number,
-                },
-            ],
-            involved_in_endorsements: [String], // Endorsement Id
-            involved_in_operations: [String], // Operation id
-            production_stats: [
-                // as many items as cached cycles
-                {
-                    cycle: Number,
-                    is_final: Boolean,
-                    nok_count: Number,
-                    ok_count: Number,
-                },
-            ],
-            rolls: {
-                active_rolls: Number,
-                candidate_rolls: Number,
-                final_rolls: Number,
-            },
-            thread: Number,
-            final_balance_info: null OR Number,
-            candidate_balance_info: null OR Number,
-            final_datastore_keys: [Byte array],
-            candidate_datastore_keys: [Byte array],
-        },
-    ];
+    {
+      'address': String // Addresses,
+      'block_draws': [
+       {
+        'period': Number,
+        'thread': Number
+       }
+      ],
+     'blocks_created': [
+       String
+     ],
+     'candidate_balance_info': None,
+     'candidate_datastore_keys': [],
+     'endorsement_draws': [
+       {
+        'index': Number,
+        'slot': {
+          'period': Number,
+          'thread': Number
+        }
+       },
+      ],
+     'final_balance_info': None,
+     'final_datastore_keys': [],
+     'involved_in_endorsements': [
+       String
+     ],
+     'involved_in_operations': [],
+     'ledger_info': {
+       'candidate_ledger_info': {
+         'balance': String
+       },
+       'final_ledger_info': {
+         'balance': String
+       },
+       'locked_balance': String
+     },
+     'production_stats': [
+       {
+         'cycle': Number,
+         'is_final': True,
+         'nok_count': Number,
+         'ok_count': Number
+       },
+    
+     ],
+     'rolls': {
+       'active_rolls': Number,
+       'candidate_rolls': Number,
+       'final_rolls': Number
+     },
+     'thread': Number
+   }
 
 `send_operations`
 -----------------
