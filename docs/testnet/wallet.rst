@@ -46,7 +46,7 @@ Now you can either generate a new keypair (and associated address):
 
 .. code-block::
 
-    wallet_add_keys <your_key>
+    wallet_add_secret_keys <SecretKey>
 
 The list of addresses and keys of your wallet can be accessed with:
 
