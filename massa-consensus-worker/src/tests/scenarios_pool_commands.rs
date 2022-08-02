@@ -146,6 +146,7 @@ async fn test_update_latest_final_block_cmd_notification() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_new_final_ops() {
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
@@ -238,6 +239,7 @@ async fn test_new_final_ops() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_max_attempts_get_operations() {
     let cfg = ConsensusConfig {
         t0: 1000.into(),
@@ -329,6 +331,7 @@ async fn test_max_attempts_get_operations() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_max_batch_size_get_operations() {
     let cfg = ConsensusConfig {
         t0: 1000.into(),

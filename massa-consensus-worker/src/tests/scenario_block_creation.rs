@@ -120,6 +120,7 @@ async fn test_genesis_block_creation() {
 ///    * if address 1 was selected assert nothing is propagated
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_block_creation_with_draw() {
     let thread_count = 2;
     // define addresses use for the test
@@ -189,6 +190,7 @@ async fn test_block_creation_with_draw() {
 
             // initial block: addr2 buys 1 roll
             let op1 = create_roll_transaction(&keypair_2, 1, true, 10, operation_fee);
+            storage.store_operation(op1.clone());
             let block = tools::create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
@@ -295,6 +297,7 @@ async fn test_block_creation_with_draw() {
 ///         if key a created a block, assert it has chosen as parents expected blocks (no misses), and that it was sent to protocol around the time it was expected.
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_interleaving_block_creation_with_reception() {
     let thread_count = 1;
     // define addresses use for the test
@@ -618,6 +621,7 @@ async fn test_order_of_inclusion() {
 /// ```
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_block_filling() {
     let thread_count = 2;
     // define addresses use for the test
