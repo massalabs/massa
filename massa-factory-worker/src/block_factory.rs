@@ -158,13 +158,11 @@ impl BlockFactoryWorker {
         let (same_thread_parent_id, same_thread_parent_period) = parents[slot.thread as usize];
 
         // gather endorsements
-        // TODO make pool non-async
-        // TODO change get_endorsements in pool so that it reads PoS by itself and takes parameters (endorsed_id, endorsed_slot)
-        // TODO this should never fail
-        let endorsements = self.channels.pool.get_block_endorsements(
-            same_thread_parent_id,
-            Slot::new(same_thread_parent_period, slot.thread),
+        let (endorsements, endo_storage) = self.channels.pool.get_block_endorsements(
+            &same_thread_parent_id,
+            &Slot::new(same_thread_parent_period, slot.thread),
         );
+        block_storage.extend(endo_storage);
 
         // gather operations and compute global operations hash
         let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
@@ -199,7 +197,7 @@ impl BlockFactoryWorker {
         .expect("error while producing block");
         let block_id = block.id;
 
-        // store block in storage here
+        // store block in storage
         block_storage.store_block(block);
 
         // log block creation
@@ -208,8 +206,8 @@ impl BlockFactoryWorker {
             block_id, slot, block_producer_addr
         );
 
-        // send block and its operations to consensus
-        self.channels.consensus.send_block(block_storage);
+        // send full block to consensus
+        self.channels.consensus.send_blocks(block_storage);
     }
 
     /// main run loop of the block creator thread

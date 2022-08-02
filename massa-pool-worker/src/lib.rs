@@ -7,10 +7,10 @@
 #![feature(map_first_last)]
 
 mod controller_impl;
-mod types;
-//mod endorsement_pool;
+mod endorsement_pool;
 mod operation_pool;
 mod run;
+mod types;
 
 #[cfg(test)]
 mod tests;

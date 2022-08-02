@@ -28,30 +28,30 @@ pub struct OperationPool {
     /// storage
     pub storage: Storage,
 
-    /// last final slot
-    pub last_final_slot: Slot,
+    /// last consensus final periods, per thread
+    pub last_cs_final_periods: Vec<u64>,
 }
 
 impl OperationPool {
     pub fn init(config: PoolConfig, storage: Storage) -> Self {
         OperationPool {
-            last_final_slot: Slot::new(0, config.thread_count.saturating_sub(1)),
             sorted_ops_per_thread: vec![Default::default(); config.thread_count as usize],
             ops_per_expiration: Default::default(),
+            last_cs_final_periods: vec![0u64, config.thread_count as usize],
             config,
             storage,
         }
     }
 
     /// notify of new final slot
-    pub fn notify_final_slot(&mut self, slot: &Slot) {
+    pub fn notify_final_cs_periods(&mut self, final_cs_periods: &Vec<u64>) {
         // update internal final slot counter
-        self.last_final_slot = *slot;
+        self.last_cs_final_periods = final_cs_periods.clone();
 
         // prune old ops
         let removed_ops = Vec::new();
         while let Some((expire_slot, key)) = self.ops_per_expiration.first().copied() {
-            if expire_slot > self.last_final_slot {
+            if expire_slot.period > self.last_cs_final_periods[expire_slot.thread as usize] {
                 break;
             }
             self.ops_per_expiration.pop_first();
@@ -65,26 +65,37 @@ impl OperationPool {
         self.storage.drop_operation_refs(&removed_ops);
     }
 
-    /// Checks if an operation is relevant according to its period validity range
-    fn is_operation_relevant(&self, period_validity_range: &RangeInclusive<u64>) -> bool {
-        &self.last_final_slot.period <= period_validity_range.end()
+    /// Checks if an operation is relevant according to its thread and period validity range
+    fn is_operation_relevant(
+        &self,
+        thread: u8,
+        period_validity_range: &RangeInclusive<u64>,
+    ) -> bool {
+        // too old
+        if &period_validity_range.end() <= self.last_cs_final_periods[thread as usize] {
+            return false;
+        }
+
+        // validity not started yet
+        //TODO eliminate ops whose validity hasn't started yet
+
+        true
     }
 
     /// Add a list of operations to the pool
     pub fn add_operations(&mut self, mut ops_storage: Storage) {
-        // add operations to pool
-        let ops = ops_storage
-            .get_op_refs()
-            .iter()
-            .copied()
-            .collect::<Vec<_>>();
-        let mut added_ops = Set::with_capacity(ops.len());
-        ops_storage.with_operations(&ops, |op_refs| {
-            op_refs.iter().zip(ops.iter()).for_each(|(op_ref, id)| {
+        let items = ops_storage.get_op_refs().clone();
+
+        let mut added = Set::with_capacity(items.len());
+        let mut removed = Set::with_capacity(items.len());
+
+        // add items to pool
+        ops_storage.with_operations(&items, |op_refs| {
+            op_refs.iter().zip(items.iter()).for_each(|(op_ref, id)| {
                 let op = op_ref
                     .expect("attempting to add operation to pool, but it is absent from storage");
                 let op_validity = op.get_validity_range(self.config.operation_validity_period);
-                if !self.is_operation_relevant(&op_validity) {
+                if !self.is_operation_relevant(op.thread, &op_validity) {
                     return;
                 }
                 let key = build_cursor(op);
@@ -98,32 +109,32 @@ impl OperationPool {
                             op,
                             self.config.operation_validity_periods,
                         ));
-                        added_ops.insert(id);
+                        added.insert(id);
                     }
                 }
             });
         });
 
         // prune excess operations
-        let removed_ops = Set::with_capacity(ops.len());
+
         self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
             while ops.len() > self.config.max_ops_pool_size_per_thread {
                 // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
                 let (key, op_info) = ops.pop_last().unwrap();
                 let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
                 self.ops_per_expiration.remove(&(end_slot, key));
-                if !added_ops.remove(&op_info.id) {
-                    removed_ops.insert(op_info.id);
+                if !added.remove(&op_info.id) {
+                    removed.insert(op_info.id);
                 }
             }
         });
 
         // take ownership on added ops
         self.storage
-            .extend(ops_storage.split_off(Default::default(), added_ops));
+            .extend(ops_storage.split_off(Default::default(), added, Default::default()));
 
         // drop removed ops from storage
-        self.storage.drop_operation_refs(&removed_ops);
+        self.storage.drop_operation_refs(&removed);
     }
 
     /// get operations for block creation

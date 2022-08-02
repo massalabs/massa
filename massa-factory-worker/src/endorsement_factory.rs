@@ -194,10 +194,12 @@ impl EndorsementFactoryWorker {
             endorsements.push(endorsement);
         }
 
-        // TODO should we store endorsements in storage here ?
+        // store endorsements
+        let mut endo_storage = self.channels.storage.clone_without_refs();
+        endo_storage.store_endorsements(endorsements);
 
         // send endorsement to pool for listing and propagation
-        self.channels.pool.send_endorsements(endorsements);
+        self.channels.pool.add_endorsements(endo_storage);
     }
 
     /// main run loop of the endorsement creator thread

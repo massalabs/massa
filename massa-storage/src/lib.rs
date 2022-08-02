@@ -12,7 +12,9 @@
 use massa_logging::massa_trace;
 use massa_models::prehash::{Map, PreHashed, Set};
 use massa_models::wrapped::Id;
-use massa_models::{BlockId, OperationId, WrappedBlock, WrappedOperation};
+use massa_models::{
+    BlockId, EndorsementId, OperationId, WrappedBlock, WrappedEndorsement, WrappedOperation,
+};
 use parking_lot::{RwLock, RwLockWriteGuard};
 use std::hash::Hash;
 use std::{collections::hash_map, sync::Arc};
@@ -24,16 +26,22 @@ pub struct Storage {
     blocks: Arc<RwLock<Map<BlockId, Arc<RwLock<WrappedBlock>>>>>,
     /// global operation storage
     operations: Arc<RwLock<Map<OperationId, WrappedOperation>>>,
+    /// global operation storage
+    endorsements: Arc<RwLock<Map<EndorsementId, WrappedEndorsement>>>,
 
     /// global block reference counter
     block_owners: Arc<RwLock<Map<BlockId, usize>>>,
     /// global operation reference counter
     operation_owners: Arc<RwLock<Map<OperationId, usize>>>,
+    /// global endorsement reference counter
+    endorsement_owners: Arc<RwLock<Map<EndorsementId, usize>>>,
 
     /// locally used block references
     local_used_blocks: Set<BlockId>,
-    /// locally used block references
+    /// locally used operation references
     local_used_ops: Set<OperationId>,
+    /// locally used endorsement references
+    local_used_endorsements: Set<EndorsementId>,
 }
 
 impl Storage {
@@ -53,14 +61,24 @@ impl Storage {
             &mut self.local_used_blocks,
         );
 
+        // claim one more user of the endorsement refs
+        Storage::internal_claim_refs(
+            &self.local_used_endorsements.clone(),
+            &mut self.endorsement_owners.write(),
+            &mut self.local_used_endorsements,
+        );
+
         Self {
             blocks: self.blocks.clone(),
             operations: self.operations.clone(),
+            endorsements: self.endorsements.clone(),
             operation_owners: self.operation_owners.clone(),
             block_owners: self.block_owners.clone(),
+            endorsement_owners: self.endorsement_owners.clone(),
 
             local_used_ops: self.local_used_ops.clone(),
             local_used_blocks: self.local_used_blocks.clone(),
+            local_used_endorsements: self.local_used_endorsements.clone(),
         }
     }
 
@@ -69,12 +87,15 @@ impl Storage {
         Self {
             blocks: self.blocks.clone(),
             operations: self.operations.clone(),
+            endorsements: self.endorsements.clone(),
             operation_owners: self.operation_owners.clone(),
             block_owners: self.block_owners.clone(),
+            endorsement_owners: self.endorsement_owners.clone(),
 
             // do not clone local ref lists
             local_used_ops: Default::default(),
             local_used_blocks: Default::default(),
+            local_used_endorsements: Default::default(),
         }
     }
 
@@ -95,16 +116,37 @@ impl Storage {
                 .drain_filter(|id| !self.local_used_blocks.contains(id))
                 .collect::<Vec<_>>(),
         );
+
+        self.local_used_endorsements.extend(
+            &other
+                .local_used_endorsements
+                .drain_filter(|id| !self.local_used_endorsements.contains(id))
+                .collect::<Vec<_>>(),
+        );
     }
 
     /// Efficiently splits off a subset of the reference ownership into a new Storage object.
     /// Panics if some of the refs are not owned by the source.
-    pub fn split_off(&mut self, blocks: &Set<BlockId>, operations: &Set<OperationId>) -> Storage {
+    pub fn split_off(
+        &mut self,
+        blocks: &Set<BlockId>,
+        operations: &Set<OperationId>,
+        endorsements: &Set<EndorsementId>,
+    ) -> Storage {
         // Make a clone of self, which has no ref ownership.
         let mut res = self.clone_without_refs();
 
         // Define the ref ownership of the new Storage as all the listed objects that we managed to remove from `self`.
         // Note that this does not require updating counters.
+
+        res.local_used_blocks = blocks
+            .iter()
+            .map(|id| {
+                self.local_used_blocks
+                    .take(id)
+                    .expect("split block ref not owned by source")
+            })
+            .collect();
 
         res.local_used_ops = operations
             .iter()
@@ -114,12 +156,13 @@ impl Storage {
                     .expect("split op ref not owned by source")
             })
             .collect();
-        res.local_used_blocks = blocks
+
+        res.local_used_endorsements = endorsements
             .iter()
             .map(|id| {
-                self.local_used_blocks
+                self.local_used_endorsements
                     .take(id)
-                    .expect("split block ref not owned by source")
+                    .expect("split endorsement ref not owned by source")
             })
             .collect();
 
@@ -346,6 +389,85 @@ impl Storage {
         let results: Vec<Option<&WrappedOperation>> =
             operation_ids.iter().map(|id| operations.get(id)).collect();
         f(&results)
+    }
+
+    /// Claim endorsement references.
+    /// Panics if some of the refs are not owned by the source.
+    pub fn claim_endorsement_refs(&mut self, source: &Storage, ids: &Set<EndorsementId>) {
+        if ids.is_empty() {
+            return;
+        }
+        if !ids.is_subset(&source.local_used_endorsements) {
+            panic!("some claimed endorsements are not owned by source")
+        }
+        Storage::internal_claim_refs(
+            &ids,
+            &mut self.endorsement_owners.write(),
+            &mut self.local_used_endorsements,
+        );
+    }
+
+    /// get the endorsement reference ownership
+    pub fn get_endorsement_refs(&self) -> &Set<EndorsementId> {
+        &&self.local_used_endorsements
+    }
+
+    /// Drop local ndorsement references.
+    /// Ignores already-absend refs.
+    pub fn drop_endorsement_refs(&mut self, ids: &Set<EndorsementId>) {
+        if ids.is_empty() {
+            return;
+        }
+        let mut owners = self.endorsement_owners.write();
+        let mut orphaned_ids = Vec::new();
+        for id in ids {
+            if !self.local_used_endorsements.remove(id) {
+                // the object was already not referenced locally
+                continue;
+            }
+            match owners.entry(*id) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    let res_count = {
+                        let cnt = occ.get_mut();
+                        *cnt = cnt
+                            .checked_sub(1)
+                            .expect("less than 1 owner on storage object reference drop");
+                        *cnt
+                    };
+                    if res_count == 0 {
+                        orphaned_ids.push(*id);
+                        occ.remove();
+                    }
+                }
+                hash_map::Entry::Vacant(_vac) => {
+                    panic!("missing object in storage on storage object reference drop");
+                }
+            }
+        }
+        // if there are orphaned objects, remove them from storage
+        if !orphaned_ids.is_empty() {
+            let mut endos = self.endorsements.write();
+            for id in orphaned_ids {
+                if endos.remove(&id).is_none() {
+                    panic!("removing absent object from storage")
+                }
+            }
+        }
+    }
+
+    /// Store endorsements
+    /// Claims local references to the added endorsements
+    pub fn store_endorsements(&mut self, endorsements: Vec<WrappedEndorsement>) {
+        if endorsements.is_empty() {
+            return;
+        }
+        let mut endo_store = self.endorsements.write();
+        let mut owners = self.endorsement_owners.write();
+        let ids: Set<EndorsementId> = endorsements.iter().map(|op| op.id).collect();
+        for endo in endorsements {
+            endo_store.entry(endo.id).or_insert(endo);
+        }
+        Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_endorsements);
     }
 }
 

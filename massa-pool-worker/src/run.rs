@@ -6,13 +6,17 @@ use std::sync::{Arc, RwLock};
 
 pub fn start_pool(config: PoolConfig, storage: Storage) -> PoolControllerImpl {
     // start operation pool
-    let operation_pool = Arc::new(RwLock::new(OperationPool::init(config.clone(), storage)));
+    let operation_pool = Arc::new(RwLock::new(OperationPool::init(
+        config.clone(),
+        storage.clone_with_refs(),
+    )));
 
     // start endorsement pool
-    //TODO
+    let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(config.clone(), storage)));
 
     PoolControllerImpl {
         config,
         operation_pool,
+        endorsement_pool,
     }
 }
