@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 use std::ops::Bound::Included;
 
-use massa_models::constants::{MAX_BOOTSTRAP_POS_CYCLES, THREAD_COUNT};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -134,21 +133,22 @@ pub struct ExportProofOfStakeDeserializer {
 
 impl ExportProofOfStakeDeserializer {
     /// Creates a `ExportProofOfStakeDeserializer`
-    pub fn new() -> Self {
+    pub fn new(
+        thread_count: u8,
+        max_bootstrap_pos_cycles: u32,
+        max_bootstrap_pos_entries: u32,
+    ) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_BOOTSTRAP_POS_CYCLES),
+                Included(max_bootstrap_pos_cycles),
             ),
-            cycle_state_deserializer: ThreadCycleStateDeserializer::new(),
-            thread_count: THREAD_COUNT,
+            cycle_state_deserializer: ThreadCycleStateDeserializer::new(
+                thread_count,
+                max_bootstrap_pos_entries,
+            ),
+            thread_count,
         }
-    }
-}
-
-impl Default for ExportProofOfStakeDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

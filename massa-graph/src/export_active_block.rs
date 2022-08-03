@@ -2,7 +2,6 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    constants::*,
     ledger_models::{LedgerChangeDeserializer, LedgerChangeSerializer, LedgerChanges},
     prehash::{Map, Set},
     rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
@@ -239,6 +238,7 @@ pub struct ExportActiveBlockDeserializer {
     roll_updates_length_deserializer: U32VarIntDeserializer,
     roll_update_deserializer: RollUpdateDeserializer,
     production_events_deserializer: U32VarIntDeserializer,
+    thread_count: u8,
 }
 
 impl ExportActiveBlockDeserializer {
@@ -286,6 +286,7 @@ impl ExportActiveBlockDeserializer {
                 Included(0),
                 Included(u32::MAX),
             ),
+            thread_count,
         }
     }
 }
@@ -293,27 +294,84 @@ impl ExportActiveBlockDeserializer {
 impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_graph::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
+    /// use massa_graph::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
+    /// use massa_models::{ledger_models::LedgerChanges, rolls::RollUpdates, BlockId, Block, BlockSerializer, prehash::Set, Endorsement, EndorsementSerializer, Slot, BlockHeader, BlockHeaderSerializer, wrapped::WrappedContent};
+    /// use massa_hash::Hash;
+    /// use std::collections::HashSet;
+    /// use massa_signature::KeyPair;
+    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
+    /// let keypair = KeyPair::generate();
+    /// let parents = (0..32)
+    ///     .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///     .collect();
+    ///
+    /// // create block header
+    /// let orig_header = BlockHeader::new_wrapped(
+    ///     BlockHeader {
+    ///         slot: Slot::new(1, 1),
+    ///         parents,
+    ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    ///         endorsements: vec![
+    ///             Endorsement::new_wrapped(
+    ///                 Endorsement {
+    ///                     slot: Slot::new(1, 1),
+    ///                     index: 1,
+    ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///                 },
+    ///                 EndorsementSerializer::new(),
+    ///                 &keypair,
+    ///             )
+    ///             .unwrap(),
+    ///             Endorsement::new_wrapped(
+    ///                 Endorsement {
+    ///                     slot: Slot::new(4, 0),
+    ///                     index: 3,
+    ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///                 },
+    ///                 EndorsementSerializer::new(),
+    ///                 &keypair,
+    ///             )
+    ///             .unwrap(),
+    ///         ],
+    ///     },
+    ///     BlockHeaderSerializer::new(),
+    ///     &keypair,
+    /// )
+    /// .unwrap();
+    ///
+    /// // create block
+    /// let orig_block = Block {
+    ///     header: orig_header,
+    ///     operations: vec![],
+    /// };
+    ///
+    /// let mut dependencies = Set::default();
+    /// dependencies.insert(BlockId(Hash::compute_from(b"23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH")));
     /// let export_active_block = ExportActiveBlock {
-    ///    block: Block {
-    ///       hash: Hash::compute_from("23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH"),
-    ///       period: 1,
-    /// }
-    ///       parents: vec![],
-    ///       children: vec![(Hash::compute_from("23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH"), 1)],
-    ///       dependencies: vec![Hash::compute_from("23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH")],
-    ///       is_final: false,
-    ///       block_ledger_changes: BlockLedgerChanges {
+    ///    block: Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap(),
+    ///    block_id: BlockId(Hash::compute_from(b"23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH")),
+    ///    parents: vec![],
+    ///    children: vec![],
+    ///    dependencies,
+    ///    is_final: false,
+    ///    block_ledger_changes: LedgerChanges::default(),
+    ///    roll_updates: RollUpdates::default(),
+    ///    production_events: vec![],
+    /// };
+    ///
+    /// let mut serialized = Vec::new();
+    /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 2, 1000, 1000, 1000, 1000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// assert_eq!(export_deserialized.block_id, export_active_block.block_id);
+    /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
+    /// assert_eq!(export_deserialized.dependencies, export_active_block.dependencies);
+    /// assert_eq!(rest.len(), 0);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], ExportActiveBlock, E> {
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
         context(
             "Failed ExportActiveBlock deserialization",
             tuple((
@@ -341,7 +399,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
                                         self.period_deserializer.deserialize(input)
                                     }),
                                 )),
-                                thread_count as usize,
+                                self.thread_count as usize,
                             ),
                         ),
                     )),

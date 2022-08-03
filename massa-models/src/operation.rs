@@ -911,20 +911,14 @@ pub struct OperationIdsDeserializer {
 
 impl OperationIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
-    pub fn new() -> Self {
+    pub fn new(max_operations_per_message: u32) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_OPERATIONS_PER_MESSAGE),
+                Included(max_operations_per_message),
             ),
             hash_deserializer: HashDeserializer::new(),
         }
-    }
-}
-
-impl Default for OperationIdsDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -1026,20 +1020,14 @@ pub struct OperationPrefixIdsDeserializer {
 
 impl OperationPrefixIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
-    pub const fn new() -> Self {
+    pub const fn new(max_operations_per_message: u32) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_OPERATIONS_PER_MESSAGE),
+                Included(max_operations_per_message),
             ),
             pref_deserializer: OperationPrefixIdDeserializer::new(),
         }
-    }
-}
-
-impl Default for OperationPrefixIdsDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

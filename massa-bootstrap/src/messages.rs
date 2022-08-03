@@ -222,6 +222,7 @@ impl BootstrapServerMessageDeserializer {
         max_bootstrap_cliques: u32,
         max_bootstrap_children: u32,
         max_bootstrap_deps: u32,
+        max_bootstrap_pos_cycles: u32,
         max_bootstrap_pos_entries: u32,
         max_operations_per_block: u32,
     ) -> Self {
@@ -233,7 +234,11 @@ impl BootstrapServerMessageDeserializer {
             )),
             version_deserializer: VersionDeserializer::new(),
             peers_deserializer: BootstrapPeersDeserializer::new(max_advertise_length),
-            pos_deserializer: ExportProofOfStakeDeserializer::new(),
+            pos_deserializer: ExportProofOfStakeDeserializer::new(
+                thread_count,
+                max_bootstrap_pos_cycles,
+                max_bootstrap_pos_entries,
+            ),
             state_changes_deserializer: StateChangesDeserializer::new(thread_count),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
                 thread_count,
@@ -264,7 +269,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 1000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.0").unwrap(),
@@ -528,7 +533,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
-    /// let message_deserializer = BootstrapClientMessageDeserializer::new();
+    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32);
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();

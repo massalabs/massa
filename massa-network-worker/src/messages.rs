@@ -236,6 +236,7 @@ impl MessageDeserializer {
         max_advertise_length: u32,
         max_ask_block: u32,
         max_operations_per_block: u32,
+        max_operations_per_message: u32,
         max_endorsements_per_message: u32,
     ) -> Self {
         MessageDeserializer {
@@ -270,7 +271,9 @@ impl MessageDeserializer {
                 thread_count,
                 endorsement_count,
             )),
-            operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(),
+            operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(
+                max_operations_per_message,
+            ),
             ip_addr_deserializer: IpAddrDeserializer::new(),
         }
     }
@@ -414,7 +417,8 @@ mod tests {
     use super::*;
     use massa_models::constants::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
+        THREAD_COUNT,
     };
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
@@ -458,6 +462,7 @@ mod tests {
             MAX_ADVERTISE_LENGTH,
             MAX_ASK_BLOCKS_PER_MESSAGE,
             MAX_OPERATIONS_PER_BLOCK,
+            MAX_OPERATIONS_PER_MESSAGE,
             MAX_ENDORSEMENTS_PER_MESSAGE,
         );
         let mut random_bytes = [0u8; 32];

@@ -155,8 +155,8 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// );
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
-    /// StateChangesSerializer::new(32).serialize(&state_changes, &mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(16).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(state_changes_deser, state_changes);
     /// ```

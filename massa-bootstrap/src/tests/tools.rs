@@ -16,7 +16,8 @@ use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::constants::{
     ENDORSEMENT_COUNT, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES,
-    MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+    MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_CYCLES, MAX_BOOTSTRAP_POS_ENTRIES,
+    MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
 };
 use massa_models::operation::OperationSerializer;
 use massa_models::wrapped::WrappedContent;
@@ -565,7 +566,11 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
-    let export_pos_deserializer = ExportProofOfStakeDeserializer::new();
+    let export_pos_deserializer = ExportProofOfStakeDeserializer::new(
+        THREAD_COUNT,
+        MAX_BOOTSTRAP_POS_CYCLES,
+        MAX_BOOTSTRAP_POS_ENTRIES,
+    );
     let export_pos_serializer = ExportProofOfStakeSerializer::new();
     let mut export_pos_bytes = Vec::new();
 

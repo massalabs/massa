@@ -224,7 +224,7 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
     /// }
     /// let mut buffer = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph, &mut buffer).unwrap();
-    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(16, 500, 10, 10, 100, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(16, 500, 10, 10, 100, 1000, 1000, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// let mut buffer2 = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph_deserialized, &mut buffer2).unwrap();
     /// assert_eq!(buffer, buffer2);

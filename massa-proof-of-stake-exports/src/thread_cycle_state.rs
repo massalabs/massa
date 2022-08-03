@@ -1,6 +1,5 @@
 use bitvec::prelude::BitVec;
 use massa_models::{
-    constants::{MAX_BOOTSTRAP_POS_ENTRIES, THREAD_COUNT},
     prehash::Map,
     rolls::{RollCounts, RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
     Address, AddressDeserializer, Slot, SlotDeserializer, SlotSerializer,
@@ -181,26 +180,20 @@ pub struct ThreadCycleStateDeserializer {
 
 impl ThreadCycleStateDeserializer {
     /// Creates a new `ThreadCycleStateDeserializer`
-    pub fn new() -> Self {
+    pub fn new(thread_count: u8, max_bootstrap_pos_entries: u32) -> Self {
         ThreadCycleStateDeserializer {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_BOOTSTRAP_POS_ENTRIES),
+                Included(max_bootstrap_pos_entries),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Included(thread_count)),
             ),
             roll_update_deserializer: RollUpdateDeserializer::new(),
             address_deserializer: AddressDeserializer::new(),
         }
-    }
-}
-
-impl Default for ThreadCycleStateDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

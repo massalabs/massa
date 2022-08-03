@@ -709,6 +709,7 @@ impl NetworkWorker {
             let endorsement_count = self.cfg.endorsement_count;
             let max_advertise_length = self.cfg.max_peer_advertise_length;
             let max_endorsements_per_message = self.cfg.max_endorsements_per_message;
+            let max_operations_per_message = self.cfg.max_operations_per_message;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
                     let mut writer = WriteBinder::new(writer, max_bytes_read);
@@ -721,6 +722,7 @@ impl NetworkWorker {
                             max_advertise_length,
                             max_ask_blocks,
                             max_operations_per_block,
+                            max_operations_per_message,
                             max_endorsements_per_message,
                         ),
                     );

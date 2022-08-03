@@ -16,7 +16,8 @@ use enum_map::EnumMap;
 use massa_hash::Hash;
 use massa_models::constants::{
     ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
+    THREAD_COUNT,
 };
 use massa_models::EndorsementSerializer;
 use massa_models::{node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, Slot};
@@ -77,6 +78,7 @@ async fn test_node_worker_shutdown() {
             MAX_ADVERTISE_LENGTH,
             MAX_ASK_BLOCKS_PER_MESSAGE,
             MAX_OPERATIONS_PER_BLOCK,
+            MAX_OPERATIONS_PER_MESSAGE,
             MAX_ENDORSEMENTS_PER_MESSAGE,
         ),
     );
@@ -143,6 +145,7 @@ async fn test_node_worker_operations_message() {
             MAX_ADVERTISE_LENGTH,
             MAX_ASK_BLOCKS_PER_MESSAGE,
             MAX_OPERATIONS_PER_BLOCK,
+            MAX_OPERATIONS_PER_MESSAGE,
             MAX_ENDORSEMENTS_PER_MESSAGE,
         ),
     );

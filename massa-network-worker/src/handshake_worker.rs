@@ -11,13 +11,16 @@ use super::{
 use futures::future::try_join;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::{constants::MAX_ASK_BLOCKS_PER_MESSAGE, node::NodeId};
 use massa_models::{
     constants::{
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
         MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
     },
     Version,
+};
+use massa_models::{
+    constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_OPERATIONS_PER_MESSAGE},
+    node::NodeId,
 };
 use massa_network_exports::{
     throw_handshake_error as throw, ConnectionId, HandshakeErrorType, NetworkError, ReadHalf,
@@ -96,6 +99,7 @@ impl HandshakeWorker {
                             MAX_ADVERTISE_LENGTH,
                             MAX_ASK_BLOCKS_PER_MESSAGE,
                             MAX_OPERATIONS_PER_BLOCK,
+                            MAX_OPERATIONS_PER_MESSAGE,
                             MAX_ENDORSEMENTS_PER_MESSAGE,
                         ),
                     ),

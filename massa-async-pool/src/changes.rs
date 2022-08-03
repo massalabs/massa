@@ -151,7 +151,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new();
+    /// let deserializer = AsyncPoolChangesDeserializer::new(32);
     /// serializer.serialize(&changes, &mut serialized).unwrap();
     /// let (rest, changes_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
