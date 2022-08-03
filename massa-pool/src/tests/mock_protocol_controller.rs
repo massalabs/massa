@@ -63,7 +63,7 @@ impl MockProtocolController {
         self.pool_event_tx
             .send(ProtocolPoolEvent::ReceivedEndorsements {
                 endorsements,
-                propagate: false,
+                propagate: true,
             })
             .await
             .expect("could not send protocol pool event");
