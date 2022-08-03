@@ -790,7 +790,7 @@ async fn test_block_not_found() {
 
             // reply with block not found
             network_command_sender
-                .block_not_found(conn1_id, wanted_hash)
+                .send_block_info(conn1_id, vec![(wanted_hash,  ReplyForBlocksInfo::NotFound)])
                 .await
                 .unwrap();
 
@@ -803,8 +803,12 @@ async fn test_block_not_found() {
                 tokio::select! {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
-                        if let Message::BlockNotFound(hash) = evt {assert_eq!(hash, wanted_hash);
-                            break;
+                        if let Message::ReplyForBlocks(mut info) = evt {
+                            let info = info.pop().unwrap();
+                            assert_eq!(info.0, wanted_hash);
+                            if let ReplyForBlocksInfo::NotFound = info.1 {
+                                break;
+                            }
                         }
                     },
                     _ = &mut timer => panic!("timeout reached waiting for message")
@@ -975,7 +979,7 @@ async fn test_retry_connection_closed() {
 
             // Send a command for a node not found in active.
             network_command_sender
-                .block_not_found(node_id, get_dummy_block_id("default_val"))
+                .send_block_info(node_id, vec![])
                 .await
                 .unwrap();
 

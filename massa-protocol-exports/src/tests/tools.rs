@@ -16,7 +16,7 @@ use massa_models::{
 use massa_models::{
     BlockHeaderSerializer, Endorsement, EndorsementSerializer, Operation, OperationType,
 };
-use massa_network_exports::{AskForBlocksInfo, NetworkCommand};
+use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -174,7 +174,10 @@ pub async fn send_and_propagate_block(
     let expected_hash = block.id;
 
     // Send block to protocol.
-    network_controller.send_block(source_node_id, block).await;
+    let info = vec![(block.id, BlockInfoReply::Operations(Default::default()))];
+    network_controller
+        .send_block_info(source_node_id, info)
+        .await;
 
     // Check protocol sends block to consensus.
     let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {

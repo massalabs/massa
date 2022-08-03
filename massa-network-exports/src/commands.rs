@@ -86,8 +86,6 @@ use tokio::sync::oneshot;
 pub enum NodeCommand {
     /// Send given peer list to node.
     SendPeerList(Vec<IpAddr>),
-    /// Send that block to node.
-    SendBlock(BlockId),
     /// Send info about the content of a block to a node.
     SendBlockInfo {
         /// block id
@@ -103,8 +101,6 @@ pub enum NodeCommand {
     ReplyForBlocks(Vec<(BlockId, ReplyForBlocksInfo)>),
     /// Close the node worker.
     Close(ConnectionClosureReason),
-    /// Block not found
-    BlockNotFound(BlockId),
     /// Send full Operations (send to a node that previously asked for)
     SendOperations(OperationIds),
     /// Send a batch of operation ids
@@ -125,16 +121,12 @@ pub enum NodeEventType {
     AskedPeerList,
     /// Node we are connected to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
-    /// Node we are connected to sent block
-    ReceivedBlock(WrappedBlock),
     /// Node we are connected to sent block header
     ReceivedBlockHeader(WrappedHeader),
     /// Node we are connected asked for info on a list of blocks.
     ReceivedAskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
     /// Node we are connected sent info on a list of blocks.
     ReceivedReplyForBlocks(Vec<(BlockId, ReplyForBlocksInfo)>),
-    /// Didn't found given block,
-    BlockNotFound(BlockId),
     /// Info about the contents of a block.
     ReceivedBlockInfo {
         block_id: BlockId,
@@ -184,13 +176,6 @@ pub enum NetworkCommand {
         /// node to block ids
         list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>>,
     },
-    /// Send that block to node.
-    SendBlock {
-        /// to node id
-        node: NodeId,
-        /// block id
-        block_id: BlockId,
-    },
     /// Send info about the content of a block to a node.
     SendBlockInfo {
         /// to node id
@@ -217,13 +202,6 @@ pub enum NetworkCommand {
     NodeUnbanByIds(Vec<NodeId>),
     /// Unban a list of peer by their ip address
     NodeUnbanByIps(Vec<IpAddr>),
-    /// Send a message that a block is not found to a node
-    BlockNotFound {
-        /// to node id
-        node: NodeId,
-        /// block id
-        block_id: BlockId,
-    },
     /// Send endorsements to a node
     SendEndorsements {
         /// to node id
@@ -290,13 +268,6 @@ pub enum NetworkEvent {
     NewConnection(NodeId),
     /// connection to node was closed
     ConnectionClosed(NodeId),
-    /// A block was received
-    ReceivedBlock {
-        /// from node id
-        node: NodeId,
-        /// block
-        block: WrappedBlock,
-    },
     /// Info about a block was received
     ReceivedBlockInfo {
         /// from node id
@@ -317,13 +288,6 @@ pub enum NetworkEvent {
         node: NodeId,
         /// asked blocks
         list: Vec<(BlockId, AskForBlocksInfo)>,
-    },
-    /// That node does not have this block
-    BlockNotFound {
-        /// node id
-        node: NodeId,
-        /// block id
-        block_id: BlockId,
     },
     /// Receive previously asked Operation
     ReceivedOperations {

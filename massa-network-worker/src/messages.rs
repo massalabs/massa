@@ -47,8 +47,6 @@ pub enum Message {
         block_id: BlockId,
         operation_list: OperationIds,
     },
-    /// Whole block structure.
-    Block(WrappedBlock),
     /// Block header
     BlockHeader(WrappedHeader),
     /// Message asking the peer for info on a list of blocks.
@@ -62,8 +60,6 @@ pub enum Message {
     /// If the ip of the node that sent that message is routable,
     /// it is the first ip of the list.
     PeerList(Vec<IpAddr>),
-    /// Block not found
-    BlockNotFound(BlockId),
     /// Batch of operation ids
     OperationsAnnouncement(OperationPrefixIds),
     /// Someone ask for operations.
@@ -78,19 +74,17 @@ pub enum Message {
 #[repr(u32)]
 pub(crate) enum MessageTypeId {
     HandshakeInitiation = 0u32,
-    HandshakeReply = 1,
-    Block = 2,
-    BlockHeader = 3,
-    AskForBlocks = 4,
-    AskPeerList = 5,
-    PeerList = 6,
-    BlockNotFound = 7,
-    Operations = 8,
-    Endorsements = 9,
-    AskForOperations = 10,
-    OperationsAnnouncement = 11,
-    BlockInfo = 12,
-    ReplyForBlocks = 13,
+    HandshakeReply,
+    BlockHeader,
+    AskForBlocks,
+    AskPeerList,
+    PeerList,
+    Operations,
+    Endorsements,
+    AskForOperations,
+    OperationsAnnouncement,
+    BlockInfo,
+    ReplyForBlocks,
 }
 
 /// For more details on how incoming objects are checked for validity at this stage,
@@ -113,10 +107,6 @@ impl SerializeCompact for Message {
             Message::HandshakeReply { signature } => {
                 res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
                 res.extend(signature.to_bytes());
-            }
-            Message::Block(block) => {
-                res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
-                WrappedSerializer::new().serialize(block, &mut res)?;
             }
             Message::BlockHeader(header) => {
                 res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
@@ -157,10 +147,6 @@ impl SerializeCompact for Message {
                 for ip in ip_vec {
                     ip_serializer.serialize(ip, &mut res)?
                 }
-            }
-            Message::BlockNotFound(hash) => {
-                res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
-                res.extend(hash.to_bytes());
             }
             Message::AskForOperations(operation_ids) => {
                 res.extend(u32::from(MessageTypeId::AskForOperations).to_varint_bytes());
@@ -236,13 +222,6 @@ impl DeserializeCompact for Message {
                 cursor += SIGNATURE_SIZE_BYTES;
                 Message::HandshakeReply { signature }
             }
-            MessageTypeId::Block => {
-                let (rest, block): (&[u8], WrappedBlock) =
-                    WrappedDeserializer::new(BlockDeserializer::new())
-                        .deserialize(&buffer[cursor..])?;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::Block(block)
-            }
             MessageTypeId::BlockHeader => {
                 let (rest, header): (&[u8], WrappedHeader) =
                     WrappedDeserializer::new(BlockHeaderDeserializer::new())
@@ -301,11 +280,6 @@ impl DeserializeCompact for Message {
                     peers.push(ip);
                 }
                 Message::PeerList(peers)
-            }
-            MessageTypeId::BlockNotFound => {
-                let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-                cursor += BLOCK_ID_SIZE_BYTES;
-                Message::BlockNotFound(b_id)
             }
             MessageTypeId::Operations => {
                 let (rest, operations) =

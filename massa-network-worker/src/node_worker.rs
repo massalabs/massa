@@ -54,7 +54,6 @@ pub struct NodeWorker {
 #[allow(clippy::large_enum_variant)]
 pub enum ToSend {
     Msg(Message),
-    Block(BlockId),
     Header(BlockId),
     AskForBlocksInfo(Vec<(BlockId, AskForBlocksInfo)>),
     ReplyForBlocksInfo(Vec<(BlockId, ReplyForBlocksInfo)>),
@@ -158,18 +157,6 @@ impl NodeWorker {
                             // TODO: create message.
                             ToSend::AskForBlocksInfo(ask_list) => Vec::new(),
                             ToSend::ReplyForBlocksInfo(reply_list) => Vec::new(),
-                            ToSend::Block(block_id) => {
-                                // Construct the message,
-                                // using the serialized block retrieved from shared storage.
-                                let mut res: Vec<u8> = Vec::new();
-                                res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
-                                let block = storage
-                                    .retrieve_block(&block_id)
-                                    .ok_or(NetworkError::MissingBlock)?;
-                                let stored_block = block.read();
-                                res.extend(&stored_block.serialized_data);
-                                res
-                            }
                             ToSend::Header(block_id) => {
                                 // Construct the message,
                                 // using the serialized header retrieved from shared storage.
@@ -290,13 +277,6 @@ impl NodeWorker {
                         massa_trace!(
                             "node_worker.run_loop. receive self.socket_reader.next()", {"index": index});
                         match msg {
-                            Message::Block(block) => {
-                                massa_trace!(
-                                    "node_worker.run_loop. receive Message::Block",
-                                    {"block_id": block.id.hash(), "block": block, "node": self.node_id}
-                                );
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
-                            },
                             Message::BlockInfo {block_id, operation_list } => {
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockInfo{block_id, operation_list})).await;
                             },
@@ -321,10 +301,6 @@ impl NodeWorker {
                             }
                             Message::AskPeerList => {
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::AskedPeerList)).await;
-                            }
-                            Message::BlockNotFound(hash) => {
-                                massa_trace!("node_worker.run_loop. receive Message::BlockNotFound", {"hash": hash, "node": self.node_id});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))).await;
                             }
                             Message::Operations(operations) => {
                                 massa_trace!(
@@ -386,13 +362,6 @@ impl NodeWorker {
                                 break;
                             }
                         },
-                        Some(NodeCommand::SendBlock(block_id)) => {
-                            massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block_id, "node": self.node_id});
-                            if self.try_send_to_node(&writer_command_tx, ToSend::Block(block_id)).is_err() {
-                                break;
-                            }
-                            trace!("after sending Message::Block from writer_command_tx in node_worker run_loop");
-                        },
                         Some(NodeCommand::SendBlockInfo {block_id, operation_list }) => {
                             massa_trace!("node_worker.run_loop. send Message::BlockInfo", {"hash": block_id, "node": self.node_id});
                             if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::BlockInfo{ block_id, operation_list })).is_err() {
@@ -416,12 +385,6 @@ impl NodeWorker {
                                 if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::ReplyForBlocks(to_send_list.to_vec()))).is_err() {
                                     break 'select_loop;
                                 }
-                            }
-                        },
-                        Some(NodeCommand::BlockNotFound(hash)) => {
-                            massa_trace!("node_worker.run_loop. send Message::BlockNotFound", {"hash": hash, "node": self.node_id});
-                            if self.try_send_to_node(&writer_command_tx, ToSend::Msg(Message::BlockNotFound(hash))).is_err() {
-                                break;
                             }
                         },
                         Some(NodeCommand::SendOperations(operations)) => {

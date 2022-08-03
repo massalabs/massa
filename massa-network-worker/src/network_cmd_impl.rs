@@ -208,26 +208,6 @@ pub async fn on_ask_for_block_cmd(
     }
 }
 
-pub async fn on_send_block_cmd(
-    worker: &mut NetworkWorker,
-    node: NodeId,
-    block_id: BlockId,
-) -> Result<(), NetworkError> {
-    massa_trace!(
-        "network_worker.manage_network_command send NodeCommand::SendBlock",
-        {"hash": block_id, "node": node}
-    );
-    worker
-        .event
-        .forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::SendBlock(block_id),
-        )
-        .await;
-    Ok(())
-}
-
 pub async fn on_send_block_info_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
@@ -256,21 +236,6 @@ pub async fn on_get_bootstrap_peers_cmd(
     if response_tx.send(BootstrapPeers(peer_list)).is_err() {
         warn!("network: could not send GetBootstrapPeers response upstream");
     }
-}
-
-pub async fn on_block_not_found_cmd(worker: &mut NetworkWorker, node: NodeId, block_id: BlockId) {
-    massa_trace!(
-        "network_worker.manage_network_command receive NetworkCommand::BlockNotFound",
-        { "block_id": block_id, "node": node }
-    );
-    worker
-        .event
-        .forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::BlockNotFound(block_id),
-        )
-        .await;
 }
 
 pub async fn on_send_endorsements_cmd(

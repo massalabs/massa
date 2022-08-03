@@ -1049,12 +1049,6 @@ impl ProtocolWorker {
                     self.update_ask_block(block_ask_timer).await?;
                 }
             }
-            NetworkEvent::ReceivedBlock {
-                node: from_node_id,
-                block,
-            } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
-            }
             NetworkEvent::ReceivedBlockInfo {
                 node: from_node_id,
                 info,
@@ -1313,18 +1307,6 @@ impl ProtocolWorker {
                     );
                     let _ = self.ban_node(&source_node_id).await;
                 }
-            }
-            NetworkEvent::BlockNotFound { node, block_id } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.block_not_found", { "node": node, "block_id": block_id});
-                if let Some(info) = self.active_nodes.get_mut(&node) {
-                    info.insert_known_blocks(
-                        &[block_id],
-                        false,
-                        Instant::now(),
-                        self.protocol_settings.max_node_known_blocks_size,
-                    );
-                }
-                self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
