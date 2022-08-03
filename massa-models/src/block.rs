@@ -727,7 +727,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                                         .deserialize(input)
                                         .map(|(rest, hash)| (rest, BlockId(hash)))
                                 }),
-                                thread_count as usize,
+                                THREAD_COUNT as usize,
                             ),
                         ),
                     )),

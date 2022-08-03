@@ -10,7 +10,7 @@ use massa_models::{Address, Amount, ModelsError};
 use massa_models::{AmountDeserializer, Slot};
 use massa_serialization::{DeserializeError, Deserializer};
 use nom::AsBytes;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound::Included;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.

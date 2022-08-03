@@ -14,11 +14,11 @@ use nom::sequence::tuple;
 use rocksdb::{
     ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::ops::Bound;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::{collections::BTreeMap, path::PathBuf, BTreeSet, HashMap};
 
 #[cfg(feature = "testing")]
 use massa_models::{address::AddressDeserializer, Amount, AmountDeserializer};
@@ -243,7 +243,7 @@ impl LedgerDB {
     /// # Returns
     /// A BTreeSet of the datastore keys
     pub fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
