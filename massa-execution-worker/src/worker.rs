@@ -49,6 +49,8 @@ pub(crate) struct ExecutionThread {
     execution_state: Arc<RwLock<ExecutionState>>,
     /// queue for read-only requests and response MPSCs to send back their outputs
     readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
+    /// Selector controller
+    selector: Box<dyn SelectorController>,
 }
 
 impl ExecutionThread {
@@ -63,6 +65,7 @@ impl ExecutionThread {
         config: ExecutionConfig,
         input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
         execution_state: Arc<RwLock<ExecutionState>>,
+        selector: Box<dyn SelectorController>,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
         let final_cursor = execution_state.read().final_cursor;
@@ -79,6 +82,7 @@ impl ExecutionThread {
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
             config,
             execution_state,
+            selector,
         }
     }
 
@@ -146,6 +150,13 @@ impl ExecutionThread {
                 // Add it to the list of final slots ready for execution
                 self.ready_final_slots.insert(slot, None);
                 self.last_ready_final_slot = slot;
+
+                warn!(
+                    "address {} missed a production opportunity at slot {} (cycle {})",
+                    self.selector.get_producer(slot).unwrap(),
+                    slot,
+                    slot.get_cycle(self.config.periods_per_cycle)
+                );
             } else {
                 // This slot is not final:
                 // we have reached the end of the list of consecutive final slots
@@ -586,11 +597,12 @@ pub fn start_execution_worker(
     selector: Box<dyn SelectorController>,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
+    let state_selector = selector.clone();
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
         storage,
-        selector,
+        state_selector,
     )));
 
     // define the input data interface
@@ -608,7 +620,7 @@ pub fn start_execution_worker(
     // launch the execution thread
     let input_data_clone = input_data.clone();
     let thread_handle = std::thread::spawn(move || {
-        ExecutionThread::new(config, input_data_clone, execution_state).main_loop();
+        ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
     });
 
     // create a manager

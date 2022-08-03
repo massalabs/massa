@@ -5,6 +5,7 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::constants::MAX_OPERATIONS_PER_BLOCK;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
@@ -990,6 +991,11 @@ impl ProtocolWorker {
         let (seen_ops, received_operations_ids) = self
             .note_operations_from_node(operations.clone(), source_node_id, false)
             .await?;
+
+        // check block operations size
+        if received_operations_ids.len() > MAX_OPERATIONS_PER_BLOCK as usize {
+            return Ok(None);
+        }
 
         // check root hash
         {

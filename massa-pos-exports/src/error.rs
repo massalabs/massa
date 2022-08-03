@@ -1,7 +1,7 @@
 use displaydoc::Display;
 use thiserror::Error;
 
-/// pos error
+/// pos result
 pub type PosResult<T, E = PosError> = core::result::Result<T, E>;
 
 /// pos error

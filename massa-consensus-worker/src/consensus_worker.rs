@@ -338,6 +338,7 @@ impl ConsensusWorker {
         // create blocks
         if !self.cfg.disable_block_creation && observed_slot.period > 0 {
             let _cur_slot = self.next_slot;
+
             /* TODO update block and endorsement creation process
             while cur_slot <= observed_slot {
                 let block_draw = match self.pos.draw_block_producer(cur_slot) {
