@@ -27,7 +27,4 @@ pub struct FactoryConfig {
 
     /// maximal block gas
     pub max_block_gas: u64,
-
-    /// production timeout
-    pub production_timeout: MassaTime,
 }

@@ -42,10 +42,6 @@ pub struct ConsensusWorker {
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
-    /// staking keys
-    staking_keys: Map<Address, KeyPair>,
-    /// staking keys password
-    password: String,
     /// stats `(block -> tx_count, creator)`
     final_block_stats: VecDeque<(MassaTime, u64, Address)>,
     /// No idea what this is used for. My guess is one timestamp per stale block
@@ -77,8 +73,6 @@ impl ConsensusWorker {
         channels: ConsensusWorkerChannels,
         block_db: BlockGraph,
         clock_compensation: i64,
-        staking_keys: Map<Address, KeyPair>,
-        password: String,
     ) -> Result<ConsensusWorker> {
         let now = MassaTime::compensated_now(clock_compensation)?;
         let previous_slot = get_latest_block_slot_at_timestamp(
@@ -111,9 +105,6 @@ impl ConsensusWorker {
                 "{} days, {} hours, {} minutes, {} seconds remaining to genesis",
                 days, hours, mins, secs,
             )
-        }
-        for addr in staking_keys.keys() {
-            info!("Staking enabled for address: {}", addr);
         }
         massa_trace!("consensus.consensus_worker.new", {});
 
@@ -162,8 +153,6 @@ impl ConsensusWorker {
             latest_final_periods,
             clock_compensation,
             channels,
-            staking_keys,
-            password,
             final_block_stats,
             stale_block_stats: VecDeque::new(),
             stats_desync_detection_timespan,
@@ -316,6 +305,8 @@ impl ConsensusWorker {
 
         // check if there are any final blocks not produced by us
         // if none => we are probably desync
+        /*
+        TODO put this back
         #[cfg(not(feature = "sandbox"))]
         if now
             > max(self.cfg.genesis_timestamp, self.launch_time)
@@ -328,65 +319,13 @@ impl ConsensusWorker {
             warn!("desynchronization detected because the recent final block history is empty or contains only blocks produced by this node");
             let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
         }
+        */
 
         // signal tick to pool
         self.channels
             .pool_command_sender
             .update_current_slot(observed_slot)
             .await?;
-
-        // create blocks
-        if !self.cfg.disable_block_creation && observed_slot.period > 0 {
-            let _cur_slot = self.next_slot;
-
-            /* TODO update block and endorsement creation process
-            while cur_slot <= observed_slot {
-                let block_draw = match self.pos.draw_block_producer(cur_slot) {
-                    Ok(b_draw) => Some(b_draw),
-                    Err(ProofOfStakeError::PosCycleUnavailable(_)) => {
-                        massa_trace!(
-                            "consensus.consensus_worker.slot_tick.block_creator_unavailable",
-                            {}
-                        );
-                        warn!("desynchronization detected because the lookback cycle is not final at the current time");
-                        let _ = self.send_consensus_event(ConsensusEvent::NeedSync).await;
-                        None
-                    }
-                    Err(err) => return Err(err.into()),
-                };
-                if let Some(addr) = block_draw {
-                    if let Some(key) = self.staking_keys.get(&addr).cloned() {
-                        massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": key.get_public_key(), "unlocked": true });
-                        self.create_block(cur_slot, &addr, &key).await?;
-                        if let Some(next_addr_slot) =
-                            self.pos.get_next_selected_slot(self.next_slot, addr)
-                        {
-                            info!(
-                            "Next block creation slot for address {}: cycle {}, period {}, thread {}, at time {}",
-                            addr,
-                            next_addr_slot.get_cycle(self.cfg.periods_per_cycle),
-                            next_addr_slot.period,
-                            next_addr_slot.thread,
-                            match get_block_slot_timestamp(
-                                self.cfg.thread_count,
-                                self.cfg.t0,
-                                self.cfg.genesis_timestamp,
-                                next_addr_slot
-                            ) {
-                                Ok(time) => time.to_utc_string(),
-                                Err(err) =>
-                                    format!("(internal error during get_block_slot_timestamp: {})", err),
-                            }
-                        );
-                        }
-                    } else {
-                        massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "unlocked": false });
-                    }
-                }
-                cur_slot = cur_slot.get_next_slot(self.cfg.thread_count)?;
-            }
-            */
-        }
 
         self.previous_slot = Some(observed_slot);
         self.next_slot = observed_slot.get_next_slot(self.cfg.thread_count)?;
@@ -412,232 +351,6 @@ impl ConsensusWorker {
 
         Ok(())
     }
-
-    /* TODO repair
-    /// creates a block with given address
-    /// first an empty block is created then it's filled with operations
-    /// the operations are retrieved from the pool
-    /// the block is added to the graph as it it was received from the outside
-    /// so it will on go the same checks
-    ///
-    async fn create_block(
-        &mut self,
-        cur_slot: Slot,
-        creator_addr: &Address,
-        creator_keypair: &KeyPair,
-    ) -> Result<()> {
-        // get parents
-        let parents = self.block_db.get_best_parents();
-        let (_thread_parent, _thread_parent_period) = parents[cur_slot.thread as usize];
-
-        // get endorsements
-        // it is assumed that only valid endorsements in that context are selected by pool
-        let (endorsement_ids, endorsements) = (Map::default(), Vec::new());
-        if thread_parent_period > 0 {
-            let thread_parent_slot = Slot::new(thread_parent_period, cur_slot.thread);
-            let endorsement_draws = self.pos.draw_endorsement_producers(thread_parent_slot)?;
-            self.channels
-                .pool_command_sender
-                .get_endorsements(thread_parent_slot, thread_parent, endorsement_draws)
-                .await?
-                .into_iter()
-                .map(|e| ((e.id, e.content.index), e))
-                .unzip()
-        } else {
-            (Map::default(), Vec::new())
-        };
-
-        massa_trace!("consensus.create_block.get_endorsements.result", {
-            "endorsements": endorsements
-        });
-
-        // create empty block
-        let header = BlockHeader::new_wrapped(
-            BlockHeader {
-                slot: cur_slot,
-                parents: parents.iter().map(|(b, _p)| *b).collect(),
-                operation_merkle_root: Hash::compute_from(&Vec::new()[..]),
-                endorsements: endorsements.clone(),
-            },
-            BlockHeaderSerializer::new(),
-            creator_keypair,
-        )?;
-        let block: WrappedBlock = Block::new_wrapped(
-            Block {
-                header,
-                operations: Vec::new(),
-            },
-            BlockSerializer::new(),
-            creator_keypair,
-        )?;
-
-        let operation_set: Map<OperationId, (usize, u64)> = Map::default();
-        let slot = block.header.content.slot;
-
-        // initialize remaining block space and remaining operation count
-        let mut remaining_block_space = (self.cfg.max_block_size as u64)
-            .checked_sub(block.serialized_data.len() as u64)
-            .ok_or_else(|| {
-                ConsensusError::BlockCreationError(format!(
-                    "consensus config max_block_size ({}) is smaller than an empty block ({})",
-                    self.cfg.max_block_size,
-                    block.serialized_data.len()
-                ))
-            })?;
-        let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
-
-        // exclude operations that were used in block ancestry
-        let mut exclude_operations = Set::<OperationId>::default();
-        let mut ancestor_id = block.content.header.content.parents[cur_slot.thread as usize];
-        let stop_period = cur_slot
-            .period
-            .saturating_sub(self.cfg.operation_validity_periods);
-        loop {
-            let ancestor = self
-                .block_db
-                .get_active_block(&ancestor_id)
-                .ok_or_else(|| {
-                    ConsensusError::ContainerInconsistency(format!(
-                        "missing ancestor to check operation reuse for block creation: {}",
-                        ancestor_id
-                    ))
-                })?;
-            if ancestor.slot.period < stop_period {
-                break;
-            }
-            exclude_operations.extend(ancestor.operation_set.keys());
-            if ancestor.parents.is_empty() {
-                break;
-            }
-            ancestor_id = ancestor.parents[cur_slot.thread as usize].0;
-        }
-
-        // init block state accumulator
-        let mut state_accu = self
-            .block_db
-            .block_state_accumulator_init(&block.content.header, &mut self.pos)?;
-
-        // gather operations
-        let mut total_hash: Vec<u8> = Vec::new();
-        let mut operations: Vec<WrappedOperation> = Vec::new();
-        let mut operation_set: Map<OperationId, (usize, u64)> = Map::default(); // (index, validity end period)
-        let mut finished = remaining_block_space == 0
-            || remaining_operation_count == 0
-            || self.cfg.max_operations_fill_attempts == 0;
-        let mut attempts = 0;
-        let mut total_gas = 0u64;
-        while !finished {
-            // get a batch of operations
-            let operation_batch = self
-                .channels
-                .pool_command_sender
-                .send_get_operations_announcement(
-                    cur_slot,
-                    exclude_operations.clone(),
-                    self.cfg.operation_batch_size,
-                    remaining_block_space,
-                )
-                .await?;
-
-            attempts += 1;
-
-            // Finish once we receive a batch that isn't full,
-            // or if the maximum number of attempts has been reached.
-            finished = operation_batch.len() < self.cfg.operation_batch_size
-                || self.cfg.max_operations_fill_attempts == attempts;
-
-            for (op, op_size) in operation_batch.into_iter() {
-                // exclude operation from future batches
-                exclude_operations.insert(op.id);
-
-                // check that the operation fits in size
-                if op_size > remaining_block_space {
-                    continue;
-                }
-
-                // check that we have block gas left
-                let op_gas = op.get_gas_usage();
-                if total_gas.saturating_add(op_gas) > self.cfg.max_gas_per_block {
-                    // no more gas left: do not include
-                    continue;
-                }
-
-                // try to apply operation to block state
-                // on failure, the block state is not modified
-                if self
-                    .block_db
-                    .block_state_try_apply_op(
-                        &mut state_accu,
-                        &block.content.header,
-                        &op,
-                        &mut self.pos,
-                    )
-                    .is_err()
-                {
-                    continue;
-                };
-
-                // add operation
-                let op_hash = op.id.hash().into_bytes();
-                operation_set.insert(op.id, (operation_set.len(), op.content.expire_period));
-                operations.push(op);
-                remaining_block_space -= op_size;
-                remaining_operation_count -= 1;
-                total_gas += op_gas;
-                total_hash.extend(op_hash);
-
-                // check if the block still has some space
-                if remaining_block_space == 0 || remaining_operation_count == 0 {
-                    finished = true;
-                    break;
-                }
-            }
-        }
-
-        // compile resulting block
-        let header = BlockHeader::new_wrapped(
-            BlockHeader {
-                slot: cur_slot,
-                parents: parents.iter().map(|(b, _p)| *b).collect(),
-                operation_merkle_root: Hash::compute_from(&total_hash),
-                endorsements,
-            },
-            BlockHeaderSerializer::new(),
-            creator_keypair,
-        )?;
-        let block = Block::new_wrapped(
-            Block { header, operations },
-            BlockSerializer::new(),
-            creator_keypair,
-        )?;
-        let slot = block.content.header.content.slot;
-        massa_trace!("create block", { "block": block });
-        let block_id = block.id;
-
-        // Add to shared storage
-        self.block_db.storage.store_block(block);
-
-        info!(
-            "Staked block {} with address {}, at cycle {}, period {}, thread {}",
-            block_id,
-            creator_addr,
-            cur_slot.get_cycle(self.cfg.periods_per_cycle),
-            cur_slot.period,
-            cur_slot.thread
-        );
-
-        // add block to db
-        self.block_db.incoming_block(
-            block_id,
-            slot,
-            operation_set,
-            endorsement_ids,
-            Some(cur_slot),
-        )?;
-
-        Ok(())
-    }
-    */
 
     /// Channel management stuff
     /// todo delete
@@ -854,14 +567,6 @@ impl ConsensusWorker {
                     ))
                 }),
         }
-    }
-
-    /// Save the staking keys to a file
-    async fn dump_staking_keys(&self) -> Result<()> {
-        let json = serde_json::to_string(&self.staking_keys)?;
-        let encrypted_data = encrypt(&self.password, json.as_bytes())?;
-        tokio::fs::write(self.cfg.staking_keys_path.clone(), encrypted_data).await?;
-        Ok(())
     }
 
     /// retrieve stats
@@ -1166,100 +871,21 @@ impl ConsensusWorker {
                 .await?;
         }
 
-        // Produce endorsements
-        if !self.cfg.disable_block_creation {
-            /* TODO make endorsement production work again, use the opportunity to repair it !
-            // iterate on all blockclique blocks
-            for block_id in blockclique_set.into_iter() {
-                let block_slot = match self.block_db.get_active_block(&block_id) {
-                    Some(b) => b.slot,
-                    None => continue,
-                };
-                if self.endorsed_slots.contains(&block_slot) {
-                    // skip already endorsed (to prevent double stake penalty)
-                    continue;
-                }
-                // check that the block to endorse is at most one period before the last slot
-                if let Some(prev_slot) = self.previous_slot {
-                    if prev_slot.period.saturating_sub(block_slot.period) > 1 {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
-                // check endorsement draws
-                let endorsement_draws = match self.pos.draw_endorsement_producers(block_slot) {
-                    Ok(e_draws) => e_draws,
-                    Err(err) => {
-                        warn!(
-                            "could not draw endorsements at slot {}: {}",
-                            block_slot, err
-                        );
-                        Vec::new()
-                    }
-                };
-
-                // actually create endorsements
-                let mut endorsements = Map::default();
-                for (endorsement_index, addr) in endorsement_draws.into_iter().enumerate() {
-                    if let Some(key) = self.staking_keys.get(&addr) {
-                        massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
-                            { "index": endorsement_index, "addr": addr, "pubkey": key.get_public_key(), "unlocked": true });
-                        let endorsement = create_endorsement(
-                            block_slot,
-                            key,
-                            endorsement_index as u32,
-                            block_id,
-                        )?;
-                        endorsements.insert(endorsement.id, endorsement);
-                        self.endorsed_slots.insert(block_slot);
-                    } else {
-                        massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",
-                            { "index": endorsement_index, "addr": addr, "unlocked": false });
-                    }
-                }
-                // send endorsement batch to pool
-                if !endorsements.is_empty() {
-                    self.channels
-                        .pool_command_sender
-                        .add_endorsements(endorsements)
-                        .await?;
-                }
-            }
-            */
-        }
-
         // add stale blocks to stats
         let new_stale_block_ids_creators_slots = self.block_db.get_new_stale_blocks();
         let timestamp = MassaTime::compensated_now(self.clock_compensation)?;
         for (b_id, (b_creator, b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
             self.stale_block_stats.push_back(timestamp);
 
+            /*
+            TODO add this again
             let creator_addr = Address::from_public_key(&b_creator);
             if self.staking_keys.contains_key(&creator_addr) {
                 warn!("block {} that was produced by our address {} at slot {} became stale. This is probably due to a temporary desynchronization.", b_id, creator_addr, b_slot);
             }
+            */
         }
 
         Ok(())
     }
 }
-
-/* TODO repair
-/// A convenient function to create an endorsement
-/// should probably be moved to models (or fully deleted)
-pub fn create_endorsement(
-    slot: Slot,
-    keypair: &KeyPair,
-    index: u32,
-    endorsed_block: BlockId,
-) -> Result<WrappedEndorsement> {
-    let content = Endorsement {
-        slot,
-        index,
-        endorsed_block,
-    };
-    let endorsement = Endorsement::new_wrapped(content, EndorsementSerializer::new(), keypair)?;
-    Ok(endorsement)
-}
-*/

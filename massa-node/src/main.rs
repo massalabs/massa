@@ -19,6 +19,8 @@ use massa_consensus_exports::{
 use massa_consensus_worker::start_consensus_controller;
 use massa_execution_exports::{ExecutionConfig, ExecutionManager};
 use massa_execution_worker::start_execution_worker;
+use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
+use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
@@ -26,8 +28,8 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::{
         BLOCK_REWARD, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS,
-        MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-        ROLL_PRICE, T0, THREAD_COUNT, VERSION,
+        MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS,
+        PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
     },
     init_serialization_context,
     prehash::Map,
@@ -44,6 +46,7 @@ use massa_protocol_worker::start_protocol_controller;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
@@ -56,8 +59,7 @@ use tracing_subscriber::filter::{filter_fn, LevelFilter};
 mod settings;
 
 async fn launch(
-    password: &str,
-    staking_keys: &Map<Address, KeyPair>,
+    wnode_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     PoolCommandSender,
     ConsensusEventReceiver,
@@ -68,6 +70,7 @@ async fn launch(
     PoolManager,
     ProtocolManager,
     NetworkManager,
+    Box<dyn FactoryManager>,
     mpsc::Receiver<()>,
     StopHandle,
     StopHandle,
@@ -227,11 +230,28 @@ async fn launch(
             bootstrap_state.graph,
             shared_storage.clone(),
             bootstrap_state.compensation_millis,
-            password.to_string(),
-            staking_keys.to_owned(),
         )
         .await
         .expect("could not start consensus controller");
+
+    // launch factory
+    let factory_config = FactoryConfig {
+        thread_count: THREAD_COUNT,
+        genesis_timestamp: GENESIS_TIMESTAMP,
+        t0: T0,
+        clock_compensation_millis: bootstrap_state.compensation_millis,
+        initial_delay: SETTINGS.factory.initial_delay,
+        max_block_size: MAX_BLOCK_SIZE,
+        max_block_gas: MAX_GAS_PER_BLOCK,
+    };
+    let factory_channels = FactoryChannels {
+        selector: selector_controller.clone(),
+        consensus: consensus_controller.clone(),
+        pool: pool_command_sender.clone(),
+        execution: execution_controller.clone(),
+        storage: shared_storage.clone(),
+    };
+    let factory_manager = start_factory(factory_config, node_wallet, factory_channels);
 
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(
@@ -283,6 +303,7 @@ async fn launch(
         pool_manager,
         protocol_manager,
         network_manager,
+        factory_manager,
         api_private_stop_rx,
         api_private_handle,
         api_public_handle,
@@ -297,6 +318,7 @@ struct Managers {
     pool_manager: PoolManager,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
+    factory_manager: Box<dyn FactoryManager>,
 }
 
 async fn stop(
@@ -309,6 +331,7 @@ async fn stop(
         pool_manager,
         protocol_manager,
         network_manager,
+        factory_manager,
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -326,6 +349,9 @@ async fn stop(
 
     // stop private API
     api_private_handle.stop();
+
+    // stop factory
+    factory_manager.stop();
 
     // stop consensus controller
     let protocol_event_receiver = consensus_manager
@@ -364,36 +390,25 @@ struct Args {
     password: Option<String>,
 }
 
-/// Ask for the staking keys file password and load them
-async fn load_or_create_staking_keys_file(
-    password: Option<String>,
-    path: &Path,
-) -> anyhow::Result<(String, Map<Address, KeyPair>)> {
-    if path.is_file() {
-        let password = password.unwrap_or_else(|| {
+/// Load wallet, asking for passwords if necessary
+fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLock<Wallet>>> {
+    let password = if path.is_file() {
+        password.unwrap_or_else(|| {
             Password::new()
                 .with_prompt("Enter staking keys file password")
                 .interact()
                 .expect("IO error: Password reading failed, staking keys file couldn't be unlocked")
-        });
-        let (_version, decrypted_data) = decrypt(&password, &tokio::fs::read(path).await?)?;
-        let staking_keys: anyhow::Result<Map<Address, KeyPair>> = Ok(serde_json::from_slice::<
-            Map<Address, KeyPair>,
-        >(&decrypted_data)?);
-        Ok((password, staking_keys?))
+        })
     } else {
-        let password = password.unwrap_or_else(|| {
+        password.unwrap_or_else(|| {
             Password::new()
                 .with_prompt("Enter new password for staking keys file")
                 .with_confirmation("Confirm password", "Passwords mismatching")
                 .interact()
                 .expect("IO error: Password reading failed, staking keys file couldn't be created")
-        });
-        let json = serde_json::to_string_pretty(&Map::<Address, KeyPair>::default())?;
-        let encrypted_data = encrypt(&password, json.as_bytes())?;
-        tokio::fs::write(path, encrypted_data).await?;
-        Ok((password, Map::default()))
-    }
+        })
+    };
+    Ok(Arc::new(RwLock::new(Wallet::new(path, password)?)))
 }
 
 /// To instrument `massa-node` with `tokio-console` run
@@ -435,10 +450,10 @@ async fn main(args: Args) -> anyhow::Result<()> {
         std::process::exit(1);
     }));
 
-    // run
-    let (password, staking_keys) =
-        load_or_create_staking_keys_file(args.password, &SETTINGS.consensus.staking_keys_path)
-            .await?;
+    // load or create wallet, asking for password if necessary
+
+    let node_wallet = load_wallet(args.password, &SETTINGS.consensus.staking_keys_path)?;
+
     loop {
         let (
             _,
@@ -450,10 +465,11 @@ async fn main(args: Args) -> anyhow::Result<()> {
             pool_manager,
             protocol_manager,
             network_manager,
+            factory_manager,
             mut api_private_stop_rx,
             api_private_handle,
             api_public_handle,
-        ) = launch(&password, &staking_keys).await;
+        ) = launch(node_wallet).await;
 
         // interrupt signal listener
         let stop_signal = signal::ctrl_c();
@@ -498,6 +514,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
                 pool_manager,
                 protocol_manager,
                 network_manager,
+                factory_manager,
             },
             api_private_handle,
             api_public_handle,

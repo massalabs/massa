@@ -27,8 +27,6 @@ pub async fn start_consensus_controller(
     boot_graph: Option<BootstrapableGraph>,
     storage: Storage,
     clock_compensation: i64,
-    password: String,
-    staking_keys: Map<Address, KeyPair>,
 ) -> Result<(
     ConsensusCommandSender,
     ConsensusEventReceiver,
@@ -85,8 +83,6 @@ pub async fn start_consensus_controller(
             },
             block_db,
             clock_compensation,
-            staking_keys,
-            password,
         )
         .await?
         .run_loop()
