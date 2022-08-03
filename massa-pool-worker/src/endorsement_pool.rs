@@ -43,7 +43,7 @@ impl EndorsementPool {
         self.last_cs_final_periods = final_cs_periods.clone();
 
         // remove old endorsements
-        let removed: Set<EndorsementId> = Default::default();
+        let mut removed: Set<EndorsementId> = Default::default();
         for thread in 0..self.config.thread_count {
             while let Some((target_slot, target_block, index)) =
                 self.endorsements_sorted[thread as usize].first().copied()
@@ -77,7 +77,7 @@ impl EndorsementPool {
             endo_refs
                 .iter()
                 .zip(items.iter())
-                .for_each(|(endo_ref, id)| {
+                .for_each(|(endo_ref, _id)| {
                     let endo = endo_ref.expect(
                         "attempting to add endorsement to pool, but it is absent from storage",
                     );
@@ -129,8 +129,8 @@ impl EndorsementPool {
 
         // take ownership on added endorsements
         self.storage.extend(endorsement_storage.split_off(
-            &Set::with_hasher(BuildMap::default()),
-            &Set::with_hasher(BuildMap::default()),
+            &Default::default(),
+            &Default::default(),
             &added,
         ));
 

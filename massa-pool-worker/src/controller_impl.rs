@@ -6,9 +6,9 @@ use std::sync::{Arc, RwLock};
 use crate::{endorsement_pool::EndorsementPool, operation_pool::OperationPool};
 #[derive(Clone)]
 pub struct PoolControllerImpl {
-    config: PoolConfig,
-    operation_pool: Arc<RwLock<OperationPool>>,
-    endorsement_pool: Arc<RwLock<EndorsementPool>>,
+    pub(crate) config: PoolConfig,
+    pub(crate) operation_pool: Arc<RwLock<OperationPool>>,
+    pub(crate) endorsement_pool: Arc<RwLock<EndorsementPool>>,
 }
 
 impl PoolController for PoolControllerImpl {

@@ -39,7 +39,7 @@ impl ExecutedOps {
 
     /// Prune all operations that expire strictly before max_slot
     pub fn prune(&mut self, max_slot: Slot) {
-        // TODO maybe use slot-sorted structure for more efficient pruning (this has a linear complexity currently)
+        // TODO use slot-sorted structure for more efficient pruning (this has a linear complexity currently)
         self.0
             .retain(|_id, last_valid_slot| *last_valid_slot >= max_slot);
     }

@@ -12,5 +12,7 @@ mod operation_pool;
 mod run;
 mod types;
 
+pub use run::start_pool;
+
 #[cfg(test)]
 mod tests;

@@ -10,6 +10,7 @@ num = "0.4"
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_pool_exports = { path = "../massa-pool-exports" }
+massa_execution_exports = { path = "../massa-execution-exports" }
 
 [dev-dependencies]
 serial_test = "0.8"

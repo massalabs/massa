@@ -38,7 +38,7 @@ use massa_models::{
 use massa_network_exports::{Establisher, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolConfig, PoolController, PoolManager};
-use massa_pool_worker::start_pool_controller;
+use massa_pool_worker::start_pool;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::ProtocolManager;
@@ -59,7 +59,7 @@ use tracing_subscriber::filter::{filter_fn, LevelFilter};
 mod settings;
 
 async fn launch(
-    wnode_wallet: Arc<RwLock<Wallet>>,
+    node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
     PoolCommandSender,
     ConsensusEventReceiver,
@@ -67,7 +67,7 @@ async fn launch(
     ConsensusManager,
     Box<dyn ExecutionManager>,
     Box<dyn SelectorManager>,
-    PoolManager,
+    Box<dyn PoolController>,
     ProtocolManager,
     NetworkManager,
     Box<dyn FactoryManager>,
@@ -169,22 +169,6 @@ async fn launch(
     .await
     .expect("could not start protocol controller");
 
-    // launch pool controller
-    let pool_config = PoolConfig {
-        thread_count: THREAD_COUNT,
-        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-        max_operation_pool_size_per_thread: SETTINGS.pool.max_operation_pool_size_per_thread,
-        max_endorements_pool_size_per_thread: SETTINGS.pool.max_endorements_pool_size_per_thread,
-    };
-    let (pool_command_sender, pool_manager) = start_pool_controller(
-        pool_config,
-        protocol_command_sender.clone(),
-        protocol_pool_event_receiver,
-        shared_storage.clone(),
-    )
-    .await
-    .expect("could not start pool controller");
-
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
         max_draw_cache: SETTINGS.selector.max_draw_cache,
@@ -219,6 +203,24 @@ async fn launch(
         shared_storage.clone(),
         selector_controller.clone(),
     );
+
+    // launch pool controller
+    let pool_config = PoolConfig {
+        thread_count: THREAD_COUNT,
+        max_block_size: MAX_BLOCK_SIZE,
+        max_block_gas: MAX_GAS_PER_BLOCK,
+        roll_price: ROLL_PRICE,
+        max_block_endorsement_count: ENDORSEMENT_COUNT,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        max_operation_pool_size_per_thread: SETTINGS.pool.max_operation_pool_size_per_thread,
+        max_endorements_pool_size_per_thread: SETTINGS.pool.max_endorements_pool_size_per_thread,
+    };
+    let pool_controller = start_pool(
+        pool_config,
+        storage.clone_without_refs(),
+        execution_controller.clone(),
+    );
+    let pool_manager = pool_controller.clone();
 
     // init consensus configuration
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
@@ -304,9 +306,9 @@ async fn launch(
         consensus_event_receiver,
         bootstrap_manager,
         consensus_manager,
+        pool_manager,
         execution_manager,
         selector_manager,
-        pool_manager,
         protocol_manager,
         network_manager,
         factory_manager,
@@ -321,7 +323,7 @@ struct Managers {
     consensus_manager: ConsensusManager,
     execution_manager: Box<dyn ExecutionManager>,
     selector_manager: Box<dyn SelectorManager>,
-    pool_manager: PoolManager,
+    pool_manager: Box<dyn PoolController>,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
     factory_manager: Box<dyn FactoryManager>,
@@ -364,6 +366,10 @@ async fn stop(
         .stop(consensus_event_receiver)
         .await
         .expect("consensus shutdown failed");
+
+    // stop pool
+    //TODO make a proper manager
+    mem::drop(pool_manager);
 
     // stop execution controller
     execution_manager.stop();

@@ -2040,6 +2040,7 @@ version = "0.1.0"
 dependencies = [
  "futures 0.3.21",
  "lazy_static",
+ "massa_execution_exports",
  "massa_hash",
  "massa_models",
  "massa_pool_exports",

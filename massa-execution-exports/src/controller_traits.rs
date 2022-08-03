@@ -8,9 +8,11 @@ use crate::ExecutionError;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
+use massa_models::prehash::Set;
 use massa_models::Address;
 use massa_models::Amount;
 use massa_models::BlockId;
+use massa_models::OperationId;
 use massa_models::Slot;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
@@ -82,6 +84,9 @@ pub trait ExecutionController: Send + Sync {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError>;
+
+    /// List which operations inside the provided list were not executed
+    fn unexecuted_ops_among(&self, ops: &Set<OperationId>) -> Set<OperationId>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

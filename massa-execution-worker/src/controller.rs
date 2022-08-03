@@ -11,8 +11,8 @@ use massa_execution_exports::{
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
-use massa_models::{Address, Amount};
+use massa_models::prehash::{Map, Set};
+use massa_models::{Address, Amount, OperationId};
 use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::{BTreeSet, HashMap};
@@ -183,6 +183,11 @@ impl ExecutionController for ExecutionControllerImpl {
                 err
             ))),
         }
+    }
+
+    /// List which operations inside the provided list were not executed
+    fn unexecuted_ops_among(&self, ops: &Set<OperationId>) -> Set<OperationId> {
+        self.execution_state.read().unexecuted_ops_among(&ops)
     }
 
     /// Returns a boxed clone of self.

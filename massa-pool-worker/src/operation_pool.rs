@@ -1,5 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_execution_exports::ExecutionController;
 use massa_models::{
     prehash::{BuildMap, Map, Set},
     Address, Amount, OperationId, Slot,
@@ -15,29 +16,37 @@ use crate::types::{build_cursor, OperationInfo};
 
 pub struct OperationPool {
     /// config
-    pub config: PoolConfig,
+    config: PoolConfig,
 
     /// operations sorted by decreasing quality, per thread
-    pub sorted_ops_per_thread: Vec<BTreeMap<PoolOperationCursor, OperationInfo>>,
+    sorted_ops_per_thread: Vec<BTreeMap<PoolOperationCursor, OperationInfo>>,
 
     /// operations sorted by increasing expiration slot
-    pub ops_per_expiration: BTreeSet<(Slot, PoolOperationCursor)>,
+    ops_per_expiration: BTreeSet<(Slot, PoolOperationCursor)>,
 
-    /// storage
-    pub storage: Storage,
+    /// storage instance
+    storage: Storage,
+
+    /// execution controller
+    execution_controller: Box<dyn ExecutionController>,
 
     /// last consensus final periods, per thread
-    pub last_cs_final_periods: Vec<u64>,
+    last_cs_final_periods: Vec<u64>,
 }
 
 impl OperationPool {
-    pub fn init(config: PoolConfig, storage: Storage) -> Self {
+    pub fn init(
+        config: PoolConfig,
+        storage: Storage,
+        execution_controller: Box<dyn ExecutionController>,
+    ) -> Self {
         OperationPool {
             sorted_ops_per_thread: vec![Default::default(); config.thread_count as usize],
             ops_per_expiration: Default::default(),
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             config,
             storage,
+            execution_controller,
         }
     }
 
@@ -47,7 +56,7 @@ impl OperationPool {
         self.last_cs_final_periods = final_cs_periods.clone();
 
         // prune old ops
-        let removed_ops: Set<_> = Default::default();
+        let mut removed_ops: Set<_> = Default::default();
         while let Some((expire_slot, key)) = self.ops_per_expiration.first().copied() {
             if expire_slot.period > self.last_cs_final_periods[expire_slot.thread as usize] {
                 break;
@@ -103,7 +112,7 @@ impl OperationPool {
                 let key = build_cursor(op);
                 // thread index won't panic because it was checked at op production or deserialization
                 match self.sorted_ops_per_thread[op.thread as usize].entry(key) {
-                    btree_map::Entry::Occupied(occ) => {}
+                    btree_map::Entry::Occupied(_) => {}
                     btree_map::Entry::Vacant(vac) => {
                         self.ops_per_expiration
                             .insert((Slot::new(*op_validity.end(), op.thread), key));
@@ -134,9 +143,9 @@ impl OperationPool {
 
         // take ownership on added ops
         self.storage.extend(ops_storage.split_off(
-            &Set::with_hasher(BuildMap::default()),
+            &Default::default(),
             &added,
-            &Set::with_hasher(BuildMap::default()),
+            &Default::default(),
         ));
 
         // drop removed ops from storage
@@ -154,8 +163,6 @@ impl OperationPool {
         let mut remaining_gas = self.config.max_block_gas;
         // cache of sequential balances
         let mut sequential_balance_cache: Map<Address, Amount> = Default::default();
-        // list of previously excluded operation IDs
-        let executed_ops = self.execution.get_executed_ops();
 
         // iterate over pool operations in the right thread, from best to worst
         for (_cursor, op_info) in self.sorted_ops_per_thread[slot.thread as usize].iter() {
@@ -174,17 +181,23 @@ impl OperationPool {
                 continue;
             }
 
-            // exclude ops that have been executed previously
-            if executed_ops.contains(&op_info.id) {
+            // check if the op was already executed
+            // TOOD batch this
+            if self
+                .execution_controller
+                .unexecuted_ops_among(&vec![op_info.id].into_iter().collect())
+                .is_empty()
+            {
                 continue;
             }
 
             // check sequential balance
-            let mut creator_seq_balance = sequential_balance_cache
+            let creator_seq_balance = sequential_balance_cache
                 .entry(op_info.creator_address)
                 .or_insert_with(|| {
-                    self.execution
-                        .get_sequential_balance(&op_info.creator_address)
+                    self.execution_controller
+                        .get_final_and_active_parallel_balance(vec![op_info.creator_address])[0]
+                        .1
                         .unwrap_or_default()
                 });
             if *creator_seq_balance < op_info.max_sequential_spending {

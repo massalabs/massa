@@ -20,8 +20,8 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
-use massa_models::{Address, BlockId, OperationType, WrappedOperation};
+use massa_models::prehash::{Map, Set};
+use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::Interface;
@@ -1139,11 +1139,40 @@ impl ExecutionState {
             Some(c) => c,
             _ => return Map::default(),
         };
+        // TODO do not iterate here, go directly to the right element because they are sequentially ordered
         for cycle_info in final_state.pos_state.cycle_history.iter() {
             if cycle_info.cycle == cycle {
                 return cycle_info.roll_counts.clone();
             }
         }
         Map::default()
+    }
+
+    /// List which operations inside the provided list were not executed
+    pub fn unexecuted_ops_among(&self, ops: &Set<OperationId>) -> Set<OperationId> {
+        let mut ops = ops.clone();
+
+        if ops.is_empty() {
+            return ops;
+        }
+
+        {
+            // check active history
+            let history = self.active_history.read();
+            for hist_item in history.0.iter().rev() {
+                ops.retain(|op_id| !hist_item.state_changes.executed_ops.contains(op_id));
+                if ops.is_empty() {
+                    return ops;
+                }
+            }
+        }
+
+        {
+            // check final state
+            let final_state = self.final_state.read();
+            ops.retain(|op_id| !final_state.executed_ops.contains(op_id));
+        }
+
+        ops
     }
 }
