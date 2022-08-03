@@ -1,5 +1,5 @@
-use crate::controller_impl::PoolControllerImpl;
 use crate::operation_pool::OperationPool;
+use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
 use std::sync::{Arc, RwLock};

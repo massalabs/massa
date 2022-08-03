@@ -1,17 +1,15 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    prehash::{Map, Set},
-    timeslots::get_current_latest_block_slot,
+    prehash::{BuildMap, Map, Set},
     Address, Amount, OperationId, Slot,
 };
 use massa_pool_exports::{PoolConfig, PoolOperationCursor};
 use massa_storage::Storage;
 use std::{
-    collections::{btree_map, hash_map, BTreeMap, BTreeSet},
+    collections::{btree_map, BTreeMap, BTreeSet},
     ops::RangeInclusive,
 };
-use tracing::warn;
 
 use crate::types::{build_cursor, OperationInfo};
 
@@ -37,7 +35,7 @@ impl OperationPool {
         OperationPool {
             sorted_ops_per_thread: vec![Default::default(); config.thread_count as usize],
             ops_per_expiration: Default::default(),
-            last_cs_final_periods: vec![0u64, config.thread_count as usize],
+            last_cs_final_periods: vec![0u64; config.thread_count as usize],
             config,
             storage,
         }
@@ -49,7 +47,7 @@ impl OperationPool {
         self.last_cs_final_periods = final_cs_periods.clone();
 
         // prune old ops
-        let removed_ops = Vec::new();
+        let removed_ops: Set<_> = Default::default();
         while let Some((expire_slot, key)) = self.ops_per_expiration.first().copied() {
             if expire_slot.period > self.last_cs_final_periods[expire_slot.thread as usize] {
                 break;
@@ -58,7 +56,7 @@ impl OperationPool {
             let info = self.sorted_ops_per_thread[expire_slot.thread as usize]
                 .remove(&key)
                 .expect("expected op presence in sorted list");
-            removed_ops.push(info.id);
+            removed_ops.insert(info.id);
         }
 
         // notify storage that pool has lost references to removed_ops
@@ -72,7 +70,7 @@ impl OperationPool {
         period_validity_range: &RangeInclusive<u64>,
     ) -> bool {
         // too old
-        if &period_validity_range.end() <= self.last_cs_final_periods[thread as usize] {
+        if *period_validity_range.end() <= self.last_cs_final_periods[thread as usize] {
             return false;
         }
 
@@ -84,17 +82,21 @@ impl OperationPool {
 
     /// Add a list of operations to the pool
     pub fn add_operations(&mut self, mut ops_storage: Storage) {
-        let items = ops_storage.get_op_refs().clone();
+        let items = ops_storage
+            .get_op_refs()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
 
-        let mut added = Set::with_capacity(items.len());
-        let mut removed = Set::with_capacity(items.len());
+        let mut added = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
+        let mut removed = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
 
         // add items to pool
         ops_storage.with_operations(&items, |op_refs| {
             op_refs.iter().zip(items.iter()).for_each(|(op_ref, id)| {
                 let op = op_ref
                     .expect("attempting to add operation to pool, but it is absent from storage");
-                let op_validity = op.get_validity_range(self.config.operation_validity_period);
+                let op_validity = op.get_validity_range(self.config.operation_validity_periods);
                 if !self.is_operation_relevant(op.thread, &op_validity) {
                     return;
                 }
@@ -109,7 +111,7 @@ impl OperationPool {
                             op,
                             self.config.operation_validity_periods,
                         ));
-                        added.insert(id);
+                        added.insert(*id);
                     }
                 }
             });
@@ -118,7 +120,7 @@ impl OperationPool {
         // prune excess operations
 
         self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
-            while ops.len() > self.config.max_ops_pool_size_per_thread {
+            while ops.len() > self.config.max_operation_pool_size_per_thread {
                 // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
                 let (key, op_info) = ops.pop_last().unwrap();
                 let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
@@ -130,8 +132,11 @@ impl OperationPool {
         });
 
         // take ownership on added ops
-        self.storage
-            .extend(ops_storage.split_off(Default::default(), added, Default::default()));
+        self.storage.extend(ops_storage.split_off(
+            &Set::with_hasher(BuildMap::default()),
+            &added,
+            &Set::with_hasher(BuildMap::default()),
+        ));
 
         // drop removed ops from storage
         self.storage.drop_operation_refs(&removed);
@@ -143,7 +148,7 @@ impl OperationPool {
         let mut op_ids = Vec::new();
 
         // init remaining space
-        let mut remaining_space = self.config.max_block_size;
+        let mut remaining_space = self.config.max_block_size as usize;
         // init remaining gas
         let mut remaining_gas = self.config.max_block_gas;
         // cache of sequential balances

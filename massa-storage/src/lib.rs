@@ -469,6 +469,19 @@ impl Storage {
         }
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_endorsements);
     }
+
+    /// Run a closure over a list of references to potentially stored endorements.
+    pub fn with_endorsements<F, V>(&self, endorsement_ids: &[EndorsementId], f: F) -> V
+    where
+        F: FnOnce(&[Option<&WrappedEndorsement>]) -> V,
+    {
+        let endorsements = self.endorsements.read();
+        let results: Vec<Option<&WrappedEndorsement>> = endorsement_ids
+            .iter()
+            .map(|id| endorsements.get(id))
+            .collect();
+        f(&results)
+    }
 }
 
 impl Drop for Storage {

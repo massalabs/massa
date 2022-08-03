@@ -1,7 +1,7 @@
 use massa_models::{Address, Amount, OperationId, WrappedOperation};
 use massa_pool_exports::PoolOperationCursor;
 use num::rational::Ratio;
-use std::cmp::{Ord, PartialOrd, Reverse};
+use std::cmp::Reverse;
 use std::ops::RangeInclusive;
 
 #[derive(Debug, Clone)]

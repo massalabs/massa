@@ -1,30 +1,23 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    prehash::{Map, Set},
-    timeslots::get_current_latest_block_slot,
-    Address, Amount, BlockId, Endorsement, EndorsementId, Slot,
+    prehash::{BuildMap, Set},
+    BlockId, EndorsementId, Slot,
 };
-use massa_pool_exports::{PoolConfig, PoolEndorsementCursor};
+use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
-use std::{
-    collections::{btree_map, hash_map, BTreeMap, BTreeSet},
-    ops::RangeInclusive,
-};
-use tracing::warn;
-
-use crate::types::EndorsementInfo;
+use std::collections::{BTreeSet, HashMap};
 
 pub struct EndorsementPool {
     /// config
     pub config: PoolConfig,
 
     /// endorsement hashmap indexed by target slot and target block ID for fast access (slot, index, block_id)
-    pub endorsements: HashMap<(Slot, u64, BlockId), EndorsementId>,
+    pub endorsements: HashMap<(Slot, u32, BlockId), EndorsementId>,
 
     /// endorsements sorted by increasing target slot for pruning
-    /// indexed by thread, then BTreeSet<(target_slot, target_block, index)>
-    pub endorsements_sorted: Vec<BTreeSet<(Slot, BlockId, u64)>>,
+    /// indexed by thread, then BTreeSet<(target_slot, index, target_block)>
+    pub endorsements_sorted: Vec<BTreeSet<(Slot, u32, BlockId)>>,
 
     /// storage
     pub storage: Storage,
@@ -70,10 +63,14 @@ impl EndorsementPool {
 
     /// Add a list of endorsements to the pool
     pub fn add_endorsements(&mut self, mut endorsement_storage: Storage) {
-        let items = endorsement_storage.get_enorsement_refs().clone();
+        let items = endorsement_storage
+            .get_endorsement_refs()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
 
-        let mut added = Set::with_capacity(items.len());
-        let mut removed = Set::with_capacity(items.len());
+        let mut added = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
+        let mut removed = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
 
         // add items to pool
         endorsement_storage.with_endorsements(&items, |endo_refs| {
@@ -94,12 +91,17 @@ impl EndorsementPool {
 
                     let key = (
                         endo.content.slot,
-                        endo.content.target_block_id,
                         endo.content.index,
+                        endo.content.endorsed_block,
                     );
-                    if !self.endorsements.insert(key, endo.id) {
-                        // we already have an endorsement for this slot: ignore
-                        return;
+                    match self.endorsements.entry(key) {
+                        std::collections::hash_map::Entry::Occupied(_) => {
+                            // we already have an endorsement for this slot: ignore
+                            return;
+                        }
+                        std::collections::hash_map::Entry::Vacant(vac) => {
+                            vac.insert(endo.id);
+                        }
                     }
                     self.endorsements_sorted[endo.content.slot.thread as usize].insert(key);
                     added.insert(endo.id);
@@ -127,9 +129,9 @@ impl EndorsementPool {
 
         // take ownership on added endorsements
         self.storage.extend(endorsement_storage.split_off(
-            Default::default(),
-            Default::default(),
-            added,
+            &Set::with_hasher(BuildMap::default()),
+            &Set::with_hasher(BuildMap::default()),
+            &added,
         ));
 
         // drop removed endorsements from storage
@@ -143,22 +145,22 @@ impl EndorsementPool {
         target_block: &BlockId,
     ) -> (Vec<Option<EndorsementId>>, Storage) {
         // init list of selected operation IDs
-        let mut endo_ids = Vec::with_capacity(self.config.max_endorsement_count as usize);
+        let mut endo_ids = Vec::with_capacity(self.config.max_block_endorsement_count as usize);
 
         // gather endorsements
-        for index in 0..self.config.max_endorsement_count {
-            endo_ids.push(self.endorsements.get((*target_slot, *target_block, index)));
+        for index in 0..self.config.max_block_endorsement_count {
+            endo_ids.push(
+                self.endorsements
+                    .get(&(*target_slot, index, *target_block))
+                    .copied(),
+            );
         }
 
         // setup endorsement storage
         let mut endo_storage = self.storage.clone_without_refs();
         endo_storage.claim_endorsement_refs(
             &self.storage,
-            &endo_ids
-                .iter()
-                .filter_map(std::convert::identity)
-                .copied()
-                .collect(),
+            &endo_ids.iter().filter_map(|&opt| opt).collect(),
         );
 
         (endo_ids, endo_storage)

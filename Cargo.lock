@@ -2038,23 +2038,16 @@ dependencies = [
 name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
- "displaydoc",
  "futures 0.3.21",
  "lazy_static",
  "massa_hash",
- "massa_logging",
  "massa_models",
  "massa_pool_exports",
- "massa_protocol_exports",
  "massa_signature",
  "massa_storage",
  "massa_time",
  "num",
- "serde 1.0.139",
- "serde_json",
  "serial_test",
- "thiserror",
- "tracing",
 ]
 
 [[package]]

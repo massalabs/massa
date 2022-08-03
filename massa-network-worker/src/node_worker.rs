@@ -145,7 +145,7 @@ impl NodeWorker {
         })?;
         let write_timeout = self.cfg.message_timeout;
         let node_id_copy = self.node_id;
-        let storage = self.storage.clone();
+        let storage = self.storage.clone_without_refs();
         let node_writer_handle = tokio::spawn(async move {
             loop {
                 match writer_command_rx.recv().await {

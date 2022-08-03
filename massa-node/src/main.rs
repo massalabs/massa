@@ -37,7 +37,7 @@ use massa_models::{
 };
 use massa_network_exports::{Establisher, NetworkManager};
 use massa_network_worker::start_network_controller;
-use massa_pool_exports::{PoolController, PoolManager};
+use massa_pool_exports::{PoolConfig, PoolController, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
@@ -170,8 +170,14 @@ async fn launch(
     .expect("could not start protocol controller");
 
     // launch pool controller
+    let pool_config = PoolConfig {
+        thread_count: THREAD_COUNT,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        max_operation_pool_size_per_thread: SETTINGS.pool.max_operation_pool_size_per_thread,
+        max_endorements_pool_size_per_thread: SETTINGS.pool.max_endorements_pool_size_per_thread,
+    };
     let (pool_command_sender, pool_manager) = start_pool_controller(
-        &POOL_CONFIG,
+        pool_config,
         protocol_command_sender.clone(),
         protocol_pool_event_receiver,
         shared_storage.clone(),

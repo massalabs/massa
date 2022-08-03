@@ -1,7 +1,9 @@
-use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedEndorsement};
-use massa_pool_exports::{PoolConfig, PoolController, PoolOperationCursor};
+use massa_models::{BlockId, EndorsementId, OperationId, Slot};
+use massa_pool_exports::{PoolConfig, PoolController};
 use massa_storage::Storage;
 use std::sync::{Arc, RwLock};
+
+use crate::{endorsement_pool::EndorsementPool, operation_pool::OperationPool};
 #[derive(Clone)]
 pub struct PoolControllerImpl {
     config: PoolConfig,
@@ -23,7 +25,7 @@ impl PoolController for PoolControllerImpl {
         self.endorsement_pool
             .write()
             .expect("could not w-lock endorsement pool")
-            .add_operations(ops);
+            .add_endorsements(endorsements);
     }
 
     /// notify of new final consensus periods (1 per thread)
@@ -55,7 +57,7 @@ impl PoolController for PoolControllerImpl {
         self.endorsement_pool
             .read()
             .expect("could not r-lock endorsement pool")
-            .get_block_endorsements(slot)
+            .get_block_endorsements(target_slot, target_block)
     }
 
     /// Returns a boxed clone of self.

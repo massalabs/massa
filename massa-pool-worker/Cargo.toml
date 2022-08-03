@@ -5,16 +5,9 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
-displaydoc = "0.2"
 num = "0.4"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-thiserror = "1.0"
-tracing = "0.1"
 # custom modules
-massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
-massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_storage = { path = "../massa-storage" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 
@@ -30,5 +23,4 @@ massa_time = { path = "../massa-time" }
 [features]
 instrument = [
     "massa_models/instrument",
-    "massa_protocol_exports/instrument",
 ]
