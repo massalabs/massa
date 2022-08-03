@@ -143,15 +143,11 @@ impl WrappedContent for Block {
         content_serializer.serialize(&content, &mut content_serialized)?;
         let creator_address = Address::from_public_key(&public_key);
 
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Ok(Wrapped {
             signature: content.header.signature,
             creator_public_key: public_key,
             creator_address,
-            thread: creator_address.get_thread(thread_count),
+            thread: creator_address.get_thread(THREAD_COUNT),
             id: U::new(content.header.id.hash()),
             content,
             serialized_data: content_serialized,
@@ -297,7 +293,7 @@ pub struct BlockDeserializer {
 
 impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         BlockDeserializer {
             header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
             operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
@@ -641,15 +637,11 @@ pub struct BlockHeaderDeserializer {
 
 impl BlockHeaderDeserializer {
     /// Creates a new `BlockHeaderDeserializer`
-    pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
+    pub const fn new() -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(THREAD_COUNT)),
             ),
             endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
                 ENDORSEMENT_COUNT,
@@ -717,10 +709,6 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BlockHeader, E> {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         context(
             "Failed BlockHeader deserialization",
             tuple((

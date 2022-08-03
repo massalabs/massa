@@ -45,14 +45,14 @@ lazy_static::lazy_static! {
                 .saturating_add(MassaTime::from(1000 * 10))
         )
     } else {
-        1657317600000.into()  // Friday, July 8, 2022 22:00:00 UTC
+        1659434400000.into()  // Tuesday, August 2, 2022 10:00:00 UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1659304800000.into())  //  Sunday, July 31, 2022 22:00:00 UTC
+        Some(1661853600000.into())  // Tuesday, August 30, 2022 10:00:00 UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -64,36 +64,22 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.12.0"
+            "TEST.13.0"
         }
         .parse()
         .unwrap()
     };
 }
 
-#[cfg(feature = "sandbox")]
-lazy_static::lazy_static! {
-    /// t0
-    pub static ref T0: MassaTime = std::env::var("T0").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-        MassaTime::from(16000)
-    );
-    /// thread count
-    pub static ref THREAD_COUNT: u8 = std::env::var("THREAD_COUNT").map(|timestamp| timestamp.parse::<u8>().unwrap().into()).unwrap_or_else(|_|
-        32
-    );
-}
-
 /// Price of a roll in the network
-pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
+pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 /// Block reward is given for each block creation
-pub const BLOCK_REWARD: Amount = Amount::from_raw((0.3 * AMOUNT_DECIMAL_FACTOR as f64) as u64);
+pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
 /// Time between the periods in the same thread.
-#[cfg(not(feature = "sandbox"))]
 pub const T0: MassaTime = MassaTime::from(16000);
 /// Proof of stake seed for the initial draw
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// Number of threads
-#[cfg(not(feature = "sandbox"))]
 pub const THREAD_COUNT: u8 = 32;
 /// Number of endorsement
 pub const ENDORSEMENT_COUNT: u32 = 9;
@@ -118,7 +104,7 @@ pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
 pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum length of a datastore key
-pub const MAX_DATASTORE_KEY_LENGTH: u8 = 32;
+pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 
 // ***********************
 // Bootstrap constants
@@ -185,7 +171,6 @@ pub const SLOT_KEY_SIZE: usize = 9;
 /// Size of the event id hash used in execution module, safe to import
 pub const EVENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
-#[cfg(not(feature = "sandbox"))]
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {

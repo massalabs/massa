@@ -50,10 +50,18 @@ pub enum ModelsError {
     WrongPrefix(String, String),
     /// Wrong operation id size deduced on join
     OperationPrefixJoinError,
+    /// Error raised {0}
+    ErrorRaised(String),
 }
 
 impl From<nom::Err<nom::error::Error<&[u8]>>> for ModelsError {
     fn from(err: nom::Err<nom::error::Error<&[u8]>>) -> Self {
         ModelsError::DeserializeError(err.to_string())
+    }
+}
+
+impl From<&'static str> for ModelsError {
+    fn from(err: &'static str) -> Self {
+        ModelsError::ErrorRaised(err.to_string())
     }
 }

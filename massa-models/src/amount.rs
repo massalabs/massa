@@ -26,6 +26,32 @@ impl Amount {
         Self(0)
     }
 
+    /// Create an Amount from the form `mantissa / (10^scale)`
+    /// Panics on any error.
+    /// Used for constant initialization.
+    ///
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1: Amount = Amount::from_str("0.042").unwrap();
+    /// let amount_2: Amount = Amount::from_mantissa_scale(42, 3);
+    /// assert_eq!(amount_1, amount_2);
+    /// let amount_1: Amount = Amount::from_str("1000").unwrap();
+    /// let amount_2: Amount = Amount::from_mantissa_scale(1000, 0);
+    /// assert_eq!(amount_1, amount_2);
+    /// ```
+    pub const fn from_mantissa_scale(mantissa: u64, scale: u32) -> Self {
+        let raw_mantissa = (mantissa as u128) * (AMOUNT_DECIMAL_FACTOR as u128);
+        let scale_factor = match 10u128.checked_pow(scale) {
+            Some(v) => v,
+            None => panic!(),
+        };
+        assert!(raw_mantissa % scale_factor == 0);
+        let res = raw_mantissa / scale_factor;
+        assert!(res <= (u64::MAX as u128));
+        Self(res as u64)
+    }
+
     /// Obtains the underlying raw `u64` representation
     /// Warning: do not use this unless you know what you are doing
     /// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account.
@@ -234,7 +260,7 @@ pub struct AmountDeserializer {
 
 impl AmountDeserializer {
     /// Create a new `AmountDeserializer`
-    pub fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
+    pub const fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(min_amount, max_amount),
         }

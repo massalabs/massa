@@ -182,15 +182,11 @@ pub struct EndorsementDeserializer {
 
 impl EndorsementDeserializer {
     /// Creates a new `EndorsementDeserializer`
-    pub fn new(endorsement_count: u32) -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
+    pub const fn new(endorsement_count: u32) -> Self {
         EndorsementDeserializer {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
+                (Included(0), Excluded(THREAD_COUNT)),
             ),
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(endorsement_count)),
             hash_deserializer: HashDeserializer::new(),

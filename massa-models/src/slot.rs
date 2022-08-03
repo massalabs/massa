@@ -67,7 +67,7 @@ pub struct SlotDeserializer {
 
 impl SlotDeserializer {
     /// Creates a `SlotDeserializer`
-    pub fn new(
+    pub const fn new(
         range_period: (Bound<u64>, Bound<u64>),
         range_thread: (Bound<u8>, Bound<u8>),
     ) -> Self {

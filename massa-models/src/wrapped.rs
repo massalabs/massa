@@ -64,15 +64,11 @@ where
         hash_data.extend(content_serialized.clone());
         let hash = Hash::compute_from(&hash_data);
         let creator_address = Address::from_public_key(&public_key);
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         Ok(Wrapped {
             signature: keypair.sign(&hash)?,
             creator_public_key: public_key,
             creator_address,
-            thread: creator_address.get_thread(thread_count),
+            thread: creator_address.get_thread(THREAD_COUNT),
             content,
             serialized_data: content_serialized,
             id: U::new(hash),
@@ -115,10 +111,6 @@ where
                 }),
             )),
         )(buffer)?;
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         let (rest, content) = content_deserializer.deserialize(serialized_data)?;
         // Avoid getting the rest of the data in the serialized data
         let content_serialized = &serialized_data[..serialized_data.len() - rest.len()];
@@ -132,7 +124,7 @@ where
                 signature,
                 creator_public_key,
                 creator_address,
-                thread: creator_address.get_thread(thread_count),
+                thread: creator_address.get_thread(THREAD_COUNT),
                 serialized_data: content_serialized.to_vec(),
                 id: U::new(Hash::compute_from(&serialized_full_data)),
             },
@@ -183,7 +175,7 @@ pub struct WrappedSerializer;
 
 impl WrappedSerializer {
     /// Creates a new `WrappedSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -224,7 +216,7 @@ where
     ///
     /// # Arguments
     /// * `content_deserializer` - Deserializer for the content
-    pub fn new(content_deserializer: DT) -> Self {
+    pub const fn new(content_deserializer: DT) -> Self {
         Self {
             signature_deserializer: SignatureDeserializer::new(),
             public_key_deserializer: PublicKeyDeserializer::new(),

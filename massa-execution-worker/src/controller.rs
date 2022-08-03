@@ -14,7 +14,7 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::{Address, Amount};
 use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use tracing::info;
 
@@ -129,10 +129,13 @@ impl ExecutionController for ExecutionControllerImpl {
     ///
     /// # Returns
     /// A vector containing all the keys
-    fn get_every_final_datastore_key(&self, addr: &Address) -> Vec<Vec<u8>> {
+    fn get_final_and_active_datastore_keys(
+        &self,
+        addr: &Address,
+    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
         self.execution_state
             .read()
-            .get_every_final_datastore_key(addr)
+            .get_final_and_active_datastore_keys(addr)
     }
 
     /// Executes a read-only request

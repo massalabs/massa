@@ -772,7 +772,7 @@ async fn test_roll_deactivation() {
         pos_lookback_cycles: 1,
         t0: 400.into(),
         operation_batch_size: 500,
-        roll_price: Amount::from_raw(10),
+        roll_price: Amount::from_mantissa_scale(10, 0),
         pos_miss_rate_deactivation_threshold: Ratio::new(50, 100),
         ..Default::default()
     };

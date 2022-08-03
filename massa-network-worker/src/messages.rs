@@ -33,6 +33,34 @@ use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::ops::Bound::{Excluded, Included};
 
+static IP_SERIALIZER: IpAddrSerializer = IpAddrSerializer::new();
+
+static IP_DESERIALIZER: IpAddrDeserializer = IpAddrDeserializer::new();
+
+static OPERATION_PREFIX_ID_DESERIALIZER: OperationPrefixIdsDeserializer =
+    OperationPrefixIdsDeserializer::new();
+
+static OPERATION_PREFIX_ID_SERIALIZER: OperationPrefixIdsSerializer =
+    OperationPrefixIdsSerializer::new();
+
+static OPERATIONS_DESERIALIZER: OperationsDeserializer = OperationsDeserializer::new();
+
+static OPERATIONS_SERIALIZER: OperationsSerializer = OperationsSerializer::new();
+
+static VERSION_DESERIALIZER: VersionDeserializer = VersionDeserializer::new();
+
+static VERSION_SERIALIZER: VersionSerializer = VersionSerializer::new();
+
+static WRAPPED_BLOCK_DESERIALIZER: WrappedDeserializer<Block, BlockDeserializer> =
+    WrappedDeserializer::new(BlockDeserializer::new());
+
+static WRAPPED_BLOCK_HEADER_DESERIALIZER: WrappedDeserializer<
+    BlockHeader,
+    BlockHeaderDeserializer,
+> = WrappedDeserializer::new(BlockHeaderDeserializer::new());
+
+static WRAPPED_SERIALIZER: WrappedSerializer = WrappedSerializer::new();
+
 /// All messages that can be sent or received.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize)]

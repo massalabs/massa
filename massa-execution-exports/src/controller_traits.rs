@@ -11,6 +11,7 @@ use massa_models::Address;
 use massa_models::Amount;
 use massa_models::BlockId;
 use massa_models::Slot;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 /// interface that communicates with the execution worker thread
@@ -57,7 +58,10 @@ pub trait ExecutionController: Send + Sync {
     ///
     /// # Returns
     /// A vector containing all the keys
-    fn get_every_final_datastore_key(&self, addr: &Address) -> Vec<Vec<u8>>;
+    fn get_final_and_active_datastore_keys(
+        &self,
+        addr: &Address,
+    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>);
 
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///

@@ -3,7 +3,9 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter, OperationInput};
+use massa_models::api::{
+    AddressInfo, CompactAddressInfo, DatastoreEntryInput, EventFilter, OperationInput,
+};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::node::NodeId;
 use massa_models::prehash::Map;
@@ -118,6 +120,13 @@ pub enum Command {
         message = "get info about a list of addresses (balances, block creation, ...)"
     )]
     get_addresses,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "Address Key"),
+        message = "get a datastore entry (key must be UTF-8)"
+    )]
+    get_datastore_entry,
 
     #[strum(
         ascii_case_insensitive,
@@ -314,6 +323,10 @@ impl ExtendedWallet {
 
 impl Display for ExtendedWallet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            client_warning!("your wallet does not contain any key, use 'wallet_generate_secret_key' to generate a new key and add it to your wallet");
+        }
+
         for entry in self.0.values() {
             writeln!(f, "{}", entry)?;
         }
@@ -519,6 +532,22 @@ impl Command {
                 }
             }
 
+            Command::get_datastore_entry => {
+                if parameters.len() != 2 {
+                    bail!("invalid number of parameters");
+                }
+                let address = parameters[0].parse::<Address>()?;
+                let key = parameters[1].as_bytes().to_vec();
+                match client
+                    .public
+                    .get_datastore_entries(vec![DatastoreEntryInput { address, key }])
+                    .await
+                {
+                    Ok(result) => Ok(Box::new(result)),
+                    Err(e) => rpc_error!(e),
+                }
+            }
+
             Command::get_block => {
                 if parameters.len() != 1 {
                     bail!("wrong param numbers")
@@ -683,6 +712,11 @@ impl Command {
                         }
                         None => {
                             client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                        }
+                    }
+                    if let Ok(staked_keys) = client.private.get_staking_addresses().await {
+                        if !staked_keys.contains(&addr) {
+                            client_warning!("You are buying rolls with an address not registered for staking. Don't forget to run 'node_add_staking_secret_keys <your_secret_key'");
                         }
                     }
                 }
@@ -919,7 +953,7 @@ impl Command {
                         target_func,
                         param,
                         max_gas,
-                        sequential_coins: Amount::from_raw(0),
+                        sequential_coins: Amount::zero(),
                         parallel_coins: coins,
                         gas_price,
                     },
