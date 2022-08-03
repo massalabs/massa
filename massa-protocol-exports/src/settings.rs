@@ -3,7 +3,7 @@
 use massa_time::MassaTime;
 use serde::Deserialize;
 
-/// Protocol Configuration
+/// Protocol Configuration, read from toml user config file
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node

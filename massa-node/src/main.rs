@@ -26,8 +26,8 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::{
         BLOCK_REWARD, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS,
-        MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, ROLL_PRICE, T0,
-        THREAD_COUNT, VERSION,
+        MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
+        ROLL_PRICE, T0, THREAD_COUNT, VERSION,
     },
     init_serialization_context,
     prehash::Map,
@@ -210,6 +210,7 @@ async fn launch(
         block_reward: BLOCK_REWARD,
         endorsement_count: ENDORSEMENT_COUNT as u64,
         operation_validity_period: OPERATION_VALIDITY_PERIODS,
+        periods_per_cycle: PERIODS_PER_CYCLE,
     };
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,

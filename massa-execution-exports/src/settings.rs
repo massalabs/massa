@@ -34,4 +34,6 @@ pub struct ExecutionConfig {
     pub operation_validity_period: u64,
     /// endorsement count
     pub endorsement_count: u64,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
 }
