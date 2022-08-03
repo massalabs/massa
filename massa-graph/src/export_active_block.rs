@@ -2,7 +2,7 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    constants::{default::MAX_BOOTSTRAP_CHILDREN, *},
+    constants::*,
     ledger_models::{LedgerChangeDeserializer, LedgerChangeSerializer, LedgerChanges},
     prehash::{Map, Set},
     rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
@@ -243,13 +243,20 @@ pub struct ExportActiveBlockDeserializer {
 
 impl ExportActiveBlockDeserializer {
     /// Create a new `ExportActiveBlockDeserializer`
-    pub fn new() -> Self {
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
+    pub fn new(
+        thread_count: u8,
+        endorsement_count: u32,
+        max_bootstrap_children: u32,
+        max_bootstrap_deps: u32,
+        max_bootstrap_pos_entries: u32,
+        max_operations_per_block: u32,
+    ) -> Self {
         ExportActiveBlockDeserializer {
-            wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new()),
+            wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
+                thread_count,
+                max_operations_per_block,
+                endorsement_count,
+            )),
             hash_deserializer: HashDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             children_length_deserializer: U32VarIntDeserializer::new(
@@ -258,11 +265,11 @@ impl ExportActiveBlockDeserializer {
             ),
             map_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_BOOTSTRAP_CHILDREN),
+                Included(max_bootstrap_children),
             ),
             dependencies_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_BOOTSTRAP_DEPS),
+                Included(max_bootstrap_deps),
             ),
             block_ledger_changes_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -272,7 +279,7 @@ impl ExportActiveBlockDeserializer {
             address_deserializer: AddressDeserializer::new(),
             roll_updates_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_BOOTSTRAP_POS_ENTRIES),
+                Included(max_bootstrap_pos_entries),
             ),
             roll_update_deserializer: RollUpdateDeserializer::new(),
             production_events_deserializer: U32VarIntDeserializer::new(
@@ -280,12 +287,6 @@ impl ExportActiveBlockDeserializer {
                 Included(u32::MAX),
             ),
         }
-    }
-}
-
-impl Default for ExportActiveBlockDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

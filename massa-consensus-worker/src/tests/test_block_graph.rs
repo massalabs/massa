@@ -9,6 +9,10 @@ use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
     clique::Clique,
+    constants::{
+        ENDORSEMENT_COUNT, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES,
+        MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+    },
     init_serialization_context,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     prehash::{Map, Set},
@@ -658,7 +662,16 @@ fn test_bootsrapable_graph_serialize_compact() {
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
-    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new();
+    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
+        THREAD_COUNT,
+        ENDORSEMENT_COUNT,
+        MAX_BOOTSTRAP_BLOCKS,
+        MAX_BOOTSTRAP_CLIQUES,
+        MAX_BOOTSTRAP_CHILDREN,
+        MAX_BOOTSTRAP_DEPS,
+        MAX_BOOTSTRAP_POS_ENTRIES,
+        MAX_OPERATIONS_PER_BLOCK,
+    );
     let mut bytes = Vec::new();
 
     bootstrapable_graph_serializer

@@ -9,6 +9,11 @@ use crate::messages::{
 use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_models::constants::{
+    ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN,
+    MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES, MAX_OPERATIONS_PER_BLOCK,
+    THREAD_COUNT,
+};
 use massa_models::Version;
 use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeMinBEInt,
@@ -90,7 +95,17 @@ impl BootstrapClientBinder {
         };
 
         // read message, check signature and check signature of the message sent just before then deserialize it
-        let message_deserializer = BootstrapServerMessageDeserializer::new();
+        let message_deserializer = BootstrapServerMessageDeserializer::new(
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT,
+            MAX_ADVERTISE_LENGTH,
+            MAX_BOOTSTRAP_BLOCKS,
+            MAX_BOOTSTRAP_CLIQUES,
+            MAX_BOOTSTRAP_CHILDREN,
+            MAX_BOOTSTRAP_DEPS,
+            MAX_BOOTSTRAP_POS_ENTRIES,
+            MAX_OPERATIONS_PER_BLOCK,
+        );
         let message = {
             if let Some(prev_message) = self.prev_message {
                 self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));

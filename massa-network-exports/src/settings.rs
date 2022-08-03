@@ -9,7 +9,7 @@ use crate::peers::PeerType;
 
 /// Network configuration
 #[derive(Debug, Deserialize, Clone)]
-pub struct NetworkSettings {
+pub struct NetworkConfig {
     /// Where to listen for communications.
     pub bind: SocketAddr,
     /// Our own IP if it is routable, else None.
@@ -56,6 +56,18 @@ pub struct NetworkSettings {
     pub max_bytes_read: f64,
     /// Write limitation for a connection in bytes per seconds
     pub max_bytes_write: f64,
+    /// Max number ids in ask blocks message
+    pub max_ask_blocks: u32,
+    /// Max operations per block
+    pub max_operations_per_block: u32,
+    /// Thread count
+    pub thread_count: u8,
+    /// Endorsement count
+    pub endorsement_count: u32,
+    /// Max peer advertise length
+    pub max_peer_advertise_length: u32,
+    /// Max endorsements per message
+    pub max_endorsements_per_message: u32,
 }
 
 /// Connection configuration for a peer type
@@ -73,16 +85,20 @@ pub struct PeerTypeConnectionConfig {
 /// setting tests
 #[cfg(feature = "testing")]
 pub mod tests {
-    use crate::NetworkSettings;
+    use crate::NetworkConfig;
     use crate::{test_exports::tools::get_temp_keypair_file, PeerType};
     use enum_map::enum_map;
-    use massa_models::constants::{BASE_NETWORK_CONTROLLER_IP, MAX_OPERATIONS_PER_MESSAGE};
+    use massa_models::constants::{
+        BASE_NETWORK_CONTROLLER_IP, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
+        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_MESSAGE,
+        THREAD_COUNT,
+    };
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     use super::PeerTypeConnectionConfig;
 
-    impl Default for NetworkSettings {
+    impl Default for NetworkConfig {
         fn default() -> Self {
             let peer_types_config = enum_map! {
                 PeerType::Bootstrap => PeerTypeConnectionConfig {
@@ -101,7 +117,7 @@ pub mod tests {
                     max_in_connections: 5,
                 }
             };
-            NetworkSettings {
+            NetworkConfig {
                 bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
                 routable_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
                 protocol_port: 0,
@@ -124,11 +140,17 @@ pub mod tests {
                 max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
                 max_bytes_read: std::f64::INFINITY,
                 max_bytes_write: std::f64::INFINITY,
+                max_ask_blocks: MAX_ASK_BLOCKS_PER_MESSAGE,
+                endorsement_count: ENDORSEMENT_COUNT,
+                max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+                max_operations_per_block: MAX_OPERATIONS_PER_MESSAGE,
+                max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
+                thread_count: THREAD_COUNT,
             }
         }
     }
 
-    impl NetworkSettings {
+    impl NetworkConfig {
         /// default network settings from port and peer file path
         pub fn scenarios_default(port: u16, peers_file: &std::path::Path) -> Self {
             // Init the serialization context with a default,
@@ -183,6 +205,12 @@ pub mod tests {
                 max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
                 max_bytes_read: std::f64::INFINITY,
                 max_bytes_write: std::f64::INFINITY,
+                max_ask_blocks: MAX_ASK_BLOCKS_PER_MESSAGE,
+                endorsement_count: ENDORSEMENT_COUNT,
+                max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+                max_operations_per_block: MAX_OPERATIONS_PER_MESSAGE,
+                max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
+                thread_count: THREAD_COUNT,
             }
         }
     }

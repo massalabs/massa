@@ -14,8 +14,8 @@ use crate::{
 use massa_logging::massa_trace;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
 use massa_network_exports::{
-    BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkError, NetworkEvent,
-    NetworkEventReceiver, NetworkManagementCommand, NetworkManager, NetworkSettings,
+    BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkConfig, NetworkError,
+    NetworkEvent, NetworkEventReceiver, NetworkManagementCommand, NetworkManager,
 };
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -40,7 +40,7 @@ pub mod tests;
 /// # Arguments
 /// * `cfg`: network configuration
 pub async fn start_network_controller(
-    network_settings: NetworkSettings,
+    network_settings: &NetworkConfig,
     mut establisher: Establisher,
     clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
@@ -97,7 +97,7 @@ pub async fn start_network_controller(
 
     debug!("Loading peer database");
     // load peer info database
-    let mut peer_info_db = PeerInfoDatabase::new(&network_settings, clock_compensation).await?;
+    let mut peer_info_db = PeerInfoDatabase::new(network_settings, clock_compensation).await?;
 
     // add bootstrap peers
     if let Some(peers) = initial_peers {

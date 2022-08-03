@@ -29,7 +29,7 @@ pub fn generate_ledger_file(ledger_vec: &HashMap<Address, LedgerData>) -> NamedT
 pub fn generate_staking_keys_file(staking_keys: &[KeyPair]) -> NamedTempFile {
     use std::io::prelude::*;
     let file_named = NamedTempFile::new().expect("cannot create temp file");
-    let json = serde_json::to_string_pretty(&staking_keys).expect("json serialization failed");
+    let json = serde_json::to_string(&staking_keys).expect("json serialization failed");
     let encrypted_data = encrypt(TEST_PASSWORD, json.as_bytes()).expect("encryption failed");
     std::fs::write(file_named.as_ref(), encrypted_data).expect("data writing failed");
     file_named

@@ -6,9 +6,9 @@ use massa_logging::massa_trace;
 use massa_models::constants::MAX_ADVERTISE_LENGTH;
 use massa_network_exports::settings::PeerTypeConnectionConfig;
 use massa_network_exports::ConnectionCount;
+use massa_network_exports::NetworkConfig;
 use massa_network_exports::NetworkConnectionErrorType;
 use massa_network_exports::NetworkError;
-use massa_network_exports::NetworkSettings;
 use massa_network_exports::PeerInfo;
 use massa_network_exports::PeerType;
 use massa_time::MassaTime;
@@ -24,7 +24,7 @@ use tracing::{trace, warn};
 /// Contains all information about every peers we know about.
 pub struct PeerInfoDatabase {
     /// Network configuration.
-    pub(crate) network_settings: NetworkSettings,
+    pub(crate) network_settings: NetworkConfig,
     /// Maps an ip address to peer's info
     pub peers: HashMap<IpAddr, PeerInfo>,
     /// Handle on the task managing the dump
@@ -75,13 +75,13 @@ async fn dump_peers(
 /// Note: only standard non-active peers are counted when clipping to size limits.
 ///
 /// Arguments :
-/// * `cfg`: `NetworkSettings`
+/// * `cfg`: `NetworkConfig`
 /// * `peers`: peers to clean up
 /// * `opt_new_peers`: optional peers to add to the database
 /// * `clock_compensation`: to be sync with server time
 /// * `ban_timeout`: after that time we forget we banned a peer
 pub(crate) fn cleanup_peers(
-    cfg: &NetworkSettings,
+    cfg: &NetworkConfig,
     peers: &mut HashMap<IpAddr, PeerInfo>,
     opt_new_peers: Option<&Vec<IpAddr>>,
     clock_compensation: i64,
@@ -174,7 +174,7 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * `cfg`: network configuration
     /// * `clock_compensation`: sync with server
-    pub async fn new(cfg: &NetworkSettings, clock_compensation: i64) -> Result<Self, NetworkError> {
+    pub async fn new(cfg: &NetworkConfig, clock_compensation: i64) -> Result<Self, NetworkError> {
         // wakeup interval
         let wakeup_interval = cfg.wakeup_interval;
 

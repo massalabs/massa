@@ -25,14 +25,16 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
+        ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
+        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH,
+        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK,
         OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
     init_serialization_context,
     prehash::Map,
     Address, SerializationContext,
 };
-use massa_network_exports::{Establisher, NetworkCommandSender, NetworkManager};
+use massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
@@ -135,10 +137,41 @@ async fn launch(
         }
     };
 
+    let network_config: NetworkConfig = NetworkConfig {
+        bind: SETTINGS.network.bind,
+        routable_ip: SETTINGS.network.routable_ip,
+        protocol_port: SETTINGS.network.protocol_port,
+        connect_timeout: SETTINGS.network.connect_timeout,
+        wakeup_interval: SETTINGS.network.wakeup_interval,
+        initial_peers_file: SETTINGS.network.initial_peers_file.clone(),
+        peers_file: SETTINGS.network.peers_file.clone(),
+        keypair_file: SETTINGS.network.keypair_file.clone(),
+        peer_types_config: SETTINGS.network.peer_types_config.clone(),
+        max_in_connections_per_ip: SETTINGS.network.max_in_connections_per_ip,
+        max_idle_peers: SETTINGS.network.max_idle_peers,
+        max_banned_peers: SETTINGS.network.max_banned_peers,
+        peers_file_dump_interval: SETTINGS.network.peers_file_dump_interval,
+        message_timeout: SETTINGS.network.message_timeout,
+        ask_peer_list_interval: SETTINGS.network.ask_peer_list_interval,
+        max_send_wait: SETTINGS.network.max_send_wait,
+        ban_timeout: SETTINGS.network.ban_timeout,
+        peer_list_send_timeout: SETTINGS.network.peer_list_send_timeout,
+        max_in_connection_overflow: SETTINGS.network.max_in_connection_overflow,
+        max_operations_per_message: SETTINGS.network.max_operations_per_message,
+        max_bytes_read: SETTINGS.network.max_bytes_read,
+        max_bytes_write: SETTINGS.network.max_bytes_write,
+        max_ask_blocks: MAX_ASK_BLOCKS_PER_MESSAGE,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
+        max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+    };
+
     // launch network controller
     let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
         start_network_controller(
-            SETTINGS.network.clone(), // TODO: get rid of this clone() ... see #1277
+            &network_config, // TODO: get rid of this clone() ... see #1277
             Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
@@ -242,10 +275,10 @@ async fn launch(
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
         execution_controller.clone(),
-        &SETTINGS.api,
+        SETTINGS.api,
         consensus_config,
         pool_command_sender.clone(),
-        &SETTINGS.network,
+        network_config,
         *VERSION,
         network_command_sender.clone(),
         bootstrap_state.compensation_millis,

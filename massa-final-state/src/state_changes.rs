@@ -105,17 +105,11 @@ pub struct StateChangesDeserializer {
 
 impl StateChangesDeserializer {
     /// Creates a `StateChangesDeserializer`
-    pub fn new() -> Self {
+    pub fn new(thread_count: u8) -> Self {
         Self {
             ledger_changes_deserializer: LedgerChangesDeserializer::new(),
-            async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(),
+            async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(thread_count),
         }
-    }
-}
-
-impl Default for StateChangesDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -161,8 +155,8 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// );
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
-    /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// StateChangesSerializer::new(32).serialize(&state_changes, &mut serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(16).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(state_changes_deser, state_changes);
     /// ```

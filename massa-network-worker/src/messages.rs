@@ -3,10 +3,7 @@
 use massa_hash::HashDeserializer;
 use massa_models::{
     array_from_slice,
-    constants::{
-        ENDORSEMENT_COUNT, HANDSHAKE_RANDOMNESS_SIZE_BYTES, MAX_ADVERTISE_LENGTH,
-        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE,
-    },
+    constants::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
     operation::OperationPrefixIds,
     operation::{
         OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, Operations,
@@ -32,34 +29,6 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::ops::Bound::{Excluded, Included};
-
-static IP_SERIALIZER: IpAddrSerializer = IpAddrSerializer::new();
-
-static IP_DESERIALIZER: IpAddrDeserializer = IpAddrDeserializer::new();
-
-static OPERATION_PREFIX_ID_DESERIALIZER: OperationPrefixIdsDeserializer =
-    OperationPrefixIdsDeserializer::new();
-
-static OPERATION_PREFIX_ID_SERIALIZER: OperationPrefixIdsSerializer =
-    OperationPrefixIdsSerializer::new();
-
-static OPERATIONS_DESERIALIZER: OperationsDeserializer = OperationsDeserializer::new();
-
-static OPERATIONS_SERIALIZER: OperationsSerializer = OperationsSerializer::new();
-
-static VERSION_DESERIALIZER: VersionDeserializer = VersionDeserializer::new();
-
-static VERSION_SERIALIZER: VersionSerializer = VersionSerializer::new();
-
-static WRAPPED_BLOCK_DESERIALIZER: WrappedDeserializer<Block, BlockDeserializer> =
-    WrappedDeserializer::new(BlockDeserializer::new());
-
-static WRAPPED_BLOCK_HEADER_DESERIALIZER: WrappedDeserializer<
-    BlockHeader,
-    BlockHeaderDeserializer,
-> = WrappedDeserializer::new(BlockHeaderDeserializer::new());
-
-static WRAPPED_SERIALIZER: WrappedSerializer = WrappedSerializer::new();
 
 /// All messages that can be sent or received.
 #[allow(clippy::large_enum_variant)]
@@ -261,7 +230,14 @@ pub struct MessageDeserializer {
 
 impl MessageDeserializer {
     /// Creates a new `MessageDeserializer`.
-    pub fn new() -> Self {
+    pub fn new(
+        thread_count: u8,
+        endorsement_count: u32,
+        max_advertise_length: u32,
+        max_ask_block: u32,
+        max_operations_per_block: u32,
+        max_endorsements_per_message: u32,
+    ) -> Self {
         MessageDeserializer {
             public_key_deserializer: PublicKeyDeserializer::new(),
             signature_deserializer: SignatureDeserializer::new(),
@@ -269,22 +245,30 @@ impl MessageDeserializer {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(200)),
             ask_block_number_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(MAX_ASK_BLOCKS_PER_MESSAGE),
+                Included(max_ask_block),
             ),
             peer_list_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(MAX_ADVERTISE_LENGTH),
+                Excluded(max_advertise_length),
             ),
             operations_deserializer: OperationsDeserializer::new(),
             hash_deserializer: HashDeserializer::new(),
-            block_deserializer: WrappedDeserializer::new(BlockDeserializer::new()),
-            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
+            block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
+                thread_count,
+                max_operations_per_block,
+                endorsement_count,
+            )),
+            block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
+                thread_count,
+                endorsement_count,
+            )),
             endorsements_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(MAX_ENDORSEMENTS_PER_MESSAGE),
+                Excluded(max_endorsements_per_message),
             ),
             endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
-                ENDORSEMENT_COUNT,
+                thread_count,
+                endorsement_count,
             )),
             operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(),
             ip_addr_deserializer: IpAddrDeserializer::new(),
@@ -428,6 +412,10 @@ impl Deserializer<Message> for MessageDeserializer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use massa_models::constants::{
+        ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+    };
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
     use rand::{prelude::StdRng, RngCore, SeedableRng};
@@ -464,7 +452,14 @@ mod tests {
     fn test_ser_deser() {
         initialize_context();
         let message_serializer = MessageSerializer::new();
-        let message_deserializer = MessageDeserializer::new();
+        let message_deserializer = MessageDeserializer::new(
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT,
+            MAX_ADVERTISE_LENGTH,
+            MAX_ASK_BLOCKS_PER_MESSAGE,
+            MAX_OPERATIONS_PER_BLOCK,
+            MAX_ENDORSEMENTS_PER_MESSAGE,
+        );
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);
         let keypair = KeyPair::generate();

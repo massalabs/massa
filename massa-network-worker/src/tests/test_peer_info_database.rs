@@ -1,6 +1,6 @@
 use crate::{
     peer_info_database::{cleanup_peers, PeerInfoDatabase},
-    NetworkError, NetworkSettings,
+    NetworkConfig, NetworkError,
 };
 use enum_map::enum_map;
 use massa_network_exports::{
@@ -25,7 +25,7 @@ async fn test_try_new_in_connection_in_connection_closed() {
         PeerType::Bootstrap => Default::default(),
         PeerType::WhiteListed => Default::default()
     };
-    let network_settings = NetworkSettings {
+    let network_settings = NetworkConfig {
         peer_types_config,
         ..Default::default()
     };
@@ -128,7 +128,7 @@ async fn test_out_connection_attempt_failed() {
         PeerType::Bootstrap => Default::default(),
         PeerType::WhiteListed => Default::default()
     };
-    let network_settings = NetworkSettings {
+    let network_settings = NetworkConfig {
         peer_types_config,
         ..Default::default()
     };
@@ -239,7 +239,7 @@ async fn test_try_out_connection_attempt_success() {
             max_in_connections: 3,
         },
     };
-    let network_settings = NetworkSettings {
+    let network_settings = NetworkConfig {
         peer_types_config,
         ..Default::default()
     };
@@ -338,7 +338,7 @@ async fn test_new_out_connection_closed() {
         PeerType::Bootstrap => Default::default(),
         PeerType::WhiteListed => Default::default()
     };
-    let network_settings = NetworkSettings {
+    let network_settings = NetworkConfig {
         peer_types_config,
         ..Default::default()
     };
@@ -420,7 +420,7 @@ async fn test_new_out_connection_attempt() {
         PeerType::Bootstrap => Default::default(),
         PeerType::WhiteListed => Default::default()
     };
-    let network_settings = NetworkSettings {
+    let network_settings = NetworkConfig {
         peer_types_config,
         ..Default::default()
     };
@@ -477,7 +477,7 @@ async fn test_new_out_connection_attempt() {
 #[tokio::test]
 #[serial]
 async fn test_get_advertisable_peer_ips() {
-    let network_settings = NetworkSettings::default();
+    let network_settings = NetworkConfig::default();
     let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
     // add peers
@@ -562,7 +562,7 @@ async fn test_get_advertisable_peer_ips() {
 #[tokio::test]
 #[serial]
 async fn test_get_out_connection_candidate_ips() {
-    let network_settings = NetworkSettings::default();
+    let network_settings = NetworkConfig::default();
     let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
     // add peers
@@ -673,7 +673,7 @@ async fn test_get_out_connection_candidate_ips() {
 #[tokio::test]
 #[serial]
 async fn test_cleanup_peers() {
-    let mut network_settings = NetworkSettings {
+    let mut network_settings = NetworkConfig {
         max_banned_peers: 1,
         max_idle_peers: 1,
         ..Default::default()
@@ -860,7 +860,7 @@ impl From<u32> for PeerInfoDatabase {
             };
             peers.insert(peer.ip, peer);
         }
-        let network_settings = NetworkSettings::default();
+        let network_settings = NetworkConfig::default();
         let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, _) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {});

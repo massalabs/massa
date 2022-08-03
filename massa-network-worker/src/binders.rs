@@ -67,6 +67,7 @@ pub struct ReadBinder {
     buf: Vec<u8>,
     cursor: usize,
     msg_size: Option<u32>,
+    message_deserializer: MessageDeserializer,
 }
 
 impl ReadBinder {
@@ -75,13 +76,14 @@ impl ReadBinder {
     /// # Argument
     /// * `read_half`: reader half.
     /// * `limit`: limit max bytes per second read.
-    pub fn new(read_half: ReadHalf, limit: f64) -> Self {
+    pub fn new(read_half: ReadHalf, limit: f64, message_deserializer: MessageDeserializer) -> Self {
         ReadBinder {
             read_half: <Limiter>::new(limit).limit(read_half),
             message_index: 0,
             buf: Vec::new(),
             cursor: 0,
             msg_size: None,
+            message_deserializer,
         }
     }
 
@@ -160,7 +162,8 @@ impl ReadBinder {
                 }
             }
         }
-        let (_, res_msg) = MessageDeserializer::new()
+        let (_, res_msg) = self
+            .message_deserializer
             .deserialize::<DeserializeError>(&self.buf)
             .map_err(|err| {
                 NetworkError::ModelsError(ModelsError::DeserializeError(err.to_string()))

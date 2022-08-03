@@ -2,18 +2,22 @@
 
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
-use crate::messages::{Message, MessageSerializer};
+use crate::messages::{Message, MessageDeserializer, MessageSerializer};
 use crate::node_worker::NodeWorker;
 use crate::tests::tools::{get_dummy_block_id, get_transaction};
 use crate::NetworkError;
 use crate::NetworkEvent;
 use crate::{
     binders::{ReadBinder, WriteBinder},
-    NetworkSettings,
+    NetworkConfig,
 };
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
+use massa_models::constants::{
+    ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+};
 use massa_models::EndorsementSerializer;
 use massa_models::{node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, Slot};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
@@ -61,10 +65,21 @@ fn default_testing_peer_type_enum_map() -> EnumMap<PeerType, PeerTypeConnectionC
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
+    let network_conf = NetworkConfig::scenarios_default(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
-    let reader = ReadBinder::new(duplex_mock_read, f64::INFINITY);
+    let reader = ReadBinder::new(
+        duplex_mock_read,
+        f64::INFINITY,
+        MessageDeserializer::new(
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT,
+            MAX_ADVERTISE_LENGTH,
+            MAX_ASK_BLOCKS_PER_MESSAGE,
+            MAX_OPERATIONS_PER_BLOCK,
+            MAX_ENDORSEMENTS_PER_MESSAGE,
+        ),
+    );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY);
 
     // Note: both channels have size 1.
@@ -116,10 +131,21 @@ async fn test_node_worker_shutdown() {
 async fn test_node_worker_operations_message() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
+    let network_conf = NetworkConfig::scenarios_default(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
-    let reader = ReadBinder::new(duplex_mock_read, f64::INFINITY);
+    let reader = ReadBinder::new(
+        duplex_mock_read,
+        f64::INFINITY,
+        MessageDeserializer::new(
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT,
+            MAX_ADVERTISE_LENGTH,
+            MAX_ASK_BLOCKS_PER_MESSAGE,
+            MAX_OPERATIONS_PER_BLOCK,
+            MAX_ENDORSEMENTS_PER_MESSAGE,
+        ),
+    );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY);
 
     // Note: both channels have size 1.
@@ -192,10 +218,10 @@ async fn test_multiple_connections_to_controller() {
     // test config
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
         max_in_connections_per_ip: 1,
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     let mock1_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
@@ -312,9 +338,9 @@ async fn test_peer_ban() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         wakeup_interval: 1000.into(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     tools::network_test(
@@ -448,9 +474,9 @@ async fn test_peer_ban_by_ip() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         wakeup_interval: 1000.into(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     tools::network_test(
@@ -591,10 +617,10 @@ async fn test_advertised_and_wakeup_interval() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         wakeup_interval: MassaTime::from(500),
         connect_timeout: MassaTime::from(2000),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     tools::network_test(
@@ -727,9 +753,10 @@ async fn test_block_not_found() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        max_ask_blocks: 3,
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     let message_serializer = MessageSerializer::new();
@@ -924,9 +951,9 @@ async fn test_retry_connection_closed() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     tools::network_test(
@@ -1024,9 +1051,9 @@ async fn test_operation_messages() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     let message_serializer = MessageSerializer::new();
@@ -1156,9 +1183,9 @@ async fn test_endorsements_messages() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let network_conf = NetworkSettings {
+    let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
-        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+        ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     let message_serializer = MessageSerializer::new();

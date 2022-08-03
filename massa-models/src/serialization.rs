@@ -456,36 +456,6 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_varint() {
-        let x32 = 70_000u32;
-        let x64 = 10_000_000_000u64;
-
-        // serialize
-        let mut res: Vec<u8> = Vec::new();
-        res.extend(x32.to_varint_bytes());
-        assert_eq!(res.len(), 3);
-        res.extend(x64.to_varint_bytes());
-        assert_eq!(res.len(), 3 + 5);
-
-        // deserialize
-        let buf = res.as_slice();
-        let mut cursor = 0;
-        let (out_x32, delta) = u32::from_varint_bytes_bounded(&buf[cursor..], 80_000).unwrap();
-        assert_eq!(out_x32, x32);
-        cursor += delta;
-        let (out_x64, delta) =
-            u64::from_varint_bytes_bounded(&buf[cursor..], 20_000_000_000).unwrap();
-        assert_eq!(out_x64, x64);
-        cursor += delta;
-        assert_eq!(cursor, buf.len());
-
-        // deserialize fail bounds
-        assert!(u32::from_varint_bytes_bounded(&buf[0..], 69_999).is_err());
-        assert!(u64::from_varint_bytes_bounded(&buf[3..], 9_999_999_999).is_err());
-    }
-
-    #[test]
-    #[serial]
     fn test_be_min() {
         let x32 = 70_000u32;
         let x64 = 10_000_000_000u64;

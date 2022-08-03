@@ -6,9 +6,8 @@ use massa_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_ledger_exports::{KeyDeserializer, KeySerializer};
-use massa_models::constants::MAX_ADVERTISE_LENGTH;
 use massa_models::slot::SlotDeserializer;
-use massa_models::{constants::THREAD_COUNT, slot::SlotSerializer, Slot, Version};
+use massa_models::{slot::SlotSerializer, Slot, Version};
 use massa_models::{VecU8Deserializer, VecU8Serializer, VersionDeserializer, VersionSerializer};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_proof_of_stake_exports::{
@@ -214,7 +213,18 @@ pub struct BootstrapServerMessageDeserializer {
 
 impl BootstrapServerMessageDeserializer {
     /// Creates a new `BootstrapServerMessageDeserializer`
-    pub fn new() -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        thread_count: u8,
+        endorsement_count: u32,
+        max_advertise_length: u32,
+        max_bootstrap_blocks: u32,
+        max_bootstrap_cliques: u32,
+        max_bootstrap_children: u32,
+        max_bootstrap_deps: u32,
+        max_bootstrap_pos_entries: u32,
+        max_operations_per_block: u32,
+    ) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(100)),
             time_deserializer: MassaTimeDeserializer::new((
@@ -222,22 +232,25 @@ impl BootstrapServerMessageDeserializer {
                 Included(MassaTime::from(u64::MAX)),
             )),
             version_deserializer: VersionDeserializer::new(),
-            peers_deserializer: BootstrapPeersDeserializer::new(MAX_ADVERTISE_LENGTH),
+            peers_deserializer: BootstrapPeersDeserializer::new(max_advertise_length),
             pos_deserializer: ExportProofOfStakeDeserializer::new(),
-            state_changes_deserializer: StateChangesDeserializer::new(),
-            bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(),
+            state_changes_deserializer: StateChangesDeserializer::new(thread_count),
+            bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
+                thread_count,
+                endorsement_count,
+                max_bootstrap_blocks,
+                max_bootstrap_cliques,
+                max_bootstrap_children,
+                max_bootstrap_deps,
+                max_bootstrap_pos_entries,
+                max_operations_per_block,
+            ),
             vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Included(thread_count)),
             ),
         }
-    }
-}
-
-impl Default for BootstrapServerMessageDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -251,7 +264,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new();
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.0").unwrap(),
@@ -492,22 +505,16 @@ pub struct BootstrapClientMessageDeserializer {
 
 impl BootstrapClientMessageDeserializer {
     /// Creates a new `BootstrapClientMessageDeserializer`
-    pub fn new() -> Self {
+    pub fn new(thread_count: u8) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(1000)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Included(thread_count)),
             ),
-            async_message_id_deserializer: AsyncMessageIdDeserializer::new(),
+            async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
             key_deserializer: KeyDeserializer::new(),
         }
-    }
-}
-
-impl Default for BootstrapClientMessageDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

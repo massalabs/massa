@@ -1,7 +1,6 @@
 use massa_hash::HashDeserializer;
 use massa_models::{
     clique::{Clique, CliqueDeserializer, CliqueSerializer},
-    constants::{MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CLIQUES, THREAD_COUNT},
     prehash::{Map, Set},
     BlockId,
 };
@@ -101,7 +100,8 @@ impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
                 .map_err(|_| SerializeError::NumberTooBig("Too much active_block".to_string()))?,
             buffer,
         )?;
-        for export_active_block in value.active_blocks.values() {
+        for (block_id, export_active_block) in value.active_blocks.iter() {
+            buffer.extend(block_id.0.to_bytes());
             self.export_active_block_serializer
                 .serialize(export_active_block, buffer)?;
         }
@@ -160,33 +160,46 @@ pub struct BootstrapableGraphDeserializer {
     clique_deserializer: CliqueDeserializer,
     consensus_ledger_data_deserializer: ConsensusLedgerSubsetDeserializer,
     hash_deserializer: HashDeserializer,
+    thread_count: u8,
 }
 
 impl BootstrapableGraphDeserializer {
     /// Creates a `BootstrapableGraphDeserializer`
-    pub fn new() -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        thread_count: u8,
+        endorsement_count: u32,
+        max_bootstrap_blocks: u32,
+        max_bootstrap_cliques: u32,
+        max_bootstrap_children: u32,
+        max_bootstrap_deps: u32,
+        max_bootstrap_pos_entries: u32,
+        max_operations_per_block: u32,
+    ) -> Self {
         Self {
             blocks_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_BOOTSTRAP_BLOCKS),
+                Included(max_bootstrap_blocks),
             ),
-            export_active_block_deserializer: ExportActiveBlockDeserializer::new(),
+            export_active_block_deserializer: ExportActiveBlockDeserializer::new(
+                thread_count,
+                endorsement_count,
+                max_bootstrap_children,
+                max_bootstrap_deps,
+                max_bootstrap_pos_entries,
+                max_operations_per_block,
+            ),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             set_length_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             clique_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_BOOTSTRAP_CLIQUES),
+                Included(max_bootstrap_cliques),
             ),
-            clique_deserializer: CliqueDeserializer::new(),
+            clique_deserializer: CliqueDeserializer::new(max_bootstrap_blocks),
             consensus_ledger_data_deserializer: ConsensusLedgerSubsetDeserializer::new(),
             hash_deserializer: HashDeserializer::new(),
+            thread_count,
         }
-    }
-}
-
-impl Default for BootstrapableGraphDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -211,7 +224,7 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
     /// }
     /// let mut buffer = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph, &mut buffer).unwrap();
-    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(16, 500, 10, 10, 100, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// let mut buffer2 = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph_deserialized, &mut buffer2).unwrap();
     /// assert_eq!(buffer, buffer2);
@@ -221,10 +234,6 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BootstrapableGraph, E> {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         context(
             "Failed BootstrapableGraph deserialization",
             tuple((
@@ -234,9 +243,13 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
                         context("Failed length deserialization", |input| {
                             self.blocks_length_deserializer.deserialize(input)
                         }),
-                        context("Failed export_active_block deserialization", |input| {
-                            self.export_active_block_deserializer.deserialize(input)
-                        }),
+                        context(
+                            "Failed export_active_block deserialization",
+                            tuple((
+                                |input| self.hash_deserializer.deserialize(input),
+                                |input| self.export_active_block_deserializer.deserialize(input),
+                            )),
+                        ),
                     ),
                 ),
                 context(
@@ -252,7 +265,7 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
                                 self.period_deserializer.deserialize(input)
                             }),
                         )),
-                        thread_count as usize,
+                        self.thread_count as usize,
                     ),
                 ),
                 context(
@@ -268,7 +281,7 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
                                 self.period_deserializer.deserialize(input)
                             }),
                         )),
-                        thread_count as usize,
+                        self.thread_count as usize,
                     ),
                 ),
                 context(
@@ -324,9 +337,7 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
                 BootstrapableGraph {
                     active_blocks: active_blocks
                         .into_iter()
-                        .map(|export_active_block| {
-                            (export_active_block.block_id, export_active_block)
-                        })
+                        .map(|(hash, value)| (BlockId(hash), value))
                         .collect(),
                     best_parents,
                     latest_final_blocks_periods,

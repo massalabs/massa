@@ -254,7 +254,7 @@ impl Deserializer<LedgerChange> for LedgerChangeDeserializer {
             tuple((
                 context(
                     "Failed balance_increment deserialization",
-                    alt((value(true, tag(&[1u8])), value(false, tag(&[1u8])))),
+                    alt((value(true, tag(&[1u8])), value(false, tag(&[0u8])))),
                 ),
                 context("Failed balance_delta deserialization", |input| {
                     self.amount_deserializer.deserialize(input)

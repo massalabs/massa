@@ -1,8 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::BLOCK_ID_SIZE_BYTES;
-use crate::node_configuration::default::ENDORSEMENT_COUNT;
-use crate::node_configuration::{MAX_BLOCK_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT};
+use crate::node_configuration::{MAX_BLOCK_SIZE, THREAD_COUNT};
 use crate::operation::OperationDeserializer;
 use crate::prehash::{Map, PreHashed, Set};
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
@@ -293,21 +292,22 @@ pub struct BlockDeserializer {
 
 impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
-    pub const fn new() -> Self {
+    pub const fn new(
+        thread_count: u8,
+        max_operations_per_block: u32,
+        endorsement_count: u32,
+    ) -> Self {
         BlockDeserializer {
-            header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new()),
+            header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
+                thread_count,
+                endorsement_count,
+            )),
             operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_OPERATIONS_PER_BLOCK),
+                Included(max_operations_per_block),
             ),
         }
-    }
-}
-
-impl Default for BlockDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -365,7 +365,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
-    /// let (rest, res_block) = BlockDeserializer::new().deserialize::<DeserializeError>(&mut buffer).unwrap();
+    /// let (rest, res_block) = BlockDeserializer::new(100).deserialize::<DeserializeError>(&mut buffer).unwrap();
     ///
     /// assert!(rest.is_empty());
     /// // check equality
@@ -637,24 +637,19 @@ pub struct BlockHeaderDeserializer {
 
 impl BlockHeaderDeserializer {
     /// Creates a new `BlockHeaderDeserializer`
-    pub const fn new() -> Self {
+    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(THREAD_COUNT)),
+                (Included(0), Excluded(thread_count)),
             ),
             endorsement_deserializer: WrappedDeserializer::new(EndorsementDeserializer::new(
-                ENDORSEMENT_COUNT,
+                thread_count,
+                endorsement_count,
             )),
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             hash_deserializer: HashDeserializer::new(),
         }
-    }
-}
-
-impl Default for BlockHeaderDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -699,7 +694,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     /// };
     /// let mut buffer = vec![];
     /// BlockHeaderSerializer::new().serialize(&header, &mut buffer).unwrap();
-    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// BlockHeaderSerializer::new().serialize(&deserialized_header, &mut buffer2).unwrap();
@@ -796,7 +791,11 @@ impl std::fmt::Display for BlockHeader {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{endorsement::EndorsementSerializer, Endorsement};
+    use crate::{
+        endorsement::EndorsementSerializer,
+        node_configuration::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK},
+        Endorsement,
+    };
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
     use serial_test::serial;
@@ -858,10 +857,11 @@ mod test {
             .unwrap();
 
         // deserialize
-        let (rest, res_block): (&[u8], WrappedBlock) =
-            WrappedDeserializer::new(BlockDeserializer::new())
-                .deserialize::<DeserializeError>(&ser_block)
-                .unwrap();
+        let (rest, res_block): (&[u8], WrappedBlock) = WrappedDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block)
+        .unwrap();
         assert!(rest.is_empty());
         // check equality
         assert_eq!(orig_block.header.id, res_block.content.header.id);

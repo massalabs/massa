@@ -14,6 +14,10 @@ use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
+use massa_models::constants::{
+    ENDORSEMENT_COUNT, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES,
+    MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+};
 use massa_models::operation::OperationSerializer;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
@@ -266,6 +270,15 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
         v1.active_blocks.len(),
         v2.active_blocks.len(),
         "length mismatch"
+    );
+    println!("id = {:#?}", get_dummy_block_id("block1"));
+    println!(
+        "blocks1 = {:#?}",
+        v1.active_blocks.iter().map(|b| b.0).collect::<Vec<_>>()
+    );
+    println!(
+        "blocks2 = {:#?}",
+        v2.active_blocks.iter().map(|b| b.0).collect::<Vec<_>>()
     );
     for (id1, itm1) in v1.active_blocks.iter() {
         let itm2 = v2.active_blocks.get(id1).unwrap();
@@ -567,9 +580,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     assert_eq_thread_cycle_states(&pos_deser, &boot_pos);
 
     let boot_graph = BootstrapableGraph {
-        active_blocks: vec![(get_dummy_block_id("block1"), block1)]
-            .into_iter()
-            .collect(),
+        active_blocks: vec![(block1.block_id, block1)].into_iter().collect(),
         best_parents: vec![
             (get_dummy_block_id("parent1"), 2),
             (get_dummy_block_id("parent2"), 3),
@@ -595,7 +606,16 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
-    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new();
+    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
+        THREAD_COUNT,
+        ENDORSEMENT_COUNT,
+        MAX_BOOTSTRAP_BLOCKS,
+        MAX_BOOTSTRAP_CLIQUES,
+        MAX_BOOTSTRAP_CHILDREN,
+        MAX_BOOTSTRAP_DEPS,
+        MAX_BOOTSTRAP_POS_ENTRIES,
+        MAX_OPERATIONS_PER_BLOCK,
+    );
 
     let mut bootstrapable_graph_serialized = Vec::new();
     bootstrapable_graph_serializer

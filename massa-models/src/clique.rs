@@ -17,7 +17,6 @@ use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
-use crate::node_configuration::MAX_BOOTSTRAP_BLOCKS;
 use crate::prehash::Set;
 use crate::BlockId;
 use std::ops::Bound::{Excluded, Included};
@@ -102,21 +101,15 @@ pub struct CliqueDeserializer {
 
 impl CliqueDeserializer {
     /// Creates a `CliqueDeserializer`
-    pub fn new() -> Self {
+    pub fn new(max_bootstrap_blocks: u32) -> Self {
         Self {
             block_ids_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(MAX_BOOTSTRAP_BLOCKS),
+                Excluded(max_bootstrap_blocks),
             ),
             block_id_deserializer: HashDeserializer::new(),
             fitness_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
-    }
-}
-
-impl Default for CliqueDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -139,7 +132,7 @@ impl Deserializer<Clique> for CliqueDeserializer {
     /// let mut buffer = Vec::new();
     /// let mut serializer = CliqueSerializer::new();
     /// serializer.serialize(&clique, &mut buffer).unwrap();
-    /// let mut deserializer = CliqueDeserializer::new();
+    /// let mut deserializer = CliqueDeserializer::new(1000);
     /// let (rest, clique_deserialized) = deserializer.deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(clique.block_ids, clique_deserialized.block_ids);
     /// assert_eq!(clique.is_blockclique, clique_deserialized.is_blockclique);

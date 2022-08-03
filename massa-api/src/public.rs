@@ -34,7 +34,7 @@ use massa_models::{
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     Address, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
-use massa_network_exports::{NetworkCommandSender, NetworkSettings};
+use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool::PoolCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -46,10 +46,10 @@ impl API<Public> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         execution_controller: Box<dyn ExecutionController>,
-        api_settings: &'static APISettings,
+        api_settings: APISettings,
         consensus_settings: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
-        network_settings: &'static NetworkSettings,
+        network_settings: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
         compensation_millis: i64,

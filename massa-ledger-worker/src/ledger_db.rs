@@ -21,10 +21,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 #[cfg(feature = "testing")]
-use massa_models::{address::AddressDeserializer, Amount, AmountDeserializer};
-
-#[cfg(feature = "testing")]
-use massa_serialization::DeserializeError;
+use massa_models::AmountDeserializer;
 
 const LEDGER_CF: &str = "ledger";
 const METADATA_CF: &str = "metadata";
@@ -416,13 +413,13 @@ impl LedgerDB {
     /// A BTreeMap with the address as key and the balance as value
     #[cfg(feature = "testing")]
     pub fn get_every_address(&self) -> std::collections::BTreeMap<Address, massa_models::Amount> {
-        use massa_models::{address::AddressDeserializer, DeserializeCompact};
+        use massa_models::address::AddressDeserializer;
         use massa_serialization::DeserializeError;
 
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let ledger = self
-            .0
+            .db
             .iterator_cf(handle, IteratorMode::Start)
             .collect::<Vec<_>>();
 
@@ -433,10 +430,11 @@ impl LedgerDB {
                 .deserialize::<DeserializeError>(&key[..])
                 .unwrap();
             if rest.first() == Some(&BALANCE_IDENT) {
-                addresses.insert(
-                    address,
-                    massa_models::Amount::from_bytes_compact(&entry).unwrap().0,
-                );
+                let (_, amount) = self
+                    .amount_deserializer
+                    .deserialize::<DeserializeError>(&entry)
+                    .unwrap();
+                addresses.insert(address, amount);
             }
         }
         addresses
@@ -453,12 +451,12 @@ impl LedgerDB {
         &self,
         addr: &Address,
     ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
-        let handle = self.0.cf_handle(LEDGER_CF).expect(CF_ERROR);
+        let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
 
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
 
-        self.0
+        self.db
             .iterator_cf_opt(
                 handle,
                 opt,

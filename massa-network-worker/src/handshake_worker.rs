@@ -2,7 +2,7 @@
 
 //! Here are happening handshakes.
 
-use crate::messages::MessageSerializer;
+use crate::messages::{MessageDeserializer, MessageSerializer};
 
 use super::{
     binders::{ReadBinder, WriteBinder},
@@ -11,8 +11,14 @@ use super::{
 use futures::future::try_join;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::node::NodeId;
-use massa_models::Version;
+use massa_models::{constants::MAX_ASK_BLOCKS_PER_MESSAGE, node::NodeId};
+use massa_models::{
+    constants::{
+        ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
+        MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+    },
+    Version,
+};
 use massa_network_exports::{
     throw_handshake_error as throw, ConnectionId, HandshakeErrorType, NetworkError, ReadHalf,
     WriteHalf,
@@ -81,7 +87,18 @@ impl HandshakeWorker {
             (
                 connection_id_copy,
                 HandshakeWorker {
-                    reader: ReadBinder::new(socket_reader, max_bytes_read),
+                    reader: ReadBinder::new(
+                        socket_reader,
+                        max_bytes_read,
+                        MessageDeserializer::new(
+                            THREAD_COUNT,
+                            ENDORSEMENT_COUNT,
+                            MAX_ADVERTISE_LENGTH,
+                            MAX_ASK_BLOCKS_PER_MESSAGE,
+                            MAX_OPERATIONS_PER_BLOCK,
+                            MAX_ENDORSEMENTS_PER_MESSAGE,
+                        ),
+                    ),
                     writer: WriteBinder::new(socket_writer, max_bytes_write),
                     self_node_id,
                     keypair,

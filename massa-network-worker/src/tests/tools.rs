@@ -5,9 +5,9 @@ use super::tools;
 use crate::handshake_worker::HandshakeWorker;
 use crate::messages::{Message, MessageSerializer};
 use crate::start_network_controller;
+use crate::NetworkConfig;
 use crate::NetworkError;
 use crate::NetworkEvent;
-use crate::NetworkSettings;
 
 use massa_hash::Hash;
 use massa_models::node::NodeId;
@@ -348,7 +348,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
 
 /// Runs a consensus test, passing a mock pool controller to it.
 pub async fn network_test<F, V>(
-    network_settings: NetworkSettings,
+    network_settings: NetworkConfig,
     temp_peers_file: NamedTempFile,
     test: F,
 ) where
@@ -374,7 +374,7 @@ pub async fn network_test<F, V>(
     // launch network controller
     let (network_event_sender, network_event_receiver, network_manager, _keypair, _node_id) =
         start_network_controller(
-            network_settings,
+            &network_settings,
             establisher,
             0,
             None,

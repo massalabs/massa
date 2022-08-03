@@ -16,7 +16,7 @@ pub use peers::{
     BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer, ConnectionCount, Peer,
     PeerInfo, PeerType, Peers,
 };
-pub use settings::NetworkSettings;
+pub use settings::NetworkConfig;
 
 mod commands;
 mod common;

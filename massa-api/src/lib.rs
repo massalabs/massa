@@ -23,7 +23,7 @@ use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
 use massa_models::{Address, BlockId, EndorsementId, Version};
-use massa_network_exports::{NetworkCommandSender, NetworkSettings};
+use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool::PoolCommandSender;
 use massa_signature::KeyPair;
 use std::net::{IpAddr, SocketAddr};
@@ -49,9 +49,9 @@ pub struct Public {
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings
-    pub api_settings: &'static APISettings,
-    /// network setting (TODO consider removing)
-    pub network_settings: &'static NetworkSettings,
+    pub api_settings: APISettings,
+    /// network setting
+    pub network_settings: NetworkConfig,
     /// node version (TODO remove, can be retrieved via an endpoint)
     pub version: Version,
     /// link to the network component

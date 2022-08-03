@@ -13,7 +13,7 @@ use massa_models::{
 };
 use massa_models::{BlockId, OperationId};
 use massa_network_exports::{
-    ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
+    ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType,
 };
 use massa_serialization::{SerializeError, Serializer, U32VarIntSerializer};
 use massa_storage::Storage;
@@ -31,7 +31,7 @@ use tracing::{debug, trace, warn};
 /// One worker per node.
 pub struct NodeWorker {
     /// Protocol configuration.
-    cfg: NetworkSettings,
+    cfg: NetworkConfig,
     /// Node id associated to that worker.
     node_id: NodeId,
     /// Reader for incoming data.
@@ -70,7 +70,7 @@ impl NodeWorker {
     /// * `node_event_tx`: Channel to send node events.
     /// * `storage`: Shared storage.
     pub fn new(
-        cfg: NetworkSettings,
+        cfg: NetworkConfig,
         node_id: NodeId,
         socket_reader: ReadBinder,
         socket_writer: WriteBinder,

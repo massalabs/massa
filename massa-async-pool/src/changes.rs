@@ -117,18 +117,12 @@ pub struct AsyncPoolChangesDeserializer {
 }
 
 impl AsyncPoolChangesDeserializer {
-    pub fn new() -> Self {
+    pub fn new(thread_count: u8) -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(1000000)),
-            id_deserializer: AsyncMessageIdDeserializer::new(),
+            id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
             message_deserializer: AsyncMessageDeserializer::new(),
         }
-    }
-}
-
-impl Default for AsyncPoolChangesDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

@@ -252,7 +252,7 @@ where
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = WrappedSerializer::new().serialize(&wrapped, &mut serialized_data).unwrap();
-    /// let deserializer = WrappedDeserializer::new(EndorsementDeserializer::new(1));
+    /// let deserializer = WrappedDeserializer::new(EndorsementDeserializer::new(32, 1));
     /// let (rest, deserialized): (&[u8], Wrapped<Endorsement, BlockId>) = deserializer.deserialize::<DeserializeError>(&serialized_data).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(wrapped.id, deserialized.id);

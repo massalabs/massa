@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::ENDORSEMENT_ID_SIZE_BYTES;
-use crate::node_configuration::THREAD_COUNT;
 use crate::prehash::PreHashed;
 use crate::wrapped::{Id, Wrapped, WrappedContent};
 use crate::{BlockId, ModelsError, Slot};
@@ -182,11 +181,11 @@ pub struct EndorsementDeserializer {
 
 impl EndorsementDeserializer {
     /// Creates a new `EndorsementDeserializer`
-    pub const fn new(endorsement_count: u32) -> Self {
+    pub const fn new(thread_count: u8, endorsement_count: u32) -> Self {
         EndorsementDeserializer {
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Excluded(THREAD_COUNT)),
+                (Included(0), Excluded(thread_count)),
             ),
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(endorsement_count)),
             hash_deserializer: HashDeserializer::new(),
@@ -208,7 +207,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializer {
     /// };
     /// let mut buffer = Vec::new();
     /// EndorsementSerializer::new().serialize(&endorsement, &mut buffer).unwrap();
-    /// let (rest, deserialized) = EndorsementDeserializer::new(1).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized) = EndorsementDeserializer::new(32, 10).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized.slot, endorsement.slot);
     /// assert_eq!(deserialized.index, endorsement.index);
@@ -269,7 +268,7 @@ mod tests {
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
         let (_, res_endorsement): (&[u8], WrappedEndorsement) =
-            WrappedDeserializer::new(EndorsementDeserializer::new(1))
+            WrappedDeserializer::new(EndorsementDeserializer::new(32, 1))
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
         assert_eq!(

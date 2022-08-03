@@ -7,7 +7,7 @@ use super::{
 use crate::{
     binders::{ReadBinder, WriteBinder},
     handshake_worker::HandshakeWorker,
-    messages::{Message, MessageSerializer},
+    messages::{Message, MessageDeserializer, MessageSerializer},
     network_event::EventSender,
 };
 use futures::{stream::FuturesUnordered, StreamExt};
@@ -15,9 +15,8 @@ use massa_logging::massa_trace;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
-    NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
-    NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
-    WriteHalf,
+    NetworkCommand, NetworkConfig, NetworkConnectionErrorType, NetworkError, NetworkEvent,
+    NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType, ReadHalf, WriteHalf,
 };
 use massa_serialization::Serializer;
 use massa_signature::KeyPair;
@@ -33,7 +32,7 @@ use tracing::{debug, trace, warn};
 /// Real job is done by network worker
 pub struct NetworkWorker {
     /// Network configuration.
-    cfg: NetworkSettings,
+    cfg: NetworkConfig,
     /// Our keypair.
     pub(crate) keypair: KeyPair,
     /// Our node id.
@@ -90,7 +89,7 @@ impl NetworkWorker {
     /// * `controller_manager_rx`: Channel receiving network management commands.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        cfg: NetworkSettings,
+        cfg: NetworkConfig,
         keypair: KeyPair,
         listener: Listener,
         establisher: Establisher,
@@ -704,10 +703,27 @@ impl NetworkWorker {
             let timeout = self.cfg.peer_list_send_timeout.to_duration();
             let max_bytes_read = self.cfg.max_bytes_read;
             let max_bytes_write = self.cfg.max_bytes_write;
+            let max_ask_blocks = self.cfg.max_ask_blocks;
+            let max_operations_per_block = self.cfg.max_operations_per_block;
+            let thread_count = self.cfg.thread_count;
+            let endorsement_count = self.cfg.endorsement_count;
+            let max_advertise_length = self.cfg.max_peer_advertise_length;
+            let max_endorsements_per_message = self.cfg.max_endorsements_per_message;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
                     let mut writer = WriteBinder::new(writer, max_bytes_read);
-                    let mut reader = ReadBinder::new(reader, max_bytes_write);
+                    let mut reader = ReadBinder::new(
+                        reader,
+                        max_bytes_write,
+                        MessageDeserializer::new(
+                            thread_count,
+                            endorsement_count,
+                            max_advertise_length,
+                            max_ask_blocks,
+                            max_operations_per_block,
+                            max_endorsements_per_message,
+                        ),
+                    );
                     let mut serialized_message = Vec::new();
                     MessageSerializer::new()
                         .serialize(&msg, &mut serialized_message)

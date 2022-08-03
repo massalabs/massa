@@ -91,21 +91,15 @@ pub struct AsyncMessageIdDeserializer {
 }
 
 impl AsyncMessageIdDeserializer {
-    pub fn new() -> Self {
+    pub fn new(thread_count: u8) -> Self {
         Self {
             amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Included(THREAD_COUNT)),
+                (Included(0), Included(thread_count)),
             ),
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
         }
-    }
-}
-
-impl Default for AsyncMessageIdDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -134,7 +128,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     /// let id: AsyncMessageId = message.compute_id();
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncMessageIdSerializer::new();
-    /// let deserializer = AsyncMessageIdDeserializer::new();
+    /// let deserializer = AsyncMessageIdDeserializer::new(10);
     /// serializer.serialize(&id, &mut serialized).unwrap();
     /// let (rest, id_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());

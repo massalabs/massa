@@ -59,7 +59,7 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<(u32, Vec<u8>), CipherErro
     let decrypted_bytes = cipher
         .decrypt(
             nonce,
-            data.get(nonce_end_index..).ok_or_else(|| {
+            rest.get(nonce_end_index..).ok_or_else(|| {
                 CipherError::DecryptionError(
                     "wallet file truncated: encrypted data missing or incomplete".to_string(),
                 )
