@@ -765,6 +765,23 @@ impl WrappedOperation {
         res
     }
 
+    /// Gets the maximal amount of sequential coins that may be spent by this operation (incl. fee)
+    pub fn get_max_sequential_spending(&self, roll_price: Amount) -> Amount {
+        // compute the max amount of sequential coins spent outside of the fees
+        let max_nonfee_seq_spending = match &self.content.op {
+            OperationType::Transaction { amount, .. } => *amount,
+            OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
+            OperationType::RollSell { .. } => Amount::zero(),
+            OperationType::ExecuteSC { coins, .. } => *coins,
+            OperationType::CallSC {
+                sequential_coins, ..
+            } => *sequential_coins,
+        };
+
+        // add all fees and return
+        max_nonfee_seq_spending.saturating_add(self.get_total_fee())
+    }
+
     /// get the addresses that are involved in this operation from a rolls point of view
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();

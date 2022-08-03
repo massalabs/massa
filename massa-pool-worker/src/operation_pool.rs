@@ -110,6 +110,7 @@ impl OperationPool {
                         vac.insert(OperationInfo::from_op(
                             op,
                             self.config.operation_validity_periods,
+                            self.config.roll_price,
                         ));
                         added.insert(*id);
                     }
@@ -186,7 +187,7 @@ impl OperationPool {
                         .get_sequential_balance(&op_info.creator_address)
                         .unwrap_or_default()
                 });
-            if &creator_seq_balance < op_info.max_sequential_spending {
+            if *creator_seq_balance < op_info.max_sequential_spending {
                 continue;
             }
 

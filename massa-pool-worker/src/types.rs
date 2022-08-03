@@ -18,7 +18,11 @@ pub struct OperationInfo {
 }
 
 impl OperationInfo {
-    pub fn from_op(op: &WrappedOperation, operation_validity_periods: u64) -> Self {
+    pub fn from_op(
+        op: &WrappedOperation,
+        operation_validity_periods: u64,
+        roll_price: Amount,
+    ) -> Self {
         OperationInfo {
             id: op.id,
             size: op.serialized_size(),
@@ -27,7 +31,7 @@ impl OperationInfo {
             fee: op.get_total_fee(),
             thread: op.thread,
             validity_period_range: op.get_validity_range(operation_validity_periods),
-            max_sequential_spending: op.get_max_sequential_spending(),
+            max_sequential_spending: op.get_max_sequential_spending(roll_price),
         }
     }
 }
