@@ -128,11 +128,9 @@ fn test_nested_call_gas_usage() {
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
     // create the block containing the smart contract execution operation
-    let block = create_block(
-        vec![create_execute_sc_operation(&keypair, bytecode).unwrap()],
-        Slot::new(1, 0),
-    )
-    .unwrap();
+    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    storage.store_operation(operation.clone());
+    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
@@ -162,6 +160,7 @@ fn test_nested_call_gas_usage() {
         address,
     )
     .unwrap();
+    storage.store_operation(operation.clone());
     let block = create_block(vec![operation], Slot::new(1, 1)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
@@ -224,11 +223,10 @@ fn send_and_receive_async_message() {
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
     // create the block contaning the smart contract execution operation
-    let block = create_block(
-        vec![create_execute_sc_operation(&keypair, bytecode).unwrap()],
-        Slot::new(1, 0),
-    )
-    .unwrap();
+
+    let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
+    storage.store_operation(operation.clone());
+    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
@@ -269,11 +267,9 @@ fn generate_events() {
 
     let (sender_address, keypair) = get_random_address_full();
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
-    let block = create_block(
-        vec![create_execute_sc_operation(&keypair, event_test_data).unwrap()],
-        Slot::new(1, 0),
-    )
-    .unwrap();
+    let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
+    storage.store_operation(operation.clone());
+    let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
     let slot = block.content.header.content.slot;
 
     storage.store_block(block.clone());
