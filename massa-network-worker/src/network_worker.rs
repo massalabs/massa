@@ -778,8 +778,7 @@ impl NetworkWorker {
                 event_impl::on_received_block(self, from_node_id, block).await?
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) => {
-                // TODO:
-                //event_impl::on_received_ask_for_blocks(self, from_node_id, list).await
+                event_impl::on_received_ask_for_blocks(self, from_node_id, list).await
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedReplyForBlocks(list)) => {
                 // TODO
