@@ -1577,7 +1577,8 @@ dependencies = [
  "massa_models",
  "massa_network_exports",
  "massa_network_worker",
- "massa_pool",
+ "massa_pool_exports",
+ "massa_pool_worker",
  "massa_pos_exports",
  "massa_pos_worker",
  "massa_protocol_exports",
@@ -1598,7 +1599,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.6.9"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.9#81fed4fb122229db2a368696808ad0736ef1726e"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.6.10#504acde47f2097affebeec16dab7aef5feecc42f"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -1630,7 +1631,7 @@ dependencies = [
  "massa_hash",
  "massa_models",
  "massa_network_exports",
- "massa_pool",
+ "massa_pool_exports",
  "massa_pos_exports",
  "massa_serialization",
  "massa_signature",
@@ -1726,7 +1727,7 @@ dependencies = [
  "massa_graph",
  "massa_logging",
  "massa_models",
- "massa_pool",
+ "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
  "massa_signature",
@@ -1751,7 +1752,7 @@ dependencies = [
  "massa_graph",
  "massa_logging",
  "massa_models",
- "massa_pool",
+ "massa_pool_exports",
  "massa_protocol_exports",
  "massa_signature",
  "massa_storage",
@@ -1801,6 +1802,52 @@ dependencies = [
  "serde_json",
  "serial_test",
  "tempfile",
+ "tracing",
+]
+
+[[package]]
+name = "massa_factory_exports"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "displaydoc",
+ "massa_consensus_exports",
+ "massa_execution_exports",
+ "massa_hash",
+ "massa_ledger_exports",
+ "massa_models",
+ "massa_pool_exports",
+ "massa_pos_exports",
+ "massa_serialization",
+ "massa_signature",
+ "massa_storage",
+ "massa_time",
+ "nom 7.1.1",
+ "num",
+ "serde 1.0.139",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "massa_factory_worker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "massa_consensus_exports",
+ "massa_factory_exports",
+ "massa_hash",
+ "massa_models",
+ "massa_pool_exports",
+ "massa_pos_exports",
+ "massa_serialization",
+ "massa_signature",
+ "massa_time",
+ "massa_wallet",
+ "parking_lot 0.12.1",
+ "serde 1.0.139",
+ "serde_json",
  "tracing",
 ]
 
@@ -1967,7 +2014,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_pool"
+name = "massa_pool_exports"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.21",
+ "lazy_static",
+ "massa_hash",
+ "massa_models",
+ "massa_signature",
+ "massa_storage",
+ "massa_time",
+ "num",
+ "serde 1.0.139",
+ "serial_test",
+ "thiserror",
+]
+
+[[package]]
+name = "massa_pool_worker"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
@@ -1976,6 +2041,7 @@ dependencies = [
  "massa_hash",
  "massa_logging",
  "massa_models",
+ "massa_pool_exports",
  "massa_protocol_exports",
  "massa_signature",
  "massa_storage",
@@ -1985,7 +2051,6 @@ dependencies = [
  "serde_json",
  "serial_test",
  "thiserror",
- "tokio",
  "tracing",
 ]
 
@@ -2130,7 +2195,6 @@ dependencies = [
  "serde 1.0.139",
  "thiserror",
  "time",
- "tokio",
 ]
 
 [[package]]
@@ -3867,9 +3931,11 @@ dependencies = [
  "byteorder",
  "dynasm",
  "dynasmrt",
+ "gimli",
  "lazy_static",
  "loupe",
  "more-asserts",
+ "rayon",
  "smallvec",
  "wasmer-compiler",
  "wasmer-types",

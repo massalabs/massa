@@ -41,6 +41,5 @@ massa_network_exports = { path = "../massa-network-exports", features = [
 instrument = [
     "tokio/tracing",
     "massa_models/instrument",
-    "massa_time/instrument",
     "massa_network_exports/instrument",
 ]

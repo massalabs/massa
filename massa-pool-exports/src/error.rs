@@ -1,8 +1,7 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
 use massa_models::ModelsError;
-use massa_protocol_exports::ProtocolError;
 use thiserror::Error;
 
 /// pool error
@@ -11,20 +10,10 @@ use thiserror::Error;
 pub enum PoolError {
     /// there was an inconsistency between containers
     ContainerInconsistency(String),
-    /// Protocol error {0}
-    ProtocolError(#[from] Box<ProtocolError>),
     /// channel error : {0}
     ChannelError(String),
-    /// Join error {0}
-    JoinError(#[from] tokio::task::JoinError),
     /// models error: {0}
     ModelsError(#[from] ModelsError),
     /// missing operation error: {0}
     MissingOperation(String),
-}
-
-impl From<ProtocolError> for PoolError {
-    fn from(protocol_error: ProtocolError) -> Self {
-        PoolError::ProtocolError(Box::new(protocol_error))
-    }
 }

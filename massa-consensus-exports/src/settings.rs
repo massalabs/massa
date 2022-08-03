@@ -47,7 +47,7 @@
 use massa_execution_exports::ExecutionController;
 use massa_graph::settings::GraphConfig;
 use massa_models::Amount;
-use massa_pool::PoolCommandSender;
+use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
 use massa_signature::KeyPair;
@@ -292,7 +292,7 @@ pub struct ConsensusWorkerChannels {
     /// Execution command sender.
     pub execution_controller: Box<dyn ExecutionController>,
     /// Associated Pool command sender.
-    pub pool_command_sender: PoolCommandSender,
+    pub pool_command_sender: PoolController,
     /// Selector controller
     pub selector_controller: Box<dyn SelectorController>,
     /// Channel receiving consensus commands.
@@ -313,7 +313,7 @@ pub struct ConsensusChannels {
     /// incoming link to protocol component
     pub protocol_event_receiver: ProtocolEventReceiver,
     /// outgoing link to pool component
-    pub pool_command_sender: PoolCommandSender,
+    pub pool_command_sender: PoolController,
     /// selector controller
     pub selector_controller: Box<dyn SelectorController>,
 }
@@ -326,21 +326,13 @@ impl From<&ConsensusSettings> for ConsensusConfig {
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let t0 = T0;
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(feature = "sandbox")]
-        let t0 = *T0;
         ConsensusConfig {
             #[cfg(feature = "testing")]
             temp_files: TempFiles::default(), // No need to clone
             genesis_timestamp: *GENESIS_TIMESTAMP,
             end_timestamp: *END_TIMESTAMP,
-            thread_count,
-            t0,
+            thread_count: THREAD_COUNT,
+            t0: T0,
             genesis_key: GENESIS_KEY.clone(),
             staking_keys_path: settings.staking_keys_path.clone(),
             max_discarded_blocks: settings.max_discarded_blocks,
@@ -387,21 +379,13 @@ impl From<ConsensusSettings> for ConsensusConfig {
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let t0 = T0;
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(feature = "sandbox")]
-        let t0 = *T0;
         ConsensusConfig {
             #[cfg(feature = "testing")]
             temp_files: Default::default(),
             genesis_timestamp: *GENESIS_TIMESTAMP,
             end_timestamp: *END_TIMESTAMP,
-            thread_count,
-            t0,
+            thread_count: THREAD_COUNT,
+            t0: T0,
             genesis_key: GENESIS_KEY.clone(),
             staking_keys_path: settings.staking_keys_path,
             max_discarded_blocks: settings.max_discarded_blocks,

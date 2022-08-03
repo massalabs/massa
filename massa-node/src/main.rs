@@ -35,7 +35,8 @@ use massa_models::{
 };
 use massa_network_exports::{Establisher, NetworkManager};
 use massa_network_worker::start_network_controller;
-use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
+use massa_pool_exports::{PoolController, PoolManager};
+use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::ProtocolManager;
@@ -81,15 +82,6 @@ async fn launch(
     // Storage shared by multiple components.
     let shared_storage: Storage = Default::default();
 
-    #[cfg(not(feature = "sandbox"))]
-    let thread_count = THREAD_COUNT;
-    #[cfg(not(feature = "sandbox"))]
-    let t0 = T0;
-    #[cfg(feature = "sandbox")]
-    let thread_count = *THREAD_COUNT;
-    #[cfg(feature = "sandbox")]
-    let t0 = *T0;
-
     // init final state
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
@@ -100,7 +92,7 @@ async fn launch(
     };
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
-        thread_count,
+        thread_count: THREAD_COUNT,
         ledger_config: ledger_config.clone(),
         async_pool_config,
     };
@@ -432,6 +424,16 @@ async fn main(args: Args) -> anyhow::Result<()> {
         // add the console layer to the subscriber or default layers...
         .with(tracing_layer)
         .init();
+
+    // Setup panic handlers,
+    // and when a panic occurs,
+    // run default handler,
+    // and then shutdown.
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
 
     // run
     let (password, staking_keys) =
