@@ -103,9 +103,25 @@ impl ExecutionController for ExecutionControllerImpl {
         addresses: Vec<Address>,
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
         let lock = self.execution_state.read();
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(addresses.len());
         for addr in addresses {
             result.push(lock.get_final_and_active_parallel_balance(&addr));
+        }
+        result
+    }
+
+    /// Get the final and active values of sequential balances.
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    fn get_final_and_active_sequential_balance(
+        &self,
+        addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)> {
+        let lock = self.execution_state.read();
+        let mut result = Vec::with_capacity(addresses.len());
+        for addr in addresses {
+            result.push(lock.get_final_and_active_sequential_balance(&addr));
         }
         result
     }

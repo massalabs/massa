@@ -196,7 +196,7 @@ impl OperationPool {
                 .entry(op_info.creator_address)
                 .or_insert_with(|| {
                     self.execution_controller
-                        .get_final_and_active_parallel_balance(vec![op_info.creator_address])[0]
+                        .get_final_and_active_sequential_balance(vec![op_info.creator_address])[0]
                         .1
                         .unwrap_or_default()
                 });

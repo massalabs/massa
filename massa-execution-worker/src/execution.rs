@@ -1048,6 +1048,27 @@ impl ExecutionState {
         )
     }
 
+    /// Gets a sequential balance both at the latest final and active executed slots
+    pub fn get_final_and_active_sequential_balance(
+        &self,
+        address: &Address,
+    ) -> (Option<Amount>, Option<Amount>) {
+        let final_balance = self
+            .final_state
+            .read()
+            .ledger
+            .get_sequential_balance(address);
+        let search_result = self.active_history.read().fetch_sequential_balance(address);
+        (
+            final_balance,
+            match search_result {
+                HistorySearchResult::Present(active_balance) => Some(active_balance),
+                HistorySearchResult::NoInfo => final_balance,
+                HistorySearchResult::Absent => None,
+            },
+        )
+    }
+
     /// Gets a data entry both at the latest final and active executed slots
     pub fn get_final_and_active_data_entry(
         &self,

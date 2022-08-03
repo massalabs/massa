@@ -38,11 +38,20 @@ pub trait ExecutionController: Send + Sync {
     /// * operation id
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent>;
 
-    /// Get a balance final and active values
+    /// Get the final and active values of paralell balances.
     ///
     /// # Return value
     /// * `(final_balance, active_balance)`
     fn get_final_and_active_parallel_balance(
+        &self,
+        addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)>;
+
+    /// Get the final and active values of sequential balances.
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    fn get_final_and_active_sequential_balance(
         &self,
         addresses: Vec<Address>,
     ) -> Vec<(Option<Amount>, Option<Amount>)>;
