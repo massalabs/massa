@@ -9,12 +9,11 @@ edition = "2021"
 [dependencies]
 bs58 = { version = "0.4", features = ["check"] }
 displaydoc = "0.2"
-schnorrkel = "0.10.2"
-lazy_static = "1.4.0"
+ed25519-dalek = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 nom = "7.1"
-rand = "0.8"
+rand = "0.7.0"
 # custom modules
 massa_hash = { path = "../massa-hash" }
 massa_serialization = { path = "../massa-serialization" }

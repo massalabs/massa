@@ -8,9 +8,9 @@ use crate::types::{
     SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
     SetUpdateOrDeleteSerializer,
 };
-use massa_hash::{Hash, HashDeserializer};
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
+use massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{prehash::Map, Address, Amount};
 use massa_models::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
@@ -20,7 +20,7 @@ use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
-use std::collections::hash_map;
+use std::collections::{hash_map, BTreeMap};
 use std::ops::Bound::Included;
 
 /// represents an update to one or more fields of a `LedgerEntry`
@@ -31,12 +31,13 @@ pub struct LedgerEntryUpdate {
     /// change the executable bytecode
     pub bytecode: SetOrKeep<Vec<u8>>,
     /// change datastore entries
-    pub datastore: Map<Hash, SetOrDelete<Vec<u8>>>,
+    pub datastore: BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>,
 }
 
 /// Serializer for `datastore` field of `LedgerEntryUpdate`
 pub struct DatastoreUpdateSerializer {
     u64_serializer: U64VarIntSerializer,
+    vec_u8_serializer: VecU8Serializer,
     value_serializer: SetOrDeleteSerializer<Vec<u8>, VecU8Serializer>,
 }
 
@@ -45,15 +46,16 @@ impl DatastoreUpdateSerializer {
     pub fn new() -> Self {
         Self {
             u64_serializer: U64VarIntSerializer::new(),
+            vec_u8_serializer: VecU8Serializer::new(),
             value_serializer: SetOrDeleteSerializer::new(VecU8Serializer::new()),
         }
     }
 }
 
-impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSerializer {
+impl Serializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSerializer {
     fn serialize(
         &self,
-        value: &Map<Hash, SetOrDelete<Vec<u8>>>,
+        value: &BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         let entry_count: u64 = value.len().try_into().map_err(|err| {
@@ -64,7 +66,7 @@ impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSerializer {
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;
         for (key, value) in value.iter() {
-            buffer.extend(key.to_bytes());
+            self.vec_u8_serializer.serialize(key, buffer)?;
             self.value_serializer.serialize(value, buffer)?;
         }
         Ok(())
@@ -74,7 +76,7 @@ impl Serializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateSerializer {
 /// Serializer for `datastore` field of `LedgerEntryUpdate`
 pub struct DatastoreUpdateDeserializer {
     u64_deserializer: U64VarIntDeserializer,
-    hash_deserializer: HashDeserializer,
+    key_deserializer: VecU8Deserializer,
     value_deserializer: SetOrDeleteDeserializer<Vec<u8>, VecU8Deserializer>,
 }
 
@@ -83,7 +85,10 @@ impl DatastoreUpdateDeserializer {
     pub fn new() -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            hash_deserializer: HashDeserializer::default(),
+            key_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(MAX_DATASTORE_KEY_LENGTH as u64),
+            ),
             value_deserializer: SetOrDeleteDeserializer::new(VecU8Deserializer::new(
                 Included(u64::MIN),
                 Included(u64::MAX),
@@ -92,11 +97,11 @@ impl DatastoreUpdateDeserializer {
     }
 }
 
-impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializer {
+impl Deserializer<BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Map<Hash, SetOrDelete<Vec<u8>>>, E> {
+    ) -> IResult<&'a [u8], BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>, E> {
         context(
             "Failed Datastore deserialization",
             length_count(
@@ -105,7 +110,7 @@ impl Deserializer<Map<Hash, SetOrDelete<Vec<u8>>>> for DatastoreUpdateDeserializ
                 }),
                 |input| {
                     tuple((
-                        |input| self.hash_deserializer.deserialize(input),
+                        |input| self.key_deserializer.deserialize(input),
                         |input| self.value_deserializer.deserialize(input),
                     ))(input)
                 },
@@ -145,12 +150,12 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// use massa_serialization::Serializer;
     /// use massa_models::{prehash::Map, Address, Amount};
     /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
-    /// let mut store = Map::default();
-    /// store.insert(hash, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let key = "hello world".as_bytes().to_vec();
+    /// let mut store = BTreeMap::default();
+    /// store.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
@@ -212,12 +217,12 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// use massa_serialization::{Deserializer, Serializer, DeserializeError};
     /// use massa_models::{prehash::Map, Address, Amount};
     /// use std::str::FromStr;
+    /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
-    /// let mut store = Map::default();
-    /// store.insert(hash, SetOrDelete::Set(vec![1, 2, 3]));
+    /// let key = "hello world".as_bytes().to_vec();
+    /// let mut store = BTreeMap::default();
+    /// store.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntryUpdate {
@@ -312,11 +317,10 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_models::{Amount, Address};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
-    /// store.insert(hash, vec![1, 2, 3]);
+    /// store.insert(key, vec![1, 2, 3]);
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
@@ -384,11 +388,10 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_models::{Amount, Address};
-    /// use massa_hash::Hash;
     ///
-    /// let hash = Hash::compute_from(&"hello world".as_bytes());
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut store = BTreeMap::new();
-    /// store.insert(hash, vec![1, 2, 3]);
+    /// store.insert(key, vec![1, 2, 3]);
     /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = vec![1, 2, 3];
     /// let ledger_entry = LedgerEntry {
@@ -696,7 +699,7 @@ impl LedgerChanges {
     pub fn get_data_entry_or_else<F: FnOnce() -> Option<Vec<u8>>>(
         &self,
         addr: &Address,
-        key: &Hash,
+        key: &[u8],
         f: F,
     ) -> Option<Vec<u8>> {
         // Get the current changes being applied to the ledger entry associated to that address
@@ -751,7 +754,7 @@ impl LedgerChanges {
     pub fn has_data_entry_or_else<F: FnOnce() -> bool>(
         &self,
         addr: &Address,
-        key: &Hash,
+        key: &[u8],
         f: F,
     ) -> bool {
         // Get the current changes being applied to the ledger entry associated to that address
@@ -795,7 +798,7 @@ impl LedgerChanges {
     /// * `addr`: target address
     /// * `key`: datastore key
     /// * `data`: datastore value to set
-    pub fn set_data_entry(&mut self, addr: Address, key: Hash, data: Vec<u8>) {
+    pub fn set_data_entry(&mut self, addr: Address, key: Vec<u8>, data: Vec<u8>) {
         // Get the changes being applied to the ledger entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the ledger entry
@@ -843,7 +846,7 @@ impl LedgerChanges {
     /// # Arguments
     /// * `addr`: target address
     /// * `key`: datastore key
-    pub fn delete_data_entry(&mut self, addr: Address, key: Hash) {
+    pub fn delete_data_entry(&mut self, addr: Address, key: Vec<u8>) {
         // Get the changes being applied to the ledger entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the ledger entry

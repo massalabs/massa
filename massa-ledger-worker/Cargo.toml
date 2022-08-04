@@ -12,7 +12,6 @@ nom = "7.1"
 
 # custom modules
 massa_ledger_exports = { path = "../massa-ledger-exports" }
-massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 

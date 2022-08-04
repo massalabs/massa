@@ -10,11 +10,10 @@ use crate::WrappedOperation;
 use crate::{
     Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
-use massa_hash::Hash;
 use massa_signature::{PublicKey, Signature};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::net::IpAddr;
 use std::str::FromStr;
 
@@ -201,6 +200,10 @@ pub struct AddressInfo {
     pub final_balance_info: Option<Amount>,
     /// latest sequential balance
     pub candidate_balance_info: Option<Amount>,
+    /// every final datastore key
+    pub final_datastore_keys: BTreeSet<Vec<u8>>,
+    /// every candidate datastore key
+    pub candidate_datastore_keys: BTreeSet<Vec<u8>>,
     /// rolls
     pub rolls: RollsInfo,
     /// next slots this address will be selected to create a block
@@ -226,6 +229,22 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "\tFinal: {:?}", self.final_balance_info)?;
         writeln!(f, "\tCandidate: {:?}\n", self.candidate_balance_info)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
+        writeln!(
+            f,
+            "Final datastore keys (UTF-8):\n{:?}\n",
+            self.final_datastore_keys
+                .iter()
+                .map(|v| std::str::from_utf8(v).unwrap_or("(non-utf8 key)"))
+                .collect::<Vec<&str>>()
+        )?;
+        writeln!(
+            f,
+            "Candidate datastore keys (UTF-8):\n{:?}\n",
+            self.candidate_datastore_keys
+                .iter()
+                .map(|v| std::str::from_utf8(v).unwrap_or("(non-utf8 key)"))
+                .collect::<Vec<&str>>()
+        )?;
         writeln!(
             f,
             "Block draws: {}",
@@ -488,7 +507,7 @@ pub struct DatastoreEntryInput {
     /// associated address of the entry
     pub address: Address,
     /// datastore key
-    pub key: Hash,
+    pub key: Vec<u8>,
 }
 
 /// Datastore entry query output struct
@@ -496,8 +515,16 @@ pub struct DatastoreEntryInput {
 pub struct DatastoreEntryOutput {
     /// final datastore entry value
     pub final_value: Option<Vec<u8>>,
-    /// active datastore entry value
-    pub active_value: Option<Vec<u8>>,
+    /// candidate datastore entry value
+    pub candidate_value: Option<Vec<u8>>,
+}
+
+impl std::fmt::Display for DatastoreEntryOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "final value: {:?}", self.final_value)?;
+        writeln!(f, "candidate value: {:?}", self.candidate_value)?;
+        Ok(())
+    }
 }
 
 /// filter used when retrieving SC output events

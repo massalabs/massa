@@ -185,9 +185,8 @@ impl Interface for InterfaceImpl {
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
         let addr = &massa_models::Address::from_str(address)?;
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
-        match context.get_data_entry(addr, &key) {
+        match context.get_data_entry(addr, key.as_bytes()) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -203,9 +202,8 @@ impl Interface for InterfaceImpl {
     /// * value: new value to set
     fn raw_set_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
         let addr = massa_models::Address::from_str(address)?;
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
-        context.set_data_entry(&addr, key, value.to_vec())?;
+        context.set_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -218,8 +216,7 @@ impl Interface for InterfaceImpl {
     /// * value: value to append
     fn raw_append_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
         let addr = massa_models::Address::from_str(address)?;
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
-        context_guard!(self).append_data_entry(&addr, key, value.to_vec())?;
+        context_guard!(self).append_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -231,8 +228,7 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry to delete
     fn raw_delete_data_for(&self, address: &str, key: &str) -> Result<()> {
         let addr = &massa_models::Address::from_str(address)?;
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
-        context_guard!(self).delete_data_entry(addr, &key)?;
+        context_guard!(self).delete_data_entry(addr, key.as_bytes())?;
         Ok(())
     }
 
@@ -246,9 +242,8 @@ impl Interface for InterfaceImpl {
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data_for(&self, address: &str, key: &str) -> Result<bool> {
         let addr = massa_models::Address::from_str(address)?;
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
-        Ok(context.has_data_entry(&addr, &key))
+        Ok(context.has_data_entry(&addr, key.as_bytes()))
     }
 
     /// Gets a datastore value by key for the current address (top of the call stack).
@@ -259,10 +254,9 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match context.get_data_entry(&addr, &key) {
+        match context.get_data_entry(&addr, key.as_bytes()) {
             Some(data) => Ok(data),
             _ => bail!("data entry not found"),
         }
@@ -277,10 +271,9 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
     fn raw_set_data(&self, key: &str, value: &[u8]) -> Result<()> {
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.set_data_entry(&addr, key, value.to_vec())?;
+        context.set_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -292,10 +285,9 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry
     /// * value: value to append
     fn raw_append_data(&self, key: &str, value: &[u8]) -> Result<()> {
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.append_data_entry(&addr, key, value.to_vec())?;
+        context.append_data_entry(&addr, key.as_bytes().to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -305,10 +297,9 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * key: string key of the datastore entry to delete
     fn raw_delete_data(&self, key: &str) -> Result<()> {
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
-        context.delete_data_entry(&addr, &key)?;
+        context.delete_data_entry(&addr, key.as_bytes())?;
         Ok(())
     }
 
@@ -320,10 +311,9 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data(&self, key: &str) -> Result<bool> {
-        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        Ok(context.has_data_entry(&addr, &key))
+        Ok(context.has_data_entry(&addr, key.as_bytes()))
     }
 
     /// Hashes arbitrary data
@@ -448,7 +438,9 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
-        context_guard!(self).generate_event(data)?;
+        let mut context = context_guard!(self);
+        let event = context.event_create(data);
+        context.event_emit(event);
         Ok(())
     }
 

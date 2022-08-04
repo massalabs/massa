@@ -32,7 +32,7 @@ buy, and the operation fee (you can put 0):
     buy_rolls <address> <roll count> <fee>
 
 As an example, the command for buying 1 roll with 0 fee for the address `VkUQ5MA4niNBhAEP7uVf89tvPfUHcbgy6BrdLM9SAuFSyy9DE`
-is: `buy_rolls VkUQ5MA4niNBhAEP7uVf89tvPfUHcbgy6BrdLM9SAuFSyy9DE 1 0`
+is: :code:`buy_rolls VkUQ5MA4niNBhAEP7uVf89tvPfUHcbgy6BrdLM9SAuFSyy9DE 1 0`
 
 
 It should take less than one minute for your roll to become final, check

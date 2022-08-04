@@ -7,7 +7,9 @@ use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use erased_serde::{Serialize, Serializer};
 use glob::glob;
-use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
+use massa_models::api::{
+    AddressInfo, BlockInfo, DatastoreEntryOutput, EndorsementInfo, NodeStatus, OperationInfo,
+};
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
@@ -260,6 +262,14 @@ impl Output for Vec<AddressInfo> {
     fn pretty_print(&self) {
         for address_info in self {
             println!("{}", address_info);
+        }
+    }
+}
+
+impl Output for Vec<DatastoreEntryOutput> {
+    fn pretty_print(&self) {
+        for data_entry in self {
+            println!("{}", data_entry);
         }
     }
 }

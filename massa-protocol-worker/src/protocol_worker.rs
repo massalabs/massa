@@ -441,7 +441,7 @@ impl ProtocolWorker {
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_ops: OperationIds = operation_ids
                         .iter()
-                        .filter(|id| !node_info.knows_op(*id))
+                        .filter(|id| !node_info.knows_op(id))
                         .copied()
                         .collect();
                     node_info.insert_known_ops(
@@ -466,7 +466,7 @@ impl ProtocolWorker {
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_endorsements: Map<EndorsementId, WrappedEndorsement> = endorsements
                         .iter()
-                        .filter(|(id, _)| !node_info.knows_endorsement(*id))
+                        .filter(|(id, _)| !node_info.knows_endorsement(id))
                         .map(|(k, v)| (*k, v.clone()))
                         .collect();
                     node_info.insert_known_endorsements(

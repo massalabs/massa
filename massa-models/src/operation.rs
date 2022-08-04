@@ -272,7 +272,7 @@ pub struct OperationDeserializer {
 
 impl OperationDeserializer {
     /// Creates a `OperationDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
@@ -523,7 +523,7 @@ pub struct OperationTypeDeserializer {
 
 impl OperationTypeDeserializer {
     /// Creates a new `OperationTypeDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -822,7 +822,7 @@ pub struct OperationPrefixIdDeserializer;
 
 impl OperationPrefixIdDeserializer {
     /// Creates a deserializer for [OperationPrefixId]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -867,7 +867,7 @@ pub struct OperationPrefixIdsDeserializer {
 
 impl OperationPrefixIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -912,7 +912,7 @@ pub struct OperationPrefixIdsSerializer {
 
 impl OperationPrefixIdsSerializer {
     /// Creates a new `OperationIdsSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
         }
@@ -953,7 +953,7 @@ pub struct OperationsSerializer {
 
 impl OperationsSerializer {
     /// Creates a new `OperationsSerializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
             signed_op_serializer: WrappedSerializer::new(),
@@ -988,7 +988,7 @@ pub struct OperationsDeserializer {
 
 impl OperationsDeserializer {
     /// Creates a new `OperationsDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),

@@ -144,10 +144,6 @@ pub struct ThreadCycleStateDeserializer {
 impl ThreadCycleStateDeserializer {
     /// Creates a new `ThreadCycleStateDeserializer`
     pub fn new() -> Self {
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
         ThreadCycleStateDeserializer {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -156,7 +152,7 @@ impl ThreadCycleStateDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Included(THREAD_COUNT)),
             ),
             roll_update_deserializer: RollUpdateDeserializer::new(),
             address_deserializer: AddressDeserializer::new(),

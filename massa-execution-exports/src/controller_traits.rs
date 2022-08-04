@@ -5,13 +5,13 @@
 use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
-use massa_hash::Hash;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
 use massa_models::Amount;
 use massa_models::BlockId;
 use massa_models::Slot;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 /// interface that communicates with the execution worker thread
@@ -41,18 +41,27 @@ pub trait ExecutionController: Send + Sync {
     /// * `(final_balance, active_balance)`
     fn get_final_and_active_parallel_balance(
         &self,
-        address: &Address,
-    ) -> (Option<Amount>, Option<Amount>);
+        addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)>;
 
     /// Get a copy of a single datastore entry with its final and active values
     ///
     /// # Return value
     /// * `(final_data_entry, active_data_entry)`
+    #[allow(clippy::type_complexity)]
     fn get_final_and_active_data_entry(
         &self,
+        input: Vec<(Address, Vec<u8>)>,
+    ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)>;
+
+    /// Get every datastore key of the given address.
+    ///
+    /// # Returns
+    /// A vector containing all the keys
+    fn get_final_and_active_datastore_keys(
+        &self,
         addr: &Address,
-        key: &Hash,
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>);
+    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>);
 
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///

@@ -1,9 +1,8 @@
-use massa_hash::Hash;
 use massa_models::{Address, Amount, ModelsError, Slot};
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::fmt::Debug;
 
-use crate::{LedgerChanges, LedgerEntry};
+use crate::LedgerChanges;
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Allows applying `LedgerChanges` to the final ledger
@@ -35,7 +34,7 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
-    fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>>;
+    fn get_data_entry(&self, addr: &Address, key: &[u8]) -> Option<Vec<u8>>;
 
     /// Checks for the existence of a datastore entry for a given address.
     ///
@@ -45,14 +44,13 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found
-    fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool;
+    fn has_data_entry(&self, addr: &Address, key: &[u8]) -> bool;
 
+    /// Get every key of the datastore for a given address.
+    ///
     /// # Returns
-    /// A copy of the datastore sorted by key
-    fn get_entire_datastore(&self, addr: &Address) -> BTreeMap<Hash, Vec<u8>>;
-
-    /// TODO: remove when API is updated
-    fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry>;
+    /// A BTreeSet of the datastore keys
+    fn get_datastore_keys(&self, addr: &Address) -> BTreeSet<Vec<u8>>;
 
     /// Get a part of the ledger
     /// Used for bootstrap
@@ -74,5 +72,14 @@ pub trait LedgerController: Send + Sync + Debug {
     /// # Returns
     /// A BTreeMap with the address as key and the balance as value
     #[cfg(feature = "testing")]
-    fn get_every_address(&self) -> BTreeMap<Address, Amount>;
+    fn get_every_address(&self) -> std::collections::BTreeMap<Address, Amount>;
+
+    /// Get the entire datastore for a given address.
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    ///
+    /// # Returns
+    /// A BTreeMap with the entry hash as key and the data bytes as value
+    #[cfg(feature = "testing")]
+    fn get_entire_datastore(&self, addr: &Address) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>>;
 }

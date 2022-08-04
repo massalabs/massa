@@ -13,7 +13,6 @@ use crate::speculative_ledger::SpeculativeLedger;
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
 use massa_final_state::{FinalState, StateChanges};
-use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
@@ -146,9 +145,26 @@ impl ExecutionContext {
         }
     }
 
-    /// Resets context to an existing snapshot
+    /// Resets context to an existing snapshot.
+    /// Optionally emits an error as an event after restoring the snapshot.
     /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
-    pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot) {
+    ///
+    /// # Arguments
+    /// * `snapshot`: a saved snapshot to be restored
+    /// * `with_error`: an optional execution error to emit as an event conserved after snapshot reset.
+    pub fn reset_to_snapshot(
+        &mut self,
+        snapshot: ExecutionContextSnapshot,
+        with_error: Option<ExecutionError>,
+    ) {
+        // Create error event, if any.
+        let err_event = with_error.map(|err| {
+            self.event_create(
+                serde_json::json!({ "massa_execution_error": format!("{}", err) }).to_string(),
+            )
+        });
+
+        // Reset context to snapshot.
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
         self.speculative_async_pool
@@ -158,6 +174,12 @@ impl ExecutionContext {
         self.stack = snapshot.stack;
         self.events = snapshot.events;
         self.unsafe_rng = snapshot.unsafe_rng;
+
+        // If there was an error, emit the corresponding event now.
+        // Note that the context event counter is properly handled by event_emit (see doc).
+        if let Some(event) = err_event {
+            self.event_emit(event);
+        }
     }
 
     /// Create a new `ExecutionContext` for read-only execution
@@ -365,12 +387,12 @@ impl ExecutionContext {
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
-    pub fn get_data_entry(&self, address: &Address, key: &Hash) -> Option<Vec<u8>> {
+    pub fn get_data_entry(&self, address: &Address, key: &[u8]) -> Option<Vec<u8>> {
         self.speculative_ledger.get_data_entry(address, key)
     }
 
     /// checks if a datastore entry exists in the speculative ledger
-    pub fn has_data_entry(&self, address: &Address, key: &Hash) -> bool {
+    pub fn has_data_entry(&self, address: &Address, key: &[u8]) -> bool {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
@@ -390,7 +412,7 @@ impl ExecutionContext {
     pub fn set_data_entry(
         &mut self,
         address: &Address,
-        key: Hash,
+        key: Vec<u8>,
         data: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check access right
@@ -416,7 +438,7 @@ impl ExecutionContext {
     pub fn append_data_entry(
         &mut self,
         address: &Address,
-        key: Hash,
+        key: Vec<u8>,
         data: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check access right
@@ -433,7 +455,7 @@ impl ExecutionContext {
             .get_data_entry(address, &key)
             .ok_or_else(|| {
                 ExecutionError::RuntimeError(format!(
-                    "appending to the datastore of address {} failed: entry {} not found",
+                    "appending to the datastore of address {} failed: entry {:?} not found",
                     address, key
                 ))
             })?;
@@ -455,7 +477,7 @@ impl ExecutionContext {
     pub fn delete_data_entry(
         &mut self,
         address: &Address,
-        key: &Hash,
+        key: &[u8],
     ) -> Result<(), ExecutionError> {
         // check access right
         if !self.has_write_rights_on(address) {
@@ -568,11 +590,12 @@ impl ExecutionContext {
         self.speculative_ledger.set_bytecode(address, bytecode)
     }
 
-    /// Emits an execution event to be stored.
+    /// Creates a new event but does not emit it.
+    /// Note that this does not increments the context event counter.
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    pub fn generate_event(&mut self, data: String) -> Result<(), ExecutionError> {
+    pub fn event_create(&self, data: String) -> SCOutputEvent {
         // Gather contextual information from the execution context
         let context = EventExecutionContext {
             slot: self.slot,
@@ -583,15 +606,20 @@ impl ExecutionContext {
             origin_operation_id: self.origin_operation_id,
         };
 
-        // Generate the event
-        let event = SCOutputEvent { context, data };
+        // Return the event
+        SCOutputEvent { context, data }
+    }
+
+    /// Emits a previously created event.
+    /// Overrides the event's index with the current event counter value, and increments the event counter.
+    pub fn event_emit(&mut self, mut event: SCOutputEvent) {
+        // Set the event index
+        event.context.index_in_slot = self.created_event_index;
 
         // Increment the event counter fot this slot
         self.created_event_index += 1;
 
         // Add the event to the context store
         self.events.push(event);
-
-        Ok(())
     }
 }

@@ -591,34 +591,55 @@ impl BlockGraph {
 
     /// export full graph in a bootstrap compatible version
     pub fn export_bootstrap_graph(&self) -> Result<BootstrapableGraph> {
-        let required_active_blocks = self.list_required_active_blocks()?;
-        let mut active_blocks: Map<BlockId, ExportActiveBlock> =
-            Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
-        for b_id in required_active_blocks {
-            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
+        let mut required_final_blocks: Set<_> = self.list_required_active_blocks()?;
+        required_final_blocks.retain(|b_id| {
+            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(b_id) {
                 if a_block.is_final {
-                    let block = self.storage.retrieve_block(&b_id).ok_or_else(|| {
-                        GraphError::MissingBlock(format!(
-                            "missing block in export_bootstrap_graph: {}",
-                            b_id
-                        ))
-                    })?;
-                    let stored_block = block.read().clone();
-                    active_blocks.insert(
-                        b_id,
-                        ExportActiveBlock {
-                            block: stored_block,
-                            block_id: b_id,
-                            parents: a_block.parents.clone(),
-                            children: a_block.children.clone(),
-                            dependencies: a_block.dependencies.clone(),
-                            is_final: a_block.is_final,
-                            block_ledger_changes: a_block.block_ledger_changes.clone(),
-                            roll_updates: a_block.roll_updates.clone(),
-                            production_events: a_block.production_events.clone(),
-                        },
-                    );
+                    // filter only final actives
+                    return true;
                 }
+            }
+            false
+        });
+        let mut active_blocks: Map<BlockId, ExportActiveBlock> =
+            Map::with_capacity_and_hasher(required_final_blocks.len(), BuildMap::default());
+        for b_id in &required_final_blocks {
+            if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(b_id) {
+                let block = self.storage.retrieve_block(b_id).ok_or_else(|| {
+                    GraphError::MissingBlock(format!(
+                        "missing block in export_bootstrap_graph: {}",
+                        b_id
+                    ))
+                })?;
+                let stored_block = block.read().clone();
+                active_blocks.insert(
+                    *b_id,
+                    ExportActiveBlock {
+                        block: stored_block,
+                        block_id: *b_id,
+                        parents: a_block.parents.clone(),
+                        children: a_block
+                            .children
+                            .iter()
+                            .map(|thread_children| {
+                                thread_children
+                                    .iter()
+                                    .filter_map(|(child_id, child_period)| {
+                                        if !required_final_blocks.contains(child_id) {
+                                            return None;
+                                        }
+                                        Some((*child_id, *child_period))
+                                    })
+                                    .collect()
+                            })
+                            .collect(),
+                        dependencies: a_block.dependencies.clone(),
+                        is_final: a_block.is_final,
+                        block_ledger_changes: a_block.block_ledger_changes.clone(),
+                        roll_updates: a_block.roll_updates.clone(),
+                        production_events: a_block.production_events.clone(),
+                    },
+                );
             } else {
                 return Err(GraphError::ContainerInconsistency(format!(
                     "block {} was expected to be active but wasn't on bootstrap graph export",
@@ -629,10 +650,10 @@ impl BlockGraph {
 
         Ok(BootstrapableGraph {
             active_blocks,
-            best_parents: self.best_parents.clone(),
+            best_parents: self.latest_final_blocks_periods.clone(),
             latest_final_blocks_periods: self.latest_final_blocks_periods.clone(),
-            gi_head: self.gi_head.clone(),
-            max_cliques: self.max_cliques.clone(),
+            gi_head: Default::default(),
+            max_cliques: vec![Default::default()],
             ledger: ConsensusLedgerSubset::try_from(&self.ledger)?,
         })
     }

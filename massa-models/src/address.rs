@@ -154,7 +154,7 @@ impl Address {
 
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Address(Hash::compute_from(&public_key.to_bytes()))
+        Address(Hash::compute_from(public_key.to_bytes()))
     }
 
     /// ## Example
@@ -248,7 +248,7 @@ pub struct AddressDeserializer {
 
 impl AddressDeserializer {
     /// Creates a new deserializer for `Address`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             hash_deserializer: HashDeserializer::new(),
         }

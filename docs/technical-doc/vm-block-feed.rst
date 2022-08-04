@@ -27,12 +27,9 @@ SCE vs CSS finality
 
 Block finality on the CSS side (CSS-finality) can happen in any order (see scientific paper). To ensure that final slots (blocks or misses) are taken into account in a fully sequential way on the SCE side, we introduce a stronger definition of finality on the SCE side (SCE-finality).
 
-
-```
 A slot S is SCE-final if-and-only-if all the following criteria are met:
 * all slots before B are SCE-final`
 * S either contains a CSS-final block or there is a CSS-final block in the same thread at a later period
-```
 
 That way, we ensure that once a slot becomes SCE-final, the final SCE ledger won't ever have to be rolled back because no new blocks can appear at that slot or before it.
 

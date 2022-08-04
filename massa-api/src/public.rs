@@ -38,6 +38,7 @@ use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use std::collections::BTreeSet;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -510,18 +511,25 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_datastore_entry(
+    fn get_datastore_entries(
         &self,
-        entry: DatastoreEntryInput,
-    ) -> BoxFuture<Result<DatastoreEntryOutput, ApiError>> {
+        entries: Vec<DatastoreEntryInput>,
+    ) -> BoxFuture<Result<Vec<DatastoreEntryOutput>, ApiError>> {
         let execution_controller = self.0.execution_controller.clone();
         let closure = async move || {
-            let data =
-                execution_controller.get_final_and_active_data_entry(&entry.address, &entry.key);
-            Ok(DatastoreEntryOutput {
-                final_value: data.0,
-                active_value: data.1,
-            })
+            Ok(execution_controller
+                .get_final_and_active_data_entry(
+                    entries
+                        .into_iter()
+                        .map(|input| (input.address, input.key))
+                        .collect::<Vec<_>>(),
+                )
+                .into_iter()
+                .map(|output| DatastoreEntryOutput {
+                    final_value: output.0,
+                    candidate_value: output.1,
+                })
+                .collect())
         };
         Box::pin(closure())
     }
@@ -579,6 +587,10 @@ impl Endpoints for API<Public> {
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
             let mut candidate_balance_info: Map<Address, Option<Amount>> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut final_datastore_keys: Map<Address, BTreeSet<Vec<u8>>> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut candidate_datastore_keys: Map<Address, BTreeSet<Vec<u8>>> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
 
             let mut concurrent_getters = FuturesUnordered::new();
             for &address in addresses.iter() {
@@ -610,8 +622,11 @@ impl Endpoints for API<Public> {
                         .chain(get_consensus_eds?.into_keys())
                         .collect();
 
-                    let (final_balance, candidate_balance) =
-                        exec_snd.get_final_and_active_parallel_balance(&address);
+                    let balances = exec_snd.get_final_and_active_parallel_balance(vec![address]);
+                    let balances_result = balances.first().unwrap();
+                    let (final_keys, candidate_keys) =
+                        exec_snd.get_final_and_active_datastore_keys(&address);
+
                     Result::<
                         (
                             Address,
@@ -620,6 +635,8 @@ impl Endpoints for API<Public> {
                             Set<EndorsementId>,
                             Option<Amount>,
                             Option<Amount>,
+                            BTreeSet<Vec<u8>>,
+                            BTreeSet<Vec<u8>>,
                         ),
                         ApiError,
                     >::Ok((
@@ -627,18 +644,31 @@ impl Endpoints for API<Public> {
                         blocks,
                         gathered,
                         gathered_ed,
-                        final_balance,
-                        candidate_balance,
+                        balances_result.0,
+                        balances_result.1,
+                        final_keys,
+                        candidate_keys,
                     ))
                 });
             }
             while let Some(res) = concurrent_getters.next().await {
-                let (a, bl_set, op_set, ed_set, final_balance, candidate_balance) = res?;
-                operations.insert(a, op_set);
-                blocks.insert(a, bl_set);
-                endorsements.insert(a, ed_set);
-                final_balance_info.insert(a, final_balance);
-                candidate_balance_info.insert(a, candidate_balance);
+                let (
+                    addr,
+                    block_set,
+                    operation_set,
+                    endorsement_set,
+                    final_balance,
+                    candidate_balance,
+                    final_keys,
+                    candidate_keys,
+                ) = res?;
+                blocks.insert(addr, block_set);
+                operations.insert(addr, operation_set);
+                endorsements.insert(addr, endorsement_set);
+                final_balance_info.insert(addr, final_balance);
+                candidate_balance_info.insert(addr, candidate_balance);
+                final_datastore_keys.insert(addr, final_keys);
+                candidate_datastore_keys.insert(addr, candidate_keys);
             }
 
             // compile everything per address
@@ -678,6 +708,12 @@ impl Endpoints for API<Public> {
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                     candidate_balance_info: candidate_balance_info
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
+                    final_datastore_keys: final_datastore_keys
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
+                    candidate_datastore_keys: candidate_datastore_keys
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                 })
