@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_establisher::Duplex;
-use crate::settings::BootstrapSettings;
+use crate::settings::BootstrapConfig;
 use bitvec::prelude::*;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_consensus_exports::commands::ConsensusCommand;
@@ -15,8 +15,8 @@ use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::constants::{
-    ENDORSEMENT_COUNT, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES,
-    MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_CYCLES, MAX_BOOTSTRAP_POS_ENTRIES,
+    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS,
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_POS_CYCLES, MAX_BOOTSTRAP_POS_ENTRIES,
     MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
 };
 use massa_models::operation::OperationSerializer;
@@ -121,29 +121,8 @@ pub fn get_dummy_signature(s: &str) -> Signature {
     priv_key.sign(&Hash::compute_from(s.as_bytes())).unwrap()
 }
 
-pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSettings {
-    // Init the serialization context with a default,
-    // can be overwritten with a more specific one in the test.
-    massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_operations_per_block: 1024,
-        thread_count: 2,
-        max_advertise_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_block_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_endorsements_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-        max_bootstrap_pos_entries: 1000,
-        max_bootstrap_pos_cycles: 5,
-        endorsement_count: 8,
-    });
-
-    BootstrapSettings {
+pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
+    BootstrapConfig {
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
@@ -159,6 +138,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         ip_list_max_size: 10,
         per_ip_min_interval: 10000.into(),
         max_bytes_read_write: std::f64::INFINITY,
+        max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
     }
 }
 
@@ -613,7 +593,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
     let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
         THREAD_COUNT,
-        ENDORSEMENT_COUNT,
+        9,
         MAX_BOOTSTRAP_BLOCKS,
         MAX_BOOTSTRAP_CLIQUES,
         MAX_BOOTSTRAP_CHILDREN,

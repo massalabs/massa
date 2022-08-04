@@ -70,7 +70,7 @@ pub const CHANNEL_SIZE: usize = 256;
 /// fitness threshold
 pub const DELTA_F0: u64 = 32;
 /// target endorsement count
-pub const ENDORSEMENT_COUNT: u32 = 0;
+pub const ENDORSEMENT_COUNT: u32 = 9;
 /// endorsement id size
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 /// event id size

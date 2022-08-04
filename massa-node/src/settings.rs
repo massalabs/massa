@@ -5,11 +5,11 @@ use std::path::PathBuf;
 
 use enum_map::EnumMap;
 use massa_api::APISettings;
-use massa_bootstrap::BootstrapSettings;
 use massa_consensus_exports::ConsensusSettings;
 use massa_models::constants::{build_massa_settings, OPERATION_VALIDITY_PERIODS, THREAD_COUNT};
 use massa_pool::{PoolConfig, PoolSettings};
 use massa_protocol_exports::ProtocolSettings;
+use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
@@ -68,6 +68,26 @@ pub struct NetworkSettings {
     pub max_operations_per_message: u32,
     pub max_bytes_read: f64,
     pub max_bytes_write: f64,
+}
+
+/// Bootstrap config.
+#[derive(Debug, Deserialize, Clone)]
+pub struct BootstrapSettings {
+    pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
+    pub bind: Option<SocketAddr>,
+    pub connect_timeout: MassaTime,
+    pub read_timeout: MassaTime,
+    pub write_timeout: MassaTime,
+    pub read_error_timeout: MassaTime,
+    pub write_error_timeout: MassaTime,
+    pub retry_delay: MassaTime,
+    pub max_ping: MassaTime,
+    pub enable_clock_synchronization: bool,
+    pub cache_duration: MassaTime,
+    pub max_simultaneous_bootstraps: u32,
+    pub per_ip_min_interval: MassaTime,
+    pub ip_list_max_size: usize,
+    pub max_bytes_read_write: f64,
 }
 
 #[derive(Debug, Deserialize, Clone)]

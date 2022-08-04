@@ -19,14 +19,14 @@ use crate::{
     client_binder::BootstrapClientBinder,
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
-    BootstrapSettings, Establisher, GlobalBootstrapState,
+    BootstrapConfig, Establisher, GlobalBootstrapState,
 };
 
 /// This function will send the starting point to receive a stream of the ledger and will receive and process each part until receive a `BootstrapServerMessage::FinalStateFinished` message from the server.
 /// `next_bootstrap_message` passed as parameter must be `BootstrapClientMessage::AskFinalStatePart` enum's variant.
 /// `next_bootstrap_message` will be updated after receiving each part so that in case of connection lost we can restart from the last message we processed.
 async fn stream_final_state(
-    cfg: &BootstrapSettings,
+    cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
@@ -124,7 +124,7 @@ async fn stream_final_state(
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
 async fn bootstrap_from_server(
-    cfg: &BootstrapSettings,
+    cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
     global_bootstrap_state: &mut GlobalBootstrapState,
@@ -331,26 +331,27 @@ async fn send_client_message(
 
 async fn connect_to_server(
     establisher: &mut Establisher,
-    bootstrap_settings: &BootstrapSettings,
+    bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
 ) -> Result<BootstrapClientBinder, BootstrapError> {
     // connect
     let mut connector = establisher
-        .get_connector(bootstrap_settings.connect_timeout)
+        .get_connector(bootstrap_config.connect_timeout)
         .await?; // cancellable
     let socket = connector.connect(*addr).await?; // cancellable
     Ok(BootstrapClientBinder::new(
         socket,
         *pub_key,
-        bootstrap_settings.max_bytes_read_write,
+        bootstrap_config.max_bytes_read_write,
+        bootstrap_config.max_bootstrap_message_size,
     ))
 }
 
 /// Gets the state from a bootstrap server
 /// needs to be CANCELLABLE
 pub async fn get_state(
-    bootstrap_settings: &'static BootstrapSettings,
+    bootstrap_config: &BootstrapConfig,
     final_state: Arc<RwLock<FinalState>>,
     mut establisher: Establisher,
     version: Version,
@@ -366,12 +367,12 @@ pub async fn get_state(
     }
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
-    if bootstrap_settings.bootstrap_list.is_empty() {
+    if bootstrap_config.bootstrap_list.is_empty() {
         return Err(BootstrapError::GeneralError(
             "no bootstrap nodes found in list".into(),
         ));
     }
-    let mut shuffled_list = bootstrap_settings.bootstrap_list.clone();
+    let mut shuffled_list = bootstrap_config.bootstrap_list.clone();
     shuffled_list.shuffle(&mut StdRng::from_entropy());
     // Will be none when bootstrap is over
     let mut next_bootstrap_message: BootstrapClientMessage =
@@ -389,16 +390,16 @@ pub async fn get_state(
                 }
             }
             info!("Start bootstrapping from {}", addr);
-            match connect_to_server(&mut establisher, bootstrap_settings, addr, pub_key).await {
+            match connect_to_server(&mut establisher, bootstrap_config, addr, pub_key).await {
                 Ok(mut client) => {
-                    match bootstrap_from_server(bootstrap_settings, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
+                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
                     .await  // cancellable
                     {
                         Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
                         Err(e) => {
                             warn!("Error while bootstrapping: {}", e);
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            let _ = tokio::time::timeout(bootstrap_settings.write_error_timeout.into(), client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
+                            let _ = tokio::time::timeout(bootstrap_config.write_error_timeout.into(), client.send(&BootstrapClientMessage::BootstrapError { error: e.to_string() })).await;
                         }
                         Ok(()) => {
                             return Ok(global_bootstrap_state)
@@ -410,8 +411,8 @@ pub async fn get_state(
                 }
             };
 
-            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.", addr, bootstrap_settings.retry_delay.to_duration());
-            sleep(bootstrap_settings.retry_delay.into()).await;
+            info!("Bootstrap from server {} failed. Your node will try to bootstrap from another server in {:#?}.", addr, bootstrap_config.retry_delay.to_duration());
+            sleep(bootstrap_config.retry_delay.into()).await;
         }
     }
 }

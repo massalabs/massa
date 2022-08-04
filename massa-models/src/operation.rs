@@ -934,7 +934,7 @@ impl Deserializer<OperationIds> for OperationIdsDeserializer {
     /// operations_ids.insert(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
     /// let mut buffer = Vec::new();
     /// OperationIdsSerializer::new().serialize(&operations_ids, &mut buffer).unwrap();
-    /// let (rest, deserialized_operations_ids) = OperationIdsDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_operations_ids) = OperationIdsDeserializer::new(1000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized_operations_ids, operations_ids);
     /// ```
@@ -1042,7 +1042,7 @@ impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
     /// op_prefixes.insert(OperationPrefixId::from(&[20; OPERATION_ID_PREFIX_SIZE_BYTES]));
     /// let mut buffer = Vec::new();
     /// OperationPrefixIdsSerializer::new().serialize(&op_prefixes, &mut buffer).unwrap();
-    /// let (rest, deserialized) = OperationPrefixIdsDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized) = OperationPrefixIdsDeserializer::new(1000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized, op_prefixes);
     /// ```

@@ -16,8 +16,8 @@ use massa_models::constants::{
 };
 use massa_models::Version;
 use massa_models::{
-    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeMinBEInt,
-    SerializeMinBEInt, VersionSerializer,
+    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, DeserializeMinBEInt, SerializeMinBEInt,
+    VersionSerializer,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
@@ -41,9 +41,12 @@ impl BootstrapClientBinder {
     /// # Argument
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
-    pub fn new(duplex: Duplex, remote_pubkey: PublicKey, limit: f64) -> Self {
-        let max_bootstrap_message_size =
-            with_serialization_context(|context| context.max_bootstrap_message_size);
+    pub fn new(
+        duplex: Duplex,
+        remote_pubkey: PublicKey,
+        limit: f64,
+        max_bootstrap_message_size: u32,
+    ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapClientBinder {
             max_bootstrap_message_size,

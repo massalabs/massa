@@ -13,7 +13,7 @@ use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE,
+        ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE,
         MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
     },
     Version,
@@ -93,6 +93,7 @@ impl HandshakeWorker {
                     reader: ReadBinder::new(
                         socket_reader,
                         max_bytes_read,
+                        MAX_MESSAGE_SIZE,
                         MessageDeserializer::new(
                             THREAD_COUNT,
                             ENDORSEMENT_COUNT,
@@ -103,7 +104,7 @@ impl HandshakeWorker {
                             MAX_ENDORSEMENTS_PER_MESSAGE,
                         ),
                     ),
-                    writer: WriteBinder::new(socket_writer, max_bytes_write),
+                    writer: WriteBinder::new(socket_writer, max_bytes_write, MAX_MESSAGE_SIZE),
                     self_node_id,
                     keypair,
                     timeout_duration,

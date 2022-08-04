@@ -5,10 +5,9 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
-/// Bootstrap settings.
-/// Both bootstrapping at start-up and bootstrap server settings
+/// Bootstrap config.
 #[derive(Debug, Deserialize, Clone)]
-pub struct BootstrapSettings {
+pub struct BootstrapConfig {
     /// Ip address of our bootstrap nodes and their public key.
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.
@@ -39,4 +38,6 @@ pub struct BootstrapSettings {
     pub ip_list_max_size: usize,
     /// Read-Write limitation for a connection in bytes per seconds
     pub max_bytes_read_write: f64,
+    /// max bootstrap message size in bytes
+    pub max_bootstrap_message_size: u32,
 }

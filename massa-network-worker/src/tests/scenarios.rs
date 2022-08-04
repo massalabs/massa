@@ -16,8 +16,8 @@ use enum_map::EnumMap;
 use massa_hash::Hash;
 use massa_models::constants::{
     ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
-    THREAD_COUNT,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK,
+    MAX_OPERATIONS_PER_MESSAGE, THREAD_COUNT,
 };
 use massa_models::EndorsementSerializer;
 use massa_models::{node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, Slot};
@@ -72,6 +72,7 @@ async fn test_node_worker_shutdown() {
     let reader = ReadBinder::new(
         duplex_mock_read,
         f64::INFINITY,
+        MAX_MESSAGE_SIZE,
         MessageDeserializer::new(
             THREAD_COUNT,
             ENDORSEMENT_COUNT,
@@ -82,7 +83,7 @@ async fn test_node_worker_shutdown() {
             MAX_ENDORSEMENTS_PER_MESSAGE,
         ),
     );
-    let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY);
+    let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
 
     // Note: both channels have size 1.
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
@@ -139,6 +140,7 @@ async fn test_node_worker_operations_message() {
     let reader = ReadBinder::new(
         duplex_mock_read,
         f64::INFINITY,
+        MAX_MESSAGE_SIZE,
         MessageDeserializer::new(
             THREAD_COUNT,
             ENDORSEMENT_COUNT,
@@ -149,7 +151,7 @@ async fn test_node_worker_operations_message() {
             MAX_ENDORSEMENTS_PER_MESSAGE,
         ),
     );
-    let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY);
+    let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
 
     // Note: both channels have size 1.
     let (node_command_tx, node_command_rx) = mpsc::channel::<NodeCommand>(1);
@@ -763,11 +765,6 @@ async fn test_block_not_found() {
     };
 
     let message_serializer = MessageSerializer::new();
-    // Overwrite the context.
-    let mut serialization_context = massa_models::get_serialization_context();
-    serialization_context.max_ask_blocks_per_message = 3;
-    massa_models::init_serialization_context(serialization_context);
-
     tools::network_test(
         network_conf.clone(),
         temp_peers_file,
@@ -1056,15 +1053,11 @@ async fn test_operation_messages() {
     }]);
     let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
+        max_ask_blocks: 3,
         ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     let message_serializer = MessageSerializer::new();
-    // Overwrite the context.
-    let mut serialization_context = massa_models::get_serialization_context();
-    serialization_context.max_ask_blocks_per_message = 3;
-    massa_models::init_serialization_context(serialization_context);
-
     tools::network_test(
         network_conf.clone(),
         temp_peers_file,
@@ -1188,15 +1181,11 @@ async fn test_endorsements_messages() {
     }]);
     let network_conf = NetworkConfig {
         peer_types_config: default_testing_peer_type_enum_map(),
+        max_ask_blocks: 3,
         ..NetworkConfig::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     let message_serializer = MessageSerializer::new();
-    // Overwrite the context.
-    let mut serialization_context = massa_models::get_serialization_context();
-    serialization_context.max_ask_blocks_per_message = 3;
-    massa_models::init_serialization_context(serialization_context);
-
     tools::network_test(
         network_conf.clone(),
         temp_peers_file,

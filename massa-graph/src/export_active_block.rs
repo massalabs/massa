@@ -295,14 +295,14 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// ## Example:
     /// ```rust
     /// use massa_graph::export_active_block::{ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer};
-    /// use massa_models::{ledger_models::LedgerChanges, rolls::RollUpdates, BlockId, Block, BlockSerializer, prehash::Set, Endorsement, EndorsementSerializer, Slot, BlockHeader, BlockHeaderSerializer, wrapped::WrappedContent};
+    /// use massa_models::{ledger_models::LedgerChanges, constants::THREAD_COUNT, rolls::RollUpdates, BlockId, Block, BlockSerializer, prehash::Set, Endorsement, EndorsementSerializer, Slot, BlockHeader, BlockHeaderSerializer, wrapped::WrappedContent};
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let keypair = KeyPair::generate();
-    /// let parents = (0..32)
+    /// let parents = (0..THREAD_COUNT)
     ///     .map(|i| BlockId(Hash::compute_from(&[i])))
     ///     .collect();
     ///
@@ -347,10 +347,11 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// };
     ///
     /// let mut dependencies = Set::default();
+    /// let full_block = Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap();
     /// dependencies.insert(BlockId(Hash::compute_from(b"23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH")));
     /// let export_active_block = ExportActiveBlock {
-    ///    block: Block::new_wrapped(orig_block, BlockSerializer::new(), &keypair).unwrap(),
-    ///    block_id: BlockId(Hash::compute_from(b"23tuSEWed8WoEasjboGxKi4qRtM7qFJnnp4QrsuASmNnk81GnH")),
+    ///    block: full_block.clone(),
+    ///    block_id: full_block.id,
     ///    parents: vec![],
     ///    children: vec![],
     ///    dependencies,
@@ -362,7 +363,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
-    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 2, 1000, 1000, 1000, 1000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block_id, export_active_block.block_id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
     /// assert_eq!(export_deserialized.dependencies, export_active_block.dependencies);

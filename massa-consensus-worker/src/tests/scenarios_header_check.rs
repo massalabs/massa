@@ -5,14 +5,13 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_models::{init_serialization_context, Slot};
+use massa_models::Slot;
 use massa_signature::KeyPair;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_consensus_asks_for_block() {
-    init_serialization_context(massa_models::SerializationContext::default());
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 500.into(),
@@ -55,7 +54,6 @@ async fn test_consensus_asks_for_block() {
 #[tokio::test]
 #[serial]
 async fn test_consensus_does_not_ask_for_block() {
-    init_serialization_context(massa_models::SerializationContext::default());
     let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
     let cfg = ConsensusConfig {
         t0: 1000.into(),

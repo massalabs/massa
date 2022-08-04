@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::{tools::*, ConsensusConfig};
 
-use massa_models::{init_serialization_context, ledger_models::LedgerData, SerializationContext};
+use massa_models::ledger_models::LedgerData;
 use massa_models::{Amount, Slot};
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -21,7 +21,6 @@ async fn test_get_selection_draws_high_end_slot() {
         .init()
         .unwrap();
     */
-    init_serialization_context(SerializationContext::default());
     let mut cfg = ConsensusConfig {
         periods_per_cycle: 2,
         t0: 500.into(),

@@ -7,7 +7,7 @@ use super::{
         wait_consensus_command, wait_network_command,
     },
 };
-use crate::BootstrapSettings;
+use crate::BootstrapConfig;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{
@@ -26,7 +26,7 @@ use std::{str::FromStr, sync::Arc};
 use tokio::sync::mpsc;
 
 lazy_static::lazy_static! {
-    pub static ref BOOTSTRAP_SETTINGS_KEYPAIR: (BootstrapSettings, KeyPair) = {
+    pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
         let keypair = KeyPair::generate();
         (get_bootstrap_config(keypair.get_public_key()), keypair)
     };
@@ -35,7 +35,7 @@ lazy_static::lazy_static! {
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
-    let (bootstrap_settings, keypair): &(BootstrapSettings, KeyPair) = &BOOTSTRAP_SETTINGS_KEYPAIR;
+    let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
@@ -47,7 +47,7 @@ async fn test_bootstrap_server() {
         ConsensusCommandSender(consensus_cmd_tx),
         NetworkCommandSender(network_cmd_tx),
         final_state.clone(),
-        bootstrap_settings,
+        bootstrap_config.clone(),
         bootstrap_establisher,
         keypair.clone(),
         0,
@@ -64,7 +64,7 @@ async fn test_bootstrap_server() {
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
-            bootstrap_settings,
+            bootstrap_config,
             final_state_client_thread,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
@@ -83,7 +83,7 @@ async fn test_bootstrap_server() {
     .await
     .expect("timeout waiting for connection attempt from remote")
     .expect("error receiving connection attempt from remote");
-    let expect_conn_addr = bootstrap_settings.bootstrap_list[0].0;
+    let expect_conn_addr = bootstrap_config.bootstrap_list[0].0;
     assert_eq!(
         conn_addr, expect_conn_addr,
         "client connected to wrong bootstrap ip"

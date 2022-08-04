@@ -710,12 +710,14 @@ impl NetworkWorker {
             let max_advertise_length = self.cfg.max_peer_advertise_length;
             let max_endorsements_per_message = self.cfg.max_endorsements_per_message;
             let max_operations_per_message = self.cfg.max_operations_per_message;
+            let max_message_size = self.cfg.max_message_size;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
-                    let mut writer = WriteBinder::new(writer, max_bytes_read);
+                    let mut writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
                     let mut reader = ReadBinder::new(
                         reader,
                         max_bytes_write,
+                        max_message_size,
                         MessageDeserializer::new(
                             thread_count,
                             endorsement_count,

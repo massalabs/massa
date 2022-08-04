@@ -228,27 +228,6 @@ lazy_static::lazy_static! {
 
 /// create a `ProtocolConfig` with typical values
 pub fn create_protocol_settings() -> ProtocolSettings {
-    // Init the serialization context with a default,
-    // can be overwritten with a more specific one in the test.
-    massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_operations_per_block: 1024,
-        thread_count: 2,
-        max_advertise_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_block_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_endorsements_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-        max_bootstrap_pos_entries: 1000,
-        max_bootstrap_pos_cycles: 5,
-        endorsement_count: 8,
-    });
-
     ProtocolSettings {
         ask_block_timeout: 500.into(),
         max_known_blocks_size: 100,

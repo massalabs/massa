@@ -10,7 +10,7 @@ use crate::settings::{POOL_CONFIG, SETTINGS};
 use dialoguer::Password;
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
-use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
+use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 use massa_cipher::{decrypt, encrypt};
 use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig,
@@ -25,14 +25,13 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
-        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH,
-        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK,
-        OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
+        default::MAX_MESSAGE_SIZE, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP,
+        MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH,
+        MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK,
+        MAX_OPERATIONS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
-    init_serialization_context,
     prehash::Map,
-    Address, SerializationContext,
+    Address,
 };
 use massa_network_exports::{Establisher, NetworkCommandSender, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -96,9 +95,6 @@ async fn launch(
         async_pool_config,
     };
 
-    // Init the global serialization context
-    init_serialization_context(SerializationContext::default());
-
     // Remove current disk ledger if there is one
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
     if SETTINGS.ledger.disk_ledger_path.exists() {
@@ -118,6 +114,25 @@ async fn launch(
     let stop_signal = signal::ctrl_c();
     tokio::pin!(stop_signal);
 
+    let bootstrap_config: BootstrapConfig = BootstrapConfig {
+        bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
+        bind: SETTINGS.bootstrap.bind,
+        connect_timeout: SETTINGS.bootstrap.connect_timeout,
+        read_timeout: SETTINGS.bootstrap.read_timeout,
+        write_timeout: SETTINGS.bootstrap.write_timeout,
+        read_error_timeout: SETTINGS.bootstrap.read_error_timeout,
+        write_error_timeout: SETTINGS.bootstrap.write_error_timeout,
+        retry_delay: SETTINGS.bootstrap.retry_delay,
+        max_ping: SETTINGS.bootstrap.max_ping,
+        enable_clock_synchronization: SETTINGS.bootstrap.enable_clock_synchronization,
+        cache_duration: SETTINGS.bootstrap.cache_duration,
+        max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
+        per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
+        ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
+        max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
+        max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+    };
+
     // bootstrap
     let bootstrap_state = tokio::select! {
         _ = &mut stop_signal => {
@@ -125,7 +140,7 @@ async fn launch(
             process::exit(0);
         },
         res = get_state(
-            &SETTINGS.bootstrap,
+            &bootstrap_config,
             final_state.clone(),
             massa_bootstrap::types::Establisher::new(),
             *VERSION,
@@ -166,6 +181,7 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+        max_message_size: MAX_MESSAGE_SIZE,
     };
 
     // launch network controller
@@ -252,7 +268,7 @@ async fn launch(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         final_state.clone(),
-        &SETTINGS.bootstrap,
+        bootstrap_config,
         massa_bootstrap::Establisher::new(),
         private_key,
         bootstrap_state.compensation_millis,

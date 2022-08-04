@@ -739,7 +739,6 @@ impl Deserializer<ConsensusLedgerSubset> for ConsensusLedgerSubsetDeserializer {
     /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(Amount::from_str("1022").unwrap())),
     /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData::new(Amount::from_str("1020").unwrap())),
     /// # ].into_iter().collect());
-    /// //# massa_models::init_serialization_context(massa_models::SerializationContext::default());
     /// //let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// //let (res, _) = ConsensusLedgerSubset::from_bytes_compact(&bytes).unwrap();
     /// //for (address, data) in &ledger.0 {

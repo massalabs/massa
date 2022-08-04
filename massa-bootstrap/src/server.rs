@@ -26,7 +26,7 @@ use crate::{
     error::BootstrapError,
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     server_binder::BootstrapServerBinder,
-    BootstrapSettings, Establisher,
+    BootstrapConfig, Establisher,
 };
 
 /// handle on the bootstrap server
@@ -56,14 +56,14 @@ pub async fn start_bootstrap_server(
     consensus_command_sender: ConsensusCommandSender,
     network_command_sender: NetworkCommandSender,
     final_state: Arc<RwLock<FinalState>>,
-    bootstrap_settings: &'static BootstrapSettings,
+    bootstrap_config: BootstrapConfig,
     establisher: Establisher,
     keypair: KeyPair,
     compensation_millis: i64,
     version: Version,
 ) -> Result<Option<BootstrapManager>, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
-    if let Some(bind) = bootstrap_settings.bind {
+    if let Some(bind) = bootstrap_config.bind {
         let (manager_tx, manager_rx) = mpsc::channel::<()>(1);
         let join_handle = tokio::spawn(async move {
             BootstrapServer {
@@ -76,8 +76,8 @@ pub async fn start_bootstrap_server(
                 keypair,
                 compensation_millis,
                 version,
-                ip_hist_map: HashMap::with_capacity(bootstrap_settings.ip_list_max_size),
-                bootstrap_settings,
+                ip_hist_map: HashMap::with_capacity(bootstrap_config.ip_list_max_size),
+                bootstrap_config,
             }
             .run()
             .await
@@ -99,7 +99,7 @@ struct BootstrapServer {
     manager_rx: mpsc::Receiver<()>,
     bind: SocketAddr,
     keypair: KeyPair,
-    bootstrap_settings: &'static BootstrapSettings,
+    bootstrap_config: BootstrapConfig,
     compensation_millis: i64,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
@@ -111,7 +111,7 @@ impl BootstrapServer {
         massa_trace!("bootstrap.lib.run", {});
         let mut listener = self.establisher.get_listener(self.bind).await?;
         let mut bootstrap_sessions = FuturesUnordered::new();
-        let cache_timeout = self.bootstrap_settings.cache_duration.to_duration();
+        let cache_timeout = self.bootstrap_config.cache_duration.to_duration();
         let mut bootstrap_data: Option<(
             ExportProofOfStake,
             BootstrapableGraph,
@@ -119,7 +119,7 @@ impl BootstrapServer {
             Arc<RwLock<FinalState>>,
         )> = None;
         let cache_timer = sleep(cache_timeout);
-        let per_ip_min_interval = self.bootstrap_settings.per_ip_min_interval.to_duration();
+        let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         tokio::pin!(cache_timer);
         /*
             select! without the "biased" modifier will randomly select the 1st branch to check,
@@ -151,16 +151,16 @@ impl BootstrapServer {
                 }
 
                 // listener
-                Ok((dplx, remote_addr)) = listener.accept() => if bootstrap_sessions.len() < self.bootstrap_settings.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
+                Ok((dplx, remote_addr)) = listener.accept() => if bootstrap_sessions.len() < self.bootstrap_config.max_simultaneous_bootstraps.try_into().map_err(|_| BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()))? {
                     massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
                     let now = Instant::now();
 
                     // clear IP history if necessary
-                    if self.ip_hist_map.len() > self.bootstrap_settings.ip_list_max_size {
+                    if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
                         self.ip_hist_map.retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
-                        if self.ip_hist_map.len() > self.bootstrap_settings.ip_list_max_size {
+                        if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
                             // too many IPs are spamming us: clear cache
-                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}ms", self.ip_hist_map.len(), self.bootstrap_settings.per_ip_min_interval);
+                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}ms", self.ip_hist_map.len(), self.bootstrap_config.per_ip_min_interval);
                             self.ip_hist_map.clear();
                         }
                     }
@@ -169,8 +169,8 @@ impl BootstrapServer {
                     match self.ip_hist_map.entry(remote_addr.ip()) {
                         hash_map::Entry::Occupied(mut occ) => {
                             if now.duration_since(*occ.get()) <= per_ip_min_interval {
-                                let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_settings.max_bytes_read_write);
-                                let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
+                                let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_config.max_bytes_read_write, self.bootstrap_config.max_bootstrap_message_size);
+                                let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                                     error:
                                     format!("Your last bootstrap on this server was {:#?} ago and you have to wait {:#?} before retrying.", occ.get().elapsed(), per_ip_min_interval.saturating_sub(occ.get().elapsed()))
                                 })).await {
@@ -211,25 +211,26 @@ impl BootstrapServer {
                     let version = self.version;
                     let (data_pos, data_graph, data_peers, data_execution) = bootstrap_data.clone().unwrap(); // will not panic (checked above)
                     let keypair = self.keypair.clone();
+                    let config = self.bootstrap_config.clone();
                     bootstrap_sessions.push(async move {
                         //Socket lifetime
                         {
-                            let mut server = BootstrapServerBinder::new(dplx, keypair, self.bootstrap_settings.max_bytes_read_write);
-                            match manage_bootstrap(self.bootstrap_settings, &mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
+                            let mut server = BootstrapServerBinder::new(dplx, keypair, config.max_bytes_read_write, config.max_bootstrap_message_size);
+                            match manage_bootstrap(&config, &mut server, data_pos, data_graph, data_peers, data_execution, compensation_millis, version).await {
                                 Ok(_) => info!("bootstrapped peer {}", remote_addr),
                                 Err(BootstrapError::ReceivedError(error)) => debug!("bootstrap serving error received from peer {}: {}", remote_addr, error),
                                 Err(err) => {
                                     debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
                                     // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                                    let _ = tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
+                                    let _ = tokio::time::timeout(config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError { error: err.to_string() })).await;
                                 },
                             }
                         }
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
                 } else {
-                    let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_settings.max_bytes_read_write);
-                    let _ = match tokio::time::timeout(self.bootstrap_settings.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
+                    let mut server = BootstrapServerBinder::new(dplx, self.keypair.clone(), self.bootstrap_config.max_bytes_read_write, self.bootstrap_config.max_bootstrap_message_size);
+                    let _ = match tokio::time::timeout(self.bootstrap_config.write_error_timeout.into(), server.send(BootstrapServerMessage::BootstrapError {
                         error: "Bootstrap failed because the bootstrap server currently has no slots available.".to_string()
                     })).await {
                         Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "bootstrap error no available slots send timed out").into()),
@@ -368,7 +369,7 @@ pub async fn send_final_state_stream(
 
 #[allow(clippy::too_many_arguments)]
 async fn manage_bootstrap(
-    bootstrap_settings: &'static BootstrapSettings,
+    bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
     data_pos: ExportProofOfStake,
     data_graph: BootstrapableGraph,
@@ -378,10 +379,10 @@ async fn manage_bootstrap(
     version: Version,
 ) -> Result<(), BootstrapError> {
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
-    let read_error_timeout: std::time::Duration = bootstrap_settings.read_error_timeout.into();
+    let read_error_timeout: std::time::Duration = bootstrap_config.read_error_timeout.into();
 
     match tokio::time::timeout(
-        bootstrap_settings.read_timeout.into(),
+        bootstrap_config.read_timeout.into(),
         server.handshake(version),
     )
     .await
@@ -406,7 +407,7 @@ async fn manage_bootstrap(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedClientMessage(msg)),
     };
 
-    let write_timeout: std::time::Duration = bootstrap_settings.write_timeout.into();
+    let write_timeout: std::time::Duration = bootstrap_config.write_timeout.into();
 
     // Sync clocks.
     let server_time = MassaTime::compensated_now(compensation_millis)?;
@@ -430,7 +431,7 @@ async fn manage_bootstrap(
     }?;
 
     loop {
-        match tokio::time::timeout(bootstrap_settings.read_timeout.into(), server.next()).await {
+        match tokio::time::timeout(bootstrap_config.read_timeout.into(), server.next()).await {
             Err(_) => return Ok(()),
             Ok(Err(e)) => return Err(e),
             Ok(Ok(msg)) => match msg {

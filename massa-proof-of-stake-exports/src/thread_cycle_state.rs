@@ -201,7 +201,7 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
     /// ## Example
     /// ```rust
     /// use massa_proof_of_stake_exports::{ThreadCycleState, ThreadCycleStateSerializer, ThreadCycleStateDeserializer};
-    /// use massa_models::{Slot, Address, prehash::Map, rolls::{RollCounts, RollUpdates, RollUpdate}};
+    /// use massa_models::{Slot, Address, prehash::Map, rolls::{RollCounts, RollUpdates, RollUpdate}, constants::THREAD_COUNT};
     /// use bitvec::prelude::BitVec;
     /// use std::str::FromStr;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -235,7 +235,7 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
     /// );
     /// let mut buffer = Vec::new();
     /// ThreadCycleStateSerializer::new().serialize(&thread_cycle_state, &mut buffer).unwrap();
-    /// let (rest, thread_cycle_state_deserialized) = ThreadCycleStateDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, thread_cycle_state_deserialized) = ThreadCycleStateDeserializer::new(THREAD_COUNT, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// ThreadCycleStateSerializer::new().serialize(&thread_cycle_state_deserialized, &mut buffer2).unwrap();

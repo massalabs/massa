@@ -406,7 +406,6 @@ enum BlockOperationsCheckOutcome {
 ///
 /// # Arguments
 /// * `cfg`: consensus configuration
-/// * `serialization_context`: ref to a `SerializationContext` instance
 /// * `thread_number`: thread in which we want a genesis block
 pub fn create_genesis_block(
     cfg: &GraphConfig,

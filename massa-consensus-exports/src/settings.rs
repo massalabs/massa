@@ -496,7 +496,6 @@ impl From<&std::path::Path> for ConsensusConfig {
         for _ in 0..2 {
             staking_keys.push(KeyPair::generate());
         }
-        massa_models::init_serialization_context(massa_models::SerializationContext::default());
         ConsensusSettings {
             staking_keys_path: crate::tools::generate_staking_keys_file(&staking_keys)
                 .path()
@@ -546,7 +545,6 @@ impl From<&std::path::Path> for ConsensusConfig {
 impl Default for ConsensusConfig {
     fn default() -> Self {
         use massa_models::constants::default_testing::*;
-        massa_models::init_serialization_context(massa_models::SerializationContext::default());
         let tempdir = tempfile::tempdir().expect("cannot create temp dir for the ledger path");
         let path_buf = tempdir.path().to_path_buf();
         Self {

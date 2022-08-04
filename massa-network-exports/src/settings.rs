@@ -68,6 +68,8 @@ pub struct NetworkConfig {
     pub max_peer_advertise_length: u32,
     /// Max endorsements per message
     pub max_endorsements_per_message: u32,
+    /// Max message size
+    pub max_message_size: u32,
 }
 
 /// Connection configuration for a peer type
@@ -90,8 +92,8 @@ pub mod tests {
     use enum_map::enum_map;
     use massa_models::constants::{
         BASE_NETWORK_CONTROLLER_IP, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
-        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_MESSAGE,
-        THREAD_COUNT,
+        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE,
+        MAX_OPERATIONS_PER_MESSAGE, THREAD_COUNT,
     };
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -146,6 +148,7 @@ pub mod tests {
                 max_operations_per_block: MAX_OPERATIONS_PER_MESSAGE,
                 max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
                 thread_count: THREAD_COUNT,
+                max_message_size: MAX_MESSAGE_SIZE,
             }
         }
     }
@@ -153,18 +156,6 @@ pub mod tests {
     impl NetworkConfig {
         /// default network settings from port and peer file path
         pub fn scenarios_default(port: u16, peers_file: &std::path::Path) -> Self {
-            // Init the serialization context with a default,
-            // can be overwritten with a more specific one in the test.
-            massa_models::init_serialization_context(massa_models::SerializationContext {
-                max_advertise_length: 128,
-                max_bootstrap_blocks: 100,
-                max_bootstrap_cliques: 100,
-                max_bootstrap_deps: 100,
-                max_bootstrap_children: 100,
-                max_ask_blocks_per_message: 10,
-                endorsement_count: 8,
-                ..massa_models::SerializationContext::default()
-            });
             let peer_types_config = enum_map! {
                 PeerType::Bootstrap => PeerTypeConnectionConfig {
                     target_out_connections: 1,
@@ -205,12 +196,13 @@ pub mod tests {
                 max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
                 max_bytes_read: std::f64::INFINITY,
                 max_bytes_write: std::f64::INFINITY,
-                max_ask_blocks: MAX_ASK_BLOCKS_PER_MESSAGE,
-                endorsement_count: ENDORSEMENT_COUNT,
+                max_ask_blocks: 10,
+                endorsement_count: 8,
                 max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
                 max_operations_per_block: MAX_OPERATIONS_PER_MESSAGE,
-                max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
+                max_peer_advertise_length: 128,
                 thread_count: THREAD_COUNT,
+                max_message_size: MAX_MESSAGE_SIZE,
             }
         }
     }

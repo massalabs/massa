@@ -218,13 +218,13 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
     ///   max_cliques: Vec::new(),
     ///   ledger: ConsensusLedgerSubset::default(),
     /// };
-    /// for i in 0..THREAD_COUNT {
+    /// for i in 0..32 {
     ///   bootstrapable_graph.best_parents.push((BlockId(Hash::compute_from("nvqFJ38Gixhv5Pf3QaJofXa2kW37bHtnk2QKaA6ZRycJLv8FH".as_bytes())), 7));
     ///   bootstrapable_graph.latest_final_blocks_periods.push((BlockId(Hash::compute_from("nvqFJ38Gixhv5Pf3QaJofXa2kW37bHtnk2QKaA6ZRycJLv8FH".as_bytes())), 10));
     /// }
     /// let mut buffer = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph, &mut buffer).unwrap();
-    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(16, 500, 10, 10, 100, 1000, 1000, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(32, 9, 10, 10, 100, 1000, 1000, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// let mut buffer2 = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph_deserialized, &mut buffer2).unwrap();
     /// assert_eq!(buffer, buffer2);

@@ -15,8 +15,7 @@ use massa_models::Version;
 use massa_models::VersionDeserializer;
 use massa_models::VersionSerializer;
 use massa_models::{
-    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeMinBEInt,
-    SerializeMinBEInt,
+    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, DeserializeMinBEInt, SerializeMinBEInt,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
@@ -41,9 +40,12 @@ impl BootstrapServerBinder {
     /// * duplex: duplex stream.
     /// * local_keypair: local node user keypair
     /// * limit: limit max bytes per second (up and down)
-    pub fn new(duplex: Duplex, local_keypair: KeyPair, limit: f64) -> Self {
-        let max_bootstrap_message_size =
-            with_serialization_context(|context| context.max_bootstrap_message_size);
+    pub fn new(
+        duplex: Duplex,
+        local_keypair: KeyPair,
+        limit: f64,
+        max_bootstrap_message_size: u32,
+    ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
             max_bootstrap_message_size,

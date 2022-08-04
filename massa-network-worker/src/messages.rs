@@ -426,35 +426,9 @@ mod tests {
     use serial_test::serial;
     use std::str::FromStr;
 
-    fn initialize_context() -> massa_models::SerializationContext {
-        // Init the serialization context with a default,
-        // can be overwritten with a more specific one in the test.
-        let ctx = massa_models::SerializationContext {
-            max_operations_per_block: 1024,
-            thread_count: 2,
-            max_advertise_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_block_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_endorsements_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-            max_bootstrap_pos_entries: 1000,
-            max_bootstrap_pos_cycles: 5,
-            endorsement_count: 8,
-        };
-        massa_models::init_serialization_context(ctx.clone());
-        ctx
-    }
-
     #[test]
     #[serial]
     fn test_ser_deser() {
-        initialize_context();
         let message_serializer = MessageSerializer::new();
         let message_deserializer = MessageDeserializer::new(
             THREAD_COUNT,

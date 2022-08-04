@@ -2,8 +2,6 @@
 //! All the structures that are used everywhere
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#[macro_use]
-extern crate lazy_static;
 
 pub use address::{Address, AddressDeserializer};
 pub use amount::{Amount, AmountDeserializer, AmountSerializer};
@@ -29,10 +27,6 @@ pub use operation::{
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeMinBEInt, IpAddrDeserializer, IpAddrSerializer,
     SerializeMinBEInt, StringDeserializer, StringSerializer, VecU8Deserializer, VecU8Serializer,
-};
-pub use serialization_context::{
-    get_serialization_context, init_serialization_context, with_serialization_context,
-    SerializationContext,
 };
 pub use slot::{Slot, SlotDeserializer, SlotSerializer};
 pub use version::{Version, VersionDeserializer, VersionSerializer};
@@ -68,7 +62,6 @@ pub mod prehash;
 /// rolls
 pub mod rolls;
 mod serialization;
-mod serialization_context;
 /// slots
 pub mod slot;
 /// various statistics

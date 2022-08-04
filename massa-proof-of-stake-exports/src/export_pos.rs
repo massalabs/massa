@@ -200,7 +200,7 @@ impl Deserializer<ExportProofOfStake> for ExportProofOfStakeDeserializer {
     /// }
     /// let mut buffer = Vec::new();
     /// ExportProofOfStakeSerializer::new().serialize(&export_proof_of_stake, &mut buffer).unwrap();
-    /// let (rest, export_proof_of_stake_deserialized) = ExportProofOfStakeDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, export_proof_of_stake_deserialized) = ExportProofOfStakeDeserializer::new(THREAD_COUNT, 1000, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// ExportProofOfStakeSerializer::new().serialize(&export_proof_of_stake_deserialized, &mut buffer2).unwrap();

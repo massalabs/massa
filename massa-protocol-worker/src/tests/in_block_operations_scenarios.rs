@@ -2,10 +2,10 @@
 
 use super::tools::protocol_test;
 use massa_hash::Hash;
+use massa_models::constants::THREAD_COUNT;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    get_serialization_context, Address, Amount, Block, BlockHeader, BlockHeaderSerializer,
-    BlockSerializer, Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, Slot,
 };
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{
@@ -33,8 +33,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {
-            let serialization_context = get_serialization_context();
-
             // Create 1 node.
             let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -42,12 +40,12 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             let mut keypair = KeyPair::generate();
             let mut address = Address::from_public_key(&keypair.get_public_key());
-            let mut thread = address.get_thread(serialization_context.thread_count);
+            let mut thread = address.get_thread(THREAD_COUNT);
 
             while thread != 0 {
                 keypair = KeyPair::generate();
                 address = Address::from_public_key(&keypair.get_public_key());
-                thread = address.get_thread(serialization_context.thread_count);
+                thread = address.get_thread(THREAD_COUNT);
             }
 
             let slot_a = Slot::new(1, 0);

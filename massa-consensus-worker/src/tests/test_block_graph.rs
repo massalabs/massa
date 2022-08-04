@@ -10,10 +10,9 @@ use massa_models::{
     active_block::ActiveBlock,
     clique::Clique,
     constants::{
-        ENDORSEMENT_COUNT, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES,
-        MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+        MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES,
+        MAX_OPERATIONS_PER_BLOCK,
     },
-    init_serialization_context,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     prehash::{Map, Set},
     wrapped::WrappedContent,
@@ -132,7 +131,6 @@ pub async fn test_get_ledger_at_parents() {
     // add the console layer to the subscriber or default layers...
     //    .with(tracing_layer)
     //    .init();
-    init_serialization_context(massa_models::SerializationContext::default());
     let thread_count: u8 = 2;
     let storage: Storage = Default::default();
     let (block, export_active_block): (WrappedBlock, ExportActiveBlock) =
@@ -587,16 +585,7 @@ pub async fn test_get_ledger_at_parents() {
 
 #[test]
 #[serial]
-fn test_bootsrapable_graph_serialize_compact() {
-    // test with 2 thread
-    massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_advertise_length: 128,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        endorsement_count: 8,
-        ..Default::default()
-    });
-
+fn test_bootstrapable_graph_serialized() {
     //let storage: Storage = Default::default();
 
     let (_, active_block) = get_export_active_test_block();
@@ -663,11 +652,11 @@ fn test_bootsrapable_graph_serialize_compact() {
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
     let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
-        THREAD_COUNT,
-        ENDORSEMENT_COUNT,
+        2,
+        8,
         MAX_BOOTSTRAP_BLOCKS,
         MAX_BOOTSTRAP_CLIQUES,
-        MAX_BOOTSTRAP_CHILDREN,
+        100,
         MAX_BOOTSTRAP_DEPS,
         MAX_BOOTSTRAP_POS_ENTRIES,
         MAX_OPERATIONS_PER_BLOCK,

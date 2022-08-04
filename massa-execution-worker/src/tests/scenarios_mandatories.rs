@@ -256,7 +256,6 @@ fn send_and_receive_async_message() {
 #[test]
 #[serial]
 fn generate_events() {
-    massa_models::init_serialization_context(massa_models::SerializationContext::default());
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.
     let exec_cfg = ExecutionConfig {

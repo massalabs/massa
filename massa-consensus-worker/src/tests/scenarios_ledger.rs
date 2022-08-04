@@ -492,6 +492,8 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             .saturating_sub(MassaTime::from(1000).checked_mul(10).unwrap()),
         delta_f0: 4,
         operation_validity_periods: 20,
+        thread_count,
+        endorsement_count: 0,
         ..ConsensusConfig::default_with_staking_keys_and_ledger(&staking_keys, &ledger)
     };
     let storage: Storage = Default::default();
