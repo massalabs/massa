@@ -1,7 +1,6 @@
 use massa_models::{
-    address::AddressDeserializer,
-    constants::{default::MAX_DATASTORE_KEY_LENGTH, ADDRESS_SIZE_BYTES},
-    Address, VecU8Deserializer, VecU8Serializer,
+    address::AddressDeserializer, constants::ADDRESS_SIZE_BYTES, Address, VecU8Deserializer,
+    VecU8Serializer,
 };
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use nom::error::{ContextError, ParseError};
@@ -108,23 +107,17 @@ impl Serializer<Vec<u8>> for KeySerializer {
 /// Basic key deserializer
 pub struct KeyDeserializer {
     address_deserializer: AddressDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
-}
-
-impl Default for KeyDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
+    datastore_key_deserializer: VecU8Deserializer,
 }
 
 impl KeyDeserializer {
     /// Creates a new `KeyDeserializer`
-    pub fn new() -> Self {
+    pub fn new(max_datastore_key_length: u64) -> Self {
         Self {
             address_deserializer: AddressDeserializer::new(),
-            vec_u8_deserializer: VecU8Deserializer::new(
+            datastore_key_deserializer: VecU8Deserializer::new(
                 Included(u64::MIN),
-                Included(MAX_DATASTORE_KEY_LENGTH as u64),
+                Included(max_datastore_key_length),
             ),
         }
     }
@@ -149,7 +142,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// key.push(DATASTORE_IDENT);
     /// key.extend(store_key.to_bytes());
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
-    /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new(10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
     ///
@@ -158,7 +151,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
     /// key.extend(address.to_bytes());
     /// key.push(BALANCE_IDENT);
     /// KeySerializer::new().serialize(&key, &mut serialized).unwrap();
-    /// let (rest, key_deser) = KeyDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, key_deser) = KeyDeserializer::new(10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(key_deser, key);
     /// ```
@@ -176,7 +169,7 @@ impl Deserializer<Vec<u8>> for KeyDeserializer {
                 BALANCE_IDENT => Ok((&rest[1..], balance_key!(address))),
                 BYTECODE_IDENT => Ok((&rest[1..], bytecode_key!(address))),
                 DATASTORE_IDENT => {
-                    let (rest, hash) = self.vec_u8_deserializer.deserialize(&rest[1..])?;
+                    let (rest, hash) = self.datastore_key_deserializer.deserialize(&rest[1..])?;
                     Ok((rest, data_key!(address, hash)))
                 }
                 _ => Err(error),

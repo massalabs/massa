@@ -105,10 +105,27 @@ pub struct StateChangesDeserializer {
 
 impl StateChangesDeserializer {
     /// Creates a `StateChangesDeserializer`
-    pub fn new(thread_count: u8) -> Self {
+    pub fn new(
+        thread_count: u8,
+        max_async_pool_changes: u64,
+        max_data_async_message: u64,
+        max_ledger_changes_count: u64,
+        max_datastore_key_length: u64,
+        max_datastore_value_length: u64,
+        max_datastore_entry_count: u64,
+    ) -> Self {
         Self {
-            ledger_changes_deserializer: LedgerChangesDeserializer::new(),
-            async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(thread_count),
+            ledger_changes_deserializer: LedgerChangesDeserializer::new(
+                max_ledger_changes_count,
+                max_datastore_key_length,
+                max_datastore_value_length,
+                max_datastore_entry_count,
+            ),
+            async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(
+                thread_count,
+                max_async_pool_changes,
+                max_data_async_message,
+            ),
         }
     }
 }
@@ -156,7 +173,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
     /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 10000, 10000, 10000, 10000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(state_changes_deser, state_changes);
     /// ```

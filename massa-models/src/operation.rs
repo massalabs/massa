@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::OPERATION_ID_SIZE_BYTES;
-use crate::node_configuration::MAX_OPERATIONS_PER_MESSAGE;
 use crate::node_configuration::OPERATION_ID_PREFIX_SIZE_BYTES;
 use crate::prehash::{PreHashed, Set};
 use crate::serialization::StringDeserializer;
@@ -285,25 +284,30 @@ impl Serializer<Operation> for OperationSerializer {
 
 /// Serializer for `Operation`
 pub struct OperationDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
+    expire_period_deserializer: U64VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
     op_type_deserializer: OperationTypeDeserializer,
 }
 
 impl OperationDeserializer {
     /// Creates a `OperationDeserializer`
-    pub const fn new() -> Self {
+    pub fn new(
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u16,
+    ) -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
-            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
-            op_type_deserializer: OperationTypeDeserializer::new(),
+            expire_period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+            op_type_deserializer: OperationTypeDeserializer::new(
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+            ),
         }
-    }
-}
-
-impl Default for OperationDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -327,7 +331,7 @@ impl Deserializer<Operation> for OperationDeserializer {
     /// };
     /// let mut buffer = Vec::new();
     /// OperationSerializer::new().serialize(&operation, &mut buffer).unwrap();
-    /// let (rest, deserialized_operation) = OperationDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_operation) = OperationDeserializer::new(10000, 10000, 10000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized_operation.fee, operation.fee);
     /// assert_eq!(deserialized_operation.expire_period, operation.expire_period);
@@ -353,7 +357,7 @@ impl Deserializer<Operation> for OperationDeserializer {
                     self.amount_deserializer.deserialize(input)
                 }),
                 context("Failed expire_period deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.expire_period_deserializer.deserialize(input)
                 }),
                 context("Failed op deserialization", |input| {
                     let (rest, op) = self.op_type_deserializer.deserialize(input)?;
@@ -583,10 +587,11 @@ impl Serializer<OperationType> for OperationTypeSerializer {
 
 /// Serializer for `OperationType`
 pub struct OperationTypeDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    id_deserializer: U32VarIntDeserializer,
+    rolls_number_deserializer: U64VarIntDeserializer,
+    max_gas_deserializer: U64VarIntDeserializer,
     address_deserializer: AddressDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    data_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
     parameter_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
@@ -594,28 +599,33 @@ pub struct OperationTypeDeserializer {
 
 impl OperationTypeDeserializer {
     /// Creates a new `OperationTypeDeserializer`
-    pub const fn new() -> Self {
+    pub fn new(
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u16,
+    ) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
-            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
+            rolls_number_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            max_gas_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::new(),
-            vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
-            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
+            data_deserializer: VecU8Deserializer::new(
+                Included(0),
+                Included(max_datastore_value_length),
+            ),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
             function_name_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
                 Included(0),
-                Included(u16::MAX),
+                Included(max_function_name_length),
             )),
             parameter_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
                 Included(0),
-                Included(u16::MAX),
+                Included(max_parameters_size),
             )),
         }
-    }
-}
-
-impl Default for OperationTypeDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -636,7 +646,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     /// };
     /// let mut buffer = Vec::new();
     /// OperationTypeSerializer::new().serialize(&op, &mut buffer).unwrap();
-    /// let (rest, op_deserialized) = OperationTypeDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, op_deserialized) = OperationTypeDeserializer::new(10000, 10000, 10000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// match op_deserialized {
     ///    OperationType::ExecuteSC {
@@ -658,7 +668,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], OperationType, E> {
         context("Failed OperationType deserialization", |buffer| {
-            let (input, id) = self.u32_deserializer.deserialize(buffer)?;
+            let (input, id) = self.id_deserializer.deserialize(buffer)?;
             let id = OperationTypeId::try_from(id).map_err(|_| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
@@ -683,12 +693,12 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                 })
                 .parse(input),
                 OperationTypeId::RollBuy => context("Failed RollBuy deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.rolls_number_deserializer.deserialize(input)
                 })
                 .map(|roll_count| OperationType::RollBuy { roll_count })
                 .parse(input),
                 OperationTypeId::RollSell => context("Failed RollSell deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.rolls_number_deserializer.deserialize(input)
                 })
                 .map(|roll_count| OperationType::RollSell { roll_count })
                 .parse(input),
@@ -696,7 +706,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     "Failed ExecuteSC deserialization",
                     tuple((
                         context("Failed max_gas deserialization", |input| {
-                            self.u64_deserializer.deserialize(input)
+                            self.max_gas_deserializer.deserialize(input)
                         }),
                         context("Failed coins deserialization", |input| {
                             self.amount_deserializer.deserialize(input)
@@ -705,7 +715,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                             self.amount_deserializer.deserialize(input)
                         }),
                         context("Failed data deserialization", |input| {
-                            self.vec_u8_deserializer.deserialize(input)
+                            self.data_deserializer.deserialize(input)
                         }),
                     )),
                 )
@@ -722,7 +732,7 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
                     "Failed CallSC deserialization",
                     tuple((
                         context("Failed max_gas deserialization", |input| {
-                            self.u64_deserializer.deserialize(input)
+                            self.max_gas_deserializer.deserialize(input)
                         }),
                         context("Failed parallel_coins deserialization", |input| {
                             self.amount_deserializer.deserialize(input)
@@ -905,7 +915,7 @@ impl Serializer<OperationIds> for OperationIdsSerializer {
 
 /// Deserializer for `OperationIds`
 pub struct OperationIdsDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    length_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
 }
 
@@ -913,7 +923,7 @@ impl OperationIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
     pub fn new(max_operations_per_message: u32) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(
+            length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(max_operations_per_message),
             ),
@@ -946,7 +956,7 @@ impl Deserializer<OperationIds> for OperationIdsDeserializer {
             "Failed OperationIds deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u32_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 context("Failed OperationId deserialization", |input| {
                     self.hash_deserializer.deserialize(input)
@@ -1014,7 +1024,7 @@ impl Deserializer<OperationPrefixId> for OperationPrefixIdDeserializer {
 
 /// Deserializer for `OperationPrefixIds`
 pub struct OperationPrefixIdsDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    length_deserializer: U32VarIntDeserializer,
     pref_deserializer: OperationPrefixIdDeserializer,
 }
 
@@ -1022,7 +1032,7 @@ impl OperationPrefixIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
     pub const fn new(max_operations_per_message: u32) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(
+            length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(max_operations_per_message),
             ),
@@ -1054,7 +1064,7 @@ impl Deserializer<OperationPrefixIds> for OperationPrefixIdsDeserializer {
             "Failed OperationPrefixIds deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u32_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 context("Failed OperationPrefixId deserialization", |input| {
                     self.pref_deserializer.deserialize(input)
@@ -1165,26 +1175,29 @@ impl Serializer<Operations> for OperationsSerializer {
 
 /// Deserializer for `Operations`
 pub struct OperationsDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    length_deserializer: U32VarIntDeserializer,
     signed_op_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
 }
 
 impl OperationsDeserializer {
     /// Creates a new `OperationsDeserializer`
-    pub const fn new() -> Self {
+    pub fn new(
+        max_operations_per_message: u32,
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u16,
+    ) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(
+            length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(MAX_OPERATIONS_PER_MESSAGE),
+                Included(max_operations_per_message),
             ),
-            signed_op_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
+            signed_op_deserializer: WrappedDeserializer::new(OperationDeserializer::new(
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+            )),
         }
-    }
-}
-
-impl Default for OperationsDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -1210,7 +1223,7 @@ impl Deserializer<Operations> for OperationsDeserializer {
     /// let operations = vec![op_wrapped.clone(), op_wrapped.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
-    /// let (rest, deserialized_operations) = OperationsDeserializer::new().deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
     ///     assert_eq!(operation1.id, operation2.id);
     ///     assert_eq!(operation1.signature, operation2.signature);
@@ -1226,7 +1239,7 @@ impl Deserializer<Operations> for OperationsDeserializer {
             "Failed Operations deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u32_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 context("Failed operation deserialization", |input| {
                     self.signed_op_deserializer.deserialize(input)
@@ -1239,6 +1252,10 @@ impl Deserializer<Operations> for OperationsDeserializer {
 
 #[cfg(test)]
 mod tests {
+    use crate::node_configuration::default::{
+        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
+    };
+
     use super::*;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
@@ -1258,9 +1275,13 @@ mod tests {
         OperationTypeSerializer::new()
             .serialize(&op, &mut ser_type)
             .unwrap();
-        let (_, res_type) = OperationTypeDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_type)
-            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_type)
+        .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -1273,9 +1294,13 @@ mod tests {
         OperationSerializer::new()
             .serialize(&content, &mut ser_content)
             .unwrap();
-        let (_, res_content) = OperationDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_content)
-            .unwrap();
+        let (_, res_content) = OperationDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_content)
+        .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
@@ -1286,9 +1311,13 @@ mod tests {
             .serialize(&op, &mut ser_op)
             .unwrap();
         let (_, res_op): (&[u8], WrappedOperation) =
-            WrappedDeserializer::new(OperationDeserializer::new())
-                .deserialize::<DeserializeError>(&ser_op)
-                .unwrap();
+            WrappedDeserializer::new(OperationDeserializer::new(
+                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_FUNCTION_NAME_LENGTH,
+                MAX_PARAMETERS_SIZE,
+            ))
+            .deserialize::<DeserializeError>(&ser_op)
+            .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);
@@ -1309,9 +1338,13 @@ mod tests {
         OperationTypeSerializer::new()
             .serialize(&op, &mut ser_type)
             .unwrap();
-        let (_, res_type) = OperationTypeDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_type)
-            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_type)
+        .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -1324,9 +1357,13 @@ mod tests {
         OperationSerializer::new()
             .serialize(&content, &mut ser_content)
             .unwrap();
-        let (_, res_content) = OperationDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_content)
-            .unwrap();
+        let (_, res_content) = OperationDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_content)
+        .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
@@ -1337,9 +1374,13 @@ mod tests {
             .serialize(&op, &mut ser_op)
             .unwrap();
         let (_, res_op): (&[u8], WrappedOperation) =
-            WrappedDeserializer::new(OperationDeserializer::new())
-                .deserialize::<DeserializeError>(&ser_op)
-                .unwrap();
+            WrappedDeserializer::new(OperationDeserializer::new(
+                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_FUNCTION_NAME_LENGTH,
+                MAX_PARAMETERS_SIZE,
+            ))
+            .deserialize::<DeserializeError>(&ser_op)
+            .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);
@@ -1366,9 +1407,13 @@ mod tests {
         OperationTypeSerializer::new()
             .serialize(&op, &mut ser_type)
             .unwrap();
-        let (_, res_type) = OperationTypeDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_type)
-            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_type)
+        .unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = Operation {
@@ -1381,9 +1426,13 @@ mod tests {
         OperationSerializer::new()
             .serialize(&content, &mut ser_content)
             .unwrap();
-        let (_, res_content) = OperationDeserializer::new()
-            .deserialize::<DeserializeError>(&ser_content)
-            .unwrap();
+        let (_, res_content) = OperationDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+        )
+        .deserialize::<DeserializeError>(&ser_content)
+        .unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
         let op_serializer = OperationSerializer::new();
 
@@ -1394,9 +1443,13 @@ mod tests {
             .serialize(&op, &mut ser_op)
             .unwrap();
         let (_, res_op): (&[u8], WrappedOperation) =
-            WrappedDeserializer::new(OperationDeserializer::new())
-                .deserialize::<DeserializeError>(&ser_op)
-                .unwrap();
+            WrappedDeserializer::new(OperationDeserializer::new(
+                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_FUNCTION_NAME_LENGTH,
+                MAX_PARAMETERS_SIZE,
+            ))
+            .deserialize::<DeserializeError>(&ser_op)
+            .unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);

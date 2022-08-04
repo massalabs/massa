@@ -91,6 +91,8 @@ pub const MAX_OPERATIONS_PER_BLOCK: u32 = 409600;
 pub const MAX_BLOCK_SIZE: u32 = 409600;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
+/// Maximum data size in async message
+pub const MAX_DATA_ASYNC_MESSAGE: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
@@ -105,7 +107,28 @@ pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
-
+/// Maximum length of a datastore value
+pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
+/// Maximum ledger changes in a block
+pub const MAX_LEDGER_CHANGES_PER_BLOCK: u32 = u32::MAX;
+/// Maximum production events in a block
+pub const MAX_PRODUCTION_EVENTS_PER_BLOCK: u32 = u32::MAX;
+/// Maximum ledger changes count
+pub const MAX_LEDGER_CHANGES_COUNT: u64 = u64::MAX;
+/// Maximum number of key/values in the datastore of a ledger entry
+pub const MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
+/// Maximum length function name in call sc
+pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
+/// Maximum size of parameters in call sc
+pub const MAX_PARAMETERS_SIZE: u16 = u16::MAX;
+/// Maximum length of rng_seed in thread cycle
+pub const MAX_RNG_SEED_LENGTH: u32 = u32::MAX;
+/// Maximum length of rolls_update in thread cycle
+pub const MAX_ROLLS_UPDATE_LENGTH: u64 = u64::MAX;
+/// Maximum length of rolls_counts in thread cycle
+pub const MAX_ROLLS_COUNTS_LENGTH: u64 = u64::MAX;
+/// Maximum length of production_stats in thread cycle
+pub const MAX_PRODUCTION_STATS_LENGTH: u64 = u64::MAX;
 // ***********************
 // Bootstrap constants
 //
@@ -124,6 +147,10 @@ pub const MAX_BOOTSTRAP_CHILDREN: u32 = 1000;
 pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
 /// Max number of address and random entries for PoS bootstrap
 pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
+/// Max async pool changes
+pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
+/// Max bytes in final states parts
+pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = 10_000_000;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import

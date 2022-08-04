@@ -13,6 +13,7 @@ use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
+        default::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE,
         MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
     },
@@ -102,6 +103,9 @@ impl HandshakeWorker {
                             MAX_OPERATIONS_PER_BLOCK,
                             MAX_OPERATIONS_PER_MESSAGE,
                             MAX_ENDORSEMENTS_PER_MESSAGE,
+                            MAX_DATASTORE_VALUE_LENGTH,
+                            MAX_FUNCTION_NAME_LENGTH,
+                            MAX_PARAMETERS_SIZE,
                         ),
                     ),
                     writer: WriteBinder::new(socket_writer, max_bytes_write, MAX_MESSAGE_SIZE),

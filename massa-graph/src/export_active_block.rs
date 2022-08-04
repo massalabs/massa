@@ -155,6 +155,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
             buffer.extend(hash.0.to_bytes());
             self.period_serializer.serialize(period, buffer)?;
         }
+        // Todo aurelien : virer
         self.length_serializer.serialize(
             &value
                 .children
@@ -243,6 +244,7 @@ pub struct ExportActiveBlockDeserializer {
 
 impl ExportActiveBlockDeserializer {
     /// Create a new `ExportActiveBlockDeserializer`
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         thread_count: u8,
         endorsement_count: u32,
@@ -250,12 +252,20 @@ impl ExportActiveBlockDeserializer {
         max_bootstrap_deps: u32,
         max_bootstrap_pos_entries: u32,
         max_operations_per_block: u32,
+        max_ledger_changes_per_block: u32,
+        max_production_events_per_block: u32,
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u16,
     ) -> Self {
         ExportActiveBlockDeserializer {
             wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
                 thread_count,
                 max_operations_per_block,
                 endorsement_count,
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
             )),
             hash_deserializer: HashDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -273,7 +283,7 @@ impl ExportActiveBlockDeserializer {
             ),
             block_ledger_changes_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(u32::MAX),
+                Included(max_ledger_changes_per_block),
             ),
             ledger_change_deserializer: LedgerChangeDeserializer::new(),
             address_deserializer: AddressDeserializer::new(),
@@ -284,7 +294,7 @@ impl ExportActiveBlockDeserializer {
             roll_update_deserializer: RollUpdateDeserializer::new(),
             production_events_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(u32::MAX),
+                Included(max_production_events_per_block),
             ),
             thread_count,
         }
@@ -363,7 +373,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
-    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, 10000, 10000, 10000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block_id, export_active_block.block_id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
     /// assert_eq!(export_deserialized.dependencies, export_active_block.dependencies);

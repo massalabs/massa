@@ -116,7 +116,7 @@ impl VersionDeserializer {
     /// Creates a `VersionSerializer`
     pub const fn new() -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(1000)),
+            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
         }
     }
 }

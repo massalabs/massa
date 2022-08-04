@@ -14,6 +14,9 @@ use massa_models::api::{
     DatastoreEntryInput, DatastoreEntryOutput, OperationInput, ReadOnlyBytecodeExecution,
     ReadOnlyCall,
 };
+use massa_models::constants::default::{
+    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
+};
 use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
@@ -733,7 +736,11 @@ impl Endpoints for API<Public> {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
-            let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new());
+            let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
+                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_FUNCTION_NAME_LENGTH,
+                MAX_PARAMETERS_SIZE,
+            ));
             let to_send = ops
                 .into_iter()
                 .map(|op_input| {

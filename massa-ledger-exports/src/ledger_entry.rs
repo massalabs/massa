@@ -5,7 +5,6 @@
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{Amount, VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -85,26 +84,32 @@ impl Serializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreSerializer {
 
 /// Deserializer for `Datastore` field in `LedgerEntry`
 pub struct DatastoreDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    length_deserializer: U64VarIntDeserializer,
+    key_deserializer: VecU8Deserializer,
+    value_deserializer: VecU8Deserializer,
 }
 
 impl DatastoreDeserializer {
     /// Creates a new `DatastoreDeserializer`
-    pub fn new() -> Self {
+    pub fn new(
+        max_datastore_entry_count: u64,
+        max_datastore_key_length: u64,
+        max_datastore_value_length: u64,
+    ) -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            vec_u8_deserializer: VecU8Deserializer::new(
+            length_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
-                Included(MAX_DATASTORE_KEY_LENGTH as u64),
+                Included(max_datastore_entry_count),
+            ),
+            key_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(max_datastore_key_length),
+            ),
+            value_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(max_datastore_value_length),
             ),
         }
-    }
-}
-
-impl Default for DatastoreDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -116,7 +121,7 @@ impl Deserializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
     /// let serializer = DatastoreSerializer::new();
-    /// let deserializer = DatastoreDeserializer::new();
+    /// let deserializer = DatastoreDeserializer::new(10000, 10000, 10000);
     /// let mut buffer = Vec::new();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(vec![1, 2, 3], vec![4, 5, 6]);
@@ -134,14 +139,14 @@ impl Deserializer<BTreeMap<Vec<u8>, Vec<u8>>> for DatastoreDeserializer {
             "Failed Datastore deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 tuple((
                     context("Failed key deserialization", |input| {
-                        self.vec_u8_deserializer.deserialize(input)
+                        self.key_deserializer.deserialize(input)
                     }),
                     context("Failed value deserialization", |input| {
-                        self.vec_u8_deserializer.deserialize(input)
+                        self.value_deserializer.deserialize(input)
                     }),
                 )),
             ),
@@ -211,24 +216,32 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
 /// Deserializer for `LedgerEntry`
 pub struct LedgerEntryDeserializer {
     amount_deserializer: AmountDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    bytecode_deserializer: VecU8Deserializer,
     datastore_deserializer: DatastoreDeserializer,
 }
 
 impl LedgerEntryDeserializer {
     /// Creates a new `LedgerEntryDeserializer`
-    pub fn new() -> Self {
+    pub fn new(
+        max_datastore_entry_count: u64,
+        max_datastore_key_length: u64,
+        max_datastore_value_length: u64,
+    ) -> Self {
         Self {
-            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            vec_u8_deserializer: VecU8Deserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            datastore_deserializer: DatastoreDeserializer::new(),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
+            bytecode_deserializer: VecU8Deserializer::new(
+                Included(u64::MIN),
+                Included(max_datastore_value_length),
+            ),
+            datastore_deserializer: DatastoreDeserializer::new(
+                max_datastore_entry_count,
+                max_datastore_key_length,
+                max_datastore_value_length,
+            ),
         }
-    }
-}
-
-impl Default for LedgerEntryDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -253,7 +266,7 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
     /// };
     /// let mut serialized = Vec::new();
     /// let serializer = LedgerEntrySerializer::new();
-    /// let deserializer = LedgerEntryDeserializer::new();
+    /// let deserializer = LedgerEntryDeserializer::new(10000, 10000, 10000);
     /// serializer.serialize(&ledger_entry, &mut serialized).unwrap();
     /// let (rest, ledger_entry_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -270,7 +283,7 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
                     self.amount_deserializer.deserialize(input)
                 }),
                 context("Failed bytecode deserialization", |input| {
-                    self.vec_u8_deserializer.deserialize(input)
+                    self.bytecode_deserializer.deserialize(input)
                 }),
                 context("Failed datastore deserialization", |input| {
                     self.datastore_deserializer.deserialize(input)

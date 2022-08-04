@@ -21,6 +21,11 @@ use std::str::FromStr;
 pub struct Amount(u64);
 
 impl Amount {
+    /// Minimum amount
+    pub const MIN: Amount = Amount::from_raw(u64::MIN);
+    /// Maximum amount
+    pub const MAX: Amount = Amount::from_raw(u64::MAX);
+
     /// Create a zero Amount
     pub const fn zero() -> Self {
         Self(0)
@@ -55,7 +60,7 @@ impl Amount {
     /// Obtains the underlying raw `u64` representation
     /// Warning: do not use this unless you know what you are doing
     /// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account.
-    pub fn to_raw(&self) -> u64 {
+    pub const fn to_raw(&self) -> u64 {
         self.0
     }
 
@@ -260,9 +265,12 @@ pub struct AmountDeserializer {
 
 impl AmountDeserializer {
     /// Create a new `AmountDeserializer`
-    pub const fn new(min_amount: Bound<u64>, max_amount: Bound<u64>) -> Self {
+    pub fn new(min_amount: Bound<Amount>, max_amount: Bound<Amount>) -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(min_amount, max_amount),
+            u64_deserializer: U64VarIntDeserializer::new(
+                min_amount.map(|amount| amount.to_raw()),
+                max_amount.map(|amount| amount.to_raw()),
+            ),
         }
     }
 }
@@ -277,7 +285,7 @@ impl Deserializer<Amount> for AmountDeserializer {
     ///
     /// let amount = Amount::from_str("11.111").unwrap();
     /// let serializer = AmountSerializer::new();
-    /// let deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));
+    /// let deserializer = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
     /// let mut serialized = vec![];
     /// serializer.serialize(&amount, &mut serialized).unwrap();
     /// let (rest, amount_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();

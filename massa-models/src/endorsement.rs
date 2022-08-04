@@ -175,7 +175,7 @@ impl Serializer<Endorsement> for EndorsementSerializer {
 /// Deserializer for `Endorsement`
 pub struct EndorsementDeserializer {
     slot_deserializer: SlotDeserializer,
-    u32_deserializer: U32VarIntDeserializer,
+    index_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
 }
 
@@ -187,7 +187,10 @@ impl EndorsementDeserializer {
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(endorsement_count)),
+            index_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Excluded(endorsement_count),
+            ),
             hash_deserializer: HashDeserializer::new(),
         }
     }
@@ -224,7 +227,7 @@ impl Deserializer<Endorsement> for EndorsementDeserializer {
                     self.slot_deserializer.deserialize(input)
                 }),
                 context("Failed index deserialization", |input| {
-                    self.u32_deserializer.deserialize(input)
+                    self.index_deserializer.deserialize(input)
                 }),
                 context("Failed endorsed_block deserialization", |input| {
                     self.hash_deserializer.deserialize(input)

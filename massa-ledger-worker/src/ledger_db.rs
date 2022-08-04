@@ -3,6 +3,7 @@
 //! Module to interact with the disk ledger
 
 use massa_ledger_exports::*;
+use massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::constants::{ADDRESS_SIZE_BYTES, LEDGER_PART_SIZE_MESSAGE_BYTES};
 use massa_models::{
     Address, AmountSerializer, ModelsError, Slot, SlotSerializer, VecU8Deserializer,
@@ -107,8 +108,8 @@ impl LedgerDB {
             slot_serializer: SlotSerializer::new(),
             #[cfg(feature = "testing")]
             amount_deserializer: AmountDeserializer::new(
-                Bound::Included(0),
-                Bound::Included(u64::MAX),
+                Bound::Included(Amount::MIN),
+                Bound::Included(Amount::MAX),
             ),
         }
     }
@@ -375,7 +376,7 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
-        let key_deserializer = KeyDeserializer::new();
+        let key_deserializer = KeyDeserializer::new(MAX_DATASTORE_KEY_LENGTH as u64);
         let mut last_key = Rc::new(None);
         let mut batch = WriteBatch::default();
 
@@ -524,7 +525,8 @@ mod tests {
         let a = Address::from_public_key(&pub_a);
         let b = Address::from_public_key(&pub_b);
         let (db, data) = init_test_ledger(a);
-        let amount_deserializer = AmountDeserializer::new(Included(0), Included(u64::MAX));
+        let amount_deserializer =
+            AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         // first assert
         assert!(db.get_sub_entry(&a, LedgerSubEntry::Balance).is_some());
         assert_eq!(

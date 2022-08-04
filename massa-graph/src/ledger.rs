@@ -708,7 +708,7 @@ impl Serializer<ConsensusLedgerSubset> for ConsensusLedgerSubsetSerializer {
 pub struct ConsensusLedgerSubsetDeserializer {
     ledger_data_deserializer: LedgerDataDeserializer,
     address_deserializer: AddressDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    length_deserializer: U64VarIntDeserializer,
 }
 
 impl ConsensusLedgerSubsetDeserializer {
@@ -717,7 +717,7 @@ impl ConsensusLedgerSubsetDeserializer {
         ConsensusLedgerSubsetDeserializer {
             ledger_data_deserializer: LedgerDataDeserializer::new(),
             address_deserializer: AddressDeserializer::new(),
-            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            length_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
     }
 }
@@ -754,7 +754,7 @@ impl Deserializer<ConsensusLedgerSubset> for ConsensusLedgerSubsetDeserializer {
             "Failed ConsensusLedgerSubset deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.length_deserializer.deserialize(input)
                 }),
                 tuple((
                     context("Failed address deserialization", |input| {

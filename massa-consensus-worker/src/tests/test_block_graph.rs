@@ -10,6 +10,10 @@ use massa_models::{
     active_block::ActiveBlock,
     clique::Clique,
     constants::{
+        default::{
+            MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_PER_BLOCK,
+            MAX_PARAMETERS_SIZE, MAX_PRODUCTION_EVENTS_PER_BLOCK,
+        },
         MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES,
         MAX_OPERATIONS_PER_BLOCK,
     },
@@ -660,6 +664,11 @@ fn test_bootstrapable_graph_serialized() {
         MAX_BOOTSTRAP_DEPS,
         MAX_BOOTSTRAP_POS_ENTRIES,
         MAX_OPERATIONS_PER_BLOCK,
+        MAX_LEDGER_CHANGES_PER_BLOCK,
+        MAX_PRODUCTION_EVENTS_PER_BLOCK,
+        MAX_DATASTORE_VALUE_LENGTH,
+        MAX_FUNCTION_NAME_LENGTH,
+        MAX_PARAMETERS_SIZE,
     );
     let mut bytes = Vec::new();
 

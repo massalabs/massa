@@ -9,7 +9,10 @@ use crate::{
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 use massa_models::{
-    constants::{default::ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, THREAD_COUNT},
+    constants::{
+        default::{ASYNC_POOL_PART_SIZE_MESSAGE_BYTES, MAX_DATA_ASYNC_MESSAGE},
+        THREAD_COUNT,
+    },
     ModelsError, Slot,
 };
 use massa_serialization::{Deserializer, Serializer};
@@ -175,7 +178,8 @@ impl AsyncPool {
         part: &'a [u8],
     ) -> Result<Option<AsyncMessageId>, ModelsError> {
         let async_message_id_deserializer = AsyncMessageIdDeserializer::new(THREAD_COUNT);
-        let async_message_deserializer = AsyncMessageDeserializer::new();
+        let async_message_deserializer =
+            AsyncMessageDeserializer::new(THREAD_COUNT, MAX_DATA_ASYNC_MESSAGE);
         let (rest, messages) = many0(|input: &'a [u8]| {
             if input.is_empty() {
                 return Err(nom::Err::Error(nom::error::Error::new(

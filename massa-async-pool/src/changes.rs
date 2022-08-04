@@ -111,17 +111,23 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
 }
 
 pub struct AsyncPoolChangesDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
+    async_pool_changes_length: U64VarIntDeserializer,
     id_deserializer: AsyncMessageIdDeserializer,
     message_deserializer: AsyncMessageDeserializer,
 }
 
 impl AsyncPoolChangesDeserializer {
-    pub fn new(thread_count: u8) -> Self {
+    pub fn new(thread_count: u8, max_async_pool_changes: u64, max_data_async_message: u64) -> Self {
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(1000000)),
+            async_pool_changes_length: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(max_async_pool_changes),
+            ),
             id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
-            message_deserializer: AsyncMessageDeserializer::new(),
+            message_deserializer: AsyncMessageDeserializer::new(
+                thread_count,
+                max_data_async_message,
+            ),
         }
     }
 }
@@ -151,7 +157,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// let changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new(32);
+    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000);
     /// serializer.serialize(&changes, &mut serialized).unwrap();
     /// let (rest, changes_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -165,7 +171,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
             "Failed AsyncPoolChanges deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.async_pool_changes_length.deserialize(input)
                 }),
                 |input: &'a [u8]| match input.first() {
                     Some(0) => context(

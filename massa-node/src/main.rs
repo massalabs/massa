@@ -25,8 +25,12 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        default::MAX_MESSAGE_SIZE, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP,
-        MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH,
+        default::{
+            MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE,
+            MAX_PARAMETERS_SIZE,
+        },
+        ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
+        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH,
         MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK,
         MAX_OPERATIONS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
@@ -182,6 +186,9 @@ async fn launch(
         max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
         max_message_size: MAX_MESSAGE_SIZE,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_parameters_size: MAX_PARAMETERS_SIZE,
     };
 
     // launch network controller

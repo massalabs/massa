@@ -15,7 +15,7 @@ use nom::{
     IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included};
 
 /// Rolls state for a cycle in a thread
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -171,8 +171,13 @@ impl Serializer<ThreadCycleState> for ThreadCycleStateSerializer {
 
 /// Deserializer for `ThreadCycleState`
 pub struct ThreadCycleStateDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    cycle_deserializer: U64VarIntDeserializer,
+    ok_nok_deserializer: U64VarIntDeserializer,
+    length_rng_seed_deserializer: U32VarIntDeserializer,
+    rolls_deserializer: U64VarIntDeserializer,
+    length_rolls_update_deserializer: U64VarIntDeserializer,
+    length_rolls_count_deserializer: U64VarIntDeserializer,
+    length_production_stats_deserializer: U64VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
     roll_update_deserializer: RollUpdateDeserializer,
     address_deserializer: AddressDeserializer,
@@ -180,16 +185,36 @@ pub struct ThreadCycleStateDeserializer {
 
 impl ThreadCycleStateDeserializer {
     /// Creates a new `ThreadCycleStateDeserializer`
-    pub fn new(thread_count: u8, max_bootstrap_pos_entries: u32) -> Self {
+    pub fn new(
+        thread_count: u8,
+        max_rng_seed_length: u32,
+        max_rolls_update_length: u64,
+        max_rolls_counts_length: u64,
+        max_production_stats_length: u64,
+    ) -> Self {
         ThreadCycleStateDeserializer {
-            u32_deserializer: U32VarIntDeserializer::new(
+            cycle_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            length_rng_seed_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(max_bootstrap_pos_entries),
+                Included(max_rng_seed_length),
             ),
-            u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            rolls_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            length_rolls_update_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(max_rolls_update_length),
+            ),
+            length_rolls_count_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(max_rolls_counts_length),
+            ),
+            length_production_stats_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(max_production_stats_length),
+            ),
+            ok_nok_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             roll_update_deserializer: RollUpdateDeserializer::new(),
             address_deserializer: AddressDeserializer::new(),
@@ -235,7 +260,7 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
     /// );
     /// let mut buffer = Vec::new();
     /// ThreadCycleStateSerializer::new().serialize(&thread_cycle_state, &mut buffer).unwrap();
-    /// let (rest, thread_cycle_state_deserialized) = ThreadCycleStateDeserializer::new(THREAD_COUNT, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, thread_cycle_state_deserialized) = ThreadCycleStateDeserializer::new(32, 1000, 10000, 10000, 10000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// ThreadCycleStateSerializer::new().serialize(&thread_cycle_state_deserialized, &mut buffer2).unwrap();
@@ -249,7 +274,7 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
             "Failed ThreadCycleState deserialization",
             tuple((
                 context("Failed cycle deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.cycle_deserializer.deserialize(input)
                 }),
                 context("Failed last_final_slot deserialization", |input| {
                     self.slot_deserializer.deserialize(input)
@@ -258,14 +283,14 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
                     "Failed roll_count deserialization",
                     length_count(
                         context("Failed length deserialization", |input| {
-                            self.u32_deserializer.deserialize(input)
+                            self.length_rolls_count_deserializer.deserialize(input)
                         }),
                         tuple((
                             context("Failed address deserialization", |input| {
                                 self.address_deserializer.deserialize(input)
                             }),
                             context("Failed number_of_rolls deserialization", |input| {
-                                self.u64_deserializer.deserialize(input)
+                                self.rolls_deserializer.deserialize(input)
                             }),
                         )),
                     )
@@ -275,7 +300,7 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
                     "Failed cycle_updates deserialization",
                     length_count(
                         context("Failed length deserialization", |input| {
-                            self.u32_deserializer.deserialize(input)
+                            self.length_rolls_update_deserializer.deserialize(input)
                         }),
                         tuple((
                             context("Failed address deserialization", |input| {
@@ -289,7 +314,7 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
                     .map(|res| RollUpdates(res.into_iter().collect())),
                 ),
                 context("Failed rng_seed deserialization", |input| {
-                    let (rest, n_entries) = self.u32_deserializer.deserialize(input)?;
+                    let (rest, n_entries) = self.length_rng_seed_deserializer.deserialize(input)?;
                     let bits_u8_len = n_entries.div_ceil(u8::BITS) as usize;
                     if rest.len() < bits_u8_len {
                         return Err(nom::Err::Error(ParseError::from_error_kind(
@@ -314,17 +339,17 @@ impl Deserializer<ThreadCycleState> for ThreadCycleStateDeserializer {
                     "Failed production_stats deserialization",
                     length_count(
                         context("Failed length deserialization", |input| {
-                            self.u32_deserializer.deserialize(input)
+                            self.length_production_stats_deserializer.deserialize(input)
                         }),
                         tuple((
                             context("Failed address deserialization", |input| {
                                 self.address_deserializer.deserialize(input)
                             }),
                             context("Failed ok_count deserialization", |input| {
-                                self.u64_deserializer.deserialize(input)
+                                self.ok_nok_deserializer.deserialize(input)
                             }),
                             context("Failed nok_count deserialization", |input| {
-                                self.u64_deserializer.deserialize(input)
+                                self.ok_nok_deserializer.deserialize(input)
                             }),
                         )),
                     )

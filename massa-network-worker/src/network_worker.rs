@@ -711,6 +711,9 @@ impl NetworkWorker {
             let max_endorsements_per_message = self.cfg.max_endorsements_per_message;
             let max_operations_per_message = self.cfg.max_operations_per_message;
             let max_message_size = self.cfg.max_message_size;
+            let max_datastore_value_length = self.cfg.max_datastore_value_length;
+            let max_function_name_length = self.cfg.max_function_name_length;
+            let max_parameters_size = self.cfg.max_parameters_size;
             self.handshake_peer_list_futures
                 .push(tokio::spawn(async move {
                     let mut writer = WriteBinder::new(writer, max_bytes_read, max_message_size);
@@ -726,6 +729,9 @@ impl NetworkWorker {
                             max_operations_per_block,
                             max_operations_per_message,
                             max_endorsements_per_message,
+                            max_datastore_value_length,
+                            max_function_name_length,
+                            max_parameters_size,
                         ),
                     );
                     let mut serialized_message = Vec::new();

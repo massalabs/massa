@@ -10,6 +10,7 @@ use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
+use massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::constants::THREAD_COUNT;
 use massa_models::Version;
 use massa_models::VersionDeserializer;
@@ -175,9 +176,10 @@ impl BootstrapServerBinder {
         }
 
         // deserialize message
-        let (_, msg) = BootstrapClientMessageDeserializer::new(THREAD_COUNT)
-            .deserialize::<DeserializeError>(&msg_bytes)
-            .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
+        let (_, msg) =
+            BootstrapClientMessageDeserializer::new(THREAD_COUNT, MAX_DATASTORE_KEY_LENGTH as u64)
+                .deserialize::<DeserializeError>(&msg_bytes)
+                .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)
     }

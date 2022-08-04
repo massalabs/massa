@@ -14,6 +14,9 @@ use crate::{
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::Hash;
+use massa_models::constants::default::{
+    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
+};
 use massa_models::constants::{
     ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK,
@@ -81,6 +84,9 @@ async fn test_node_worker_shutdown() {
             MAX_OPERATIONS_PER_BLOCK,
             MAX_OPERATIONS_PER_MESSAGE,
             MAX_ENDORSEMENTS_PER_MESSAGE,
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
         ),
     );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);
@@ -149,6 +155,9 @@ async fn test_node_worker_operations_message() {
             MAX_OPERATIONS_PER_BLOCK,
             MAX_OPERATIONS_PER_MESSAGE,
             MAX_ENDORSEMENTS_PER_MESSAGE,
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
         ),
     );
     let writer = WriteBinder::new(duplex_mock_write, f64::INFINITY, MAX_MESSAGE_SIZE);

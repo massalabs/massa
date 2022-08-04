@@ -230,6 +230,7 @@ pub struct MessageDeserializer {
 
 impl MessageDeserializer {
     /// Creates a new `MessageDeserializer`.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         thread_count: u8,
         endorsement_count: u32,
@@ -238,12 +239,15 @@ impl MessageDeserializer {
         max_operations_per_block: u32,
         max_operations_per_message: u32,
         max_endorsements_per_message: u32,
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u16,
     ) -> Self {
         MessageDeserializer {
             public_key_deserializer: PublicKeyDeserializer::new(),
             signature_deserializer: SignatureDeserializer::new(),
             version_deserializer: VersionDeserializer::new(),
-            id_deserializer: U32VarIntDeserializer::new(Included(0), Included(200)),
+            id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             ask_block_number_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(max_ask_block),
@@ -252,12 +256,20 @@ impl MessageDeserializer {
                 Included(0),
                 Excluded(max_advertise_length),
             ),
-            operations_deserializer: OperationsDeserializer::new(),
+            operations_deserializer: OperationsDeserializer::new(
+                max_operations_per_block,
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+            ),
             hash_deserializer: HashDeserializer::new(),
             block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
                 thread_count,
                 max_operations_per_block,
                 endorsement_count,
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
             )),
             block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
@@ -416,6 +428,7 @@ impl Deserializer<Message> for MessageDeserializer {
 mod tests {
     use super::*;
     use massa_models::constants::{
+        default::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
         MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
         THREAD_COUNT,
@@ -438,6 +451,9 @@ mod tests {
             MAX_OPERATIONS_PER_BLOCK,
             MAX_OPERATIONS_PER_MESSAGE,
             MAX_ENDORSEMENTS_PER_MESSAGE,
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
         );
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);

@@ -70,6 +70,12 @@ pub struct NetworkConfig {
     pub max_endorsements_per_message: u32,
     /// Max message size
     pub max_message_size: u32,
+    /// Maximum length of a datastore value
+    pub max_datastore_value_length: u64,
+    /// Maximum length function name in call sc
+    pub max_function_name_length: u16,
+    /// Maximum size of parameters in call sc
+    pub max_parameters_size: u16,
 }
 
 /// Connection configuration for a peer type
@@ -90,6 +96,9 @@ pub mod tests {
     use crate::NetworkConfig;
     use crate::{test_exports::tools::get_temp_keypair_file, PeerType};
     use enum_map::enum_map;
+    use massa_models::constants::default::{
+        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
+    };
     use massa_models::constants::{
         BASE_NETWORK_CONTROLLER_IP, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
         MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_MESSAGE_SIZE,
@@ -149,6 +158,9 @@ pub mod tests {
                 max_peer_advertise_length: MAX_ADVERTISE_LENGTH,
                 thread_count: THREAD_COUNT,
                 max_message_size: MAX_MESSAGE_SIZE,
+                max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+                max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+                max_parameters_size: MAX_PARAMETERS_SIZE,
             }
         }
     }
@@ -203,6 +215,9 @@ pub mod tests {
                 max_peer_advertise_length: 128,
                 thread_count: THREAD_COUNT,
                 max_message_size: MAX_MESSAGE_SIZE,
+                max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+                max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+                max_parameters_size: MAX_PARAMETERS_SIZE,
             }
         }
     }

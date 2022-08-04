@@ -27,7 +27,7 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included};
 
 /// Messages used during bootstrap by server
 #[derive(Debug, Clone)]
@@ -200,14 +200,15 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
 
 /// Deserializer for `BootstrapServerMessage`
 pub struct BootstrapServerMessageDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    message_id_deserializer: U32VarIntDeserializer,
     time_deserializer: MassaTimeDeserializer,
     version_deserializer: VersionDeserializer,
     peers_deserializer: BootstrapPeersDeserializer,
     pos_deserializer: ExportProofOfStakeDeserializer,
     state_changes_deserializer: StateChangesDeserializer,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    final_state_parts_deserializer: VecU8Deserializer,
+    length_bootstrap_error: U32VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
 }
 
@@ -225,9 +226,24 @@ impl BootstrapServerMessageDeserializer {
         max_bootstrap_pos_cycles: u32,
         max_bootstrap_pos_entries: u32,
         max_operations_per_block: u32,
+        max_bootstrap_final_state_parts_size: u64,
+        max_rng_seed_length: u32,
+        max_rolls_update_length: u64,
+        max_rolls_counts_length: u64,
+        max_production_stats_length: u64,
+        max_async_pool_changes: u64,
+        max_data_async_message: u64,
+        max_ledger_changes_count: u64,
+        max_datastore_key_length: u64,
+        max_datastore_value_length: u64,
+        max_datastore_entry_count: u64,
+        max_ledger_changes_per_block: u32,
+        max_production_events_per_block: u32,
+        max_function_name_length: u16,
+        max_parameters_size: u16,
     ) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(100)),
+            message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from(0)),
                 Included(MassaTime::from(u64::MAX)),
@@ -237,9 +253,20 @@ impl BootstrapServerMessageDeserializer {
             pos_deserializer: ExportProofOfStakeDeserializer::new(
                 thread_count,
                 max_bootstrap_pos_cycles,
-                max_bootstrap_pos_entries,
+                max_rng_seed_length,
+                max_rolls_update_length,
+                max_rolls_counts_length,
+                max_production_stats_length,
             ),
-            state_changes_deserializer: StateChangesDeserializer::new(thread_count),
+            state_changes_deserializer: StateChangesDeserializer::new(
+                thread_count,
+                max_async_pool_changes,
+                max_data_async_message,
+                max_ledger_changes_count,
+                max_datastore_key_length,
+                max_datastore_value_length,
+                max_datastore_entry_count,
+            ),
             bootstrapable_graph_deserializer: BootstrapableGraphDeserializer::new(
                 thread_count,
                 endorsement_count,
@@ -249,12 +276,21 @@ impl BootstrapServerMessageDeserializer {
                 max_bootstrap_deps,
                 max_bootstrap_pos_entries,
                 max_operations_per_block,
+                max_ledger_changes_per_block,
+                max_production_events_per_block,
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
             ),
-            vec_u8_deserializer: VecU8Deserializer::new(Included(0), Included(u64::MAX)),
+            final_state_parts_deserializer: VecU8Deserializer::new(
+                Included(0),
+                Included(max_bootstrap_final_state_parts_size),
+            ),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
+            length_bootstrap_error: U32VarIntDeserializer::new(Included(0), Included(100000)),
         }
     }
 }
@@ -269,7 +305,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
-    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 1000);
+    /// let message_deserializer = BootstrapServerMessageDeserializer::new(16, 10, 100, 100, 1000, 1000, 1000, 1000, 1000, 1000, 100000, 100000, 100000, 100000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from(0),
     ///    version: Version::from_str("TEST.1.0").unwrap(),
@@ -295,7 +331,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ) -> IResult<&'a [u8], BootstrapServerMessage, E> {
         context("Failed BootstrapServerMessage deserialization", |buffer| {
             let (input, id) = context("Failed id deserialization", |input| {
-                self.u32_deserializer.deserialize(input)
+                self.message_id_deserializer.deserialize(input)
             })
             .map(|id| {
                 MessageServerTypeId::try_from(id).map_err(|_| {
@@ -339,10 +375,10 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                 .parse(input),
                 MessageServerTypeId::FinalStatePart => tuple((
                     context("Failed ledger_data deserialization", |input| {
-                        self.vec_u8_deserializer.deserialize(input)
+                        self.final_state_parts_deserializer.deserialize(input)
                     }),
                     context("Failed async_pool_part deserialization", |input| {
-                        self.vec_u8_deserializer.deserialize(input)
+                        self.final_state_parts_deserializer.deserialize(input)
                     }),
                     context("Failed slot deserialization", |input| {
                         self.slot_deserializer.deserialize(input)
@@ -369,7 +405,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                 MessageServerTypeId::BootstrapError => context(
                     "Failed BootstrapError deserialization",
                     length_data(context("Failed length deserialization", |input| {
-                        self.u32_deserializer.deserialize(input)
+                        self.length_bootstrap_error.deserialize(input)
                     })),
                 )
                 .map(|error| BootstrapServerMessage::BootstrapError {
@@ -502,23 +538,25 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
 
 /// Deserializer for `BootstrapClientMessage`
 pub struct BootstrapClientMessageDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    id_deserializer: U32VarIntDeserializer,
     slot_deserializer: SlotDeserializer,
     async_message_id_deserializer: AsyncMessageIdDeserializer,
+    length_error_deserializer: U32VarIntDeserializer,
     key_deserializer: KeyDeserializer,
 }
 
 impl BootstrapClientMessageDeserializer {
     /// Creates a new `BootstrapClientMessageDeserializer`
-    pub fn new(thread_count: u8) -> Self {
+    pub fn new(thread_count: u8, max_datastore_key_length: u64) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(1000)),
+            id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
-                (Included(0), Included(thread_count)),
+                (Included(0), Excluded(thread_count)),
             ),
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
-            key_deserializer: KeyDeserializer::new(),
+            key_deserializer: KeyDeserializer::new(max_datastore_key_length),
+            length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(100000)),
         }
     }
 }
@@ -533,7 +571,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
     /// use std::str::FromStr;
     ///
     /// let message_serializer = BootstrapClientMessageSerializer::new();
-    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32);
+    /// let message_deserializer = BootstrapClientMessageDeserializer::new(32, 100000);
     /// let bootstrap_server_message = BootstrapClientMessage::AskBootstrapPeers;
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&bootstrap_server_message, &mut message_serialized).unwrap();
@@ -550,7 +588,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
     ) -> IResult<&'a [u8], BootstrapClientMessage, E> {
         context("Failed BootstrapClientMessage deserialization", |buffer| {
             let (input, id) = context("Failed id deserialization", |input| {
-                self.u32_deserializer.deserialize(input)
+                self.id_deserializer.deserialize(input)
             })
             .map(|id| {
                 MessageClientTypeId::try_from(id).map_err(|_| {
@@ -603,7 +641,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                 MessageClientTypeId::BootstrapError => context(
                     "Failed BootstrapError deserialization",
                     length_data(context("Failed length deserialization", |input| {
-                        self.u32_deserializer.deserialize(input)
+                        self.length_error_deserializer.deserialize(input)
                     })),
                 )
                 .map(|error| BootstrapClientMessage::BootstrapError {

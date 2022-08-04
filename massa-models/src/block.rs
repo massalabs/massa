@@ -287,23 +287,30 @@ impl Serializer<Block> for BlockSerializer {
 pub struct BlockDeserializer {
     header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
     operation_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
-    u32_deserializer: U32VarIntDeserializer,
+    length_operations_deserializer: U32VarIntDeserializer,
 }
 
 impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
-    pub const fn new(
+    pub fn new(
         thread_count: u8,
         max_operations_per_block: u32,
         endorsement_count: u32,
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u16,
     ) -> Self {
         BlockDeserializer {
             header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
             )),
-            operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new()),
-            u32_deserializer: U32VarIntDeserializer::new(
+            operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new(
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+            )),
+            length_operations_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(max_operations_per_block),
             ),
@@ -365,7 +372,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
-    /// let (rest, res_block) = BlockDeserializer::new(THREAD_COUNT, 100, 9).deserialize::<DeserializeError>(&mut buffer).unwrap();
+    /// let (rest, res_block) = BlockDeserializer::new(THREAD_COUNT, 100, 9, 10000, 10000, 10000).deserialize::<DeserializeError>(&mut buffer).unwrap();
     ///
     /// assert!(rest.is_empty());
     /// // check equality
@@ -395,7 +402,7 @@ impl Deserializer<Block> for BlockDeserializer {
                 }),
                 length_count(
                     context("Failed length operation deserialization", |input| {
-                        self.u32_deserializer.deserialize(input)
+                        self.length_operations_deserializer.deserialize(input)
                     }),
                     context("Failed operation deserialization", |input| {
                         let (rest, operation) = self.operation_deserializer.deserialize(input)?;
@@ -631,7 +638,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
 pub struct BlockHeaderDeserializer {
     slot_deserializer: SlotDeserializer,
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
-    u32_deserializer: U32VarIntDeserializer,
+    length_endorsements_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
 }
 
@@ -647,7 +654,10 @@ impl BlockHeaderDeserializer {
                 thread_count,
                 endorsement_count,
             )),
-            u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
+            length_endorsements_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(endorsement_count),
+            ),
             hash_deserializer: HashDeserializer::new(),
         }
     }
@@ -734,7 +744,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                     "Failed endorsements deserialization",
                     length_count(
                         context("Failed length deserialization", |input| {
-                            self.u32_deserializer.deserialize(input)
+                            self.length_endorsements_deserializer.deserialize(input)
                         }),
                         context("Failed endorsement deserialization", |input| {
                             self.endorsement_deserializer.deserialize(input)
@@ -793,7 +803,10 @@ mod test {
     use super::*;
     use crate::{
         endorsement::EndorsementSerializer,
-        node_configuration::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK},
+        node_configuration::{
+            default::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
+            ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK,
+        },
         Endorsement,
     };
     use massa_serialization::DeserializeError;
@@ -857,11 +870,17 @@ mod test {
             .unwrap();
 
         // deserialize
-        let (rest, res_block): (&[u8], WrappedBlock) = WrappedDeserializer::new(
-            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
-        )
-        .deserialize::<DeserializeError>(&ser_block)
-        .unwrap();
+        let (rest, res_block): (&[u8], WrappedBlock) =
+            WrappedDeserializer::new(BlockDeserializer::new(
+                THREAD_COUNT,
+                MAX_OPERATIONS_PER_BLOCK,
+                ENDORSEMENT_COUNT,
+                MAX_DATASTORE_VALUE_LENGTH,
+                MAX_FUNCTION_NAME_LENGTH,
+                MAX_PARAMETERS_SIZE,
+            ))
+            .deserialize::<DeserializeError>(&ser_block)
+            .unwrap();
         assert!(rest.is_empty());
         // check equality
         assert_eq!(orig_block.header.id, res_block.content.header.id);

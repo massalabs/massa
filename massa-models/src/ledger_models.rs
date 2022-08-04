@@ -73,7 +73,10 @@ impl LedgerDataDeserializer {
     /// Creates a `LedgerDataDeserializer`
     pub fn new() -> Self {
         Self {
-            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
         }
     }
 }
@@ -216,7 +219,10 @@ impl LedgerChangeDeserializer {
     /// Creates a `LedgerChangeDeserializer`
     pub fn new() -> Self {
         Self {
-            amount_deserializer: AmountDeserializer::new(Included(0), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
         }
     }
 }
@@ -354,18 +360,15 @@ pub struct LedgerChangesDeserializer {
 
 impl LedgerChangesDeserializer {
     /// Creates a `LedgerChangesDeserializer`
-    pub fn new() -> Self {
+    pub fn new(max_ledger_changes_count: u64) -> Self {
         Self {
-            length_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            length_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(max_ledger_changes_count),
+            ),
             address_deserializer: AddressDeserializer::new(),
             ledger_change_deserializer: LedgerChangeDeserializer::new(),
         }
-    }
-}
-
-impl Default for LedgerChangesDeserializer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -395,7 +398,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// let mut serialized = Vec::new();
     /// let ledger_change_serializer = LedgerChangeSerializer::new();
     /// LedgerChangesSerializer::new().serialize(&ledger_changes, &mut serialized).unwrap();
-    /// let (_, res) = LedgerChangesDeserializer::new().deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (_, res) = LedgerChangesDeserializer::new(10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// for (address, data) in &ledger_changes.0 {
     ///    let mut data_serialized = Vec::new();
     ///    ledger_change_serializer.serialize(data, &mut data_serialized).unwrap();

@@ -136,7 +136,10 @@ impl ExportProofOfStakeDeserializer {
     pub fn new(
         thread_count: u8,
         max_bootstrap_pos_cycles: u32,
-        max_bootstrap_pos_entries: u32,
+        max_rng_seed_length: u32,
+        max_rolls_update_length: u64,
+        max_rolls_counts_length: u64,
+        max_production_stats_length: u64,
     ) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
@@ -145,7 +148,10 @@ impl ExportProofOfStakeDeserializer {
             ),
             cycle_state_deserializer: ThreadCycleStateDeserializer::new(
                 thread_count,
-                max_bootstrap_pos_entries,
+                max_rng_seed_length,
+                max_rolls_update_length,
+                max_rolls_counts_length,
+                max_production_stats_length,
             ),
             thread_count,
         }
@@ -157,7 +163,7 @@ impl Deserializer<ExportProofOfStake> for ExportProofOfStakeDeserializer {
     /// ```rust
     /// use bitvec::prelude::BitVec;
     /// use massa_proof_of_stake_exports::{ExportProofOfStake, ExportProofOfStakeSerializer, ExportProofOfStakeDeserializer, ThreadCycleState};
-    /// use massa_models::{Address, Slot, prehash::Map, rolls::{RollUpdate, RollUpdates, RollCounts}, constants::THREAD_COUNT};
+    /// use massa_models::{Address, Slot, prehash::Map, rolls::{RollUpdate, RollUpdates, RollCounts}};
     /// use std::str::FromStr;
     /// use std::collections::VecDeque;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -195,12 +201,12 @@ impl Deserializer<ExportProofOfStake> for ExportProofOfStakeDeserializer {
     /// let mut export_proof_of_stake = ExportProofOfStake {
     ///  cycle_states: vec![],
     /// };
-    /// for _ in 0..THREAD_COUNT {
+    /// for _ in 0..32 {
     ///   export_proof_of_stake.cycle_states.push(thread_cycle_state_vec.clone());
     /// }
     /// let mut buffer = Vec::new();
     /// ExportProofOfStakeSerializer::new().serialize(&export_proof_of_stake, &mut buffer).unwrap();
-    /// let (rest, export_proof_of_stake_deserialized) = ExportProofOfStakeDeserializer::new(THREAD_COUNT, 1000, 1000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, export_proof_of_stake_deserialized) = ExportProofOfStakeDeserializer::new(32, 1000, 1000, 10000, 10000, 10000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// ExportProofOfStakeSerializer::new().serialize(&export_proof_of_stake_deserialized, &mut buffer2).unwrap();

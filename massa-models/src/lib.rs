@@ -2,6 +2,7 @@
 //! All the structures that are used everywhere
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(bound_map)]
 
 pub use address::{Address, AddressDeserializer};
 pub use amount::{Amount, AmountDeserializer, AmountSerializer};

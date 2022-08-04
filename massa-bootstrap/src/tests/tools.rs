@@ -14,6 +14,11 @@ use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
+use massa_models::constants::default::{
+    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_PER_BLOCK,
+    MAX_PARAMETERS_SIZE, MAX_PRODUCTION_EVENTS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNTS_LENGTH, MAX_ROLLS_UPDATE_LENGTH,
+};
 use massa_models::constants::{
     MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS,
     MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_POS_CYCLES, MAX_BOOTSTRAP_POS_ENTRIES,
@@ -550,6 +555,9 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         THREAD_COUNT,
         MAX_BOOTSTRAP_POS_CYCLES,
         MAX_BOOTSTRAP_POS_ENTRIES,
+        MAX_ROLLS_UPDATE_LENGTH,
+        MAX_ROLLS_COUNTS_LENGTH,
+        MAX_PRODUCTION_STATS_LENGTH,
     );
     let export_pos_serializer = ExportProofOfStakeSerializer::new();
     let mut export_pos_bytes = Vec::new();
@@ -600,6 +608,11 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         MAX_BOOTSTRAP_DEPS,
         MAX_BOOTSTRAP_POS_ENTRIES,
         MAX_OPERATIONS_PER_BLOCK,
+        MAX_LEDGER_CHANGES_PER_BLOCK,
+        MAX_PRODUCTION_EVENTS_PER_BLOCK,
+        MAX_DATASTORE_VALUE_LENGTH,
+        MAX_FUNCTION_NAME_LENGTH,
+        MAX_PARAMETERS_SIZE,
     );
 
     let mut bootstrapable_graph_serialized = Vec::new();
