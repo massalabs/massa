@@ -86,13 +86,6 @@ use tokio::sync::oneshot;
 pub enum NodeCommand {
     /// Send given peer list to node.
     SendPeerList(Vec<IpAddr>),
-    /// Send info about the content of a block to a node.
-    SendBlockInfo {
-        /// block id
-        block_id: BlockId,
-        /// List of operations
-        operation_list: OperationIds,
-    },
     /// Send the header of a block to a node.
     SendBlockHeader(BlockId),
     /// Ask for info on a list of blocks.
@@ -126,12 +119,7 @@ pub enum NodeEventType {
     /// Node we are connected asked for info on a list of blocks.
     ReceivedAskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
     /// Node we are connected sent info on a list of blocks.
-    ReceivedReplyForBlocks(Vec<(BlockId, ReplyForBlocksInfo)>),
-    /// Info about the contents of a block.
-    ReceivedBlockInfo {
-        block_id: BlockId,
-        operation_list: OperationIds,
-    },
+    ReceivedReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
     /// Received full operations.
     ReceivedOperations(Operations),
     /// Received an operation id batch announcing new operations

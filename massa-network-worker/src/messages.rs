@@ -16,7 +16,7 @@ use massa_models::{
     SerializeVarInt, Version, VersionDeserializer, VersionSerializer, WrappedBlock,
     WrappedEndorsement, WrappedHeader,
 };
-use massa_network_exports::{AskForBlocksInfo, ReplyForBlocksInfo};
+use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, ReplyForBlocksInfo};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -42,17 +42,12 @@ pub enum Message {
         /// Signature of the received random bytes with our `keypair`.
         signature: Signature,
     },
-    /// Info about the contents of a block.
-    BlockInfo {
-        block_id: BlockId,
-        operation_list: OperationIds,
-    },
     /// Block header
     BlockHeader(WrappedHeader),
     /// Message asking the peer for info on a list of blocks.
     AskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
     /// Message replying with info on a list of blocks.
-    ReplyForBlocks(Vec<(BlockId, ReplyForBlocksInfo)>),
+    ReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
     /// Message asking the peer for its advertisable peers list.
     AskPeerList,
     /// Reply to a `AskPeerList` message
@@ -83,8 +78,15 @@ pub(crate) enum MessageTypeId {
     Endorsements,
     AskForOperations,
     OperationsAnnouncement,
-    BlockInfo,
     ReplyForBlocks,
+}
+
+#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u32)]
+pub(crate) enum BlockInfoType {
+    Info = 0u32,
+    Operations,
+    NotFound,
 }
 
 /// For more details on how incoming objects are checked for validity at this stage,
@@ -112,14 +114,6 @@ impl SerializeCompact for Message {
                 res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
                 WrappedSerializer::new().serialize(header, &mut res)?;
             }
-            Message::BlockInfo {
-                block_id,
-                operation_list,
-            } => {
-                res.extend(u32::from(MessageTypeId::BlockInfo).to_varint_bytes());
-                res.extend(block_id.to_bytes());
-                OperationIdsSerializer::new().serialize(operation_list, &mut res)?;
-            }
             Message::AskForBlocks(list) => {
                 res.extend(u32::from(MessageTypeId::AskForBlocks).to_varint_bytes());
                 let list_len: u32 = list.len().try_into().map_err(|_| {
@@ -128,14 +122,21 @@ impl SerializeCompact for Message {
                     )
                 })?;
                 res.extend(list_len.to_varint_bytes());
-
-                // FIXME: serialize info.
-                for (hash, _info) in list {
+                for (hash, info) in list {
                     res.extend(hash.to_bytes());
+                    let info_type = match info {
+                        AskForBlocksInfo::Info => BlockInfoType::Info,
+                        AskForBlocksInfo::Operations(_) => BlockInfoType::Operations,
+                    };
+                    res.extend(u32::from(info_type).to_varint_bytes());
+                    if let AskForBlocksInfo::Operations(ids) = info {
+                        let op_ids_serializer = OperationIdsSerializer::new();
+                        op_ids_serializer.serialize(ids, &mut res)?;
+                    }
                 }
             }
             Message::ReplyForBlocks(list) => {
-                // TODO: serialize.
+                panic!("Message::ReplyForBlocks should be constructed using shared storage.");
             }
             Message::AskPeerList => {
                 res.extend(u32::from(MessageTypeId::AskPeerList).to_varint_bytes());
@@ -233,31 +234,74 @@ impl DeserializeCompact for Message {
                 let (length, delta) =
                     u32::from_varint_bytes_bounded(&buffer[cursor..], max_ask_blocks_per_message)?;
                 cursor += delta;
-                // hash list
                 let mut list = Vec::with_capacity(length as usize);
                 for _ in 0..length {
                     let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
                     cursor += BLOCK_ID_SIZE_BYTES;
 
-                    // FIXME: deserialize info.
-                    list.push((b_id, AskForBlocksInfo::Info));
+                    let (info_type_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+                    cursor += delta;
+
+                    let info_type: BlockInfoType = info_type_raw.try_into().map_err(|_| {
+                        ModelsError::DeserializeError("invalid block info type".into())
+                    })?;
+
+                    match info_type {
+                        BlockInfoType::Info => {
+                            list.push((b_id, AskForBlocksInfo::Info));
+                        }
+                        BlockInfoType::Operations => {
+                            let op_ids_deserializer = OperationIdsDeserializer::new();
+                            let (rest, op_ids) =
+                                op_ids_deserializer.deserialize(&buffer[cursor..])?;
+                            cursor += buffer[cursor..].len() - rest.len();
+                            list.push((b_id, AskForBlocksInfo::Operations(op_ids)));
+                        }
+                        BlockInfoType::NotFound => {
+                            return Err(ModelsError::DeserializeError(
+                                "invalid block info type".into(),
+                            ))
+                        }
+                    }
                 }
                 Message::AskForBlocks(list)
             }
             MessageTypeId::ReplyForBlocks => {
-                // TODO: deserialize.
-                Message::ReplyForBlocks(Default::default())
-            }
-            MessageTypeId::BlockInfo => {
-                let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
-                cursor += BLOCK_ID_SIZE_BYTES;
-                let (rest, operation_list) =
-                    OperationIdsDeserializer::new().deserialize(&buffer[cursor..])?;
-                cursor += buffer[cursor..].len() - rest.len();
-                Message::BlockInfo {
-                    block_id,
-                    operation_list,
+                let (length, delta) =
+                    u32::from_varint_bytes_bounded(&buffer[cursor..], max_ask_blocks_per_message)?;
+                cursor += delta;
+                let mut list = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?);
+                    cursor += BLOCK_ID_SIZE_BYTES;
+
+                    let (info_type_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+                    cursor += delta;
+
+                    let info_type: BlockInfoType = info_type_raw.try_into().map_err(|_| {
+                        ModelsError::DeserializeError("invalid block info type".into())
+                    })?;
+
+                    match info_type {
+                        BlockInfoType::Info => {
+                            let op_ids_deserializer = OperationIdsDeserializer::new();
+                            let (rest, op_ids) =
+                                op_ids_deserializer.deserialize(&buffer[cursor..])?;
+                            cursor += buffer[cursor..].len() - rest.len();
+                            list.push((b_id, BlockInfoReply::Info(op_ids)));
+                        }
+                        BlockInfoType::Operations => {
+                            let ops_deserializer = OperationsDeserializer::new();
+                            let (rest, ops) = ops_deserializer.deserialize(&buffer[cursor..])?;
+                            cursor += buffer[cursor..].len() - rest.len();
+                            list.push((b_id, BlockInfoReply::Operations(ops)));
+                        }
+                        BlockInfoType::NotFound => {
+                            list.push((b_id, BlockInfoReply::NotFound));
+                        }
+                    }
                 }
+                Message::ReplyForBlocks(list)
             }
             MessageTypeId::AskPeerList => Message::AskPeerList,
             MessageTypeId::PeerList => {

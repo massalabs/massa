@@ -19,7 +19,7 @@ use massa_models::{
     node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, SerializeCompact, Slot,
 };
 use massa_network_exports::{
-    settings::PeerTypeConnectionConfig, AskForBlocksInfo, NodeCommand, NodeEvent,
+    settings::PeerTypeConnectionConfig, AskForBlocksInfo, BlockInfoReply, NodeCommand, NodeEvent,
     ReplyForBlocksInfo,
 };
 use massa_network_exports::{
@@ -806,7 +806,7 @@ async fn test_block_not_found() {
                         if let Message::ReplyForBlocks(mut info) = evt {
                             let info = info.pop().unwrap();
                             assert_eq!(info.0, wanted_hash);
-                            if let ReplyForBlocksInfo::NotFound = info.1 {
+                            if let BlockInfoReply::NotFound = info.1 {
                                 break;
                             }
                         }

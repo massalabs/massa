@@ -772,21 +772,10 @@ impl NetworkWorker {
                 event_impl::on_received_ask_for_blocks(self, from_node_id, list).await
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedReplyForBlocks(list)) => {
-                // TODO
-                //event_impl::on_received_ask_for_blocks(self, from_node_id, list).await
+                event_impl::on_received_block_info(self, from_node_id, list).await?
             }
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
                 event_impl::on_received_block_header(self, source_node_id, header).await?
-            }
-            NodeEvent(
-                source_node_id,
-                NodeEventType::ReceivedBlockInfo {
-                    block_id,
-                    operation_list,
-                },
-            ) => {
-                //event_impl::on_received_block_info(self, source_node_id, block_id, operation_list)
-                //    .await?
             }
             NodeEvent(from_node_id, NodeEventType::AskedPeerList) => {
                 event_impl::on_asked_peer_list(self, from_node_id).await?

@@ -213,6 +213,18 @@ pub async fn on_send_block_info_cmd(
     node: NodeId,
     info: Vec<(BlockId, ReplyForBlocksInfo)>,
 ) -> Result<(), NetworkError> {
+    massa_trace!(
+        "network_worker.manage_network_command receive NetworkCommand::SendBlockInfo",
+        { "node": node }
+    );
+    worker
+        .event
+        .forward(
+            node,
+            worker.active_nodes.get(&node),
+            NodeCommand::ReplyForBlocks(info),
+        )
+        .await;
     Ok(())
 }
 
