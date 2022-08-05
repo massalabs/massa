@@ -88,6 +88,8 @@ impl LedgerDB {
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
     pub fn new(path: PathBuf) -> Self {
+        #[cfg(feature = "testing")]
+        use massa_models::Amount;
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
