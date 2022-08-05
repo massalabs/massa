@@ -10,7 +10,7 @@
 #![feature(hash_drain_filter)]
 
 use massa_logging::massa_trace;
-use massa_models::prehash::{Map, PreHashed, Set};
+use massa_models::prehash::{BuildMap, Map, PreHashed, Set};
 use massa_models::wrapped::Id;
 use massa_models::{
     BlockId, EndorsementId, OperationId, WrappedBlock, WrappedEndorsement, WrappedOperation,
@@ -47,39 +47,30 @@ pub struct Storage {
 impl Storage {
     /// Clones the object to a new one that has the same references
     pub fn clone_with_refs(&mut self) -> Self {
+        let mut res = Self::clone_without_refs(&self);
+
         // claim one more user of the op refs
         Storage::internal_claim_refs(
             &self.local_used_ops.clone(),
-            &mut self.operation_owners.write(),
-            &mut self.local_used_ops,
+            &mut res.operation_owners.write(),
+            &mut res.local_used_ops,
         );
 
         // claim one more user of the block refs
         Storage::internal_claim_refs(
             &self.local_used_blocks.clone(),
-            &mut self.block_owners.write(),
-            &mut self.local_used_blocks,
+            &mut res.block_owners.write(),
+            &mut res.local_used_blocks,
         );
 
         // claim one more user of the endorsement refs
         Storage::internal_claim_refs(
             &self.local_used_endorsements.clone(),
-            &mut self.endorsement_owners.write(),
-            &mut self.local_used_endorsements,
+            &mut res.endorsement_owners.write(),
+            &mut res.local_used_endorsements,
         );
 
-        Self {
-            blocks: self.blocks.clone(),
-            operations: self.operations.clone(),
-            endorsements: self.endorsements.clone(),
-            operation_owners: self.operation_owners.clone(),
-            block_owners: self.block_owners.clone(),
-            endorsement_owners: self.endorsement_owners.clone(),
-
-            local_used_ops: self.local_used_ops.clone(),
-            local_used_blocks: self.local_used_blocks.clone(),
-            local_used_endorsements: self.local_used_endorsements.clone(),
-        }
+        res
     }
 
     /// Clones the object to a new one that has no references
@@ -188,19 +179,23 @@ impl Storage {
     }
 
     /// Claim block references.
-    /// Panics if some of the refs are not owned by the source.
-    pub fn claim_block_refs(&mut self, source: &Storage, ids: &Set<BlockId>) {
+    /// Returns the set of block refs that were found and claimed.
+    pub fn claim_block_refs(&mut self, ids: &Set<BlockId>) -> Set<BlockId> {
+        let mut claimed = Set::with_capacity_and_hasher(ids.len(), BuildMap::default());
+
         if ids.is_empty() {
-            return;
+            return claimed;
         }
-        if !ids.is_subset(&source.local_used_blocks) {
-            panic!("some claimed blocks are not owned by source")
-        }
-        Storage::internal_claim_refs(
-            &ids,
-            &mut self.block_owners.write(),
-            &mut self.local_used_blocks,
-        );
+
+        let owners = &mut self.block_owners.write();
+
+        // check that all IDs are owned
+        claimed.extend(ids.iter().filter(|id| owners.contains_key(id)));
+
+        // effectively add local ownership on the refs
+        Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_blocks);
+
+        claimed
     }
 
     /// Drop block references
@@ -492,5 +487,8 @@ impl Drop for Storage {
 
         // release all ops
         self.drop_operation_refs(&self.local_used_ops.clone());
+
+        // release all endorsements
+        self.drop_endorsement_refs(&self.local_used_endorsements.clone());
     }
 }

@@ -293,8 +293,7 @@ impl ExecutionState {
         let operation_id = operation.id;
 
         // compute fee from (op.max_gas * op.gas_price + op.fee)
-        let op_gas_coins = operation.get_gas_coins();
-        let op_fees = op_gas_coins.saturating_add(operation.content.fee);
+        let op_fees = operation.get_total_fee();
         let new_block_credits = block_credits.saturating_add(op_fees);
 
         let context_snapshot;
