@@ -7,7 +7,7 @@ use massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::constants::{ADDRESS_SIZE_BYTES, LEDGER_PART_SIZE_MESSAGE_BYTES};
 use massa_models::{
     Address, AmountSerializer, ModelsError, Slot, SlotSerializer, VecU8Deserializer,
-    VecU8Serializer,
+    VecU8Serializer, Amount,
 };
 use massa_serialization::{Deserializer, Serializer};
 use nom::multi::many0;
