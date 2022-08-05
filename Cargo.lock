@@ -1778,6 +1778,7 @@ dependencies = [
  "massa_hash",
  "massa_ledger_exports",
  "massa_models",
+ "massa_storage",
  "massa_time",
  "thiserror",
 ]

@@ -14,6 +14,7 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, Amount, OperationId};
 use massa_models::{BlockId, Slot};
+use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
@@ -24,9 +25,9 @@ pub(crate) struct ExecutionInputData {
     /// set stop to true to stop the thread
     pub stop: bool,
     /// list of newly finalized blocks, indexed by slot
-    pub finalized_blocks: HashMap<Slot, BlockId>,
+    pub finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
     /// new blockclique (if there is a new one), blocks indexed by slot
-    pub new_blockclique: Option<HashMap<Slot, BlockId>>,
+    pub new_blockclique: Option<HashMap<Slot, (BlockId, Storage)>>,
     /// queue for read-only execution requests and response MPSCs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
@@ -68,12 +69,12 @@ impl ExecutionController for ExecutionControllerImpl {
     /// called to signal changes on the current blockclique, also listing newly finalized blocks
     ///
     /// # arguments
-    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks
-    /// * `blockclique`: new blockclique, replaces the current one in the input
+    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks. Each Storage owns the block and its ops/endorsements/endorsed blocks.
+    /// * `blockclique`: new blockclique, replaces the current one in the input. Each Storage owns the block and its ops/endorsements/endorsed blocks.
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, BlockId>,
-        new_blockclique: HashMap<Slot, BlockId>,
+        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
+        new_blockclique: HashMap<Slot, (BlockId, Storage)>,
     ) {
         // update input data
         let mut input_data = self.input_data.1.lock();

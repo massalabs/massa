@@ -33,16 +33,16 @@ pub(crate) struct ExecutionThread {
     input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     // Map of final slots not executed yet but ready for execution
     // See lib.rs for an explanation on final execution ordering.
-    ready_final_slots: HashMap<Slot, Option<BlockId>>,
+    ready_final_slots: HashMap<Slot, Option<(BlockId, Storage)>>,
     // Highest final slot that is ready to be executed
     last_ready_final_slot: Slot,
     // Map of final blocks that are not yet ready to be executed
     // See lib.rs for an explanation on final execution ordering.
-    pending_final_blocks: HashMap<Slot, BlockId>,
+    pending_final_blocks: HashMap<Slot, (BlockId, Storage)>,
     // Current blockclique, indexed by slot number
-    blockclique: HashMap<Slot, BlockId>,
+    blockclique: HashMap<Slot, (BlockId, Storage)>,
     // Map of all active slots
-    active_slots: HashMap<Slot, Option<BlockId>>,
+    active_slots: HashMap<Slot, Option<(BlockId, Storage)>>,
     // Highest active slot
     last_active_slot: Slot,
     // Execution state (see execution.rs) to which execution requests are sent
@@ -91,7 +91,7 @@ impl ExecutionThread {
     ///
     /// # Arguments
     /// * `new_final_blocks`: a map of newly finalized blocks
-    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, BlockId>) {
+    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, (BlockId, Storage)>) {
         // if there are no new final blocks, exit and do nothing
         if new_final_blocks.is_empty() {
             return;
@@ -118,10 +118,11 @@ impl ExecutionThread {
                 .expect("final slot overflow in VM");
 
             // try to remove that slot out of pending_final_blocks
-            if let Some(block_id) = self.pending_final_blocks.remove(&slot) {
+            if let Some((block_id, block_store)) = self.pending_final_blocks.remove(&slot) {
                 // pending final block found at slot:
                 // add block to the ready_final_slots list of final slots ready for execution
-                self.ready_final_slots.insert(slot, Some(block_id));
+                self.ready_final_slots
+                    .insert(slot, Some((block_id, block_store)));
                 self.last_ready_final_slot = slot;
                 // continue the loop
                 continue;
@@ -194,7 +195,7 @@ impl ExecutionThread {
     ///
     /// Arguments:
     /// * `new_blockclique`: optionally provide a new blockclique
-    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, BlockId>>) {
+    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, (BlockId, Storage)>>) {
         // Update the current blockclique if it has changed
         if let Some(blockclique) = new_blockclique {
             self.blockclique = blockclique;
@@ -222,15 +223,17 @@ impl ExecutionThread {
                 .get_next_slot(self.config.thread_count)
                 .expect("active slot overflow in VM");
             // look for a block at that slot among the ones that are final but not ready for final execution yet
-            if let Some(block_id) = self.pending_final_blocks.get(&slot) {
+            if let Some((block_id, block_store)) = self.pending_final_blocks.get(&slot) {
                 // A block at that slot was found in pending_final_blocks.
                 // Add it to the sequence of active slots.
-                self.active_slots.insert(slot, Some(*block_id));
+                self.active_slots
+                    .insert(slot, Some((*block_id, block_store.clone_with_refs())));
                 self.last_active_slot = slot;
-            } else if let Some(block_id) = self.blockclique.get(&slot) {
+            } else if let Some((block_id, block_store)) = self.blockclique.get(&slot) {
                 // A block at that slot was found in the current blockclique.
                 // Add it to the sequence of active slots.
-                self.active_slots.insert(slot, Some(*block_id));
+                self.active_slots
+                    .insert(slot, Some((*block_id, block_store.clone_with_refs())));
                 self.last_active_slot = slot;
             } else {
                 // No block was found at that slot: it's a miss
@@ -263,10 +266,11 @@ impl ExecutionThread {
             .ready_final_slots
             .remove(&slot)
             .expect("the SCE final slot list skipped a slot");
+        let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
 
         // check if the final slot is cached at the front of the speculative execution history
         if let Some(exec_out) = exec_state.pop_first_execution_result() {
-            if exec_out.slot == slot && exec_out.block_id == exec_target {
+            if exec_out.slot == slot && exec_out.block_id == target_id {
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
@@ -276,14 +280,14 @@ impl ExecutionThread {
                 // speculative cache mismatch
                 warn!(
                     "speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.",
-                    slot, exec_target, exec_out.slot, exec_out.block_id
+                    slot, target_id, exec_out.slot, exec_out.block_id
                 );
             }
         } else {
             // cache entry absent
             info!(
                 "speculative execution cache empty, executing final slot={}/block={:?}",
-                slot, exec_target
+                slot, target_id
             );
         }
 
@@ -328,7 +332,9 @@ impl ExecutionThread {
 
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
-            Some(b_id) => *b_id,
+            Some(b_store) => b_store
+                .as_ref()
+                .map(|(b_id, bs)| (*b_id, bs.clone_with_refs())),
             _ => return false,
         };
 

@@ -14,6 +14,7 @@ use massa_models::Amount;
 use massa_models::BlockId;
 use massa_models::OperationId;
 use massa_models::Slot;
+use massa_storage::Storage;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
@@ -22,12 +23,12 @@ pub trait ExecutionController: Send + Sync {
     /// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.
     ///
     /// # Arguments
-    /// * `finalized_blocks`: newly finalized blocks
-    /// * `blockclique`: new blockclique
+    /// * `finalized_blocks`: newly finalized blocks. Each Storage owns refs to the block and its ops/endorsements.
+    /// * `blockclique`: new blockclique. Each Storage owns refs to the block and its ops/endorsements/endorsed blocks
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, BlockId>,
-        blockclique: HashMap<Slot, BlockId>,
+        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
+        blockclique: HashMap<Slot, (BlockId, Storage)>,
     );
 
     /// Get execution events optionally filtered by:

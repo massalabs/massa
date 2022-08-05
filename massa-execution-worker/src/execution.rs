@@ -198,8 +198,8 @@ impl ExecutionState {
     /// * `ready_final_slots`:  A `HashMap` mapping each ready-to-execute final slot to a block or None if the slot is a miss
     pub fn truncate_history(
         &mut self,
-        active_slots: &HashMap<Slot, Option<BlockId>>,
-        ready_final_slots: &HashMap<Slot, Option<BlockId>>,
+        active_slots: &HashMap<Slot, Option<(BlockId, Storage)>>,
+        ready_final_slots: &HashMap<Slot, Option<(BlockId, Storage)>>,
     ) {
         // find mismatch point (included)
         let mut truncate_at = None;
@@ -208,8 +208,9 @@ impl ExecutionState {
             // try to find the corresponding slot in active_slots or ready_final_slots.
             let found_block_id = active_slots
                 .get(&exec_output.slot)
-                .or_else(|| ready_final_slots.get(&exec_output.slot));
-            if found_block_id == Some(&exec_output.block_id) {
+                .or_else(|| ready_final_slots.get(&exec_output.slot))
+                .map(|inner| inner.as_ref().map(|(b_id, _)| *b_id));
+            if found_block_id == Some(exec_output.block_id) {
                 // the slot number and block ID still match. Continue scanning
                 continue;
             }
@@ -275,12 +276,7 @@ impl ExecutionState {
         let sender_addr = operation.creator_address;
 
         // get the thread to which the operation belongs
-        // When storage is ready, do not recompute this here, use the "thread"
-        // property of the operation itself
-        let op_thread = match self.storage.retrieve_operation(&operation.id) {
-            Some(op) => op.thread,
-            None => sender_addr.get_thread(self.config.thread_count),
-        };
+        let op_thread = operation.thread;
 
         // check block/op thread compatibility
         if op_thread != block_slot.thread {
@@ -829,15 +825,19 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `slot`: slot to execute
-    /// * `opt_block`: block ID if there is a block a that slot, otherwise None
+    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, and endorsement targets) if there is a block a that slot, otherwise None
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
-    pub fn execute_slot(&self, slot: Slot, opt_block_id: Option<BlockId>) -> ExecutionOutput {
+    pub fn execute_slot(
+        &self,
+        slot: Slot,
+        opt_block: Option<(BlockId, Storage)>,
+    ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             slot,
-            opt_block_id,
+            opt_block.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
             self.active_history.clone(),
             self.selector.clone(),
@@ -858,13 +858,49 @@ impl ExecutionState {
         }
 
         // Check if there is a block at this slot
-        if let Some(block_id) = opt_block_id {
+        if let Some((block_id, block_store)) = opt_block {
             // Retrieve the block from storage
-            let block = self
-                .storage
+            let stored_block = block_store
                 .retrieve_block(&block_id)
-                .expect("Missing block in storage.");
-            let stored_block = block.read();
+                .expect("Missing block in storage.")
+                .read()
+                .clone();
+
+            // gather all operations
+            let operations = block_store.with_operations(&stored_block.content.operations, |ops| {
+                ops.iter()
+                    .map(|opt_op| opt_op.expect("block operation absent from storage").clone())
+                    .collect::<Vec<_>>()
+            });
+
+            // gather all available endorsement creators and target blocks
+            let (endorsement_creators, endorsement_targets) = block_store.with_endorsements(
+                &stored_block.content.header.content.endorsements,
+                |endos| {
+                    let (creator_iter, target_iter) = endos
+                        .iter()
+                        .map(|opt_endo| {
+                            let endo = opt_endo.expect("block endorsement absent from storage");
+                            (endo.creator_address, endo.content.endorsed_block)
+                        })
+                        .unzip();
+                    (
+                        creator_iter.collect::<Vec<_>>(),
+                        target_iter.collect::<Vec<_>>(),
+                    )
+                },
+            );
+            // deduce endorsement target block creators
+            let endorsement_target_creators = endorsement_targets
+                .into_iter()
+                .map(|b_id| {
+                    block_store
+                        .retrieve_block(&b_id)
+                        .expect("endorsed block absent from storage")
+                        .read()
+                        .creator_address
+                })
+                .collect::<Vec<_>>();
 
             // Set remaining block gas
             let mut remaining_block_gas = self.config.max_gas_per_block;
@@ -874,9 +910,9 @@ impl ExecutionState {
 
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            for (op_idx, operation) in stored_block.content.operations.iter().enumerate() {
+            for (op_index, operation) in operations.into_iter().enumerate() {
                 match self.execute_operation(
-                    operation,
+                    &operation,
                     stored_block.content.header.content.slot,
                     &mut remaining_block_gas,
                     &mut block_credits,
@@ -885,7 +921,7 @@ impl ExecutionState {
                     | Err(ExecutionError::InvalidSlotRange) => debug!("Ignoring operation"),
                     Err(err) => debug!(
                         "failed executing operation index {} in block {}: {}",
-                        op_idx, block_id, err
+                        op_index, block_id, err
                     ),
                     _ => {}
                 }
@@ -900,34 +936,47 @@ impl ExecutionState {
             // Update speculative rolls state production stats
             context.update_production_stats(&block_creator_addr, slot, Some(block_id));
 
-            // Credit endorsement producers
+            // Credit endorsement producers and endorsed block producers
             let mut remaining_credit = block_credits;
             let block_credit_part = block_credits
                 .checked_div_u64(3 * (1 + (self.config.endorsement_count)))
                 .expect("critical: block_credits checked_div factor is 0");
-            for wrapped_endorsement in &stored_block.content.header.content.endorsements {
-                let endorsed_block_id = wrapped_endorsement.content.endorsed_block;
-                let to_credit = match self.storage.retrieve_block(&endorsed_block_id) {
-                    Some(endorsed_block) => Some(endorsed_block.read().creator_address),
-                    None => {
-                        debug!("cannot retrieve endorsed block {} ", endorsed_block_id);
-                        None
-                    }
-                };
-
-                // credit creator of the endorsed block with sequential coins
-                match context.transfer_sequential_coins(None, to_credit, block_credit_part, false) {
+            for (endorsement_creator, endorsement_target_creator) in endorsement_creators
+                .into_iter()
+                .zip(endorsement_target_creators.into_iter())
+            {
+                // credit creator of the endorsement with sequential coins
+                match context.transfer_sequential_coins(
+                    None,
+                    Some(endorsement_creator),
+                    block_credit_part,
+                    false,
+                ) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
                     }
                     Err(err) => {
-                        let to_credit_addr = match to_credit {
-                            Some(addr) => format!("{addr}"),
-                            None => String::from("None"),
-                        };
                         debug!(
-                            "failed to credit {} sequential coins to {} for an endorsed block production: {}",
-                            block_credit_part, to_credit_addr, err
+                            "failed to credit {} sequential coins to endorsement creator {} for an endorsed block execution: {}",
+                            block_credit_part, endorsement_creator, err
+                        )
+                    }
+                }
+
+                // credit creator of the endorsed block with sequential coins
+                match context.transfer_sequential_coins(
+                    None,
+                    Some(endorsement_target_creator),
+                    block_credit_part,
+                    false,
+                ) {
+                    Ok(_) => {
+                        remaining_credit = remaining_credit.saturating_sub(block_credit_part);
+                    }
+                    Err(err) => {
+                        debug!(
+                            "failed to credit {} sequential coins to endorsement target creator {} on block execution: {}",
+                            block_credit_part, endorsement_target_creator, err
                         )
                     }
                 }
@@ -941,7 +990,7 @@ impl ExecutionState {
                 false,
             ) {
                 debug!(
-                    "failed to credit {} sequential coins to {} for the creation of a block: {}",
+                    "failed to credit {} sequential coins to block creator {} on block execution: {}",
                     remaining_credit, block_creator_addr, err
                 )
             }
