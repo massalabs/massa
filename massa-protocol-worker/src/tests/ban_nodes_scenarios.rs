@@ -290,6 +290,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
@@ -342,7 +343,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
                 {
                     Some(NetworkCommand::SendBlockInfo { node, info }) => {
                         //assert_eq!(expected_hash, block_id);
-                        //assert!(expecting_block.remove(&node));
+                        assert!(expecting_block.remove(&node));
                     }
                     Some(NetworkCommand::SendBlockHeader { .. }) => {
                         panic!("unexpected header sent");

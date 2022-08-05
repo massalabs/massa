@@ -111,6 +111,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_protocol_sends_blocks_when_asked_for() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
