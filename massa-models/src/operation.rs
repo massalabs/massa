@@ -778,7 +778,7 @@ pub struct OperationIdsDeserializer {
 
 impl OperationIdsDeserializer {
     /// Creates a new `OperationIdsDeserializer`
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
