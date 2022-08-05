@@ -256,7 +256,6 @@ async fn launch(
         selector: selector_controller.clone(),
         consensus: consensus_controller.clone(),
         pool: pool_command_sender.clone(),
-        execution: execution_controller.clone(),
         storage: shared_storage.clone(),
     };
     let factory_manager = start_factory(factory_config, node_wallet, factory_channels);

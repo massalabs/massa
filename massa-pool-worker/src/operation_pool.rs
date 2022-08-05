@@ -219,8 +219,11 @@ impl OperationPool {
         }
 
         // generate storage
-        let mut res_storage = self.storage.clone_without_refs();
-        res_storage.claim_operation_refs(&self.storage, &op_ids.iter().copied().collect());
+        let claim_ops: Set<OperationId> = op_ids.iter().copied().collect();
+        let claimed_ops = res_storage.claim_operation_refs(&claim_ops);
+        if claimed_ops.len() != claim_ops.len() {
+            panic!("could not claim all operations from storage");
+        }
 
         (op_ids, res_storage)
     }

@@ -18,8 +18,6 @@ pub struct FactoryChannels {
     pub consensus: ConsensusCommandSender,
     /// pool controller
     pub pool: Box<dyn PoolController>,
-    /// execution controller
-    pub execution: Box<dyn ExecutionController>,
     /// storage instance
     pub storage: Storage,
 }

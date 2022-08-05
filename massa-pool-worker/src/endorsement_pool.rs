@@ -158,10 +158,11 @@ impl EndorsementPool {
 
         // setup endorsement storage
         let mut endo_storage = self.storage.clone_without_refs();
-        endo_storage.claim_endorsement_refs(
-            &self.storage,
-            &endo_ids.iter().filter_map(|&opt| opt).collect(),
-        );
+        let claim_endos: Set<EndorsementId> = endo_ids.iter().filter_map(|&opt| opt).collect();
+        let claimed_endos = endo_storage.claim_endorsement_refs(&claim_endos);
+        if claimed_endos.len() != claim_endos.len() {
+            panic!("could not claim all endorsements from storage");
+        }
 
         (endo_ids, endo_storage)
     }
