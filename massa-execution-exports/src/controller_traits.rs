@@ -96,7 +96,7 @@ pub trait ExecutionController: Send + Sync {
     ) -> Result<ExecutionOutput, ExecutionError>;
 
     /// List which operations inside the provided list were not executed
-    fn unexecuted_ops_among(&self, ops: &Set<OperationId>) -> Set<OperationId>;
+    fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

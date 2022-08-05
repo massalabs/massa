@@ -185,7 +185,7 @@ impl OperationPool {
             // TOOD batch this
             if self
                 .execution_controller
-                .unexecuted_ops_among(&vec![op_info.id].into_iter().collect())
+                .unexecuted_ops_among(&vec![op_info.id].into_iter().collect(), slot.thread)
                 .is_empty()
             {
                 continue;

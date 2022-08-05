@@ -22,8 +22,11 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active list of executed ops to check if an op was executed.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_executed_op(&self, op_id: &OperationId) -> HistorySearchResult<()> {
+    pub fn fetch_executed_op(&self, op_id: &OperationId, thread: u8) -> HistorySearchResult<()> {
         for history_element in self.0.iter().rev() {
+            if history_element.slot.thread != thread {
+                continue;
+            }
             if history_element.state_changes.executed_ops.contains(op_id) {
                 return HistorySearchResult::Present(());
             }

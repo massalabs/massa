@@ -55,14 +55,14 @@ impl SpeculativeExecutedOps {
     }
 
     /// Checks if an operation was executed previously
-    pub fn is_op_executed(&self, op_id: &OperationId) -> bool {
+    pub fn is_op_executed(&self, op_id: &OperationId, thread: u8) -> bool {
         // check in the curent changes
         if self.executed_ops.contains(op_id) {
             return true;
         }
 
         // check in the active history, backwards
-        match self.active_history.read().fetch_executed_op(op_id) {
+        match self.active_history.read().fetch_executed_op(op_id, thread) {
             HistorySearchResult::Present(_) => {
                 return true;
             }

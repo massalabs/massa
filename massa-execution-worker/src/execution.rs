@@ -298,7 +298,7 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             // ignore the operation if it was already executed
-            if context.is_op_executed(&operation_id) {
+            if context.is_op_executed(&operation_id, operation.thread) {
                 return Err(ExecutionError::InlcudeOperationError(
                     "operation was executed previously".to_string(),
                 ));
@@ -1218,7 +1218,7 @@ impl ExecutionState {
     }
 
     /// List which operations inside the provided list were not executed
-    pub fn unexecuted_ops_among(&self, ops: &Set<OperationId>) -> Set<OperationId> {
+    pub fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
         let mut ops = ops.clone();
 
         if ops.is_empty() {
@@ -1229,6 +1229,9 @@ impl ExecutionState {
             // check active history
             let history = self.active_history.read();
             for hist_item in history.0.iter().rev() {
+                if hist_item.slot.thread != thread {
+                    continue;
+                }
                 ops.retain(|op_id| !hist_item.state_changes.executed_ops.contains(op_id));
                 if ops.is_empty() {
                     return ops;

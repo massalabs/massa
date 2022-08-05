@@ -203,8 +203,10 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// List which operations inside the provided list were not executed
-    fn unexecuted_ops_among(&self, ops: &Set<OperationId>) -> Set<OperationId> {
-        self.execution_state.read().unexecuted_ops_among(&ops)
+    fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
+        self.execution_state
+            .read()
+            .unexecuted_ops_among(&ops, thread)
     }
 
     /// Returns a boxed clone of self.
