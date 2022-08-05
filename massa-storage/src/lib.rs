@@ -47,7 +47,7 @@ pub struct Storage {
 impl Storage {
     /// Clones the object to a new one that has the same references
     pub fn clone_with_refs(&mut self) -> Self {
-        let mut res = Self::clone_without_refs(&self);
+        let mut res = Self::clone_without_refs(self);
 
         // claim one more user of the op refs
         Storage::internal_claim_refs(
@@ -266,19 +266,23 @@ impl Storage {
     }
 
     /// Claim operation references.
-    /// Panics if some of the refs are not owned by the source.
-    pub fn claim_operation_refs(&mut self, source: &Storage, ids: &Set<OperationId>) {
+    /// Returns the set of operation refs that were found and claimed.
+    pub fn claim_operation_refs(&mut self, ids: &Set<OperationId>) -> Set<OperationId> {
+        let mut claimed = Set::with_capacity_and_hasher(ids.len(), BuildMap::default());
+
         if ids.is_empty() {
-            return;
+            return claimed;
         }
-        if !ids.is_subset(&source.local_used_ops) {
-            panic!("some claimed ops are not owned by source")
-        }
-        Storage::internal_claim_refs(
-            &ids,
-            &mut self.operation_owners.write(),
-            &mut self.local_used_ops,
-        );
+
+        let owners = &mut self.operation_owners.write();
+
+        // check that all IDs are owned
+        claimed.extend(ids.iter().filter(|id| owners.contains_key(id)));
+
+        // effectively add local ownership on the refs
+        Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_ops);
+
+        claimed
     }
 
     /// get the operation reference ownership
@@ -387,24 +391,28 @@ impl Storage {
     }
 
     /// Claim endorsement references.
-    /// Panics if some of the refs are not owned by the source.
-    pub fn claim_endorsement_refs(&mut self, source: &Storage, ids: &Set<EndorsementId>) {
+    /// Returns the set of operation refs that were found and claimed.
+    pub fn claim_endorsement_refs(&mut self, ids: &Set<EndorsementId>) -> Set<EndorsementId> {
+        let mut claimed = Set::with_capacity_and_hasher(ids.len(), BuildMap::default());
+
         if ids.is_empty() {
-            return;
+            return claimed;
         }
-        if !ids.is_subset(&source.local_used_endorsements) {
-            panic!("some claimed endorsements are not owned by source")
-        }
-        Storage::internal_claim_refs(
-            &ids,
-            &mut self.endorsement_owners.write(),
-            &mut self.local_used_endorsements,
-        );
+
+        let owners = &mut self.endorsement_owners.write();
+
+        // check that all IDs are owned
+        claimed.extend(ids.iter().filter(|id| owners.contains_key(id)));
+
+        // effectively add local ownership on the refs
+        Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_endorsements);
+
+        claimed
     }
 
     /// get the endorsement reference ownership
     pub fn get_endorsement_refs(&self) -> &Set<EndorsementId> {
-        &&self.local_used_endorsements
+        &self.local_used_endorsements
     }
 
     /// Drop local ndorsement references.
