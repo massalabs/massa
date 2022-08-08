@@ -1727,7 +1727,7 @@
     <span class="ident">vec_u8_deserializer</span>: <span class="ident">VecU8Deserializer</span>,
     <span class="ident">amount_deserializer</span>: <span class="ident">AmountDeserializer</span>,
     <span class="ident">function_name_deserializer</span>: <span class="ident">StringDeserializer</span><span class="op">&lt;</span><span class="ident">U16VarIntDeserializer</span>, <span class="ident">u16</span><span class="op">&gt;</span>,
-    <span class="ident">parameter_deserializer</span>: <span class="ident">StringDeserializer</span><span class="op">&lt;</span><span class="ident">U16VarIntDeserializer</span>, <span class="ident">u16</span><span class="op">&gt;</span>,
+    <span class="ident">parameter_deserializer</span>: <span class="ident">StringDeserializer</span><span class="op">&lt;</span><span class="ident">U32VarIntDeserializer</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">OperationTypeDeserializer</span> {
@@ -1743,9 +1743,9 @@
                 <span class="ident">Included</span>(<span class="number">0</span>),
                 <span class="ident">Included</span>(<span class="ident">u16::MAX</span>),
             )),
-            <span class="ident">parameter_deserializer</span>: <span class="ident">StringDeserializer::new</span>(<span class="ident">U16VarIntDeserializer::new</span>(
+            <span class="ident">parameter_deserializer</span>: <span class="ident">StringDeserializer::new</span>(<span class="ident">U32VarIntDeserializer::new</span>(
                 <span class="ident">Included</span>(<span class="number">0</span>),
-                <span class="ident">Included</span>(<span class="ident">u16::MAX</span>),
+                <span class="ident">Included</span>(<span class="ident">u32::MAX</span>),
             )),
         }
     }
