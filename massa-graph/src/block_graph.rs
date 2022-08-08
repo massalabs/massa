@@ -3754,12 +3754,14 @@ impl BlockGraph {
             {
                 for unsatisfied_h in unsatisfied_dependencies.iter() {
                     if let Some(BlockStatus::WaitingForDependencies {
-                        header_or_block: HeaderOrBlock::Header(_header),
+                        header_or_block: HeaderOrBlock::Block(..),
                         ..
                     }) = self.block_statuses.get(unsatisfied_h)
                     {
-                        wishlist.insert(*unsatisfied_h);
+                        // the full block is already available
+                        continue;
                     }
+                    wishlist.insert(*unsatisfied_h);
                 }
             }
         }

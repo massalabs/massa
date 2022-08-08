@@ -498,7 +498,6 @@ async fn test_dep_in_back_order() {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_dep_in_back_order_with_max_dependency_blocks() {
     /*stderrlog::new()
     .verbosity(4)
