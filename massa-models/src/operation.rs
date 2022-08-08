@@ -485,7 +485,7 @@ pub struct OperationTypeSerializer {
     vec_u8_serializer: VecU8Serializer,
     amount_serializer: AmountSerializer,
     function_name_serializer: StringSerializer<U16VarIntSerializer, u16>,
-    parameter_serializer: StringSerializer<U16VarIntSerializer, u16>,
+    parameter_serializer: StringSerializer<U32VarIntSerializer, u32>,
 }
 
 impl OperationTypeSerializer {
@@ -497,7 +497,7 @@ impl OperationTypeSerializer {
             vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
             function_name_serializer: StringSerializer::new(U16VarIntSerializer::new()),
-            parameter_serializer: StringSerializer::new(U16VarIntSerializer::new()),
+            parameter_serializer: StringSerializer::new(U32VarIntSerializer::new()),
         }
     }
 }
