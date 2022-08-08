@@ -217,7 +217,7 @@ impl BlockFactoryWorker {
         );
 
         // send full block to consensus
-        self.channels.consensus.send_blocks(block_storage);
+        self.channels.consensus.send_block((block_id, block_storage));
     }
 
     /// main run loop of the block creator thread
