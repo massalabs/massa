@@ -1284,7 +1284,6 @@ impl ConsensusWorker {
 
         // notify protocol of block wishlist
         let new_wishlist = self.block_db.get_block_wishlist()?;
-        println!("New wishlist: {:?}", new_wishlist);
         let new_blocks = &new_wishlist - &self.wishlist;
         let remove_blocks = &self.wishlist - &new_wishlist;
         if !new_blocks.is_empty() || !remove_blocks.is_empty() {

@@ -120,7 +120,7 @@ async fn test_genesis_block_creation() {
 ///    * if address 1 was selected assert nothing is propagated
 #[tokio::test]
 #[serial]
-#[ignore]
+//#[ignore]
 async fn test_block_creation_with_draw() {
     let thread_count = 2;
     // define addresses use for the test
@@ -173,15 +173,12 @@ async fn test_block_creation_with_draw() {
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     let operation_fee = 0;
-    tools::consensus_pool_test_with_storage(
+    tools::consensus_without_pool_with_storage_test(
         cfg.clone(),
-        None,
-        None,
-        async move |pool_controller,
+        async move |storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver,
-                    storage| {
+                    consensus_event_receiver| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -272,7 +269,6 @@ async fn test_block_creation_with_draw() {
             }
 
             (
-                pool_controller,
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
@@ -297,7 +293,6 @@ async fn test_block_creation_with_draw() {
 ///         if key a created a block, assert it has chosen as parents expected blocks (no misses), and that it was sent to protocol around the time it was expected.
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_interleaving_block_creation_with_reception() {
     let thread_count = 1;
     // define addresses use for the test
@@ -341,15 +336,12 @@ async fn test_interleaving_block_creation_with_reception() {
     let temp_roll_file = generate_roll_counts_file(&roll_counts);
     cfg.initial_rolls_path = temp_roll_file.path().to_path_buf();
 
-    tools::consensus_pool_test_with_storage(
+    tools::consensus_without_pool_with_storage_test(
         cfg.clone(),
-        None,
-        None,
-        async move |pool_controller,
+        async move |storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver,
-                    storage| {
+                    consensus_event_receiver| {
             let mut parents = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -428,7 +420,6 @@ async fn test_interleaving_block_creation_with_reception() {
             }
 
             (
-                pool_controller,
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
