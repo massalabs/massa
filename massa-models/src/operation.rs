@@ -518,7 +518,7 @@ pub struct OperationTypeDeserializer {
     vec_u8_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
-    parameter_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
+    parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
 }
 
 impl OperationTypeDeserializer {
@@ -534,9 +534,9 @@ impl OperationTypeDeserializer {
                 Included(0),
                 Included(u16::MAX),
             )),
-            parameter_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
+            parameter_deserializer: StringDeserializer::new(U32VarIntDeserializer::new(
                 Included(0),
-                Included(u16::MAX),
+                Included(u32::MAX),
             )),
         }
     }
