@@ -4,10 +4,13 @@ use std::collections::{BTreeMap, VecDeque};
 
 use bitvec::prelude::*;
 use massa_models::{
-    constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
+    constants::{
+        default::{CYCLE_INFO_SIZE_MESSAGE_BYTES, DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES},
+        POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT,
+    },
     prehash::Map,
     Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, BitVecDeserializer,
-    BitVecSerializer, Slot, SlotDeserializer, SlotSerializer,
+    BitVecSerializer, ModelsError, Slot, SlotDeserializer, SlotSerializer,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -19,7 +22,7 @@ use nom::{
     IResult, Parser,
 };
 use num::rational::Ratio;
-use std::ops::Bound::{Excluded, Included};
+use std::ops::Bound::{Excluded, Included, Unbounded};
 
 use crate::SelectorController;
 
@@ -32,6 +35,114 @@ pub struct PoSFinalState {
     pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
     /// selector controller to feed the cycle when completed
     pub selector: Option<Box<dyn SelectorController>>,
+}
+
+/// TODO
+#[derive(Default)]
+pub struct PoSBootstrapCursor {
+    credits_slot: Option<Slot>,
+    cycle: Option<u64>,
+    roll_addr: Option<Address>,
+    stats_addr: Option<Address>,
+}
+
+impl PoSFinalState {
+    fn get_cycles_part(
+        &self,
+        cursor: PoSBootstrapCursor,
+    ) -> Result<(Vec<u8>, Option<PoSBootstrapCursor>), ModelsError> {
+        let last_cycle_index = if let Some(last_cycle) = cursor.cycle {
+            if let Some(index) = self
+                .cycle_history
+                .iter()
+                .position(|item| item.cycle == last_cycle)
+            {
+                Excluded(index)
+            } else {
+                Unbounded
+            }
+        } else if self.deferred_credits.first_key_value().is_some() {
+            Unbounded
+        } else {
+            return Ok((Vec::new(), None));
+        };
+        let mut part = Vec::new();
+        let mut new_cursor = None;
+        let u64_ser = U64VarIntSerializer::new();
+        let bitvec_ser = BitVecSerializer::new();
+        for CycleInfo {
+            cycle,
+            complete,
+            roll_counts,
+            rng_seed,
+            production_stats,
+        } in self.cycle_history.range((last_cycle_index, Unbounded))
+        {
+            if part.len() < CYCLE_INFO_SIZE_MESSAGE_BYTES as usize {
+                u64_ser.serialize(cycle, &mut part)?;
+                part.push(*complete as u8);
+                // note: limit this
+                for (addr, count) in roll_counts {
+                    part.extend(addr.to_bytes());
+                    u64_ser.serialize(&count, &mut part)?;
+                }
+                bitvec_ser.serialize(rng_seed, &mut part)?;
+                // note: limit this
+                for (
+                    addr,
+                    ProductionStats {
+                        block_success_count,
+                        block_failure_count,
+                    },
+                ) in production_stats
+                {
+                    part.extend(addr.to_bytes());
+                    u64_ser.serialize(&block_success_count, &mut part)?;
+                    u64_ser.serialize(&block_failure_count, &mut part)?;
+                }
+                // note: fill rest of cursor
+                new_cursor = Some(PoSBootstrapCursor {
+                    cycle: Some(*cycle),
+                    ..Default::default()
+                })
+            }
+        }
+        Ok((part, new_cursor))
+    }
+
+    /// TODO
+    pub fn get_pos_state_part(
+        &self,
+        cursor: PoSBootstrapCursor,
+    ) -> Result<(Vec<u8>, Option<PoSBootstrapCursor>), ModelsError> {
+        // handle deferred credits
+        let last_slot = if let Some(last_slot) = cursor.credits_slot {
+            Excluded(last_slot)
+        } else if self.deferred_credits.first_key_value().is_some() {
+            Unbounded
+        } else {
+            return self.get_cycles_part(cursor);
+        };
+        let mut part = Vec::new();
+        let mut new_cursor = None;
+        let slot_ser = SlotSerializer::new();
+        let amount_ser = AmountSerializer::new();
+        for (slot, credits) in self.deferred_credits.range((last_slot, Unbounded)) {
+            if part.len() < DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES as usize {
+                slot_ser.serialize(slot, &mut part)?;
+                for (addr, amount) in credits {
+                    // note: check with aurélien about following, see above too
+                    part.extend(addr.to_bytes());
+                    amount_ser.serialize(amount, &mut part)?;
+                }
+                new_cursor = Some(PoSBootstrapCursor {
+                    credits_slot: Some(*slot),
+                    ..Default::default()
+                })
+            }
+        }
+        Ok((part, new_cursor))
+    }
 }
 
 /// State of a cycle for all threads

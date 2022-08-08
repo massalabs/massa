@@ -107,6 +107,14 @@ pub const POS_SAVED_CYCLES: u64 = 4;
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
 pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum deferred credits in a bootstrap batch
+pub const DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum cycle info in a bootstrap batch
+pub const CYCLE_INFO_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum rolls in a bootstrap batch
+pub const ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum production stats in a bootstrap batch
+pub const PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 

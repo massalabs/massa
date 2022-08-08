@@ -5,6 +5,7 @@
 //! the future cycles
 
 #![warn(missing_docs)]
+#![feature(map_first_last)]
 
 mod controller_traits;
 mod error;
