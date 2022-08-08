@@ -15,7 +15,7 @@ use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::constants::default::{
-    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_PER_BLOCK,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_PER_SLOT,
     MAX_PARAMETERS_SIZE, MAX_PRODUCTION_EVENTS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
     MAX_ROLLS_COUNTS_LENGTH, MAX_ROLLS_UPDATE_LENGTH,
 };
@@ -430,43 +430,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                 &keypair,
             )
             .unwrap(),
-            operations: vec![
-                Operation::new_wrapped(
-                    Operation {
-                        fee: Amount::from_str("1524878").unwrap(),
-                        expire_period: 5787899,
-                        op: massa_models::OperationType::Transaction {
-                            recipient_address: get_random_address(),
-                            amount: Amount::from_str("1259787").unwrap(),
-                        },
-                    },
-                    OperationSerializer::new(),
-                    &keypair,
-                )
-                .unwrap(),
-                Operation::new_wrapped(
-                    Operation {
-                        fee: Amount::from_str("878763222").unwrap(),
-                        expire_period: 4557887,
-                        op: massa_models::OperationType::RollBuy { roll_count: 45544 },
-                    },
-                    OperationSerializer::new(),
-                    &keypair,
-                )
-                .unwrap(),
-                Operation::new_wrapped(
-                    Operation {
-                        fee: Amount::from_str("4545").unwrap(),
-                        expire_period: 452524,
-                        op: massa_models::OperationType::RollSell {
-                            roll_count: 4888787,
-                        },
-                    },
-                    OperationSerializer::new(),
-                    &keypair,
-                )
-                .unwrap(),
-            ],
+            operations: Default::default(),
         },
         BlockSerializer::new(),
         &keypair,
@@ -608,7 +572,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         MAX_BOOTSTRAP_DEPS,
         MAX_BOOTSTRAP_POS_ENTRIES,
         MAX_OPERATIONS_PER_BLOCK,
-        MAX_LEDGER_CHANGES_PER_BLOCK,
+        MAX_LEDGER_CHANGES_PER_SLOT,
         MAX_PRODUCTION_EVENTS_PER_BLOCK,
         MAX_DATASTORE_VALUE_LENGTH,
         MAX_FUNCTION_NAME_LENGTH,

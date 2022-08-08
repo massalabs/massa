@@ -66,12 +66,7 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_get_active_blocks(&mut self, list: Vec<BlockId>) {
-        self.protocol_event_tx
-            .send(ProtocolEvent::GetBlocks(list))
-            .await
-            .expect("could not send protocol event");
-    }
+    pub async fn receive_get_active_blocks(&mut self, list: Vec<BlockId>) {}
 
     /// ignore all commands while waiting for a future
     pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(

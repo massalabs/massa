@@ -14,7 +14,10 @@ use massa_models::{
 use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;
 use std::collections::VecDeque;
-use tokio::{sync::mpsc, task::JoinHandle};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
 use tracing::debug;
 
 /// Possible types of events that can happen.
@@ -28,7 +31,7 @@ pub enum ProtocolEvent {
         /// the slot
         slot: Slot,
         /// operations in the block by (index, validity end period)
-        operation_set: Map<OperationId, (usize, u64)>,
+        operation_set: Map<OperationId, usize>,
         /// endorsements in the block with index
         endorsement_ids: Map<EndorsementId, u32>,
     },
@@ -39,18 +42,16 @@ pub enum ProtocolEvent {
         /// The header
         header: WrappedHeader,
     },
-    /// Ask for a list of blocks from consensus.
-    GetBlocks(Vec<BlockId>),
 }
 /// Possible types of pool events that can happen.
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
         /// the operations
         operations: Map<OperationId, WrappedOperation>,
-        /// whether or not to propagate operations
-        propagate: bool,
+        /// whether or not to signal the end of processing the batch.
+        done_signal: Option<oneshot::Sender<()>>,
     },
     /// Endorsements were received
     ReceivedEndorsements {
@@ -92,8 +93,6 @@ pub enum ProtocolCommand {
         /// remove from wish list
         remove: Set<BlockId>,
     },
-    /// The response to a `[ProtocolEvent::GetBlocks]`.
-    GetBlocksResults(BlocksResults),
     /// Propagate operations (send batches)
     /// note: OperationIds are replaced with OperationPrefixIds
     ///       by the controller
@@ -144,22 +143,6 @@ impl ProtocolCommandSender {
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("notify_block_attack command send error".into())
-            })
-    }
-
-    /// Send the response to a `ProtocolEvent::GetBlocks`.
-    pub async fn send_get_blocks_results(
-        &mut self,
-        results: BlocksResults,
-    ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.command_sender.send_get_blocks_results", {
-            "results": results
-        });
-        self.0
-            .send(ProtocolCommand::GetBlocksResults(results))
-            .await
-            .map_err(|_| {
-                ProtocolError::ChannelError("send_get_blocks_results command send error".into())
             })
     }
 

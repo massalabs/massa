@@ -26,7 +26,7 @@ pub struct ActiveBlock {
     /// Changes caused by this block
     pub block_ledger_changes: LedgerChanges,
     /// index in the block, end of validity period
-    pub operation_set: Map<OperationId, (usize, u64)>,
+    pub operation_set: Map<OperationId, usize>,
     /// IDs of the endorsements to index in block
     pub endorsement_ids: Map<EndorsementId, u32>,
     /// Maps addresses to operations id they are involved in

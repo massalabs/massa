@@ -800,14 +800,18 @@ async fn test_block_not_found() {
             let mut message_serialized = Vec::new();
             message_serializer
                 .serialize(
-                    &Message::AskForBlocks(vec![wanted_hash]),
-                    &mut message_serialized,
+                    &Message::AskForBlocks(vec![(wanted_hash, AskForBlocksInfo::Info)]),
+                    &mut message_serialized
+                );
+            conn1_w
+                .send(
+                    &message_serialized,
                 )
                 .expect("Fail to serialize message");
             conn1_w.send(&message_serialized).await.unwrap();
 
             // assert it is sent to protocol
-            if let Some((list, node)) =
+            if let Some((mut list, node)) =
                 tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
                 {
                     NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
@@ -815,7 +819,7 @@ async fn test_block_not_found() {
                 })
                 .await
             {
-                assert!(list.contains(&wanted_hash));
+                assert_eq!(list.pop().unwrap().0, wanted_hash);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for asked for block event");
@@ -823,7 +827,7 @@ async fn test_block_not_found() {
 
             // reply with block not found
             network_command_sender
-                .block_not_found(conn1_id, wanted_hash)
+                .send_block_info(conn1_id, vec![(wanted_hash,  ReplyForBlocksInfo::NotFound)])
                 .await
                 .unwrap();
 
@@ -836,8 +840,12 @@ async fn test_block_not_found() {
                 tokio::select! {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
-                        if let Message::BlockNotFound(hash) = evt {assert_eq!(hash, wanted_hash);
-                            break;
+                        if let Message::ReplyForBlocks(mut info) = evt {
+                            let info = info.pop().unwrap();
+                            assert_eq!(info.0, wanted_hash);
+                            if let BlockInfoReply::NotFound = info.1 {
+                                break;
+                            }
                         }
                     },
                     _ = &mut timer => panic!("timeout reached waiting for message")
@@ -845,12 +853,12 @@ async fn test_block_not_found() {
             }
 
             // test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
-            let mut block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
+            let mut block_list: HashMap<NodeId, Vec<(BlockId, AskForBlocksInfo)>> = HashMap::new();
             let hash_list = vec![
-                get_dummy_block_id("default_val1"),
-                get_dummy_block_id("default_val2"),
-                get_dummy_block_id("default_val3"),
-                get_dummy_block_id("default_val4"),
+                (get_dummy_block_id("default_val1"), AskForBlocksInfo::Info),
+                (get_dummy_block_id("default_val2"), AskForBlocksInfo::Info),
+                (get_dummy_block_id("default_val3"), AskForBlocksInfo::Info),
+                (get_dummy_block_id("default_val4"), AskForBlocksInfo::Info),
             ];
             block_list.insert(conn1_id, hash_list);
 
@@ -866,6 +874,7 @@ async fn test_block_not_found() {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::AskForBlocks(list1) = evt {
+                            let list1: Vec<BlockId> = list1.iter().cloned().map(|(id, _)| id).collect();
                             assert!(list1.contains(&get_dummy_block_id("default_val1")));
                             assert!(list1.contains(&get_dummy_block_id("default_val2")));
                             assert!(list1.contains(&get_dummy_block_id("default_val3")));
@@ -881,6 +890,7 @@ async fn test_block_not_found() {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::AskForBlocks(list2) = evt {
+                            let list2: Vec<BlockId> = list2.iter().cloned().map(|(id, _)| id).collect();
                             assert!(list2.contains(&get_dummy_block_id("default_val4")));
                             break;
                         }
@@ -891,10 +901,10 @@ async fn test_block_not_found() {
 
             // test with max_ask_blocks_per_message > 3 sending the message straight to the connection.
             // the message is rejected by the receiver.
-            let wanted_hash1 = get_dummy_block_id("default_val1");
-            let wanted_hash2 = get_dummy_block_id("default_val2");
-            let wanted_hash3 = get_dummy_block_id("default_val3");
-            let wanted_hash4 = get_dummy_block_id("default_val4");
+            let wanted_hash1 = (get_dummy_block_id("default_val1"), AskForBlocksInfo::Info);
+            let wanted_hash2 = (get_dummy_block_id("default_val2"), AskForBlocksInfo::Info);
+            let wanted_hash3 = (get_dummy_block_id("default_val3"), AskForBlocksInfo::Info);
+            let wanted_hash4 = (get_dummy_block_id("default_val4"), AskForBlocksInfo::Info);
             let mut message_serialized = Vec::new();
             message_serializer
                 .serialize(
@@ -904,7 +914,11 @@ async fn test_block_not_found() {
                         wanted_hash3,
                         wanted_hash4,
                     ]),
-                    &mut message_serialized,
+                    &mut message_serialized
+                );
+            conn1_w
+                .send(
+                    &message_serialized,
                 )
                 .expect("Fail to serialize message");
             conn1_w.send(&message_serialized).await.unwrap();
@@ -1006,7 +1020,7 @@ async fn test_retry_connection_closed() {
 
             // Send a command for a node not found in active.
             network_command_sender
-                .block_not_found(node_id, get_dummy_block_id("default_val"))
+                .send_block_info(node_id, vec![])
                 .await
                 .unwrap();
 

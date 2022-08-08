@@ -17,6 +17,7 @@ use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_get_operation() {
     // // setup logging
     // stderrlog::new()

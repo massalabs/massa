@@ -175,11 +175,8 @@ impl BootstrapableGraphDeserializer {
         max_bootstrap_deps: u32,
         max_bootstrap_pos_entries: u32,
         max_operations_per_block: u32,
-        max_ledger_changes_per_block: u32,
+        max_ledger_changes_per_slot: u32,
         max_production_events_per_block: u32,
-        max_datastore_value_length: u64,
-        max_function_name_length: u16,
-        max_parameters_size: u16,
     ) -> Self {
         Self {
             blocks_length_deserializer: U32VarIntDeserializer::new(
@@ -193,11 +190,8 @@ impl BootstrapableGraphDeserializer {
                 max_bootstrap_deps,
                 max_bootstrap_pos_entries,
                 max_operations_per_block,
-                max_ledger_changes_per_block,
+                max_ledger_changes_per_slot,
                 max_production_events_per_block,
-                max_datastore_value_length,
-                max_function_name_length,
-                max_parameters_size,
             ),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             set_length_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),

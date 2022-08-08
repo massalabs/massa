@@ -294,7 +294,7 @@ impl OperationDeserializer {
     pub fn new(
         max_datastore_value_length: u64,
         max_function_name_length: u16,
-        max_parameters_size: u16,
+        max_parameters_size: u32,
     ) -> Self {
         Self {
             expire_period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -594,7 +594,7 @@ pub struct OperationTypeDeserializer {
     data_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     function_name_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
-    parameter_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
+    parameter_deserializer: StringDeserializer<U32VarIntDeserializer, u32>,
 }
 
 impl OperationTypeDeserializer {
@@ -602,7 +602,7 @@ impl OperationTypeDeserializer {
     pub fn new(
         max_datastore_value_length: u64,
         max_function_name_length: u16,
-        max_parameters_size: u16,
+        max_parameters_size: u32,
     ) -> Self {
         Self {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -621,7 +621,7 @@ impl OperationTypeDeserializer {
                 Included(0),
                 Included(max_function_name_length),
             )),
-            parameter_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
+            parameter_deserializer: StringDeserializer::new(U32VarIntDeserializer::new(
                 Included(0),
                 Included(max_parameters_size),
             )),
@@ -843,23 +843,6 @@ impl WrappedOperation {
             }
         }
         res
-    }
-
-    /// get the addresses that are involved in this operation from a rolls point of view
-    pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
-        let mut res = Set::<Address>::default();
-        match self.content.op {
-            OperationType::Transaction { .. } => {}
-            OperationType::RollBuy { .. } => {
-                res.insert(Address::from_public_key(&self.creator_public_key));
-            }
-            OperationType::RollSell { .. } => {
-                res.insert(Address::from_public_key(&self.creator_public_key));
-            }
-            OperationType::ExecuteSC { .. } => {}
-            OperationType::CallSC { .. } => {}
-        }
-        Ok(res)
     }
 }
 
@@ -1185,7 +1168,7 @@ impl OperationsDeserializer {
         max_operations_per_message: u32,
         max_datastore_value_length: u64,
         max_function_name_length: u16,
-        max_parameters_size: u16,
+        max_parameters_size: u32,
     ) -> Self {
         Self {
             length_deserializer: U32VarIntDeserializer::new(

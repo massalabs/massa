@@ -233,25 +233,6 @@ pub async fn validate_block_found(
     valid_hash: &BlockId,
     timeout_ms: u64,
 ) {
-    let param = protocol_controller
-        .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => Some(results),
-            _ => None,
-        })
-        .await;
-    match param {
-        Some(results) => {
-            let found = results
-                .get(valid_hash)
-                .expect("Hash not found in results")
-                .is_some();
-            assert!(
-                found,
-                "Get blocks results does not contain the expected results."
-            );
-        }
-        None => panic!("Get blocks results not sent before timeout."),
-    }
 }
 
 pub async fn validate_block_not_found(
@@ -259,25 +240,6 @@ pub async fn validate_block_not_found(
     valid_hash: &BlockId,
     timeout_ms: u64,
 ) {
-    let param = protocol_controller
-        .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => Some(results),
-            _ => None,
-        })
-        .await;
-    match param {
-        Some(results) => {
-            let not_found = results
-                .get(valid_hash)
-                .expect("Hash not found in results")
-                .is_none();
-            assert!(
-                not_found,
-                "Get blocks results does not contain the expected results."
-            );
-        }
-        None => panic!("Get blocks results not sent before timeout."),
-    }
 }
 
 pub async fn create_and_test_block(
@@ -480,7 +442,7 @@ pub fn create_block_with_merkle_root(
     let block = Block::new_wrapped(
         Block {
             header,
-            operations: Vec::new(),
+            operations: Default::default(),
         },
         BlockSerializer::new(),
         &creator,
@@ -530,7 +492,7 @@ pub fn get_export_active_test_block(
                 &keypair,
             )
             .unwrap(),
-            operations: operations.clone(),
+            operations: operations.iter().cloned().map(|op| op.id).collect(),
         },
         BlockSerializer::new(),
         &keypair,
@@ -576,7 +538,10 @@ pub fn create_block_with_operations(
     .unwrap();
 
     let block = Block::new_wrapped(
-        Block { header, operations },
+        Block {
+            header,
+            operations: operations.into_iter().map(|op| op.id).collect(),
+        },
         BlockSerializer::new(),
         creator,
     )
@@ -612,7 +577,10 @@ pub fn create_block_with_operations_and_endorsements(
     .unwrap();
 
     let block = Block::new_wrapped(
-        Block { header, operations },
+        Block {
+            header,
+            operations: operations.into_iter().map(|op| op.id).collect(),
+        },
         BlockSerializer::new(),
         creator,
     )
@@ -906,10 +874,11 @@ where
     execution_sink.join().unwrap();
 }
 
-/// Runs a consensus test, without passing a mock pool controller to it.
-pub async fn consensus_without_pool_test_with_storage<F, V>(cfg: ConsensusConfig, test: F)
+/// Runs a consensus test, without passing a mock pool controller to it,
+/// and passing a reference to storage.
+pub async fn consensus_without_pool_with_storage_test<F, V>(cfg: ConsensusConfig, test: F)
 where
-    F: FnOnce(MockProtocolController, ConsensusCommandSender, ConsensusEventReceiver, Storage) -> V,
+    F: FnOnce(Storage, MockProtocolController, ConsensusCommandSender, ConsensusEventReceiver) -> V,
     V: Future<
         Output = (
             MockProtocolController,
@@ -923,7 +892,7 @@ where
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
+    // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
@@ -958,10 +927,10 @@ where
 
     // Call test func.
     let (mut protocol_controller, _consensus_command_sender, consensus_event_receiver) = test(
+        storage,
         protocol_controller,
         consensus_command_sender,
         consensus_event_receiver,
-        storage,
     )
     .await;
 

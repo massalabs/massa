@@ -60,6 +60,22 @@ impl Storage {
         }
     }
 
+    /// Store a list of operations, along with their serialized representation.
+    pub fn store_operations(&self, operations_to_store: Vec<WrappedOperation>) {
+        massa_trace!("storage.storage.store_operations", {
+            "operations": operations_to_store
+        });
+        let mut operations = self.operations.write();
+        for operation in operations_to_store {
+            match operations.entry(operation.id) {
+                Entry::Occupied(_) => {}
+                Entry::Vacant(entry) => {
+                    entry.insert(operation);
+                }
+            }
+        }
+    }
+
     /// Returns a set of operation ids that are found in storage.
     pub fn find_operations(&self, operation_ids: Set<OperationId>) -> Set<OperationId> {
         let operations = self.operations.read();

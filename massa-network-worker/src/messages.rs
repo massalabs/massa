@@ -6,14 +6,15 @@ use massa_models::{
     constants::HANDSHAKE_RANDOMNESS_SIZE_BYTES,
     operation::OperationPrefixIds,
     operation::{
-        OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, Operations,
-        OperationsDeserializer, OperationsSerializer,
+        OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIdsDeserializer,
+        OperationPrefixIdsSerializer, Operations, OperationsDeserializer, OperationsSerializer,
     },
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    Block, BlockDeserializer, BlockHeader, BlockHeaderDeserializer, BlockId, Endorsement,
-    EndorsementDeserializer, IpAddrDeserializer, IpAddrSerializer, Version, VersionDeserializer,
-    VersionSerializer, WrappedBlock, WrappedEndorsement, WrappedHeader,
+    BlockHeader, BlockHeaderDeserializer, BlockId, Endorsement, EndorsementDeserializer,
+    IpAddrDeserializer, IpAddrSerializer, Version, VersionDeserializer, VersionSerializer,
+    WrappedEndorsement, WrappedHeader,
 };
+use massa_network_exports::{AskForBlocksInfo, BlockInfoReply};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -49,12 +50,12 @@ pub enum Message {
         /// Signature of the received random bytes with our `keypair`.
         signature: Signature,
     },
-    /// Whole block structure.
-    Block(WrappedBlock),
     /// Block header
     BlockHeader(WrappedHeader),
-    /// Message asking the peer for a block.
-    AskForBlocks(Vec<BlockId>),
+    /// Message asking the peer for info on a list of blocks.
+    AskForBlocks(Vec<(BlockId, AskForBlocksInfo)>),
+    /// Message replying with info on a list of blocks.
+    ReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
     /// Message asking the peer for its advertisable peers list.
     AskPeerList,
     /// Reply to a `AskPeerList` message
@@ -62,8 +63,6 @@ pub enum Message {
     /// If the ip of the node that sent that message is routable,
     /// it is the first ip of the list.
     PeerList(Vec<IpAddr>),
-    /// Block not found
-    BlockNotFound(BlockId),
     /// Batch of operation ids
     OperationsAnnouncement(OperationPrefixIds),
     /// Someone ask for operations.
@@ -78,17 +77,24 @@ pub enum Message {
 #[repr(u32)]
 pub(crate) enum MessageTypeId {
     HandshakeInitiation = 0u32,
-    HandshakeReply = 1,
-    Block = 2,
-    BlockHeader = 3,
-    AskForBlocks = 4,
-    AskPeerList = 5,
-    PeerList = 6,
-    BlockNotFound = 7,
-    Operations = 8,
-    Endorsements = 9,
-    AskForOperations = 10,
-    OperationsAnnouncement = 11,
+    HandshakeReply,
+    BlockHeader,
+    AskForBlocks,
+    AskPeerList,
+    PeerList,
+    Operations,
+    Endorsements,
+    AskForOperations,
+    OperationsAnnouncement,
+    ReplyForBlocks,
+}
+
+#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u32)]
+pub(crate) enum BlockInfoType {
+    Info = 0u32,
+    Operations,
+    NotFound,
 }
 
 /// Basic serializer for `Message`.
@@ -142,24 +148,32 @@ impl Serializer<Message> for MessageSerializer {
                     .serialize(&(MessageTypeId::HandshakeReply as u32), buffer)?;
                 buffer.extend(signature.to_bytes());
             }
-            Message::Block(block) => {
-                self.u32_serializer
-                    .serialize(&(MessageTypeId::Block as u32), buffer)?;
-                self.wrapped_serializer.serialize(block, buffer)?;
-            }
             Message::BlockHeader(header) => {
                 self.u32_serializer
                     .serialize(&(MessageTypeId::BlockHeader as u32), buffer)?;
                 self.wrapped_serializer.serialize(header, buffer)?;
             }
-            Message::AskForBlocks(block_ids) => {
+            Message::AskForBlocks(list) => {
                 self.u32_serializer
                     .serialize(&(MessageTypeId::AskForBlocks as u32), buffer)?;
                 self.u32_serializer
-                    .serialize(&(block_ids.len() as u32), buffer)?;
-                for block_id in block_ids {
-                    buffer.extend(block_id.0.to_bytes());
+                    .serialize(&(list.len() as u32), buffer)?;
+                for (hash, info) in list {
+                    buffer.extend(hash.to_bytes());
+                    let info_type = match info {
+                        AskForBlocksInfo::Info => BlockInfoType::Info,
+                        AskForBlocksInfo::Operations(_) => BlockInfoType::Operations,
+                    };
+                    self.u32_serializer
+                        .serialize(&u32::from(info_type), buffer)?;
+                    if let AskForBlocksInfo::Operations(ids) = info {
+                        let op_ids_serializer = OperationIdsSerializer::new();
+                        op_ids_serializer.serialize(&ids, buffer)?;
+                    }
                 }
+            }
+            Message::ReplyForBlocks(_list) => {
+                panic!("Message::ReplyForBlocks should be constructed using shared storage.");
             }
             Message::AskPeerList => {
                 self.u32_serializer
@@ -173,11 +187,6 @@ impl Serializer<Message> for MessageSerializer {
                 for peer in peers {
                     self.ip_addr_serializer.serialize(peer, buffer)?;
                 }
-            }
-            Message::BlockNotFound(block_id) => {
-                self.u32_serializer
-                    .serialize(&(MessageTypeId::BlockNotFound as u32), buffer)?;
-                buffer.extend(block_id.0.to_bytes());
             }
             Message::OperationsAnnouncement(operation_prefix_ids) => {
                 self.u32_serializer
@@ -221,10 +230,10 @@ pub struct MessageDeserializer {
     operations_deserializer: OperationsDeserializer,
     hash_deserializer: HashDeserializer,
     block_header_deserializer: WrappedDeserializer<BlockHeader, BlockHeaderDeserializer>,
-    block_deserializer: WrappedDeserializer<Block, BlockDeserializer>,
     endorsements_length_deserializer: U32VarIntDeserializer,
     endorsement_deserializer: WrappedDeserializer<Endorsement, EndorsementDeserializer>,
     operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer,
+    operation_ids_deserializer: OperationIdsDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
 }
 
@@ -241,7 +250,7 @@ impl MessageDeserializer {
         max_endorsements_per_message: u32,
         max_datastore_value_length: u64,
         max_function_name_length: u16,
-        max_parameters_size: u16,
+        max_parameters_size: u32,
     ) -> Self {
         MessageDeserializer {
             public_key_deserializer: PublicKeyDeserializer::new(),
@@ -263,14 +272,6 @@ impl MessageDeserializer {
                 max_parameters_size,
             ),
             hash_deserializer: HashDeserializer::new(),
-            block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
-                thread_count,
-                max_operations_per_block,
-                endorsement_count,
-                max_datastore_value_length,
-                max_function_name_length,
-                max_parameters_size,
-            )),
             block_header_deserializer: WrappedDeserializer::new(BlockHeaderDeserializer::new(
                 thread_count,
                 endorsement_count,
@@ -286,6 +287,7 @@ impl MessageDeserializer {
             operation_prefix_ids_deserializer: OperationPrefixIdsDeserializer::new(
                 max_operations_per_message,
             ),
+            operation_ids_deserializer: OperationIdsDeserializer::new(max_operations_per_message),
             ip_addr_deserializer: IpAddrDeserializer::new(),
         }
     }
@@ -336,11 +338,6 @@ impl Deserializer<Message> for MessageDeserializer {
                     .map(|signature| Message::HandshakeReply { signature })
                     .parse(input)
                 }
-                MessageTypeId::Block => context("Failed Block deserialization", |input| {
-                    self.block_deserializer.deserialize(input)
-                })
-                .map(Message::Block)
-                .parse(input),
                 MessageTypeId::BlockHeader => {
                     context("Failed BlockHeader deserialization", |input| {
                         self.block_header_deserializer.deserialize(input)
@@ -354,14 +351,91 @@ impl Deserializer<Message> for MessageDeserializer {
                         context("Failed length deserialization", |input| {
                             self.ask_block_number_deserializer.deserialize(input)
                         }),
-                        context("Failed blockId deserialization", |input| {
-                            self.hash_deserializer
-                                .deserialize(input)
-                                .map(|(rest, id)| (rest, BlockId(id)))
-                        }),
+                        context(
+                            "Failed blockId deserialization",
+                            tuple((
+                                |input| {
+                                    self.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, id)| (rest, BlockId(id)))
+                                },
+                                |input| {
+                                    let (rest, raw_id) = self.id_deserializer.deserialize(input)?;
+                                    let info_type: BlockInfoType =
+                                        raw_id.try_into().map_err(|_| {
+                                            nom::Err::Error(ParseError::from_error_kind(
+                                                buffer,
+                                                nom::error::ErrorKind::Digit,
+                                            ))
+                                        })?;
+                                    match info_type {
+                                        BlockInfoType::Info => Ok((rest, AskForBlocksInfo::Info)),
+                                        BlockInfoType::Operations => self
+                                            .operation_ids_deserializer
+                                            .deserialize(rest)
+                                            .map(|(rest, operation_ids)| {
+                                                (rest, AskForBlocksInfo::Operations(operation_ids))
+                                            }),
+                                        BlockInfoType::NotFound => {
+                                            Err(nom::Err::Error(ParseError::from_error_kind(
+                                                buffer,
+                                                nom::error::ErrorKind::Digit,
+                                            )))
+                                        }
+                                    }
+                                },
+                            )),
+                        ),
                     ),
                 )
                 .map(Message::AskForBlocks)
+                .parse(input),
+                MessageTypeId::ReplyForBlocks => context(
+                    "Failed ReplyForBlocks deserialization",
+                    length_count(
+                        context("Failed length deserialization", |input| {
+                            self.ask_block_number_deserializer.deserialize(input)
+                        }),
+                        context(
+                            "Failed blockId deserialization",
+                            tuple((
+                                |input| {
+                                    self.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, id)| (rest, BlockId(id)))
+                                },
+                                |input| {
+                                    let (rest, raw_id) = self.id_deserializer.deserialize(input)?;
+                                    let info_type: BlockInfoType =
+                                        raw_id.try_into().map_err(|_| {
+                                            nom::Err::Error(ParseError::from_error_kind(
+                                                buffer,
+                                                nom::error::ErrorKind::Digit,
+                                            ))
+                                        })?;
+                                    match info_type {
+                                        BlockInfoType::Info => self
+                                            .operation_ids_deserializer
+                                            .deserialize(rest)
+                                            .map(|(rest, operation_ids)| {
+                                                (rest, BlockInfoReply::Info(operation_ids))
+                                            }),
+                                        BlockInfoType::Operations => self
+                                            .operations_deserializer
+                                            .deserialize(rest)
+                                            .map(|(rest, operations)| {
+                                                (rest, BlockInfoReply::Operations(operations))
+                                            }),
+                                        BlockInfoType::NotFound => {
+                                            Ok((rest, BlockInfoReply::NotFound))
+                                        }
+                                    }
+                                },
+                            )),
+                        ),
+                    ),
+                )
+                .map(Message::ReplyForBlocks)
                 .parse(input),
                 MessageTypeId::AskPeerList => Ok((input, Message::AskPeerList)),
                 MessageTypeId::PeerList => context(
@@ -377,13 +451,6 @@ impl Deserializer<Message> for MessageDeserializer {
                 )
                 .map(Message::PeerList)
                 .parse(input),
-                MessageTypeId::BlockNotFound => {
-                    context("Failed BlockNotFound deserialization", |input| {
-                        self.hash_deserializer.deserialize(input)
-                    })
-                    .map(|block_id| Message::BlockNotFound(BlockId(block_id)))
-                    .parse(input)
-                }
                 MessageTypeId::Operations => {
                     context("Failed Operations deserialization", |input| {
                         self.operations_deserializer.deserialize(input)

@@ -3,7 +3,7 @@
 use super::tools::protocol_test;
 use massa_models::prehash::Set;
 use massa_models::BlockId;
-use massa_network_exports::NetworkCommand;
+use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand, ReplyForBlocksInfo};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{asked_list, assert_hash_asked_to_node};
 use massa_protocol_exports::ProtocolEvent;
@@ -54,7 +54,12 @@ async fn test_without_a_priori() {
             assert_hash_asked_to_node(hash_1, node_b.id, &mut network_controller).await;
 
             // node B replied with the block
-            network_controller.send_block(node_b.id, block).await;
+            network_controller
+                .send_block_info(
+                    node_b.id,
+                    vec![(block.id, BlockInfoReply::Info(Default::default()))],
+                )
+                .await;
 
             // 7. Make sure protocol did not send additional ask for block commands.
             let ask_for_block_cmd_filter = |cmd| match cmd {
@@ -134,22 +139,33 @@ async fn test_someone_knows_it() {
             assert_hash_asked_to_node(hash_1, node_c.id, &mut network_controller).await;
 
             // node C replied with the block
-            network_controller.send_block(node_c.id, block).await;
+            network_controller
+                .send_block_info(
+                    node_c.id,
+                    vec![(block.id, BlockInfoReply::Info(Default::default()))],
+                )
+                .await;
 
-            // 7. Make sure protocol did not send additional ask for block commands.
+            // 7. Make sure protocol ask for the operations next.
             let ask_for_block_cmd_filter = |cmd| match cmd {
-                cmd @ NetworkCommand::AskForBlocks { .. } => Some(cmd),
+                NetworkCommand::AskForBlocks { list } => Some(list),
                 _ => None,
             };
 
-            let got_more_commands = network_controller
+            let mut ask_list = network_controller
                 .wait_command(100.into(), ask_for_block_cmd_filter)
-                .await;
-            assert!(
-                got_more_commands.is_none(),
-                "unexpected command {:?}",
-                got_more_commands
-            );
+                .await
+                .unwrap();
+            let (hash, asked) = ask_list.get_mut(&node_c.id).unwrap().pop().unwrap();
+            assert_eq!(hash_1, hash);
+            if let AskForBlocksInfo::Operations(ops) = asked {
+                for op in ops {
+                    assert!(block.content.operations.contains(&op));
+                }
+            } else {
+                panic!("Unexpected ask for blocks.");
+            }
+
             (
                 network_controller,
                 protocol_event_receiver,
@@ -284,7 +300,7 @@ async fn test_no_one_has_it() {
 
             // node a replied is does not have it
             network_controller
-                .send_block_not_found(node_a.id, hash_1)
+                .send_block_info(node_a.id, vec![(hash_1, BlockInfoReply::NotFound)])
                 .await;
 
             assert_hash_asked_to_node(hash_1, node_b.id, &mut network_controller).await;

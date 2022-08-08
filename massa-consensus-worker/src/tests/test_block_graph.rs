@@ -11,7 +11,7 @@ use massa_models::{
     clique::Clique,
     constants::{
         default::{
-            MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_PER_BLOCK,
+            MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_PER_SLOT,
             MAX_PARAMETERS_SIZE, MAX_PRODUCTION_EVENTS_PER_BLOCK,
         },
         MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES,
@@ -57,7 +57,7 @@ fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
                 &keypair,
             )
             .unwrap(),
-            operations: vec![],
+            operations: Default::default(),
         },
         BlockSerializer::new(),
         &keypair,
@@ -141,10 +141,23 @@ pub async fn test_get_ledger_at_parents() {
         get_export_active_test_block();
     storage.store_block(block.clone());
     warn!("Store block default!");
-    let active_block: ActiveBlock = ActiveBlock::try_from(export_active_block).expect(&format!(
-        "Fail to convert block (id: {}) from ExportActiveBlock to ActiveBlock",
-        block.id
-    ));
+    let active_block = ActiveBlock {
+        creator_address: block.creator_address.clone(),
+        parents: export_active_block.parents,
+        children: Default::default(),
+        dependencies: export_active_block.dependencies,
+        descendants: Default::default(),
+        is_final: export_active_block.is_final,
+        block_ledger_changes: export_active_block.block_ledger_changes,
+        operation_set: Default::default(),
+        endorsement_ids: Default::default(),
+        addresses_to_operations: Default::default(),
+        roll_updates: export_active_block.roll_updates, // no roll updates in genesis blocks
+        production_events: export_active_block.production_events,
+        block_id: export_active_block.block_id,
+        addresses_to_endorsements: Default::default(),
+        slot: block.content.header.content.slot,
+    };
     let ledger_file = generate_ledger_file(&Map::default());
     let mut cfg = ConsensusConfig::from(ledger_file.path());
     cfg.thread_count = thread_count;
@@ -664,7 +677,7 @@ fn test_bootstrapable_graph_serialized() {
         MAX_BOOTSTRAP_DEPS,
         MAX_BOOTSTRAP_POS_ENTRIES,
         MAX_OPERATIONS_PER_BLOCK,
-        MAX_LEDGER_CHANGES_PER_BLOCK,
+        MAX_LEDGER_CHANGES_PER_SLOT,
         MAX_PRODUCTION_EVENTS_PER_BLOCK,
         MAX_DATASTORE_VALUE_LENGTH,
         MAX_FUNCTION_NAME_LENGTH,

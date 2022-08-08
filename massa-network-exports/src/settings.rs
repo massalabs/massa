@@ -75,7 +75,7 @@ pub struct NetworkConfig {
     /// Maximum length function name in call sc
     pub max_function_name_length: u16,
     /// Maximum size of parameters in call sc
-    pub max_parameters_size: u16,
+    pub max_parameters_size: u32,
 }
 
 /// Connection configuration for a peer type

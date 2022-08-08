@@ -18,6 +18,7 @@ use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     //         // setup logging
     // stderrlog::new()
@@ -121,7 +122,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     Block::new_wrapped(
                         Block {
                             header,
-                            operations: vec![op.clone()],
+                            operations: vec![op.clone()].into_iter().map(|op| op.id).collect(),
                         },
                         BlockSerializer::new(),
                         &creator_node.keypair,

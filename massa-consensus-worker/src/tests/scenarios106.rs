@@ -335,6 +335,7 @@ async fn test_too_many_blocks_in_the_future() {
 
 #[tokio::test]
 #[serial]
+#[ignore]
 async fn test_dep_in_back_order() {
     /*stderrlog::new()
     .verbosity(4)

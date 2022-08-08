@@ -50,50 +50,6 @@ pub struct ExportActiveBlock {
     pub production_events: Vec<(u64, Address, bool)>,
 }
 
-impl TryFrom<ExportActiveBlock> for ActiveBlock {
-    fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
-        let operation_set = a_block
-            .block
-            .content
-            .operations
-            .iter()
-            .enumerate()
-            .map(|(idx, op)| (op.id, (idx, op.content.expire_period)))
-            .collect();
-
-        let endorsement_ids = a_block
-            .block
-            .content
-            .header
-            .content
-            .endorsements
-            .iter()
-            .map(|endo| (endo.id, endo.content.index))
-            .collect();
-
-        let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
-        let addresses_to_endorsements = a_block.block.addresses_to_endorsements()?;
-        Ok(ActiveBlock {
-            creator_address: a_block.block.creator_address,
-            block_id: a_block.block_id,
-            parents: a_block.parents.clone(),
-            children: a_block.children.clone(),
-            dependencies: a_block.dependencies.clone(),
-            descendants: Default::default(), // will be computed once the full graph is available
-            is_final: a_block.is_final,
-            block_ledger_changes: a_block.block_ledger_changes.clone(),
-            operation_set,
-            endorsement_ids,
-            addresses_to_operations,
-            roll_updates: a_block.roll_updates.clone(),
-            production_events: a_block.production_events.clone(),
-            addresses_to_endorsements,
-            slot: a_block.block.content.header.content.slot,
-        })
-    }
-    type Error = GraphError;
-}
-
 impl ExportActiveBlock {
     /// try conversion from active block to export active block
     pub fn try_from_active_block(a_block: &ActiveBlock, storage: Storage) -> Result<Self> {
@@ -114,6 +70,65 @@ impl ExportActiveBlock {
             block_ledger_changes: a_block.block_ledger_changes.clone(),
             roll_updates: a_block.roll_updates.clone(),
             production_events: a_block.production_events.clone(),
+        })
+    }
+
+    /// Try conversion from export active block to active block
+    pub fn to_active_block(&self, storage: Storage) -> Result<ActiveBlock> {
+        let operation_set: Map<OperationId, (usize, WrappedOperation)> = self
+            .block
+            .content
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(idx, &op_id)| {
+                let operation =
+                    storage
+                        .retrieve_operation(&op_id)
+                        .ok_or(GraphError::MissingOperation(format!(
+                            "The operation {} is missing.",
+                            op_id
+                        )))?;
+                Ok((op_id, (idx, operation)))
+            })
+            .collect::<Result<Map<OperationId, (usize, WrappedOperation)>>>()?;
+
+        let endorsement_ids = self
+            .block
+            .content
+            .header
+            .content
+            .endorsements
+            .iter()
+            .map(|endo| (endo.id, endo.content.index))
+            .collect();
+
+        let addresses_to_operations = self.block.involved_addresses(
+            &operation_set
+                .iter()
+                .map(|(&id, (_, operation))| (id, operation.clone()))
+                .collect(),
+        )?;
+        let addresses_to_endorsements = self.block.addresses_to_endorsements()?;
+        Ok(ActiveBlock {
+            creator_address: self.block.creator_address,
+            block_id: self.block_id,
+            parents: self.parents.clone(),
+            children: self.children.clone(),
+            dependencies: self.dependencies.clone(),
+            descendants: Default::default(), // will be computed once the full graph is available
+            is_final: self.is_final,
+            block_ledger_changes: self.block_ledger_changes.clone(),
+            operation_set: operation_set
+                .into_iter()
+                .map(|(id, (idx, _))| (id, idx))
+                .collect(),
+            endorsement_ids,
+            addresses_to_operations,
+            roll_updates: self.roll_updates.clone(),
+            production_events: self.production_events.clone(),
+            addresses_to_endorsements,
+            slot: self.block.content.header.content.slot,
         })
     }
 }
@@ -252,20 +267,14 @@ impl ExportActiveBlockDeserializer {
         max_bootstrap_deps: u32,
         max_bootstrap_pos_entries: u32,
         max_operations_per_block: u32,
-        max_ledger_changes_per_block: u32,
+        max_ledger_changes_per_slot: u32,
         max_production_events_per_block: u32,
-        max_datastore_value_length: u64,
-        max_function_name_length: u16,
-        max_parameters_size: u16,
     ) -> Self {
         ExportActiveBlockDeserializer {
             wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
                 thread_count,
                 max_operations_per_block,
                 endorsement_count,
-                max_datastore_value_length,
-                max_function_name_length,
-                max_parameters_size,
             )),
             hash_deserializer: HashDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -283,7 +292,7 @@ impl ExportActiveBlockDeserializer {
             ),
             block_ledger_changes_length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Included(max_ledger_changes_per_block),
+                Included(max_ledger_changes_per_slot),
             ),
             ledger_change_deserializer: LedgerChangeDeserializer::new(),
             address_deserializer: AddressDeserializer::new(),

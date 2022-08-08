@@ -517,7 +517,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             },
             None,
             None,
-            storage,
+            storage.clone(),
             0,
             TEST_PASSWORD.to_string(),
             Map::default(),
@@ -533,6 +533,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // A -> B [amount 10, fee 3]
     let operation_1 = create_transaction(&keypair_1, address_2, 10, 10, 3);
+    storage.store_operation(operation_1.clone());
 
     // Add block B3
     let block_a = create_block_with_operations(
@@ -547,9 +548,11 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B -> A [amount 9, fee 2]
     let operation_2 = create_transaction(&keypair_2, address_1, 9, 10, 2);
+    storage.store_operation(operation_2.clone());
 
     // B -> C [amount 3, fee 1]
     let operation_3 = create_transaction(&keypair_2, address_3, 3, 10, 1);
+    storage.store_operation(operation_3.clone());
 
     // Add block B4
     let block_b = create_block_with_operations(
@@ -564,6 +567,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // A -> C [amount 3, fee 4]
     let operation_4 = create_transaction(&keypair_1, address_3, 3, 10, 4);
+    storage.store_operation(operation_4.clone());
 
     // Add block B5
     let block_c = create_block_with_operations(
@@ -589,6 +593,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // A -> B [amount 11, fee 7]
     let operation_5 = create_transaction(&keypair_1, address_2, 11, 10, 7);
+    storage.store_operation(operation_5.clone());
     // Add block B7
     let block_e = create_block_with_operations(
         &cfg,
@@ -602,6 +607,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     // B -> A [amount 17, fee 4]
     let operation_6 = create_transaction(&keypair_2, address_1, 17, 10, 4);
+    storage.store_operation(operation_6.clone());
     // Add block B8
     let block_f = create_block_with_operations(
         &cfg,

@@ -520,15 +520,12 @@ impl NetworkWorker {
                 on_send_block_header_cmd(self, node, block_id).await?
             }
             NetworkCommand::AskForBlocks { list } => on_ask_for_block_cmd(self, list).await,
-            NetworkCommand::SendBlock { node, block_id } => {
-                on_send_block_cmd(self, node, block_id).await?
+            NetworkCommand::SendBlockInfo { node, info } => {
+                on_send_block_info_cmd(self, node, info).await?
             }
             NetworkCommand::GetPeers(response_tx) => on_get_peers_cmd(self, response_tx).await,
             NetworkCommand::GetBootstrapPeers(response_tx) => {
                 on_get_bootstrap_peers_cmd(self, response_tx).await
-            }
-            NetworkCommand::BlockNotFound { node, block_id } => {
-                on_block_not_found_cmd(self, node, block_id).await
             }
             NetworkCommand::SendOperations { node, operations } => {
                 on_send_operations_cmd(self, node, operations).await
@@ -799,20 +796,17 @@ impl NetworkWorker {
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
                 event_impl::on_received_peer_list(self, from_node_id, &lst)?
             }
-            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block)) => {
-                event_impl::on_received_block(self, from_node_id, block).await?
-            }
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) => {
                 event_impl::on_received_ask_for_blocks(self, from_node_id, list).await
+            }
+            NodeEvent(from_node_id, NodeEventType::ReceivedReplyForBlocks(list)) => {
+                event_impl::on_received_block_info(self, from_node_id, list).await?
             }
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
                 event_impl::on_received_block_header(self, source_node_id, header).await?
             }
             NodeEvent(from_node_id, NodeEventType::AskedPeerList) => {
                 event_impl::on_asked_peer_list(self, from_node_id).await?
-            }
-            NodeEvent(node, NodeEventType::BlockNotFound(block_id)) => {
-                event_impl::on_block_not_found(self, node, block_id).await
             }
             NodeEvent(node, NodeEventType::ReceivedOperations(operations)) => {
                 event_impl::on_received_operations(self, node, operations).await

@@ -86,9 +86,9 @@ pub const ENDORSEMENT_COUNT: u32 = 9;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 640;
 /// Maximum number of operations per block
-pub const MAX_OPERATIONS_PER_BLOCK: u32 = 409600;
+pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
-pub const MAX_BLOCK_SIZE: u32 = 409600;
+pub const MAX_BLOCK_SIZE: u32 = 500_000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum data size in async message
@@ -110,19 +110,20 @@ pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 /// Maximum length of a datastore value
 pub const MAX_DATASTORE_VALUE_LENGTH: u64 = 10_000_000;
 /// Maximum ledger changes in a block
-pub const MAX_LEDGER_CHANGES_PER_BLOCK: u32 = u32::MAX;
+pub const MAX_LEDGER_CHANGES_PER_SLOT: u32 = u32::MAX;
 /// Maximum production events in a block
 pub const MAX_PRODUCTION_EVENTS_PER_BLOCK: u32 = u32::MAX;
 /// Maximum ledger changes count
-pub const MAX_LEDGER_CHANGES_COUNT: u64 = u64::MAX;
+pub const MAX_LEDGER_CHANGES_COUNT: u64 =
+    100_u32.saturating_mul(MAX_LEDGER_CHANGES_PER_SLOT) as u64;
 /// Maximum number of key/values in the datastore of a ledger entry
 pub const MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
 /// Maximum length function name in call sc
 pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
 /// Maximum size of parameters in call sc
-pub const MAX_PARAMETERS_SIZE: u16 = u16::MAX;
+pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 /// Maximum length of rng_seed in thread cycle
-pub const MAX_RNG_SEED_LENGTH: u32 = u32::MAX;
+pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT as u64) as u32;
 /// Maximum length of rolls_update in thread cycle
 pub const MAX_ROLLS_UPDATE_LENGTH: u64 = u64::MAX;
 /// Maximum length of rolls_counts in thread cycle
