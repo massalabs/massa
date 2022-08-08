@@ -37,20 +37,19 @@ pub struct PoSFinalState {
     pub selector: Option<Box<dyn SelectorController>>,
 }
 
-/// TODO
+/// Cursor object used for the Proof of Stake state streaming
 #[derive(Default)]
 pub struct PoSBootstrapCursor {
     credits_slot: Option<Slot>,
     cycle: Option<u64>,
-    roll_addr: Option<Address>,
-    stats_addr: Option<Address>,
 }
 
 impl PoSFinalState {
+    /// Private function used in `get_pos_state_part`
     fn get_cycles_part(
         &self,
         cursor: PoSBootstrapCursor,
-    ) -> Result<(Vec<u8>, Option<PoSBootstrapCursor>), ModelsError> {
+    ) -> Result<(Vec<u8>, Option<u64>), ModelsError> {
         let last_cycle_index = if let Some(last_cycle) = cursor.cycle {
             if let Some(index) = self
                 .cycle_history
@@ -67,7 +66,7 @@ impl PoSFinalState {
             return Ok((Vec::new(), None));
         };
         let mut part = Vec::new();
-        let mut new_cursor = None;
+        let mut last_cycle = None;
         let u64_ser = U64VarIntSerializer::new();
         let bitvec_ser = BitVecSerializer::new();
         for CycleInfo {
@@ -81,13 +80,13 @@ impl PoSFinalState {
             if part.len() < CYCLE_INFO_SIZE_MESSAGE_BYTES as usize {
                 u64_ser.serialize(cycle, &mut part)?;
                 part.push(*complete as u8);
-                // note: limit this
+                // TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
                 for (addr, count) in roll_counts {
                     part.extend(addr.to_bytes());
                     u64_ser.serialize(&count, &mut part)?;
                 }
                 bitvec_ser.serialize(rng_seed, &mut part)?;
-                // note: limit this
+                // TODO: limit this with PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES
                 for (
                     addr,
                     ProductionStats {
@@ -100,31 +99,41 @@ impl PoSFinalState {
                     u64_ser.serialize(&block_success_count, &mut part)?;
                     u64_ser.serialize(&block_failure_count, &mut part)?;
                 }
-                // note: fill rest of cursor
-                new_cursor = Some(PoSBootstrapCursor {
-                    cycle: Some(*cycle),
-                    ..Default::default()
-                })
+                last_cycle = Some(*cycle);
+                // TODO: when roll_counts and production_stats are limited remove following break call
+                break;
             }
         }
-        Ok((part, new_cursor))
+        Ok((part, last_cycle))
     }
 
-    /// TODO
+    /// Gets a part of the Proof of Stake state
+    /// 
+    /// # Arguments:
+    /// cursor: indicates the bootstrap state after the previous payload
+    /// 
+    /// # Returns
+    /// The PoS part and the updated cursor
     pub fn get_pos_state_part(
         &self,
         cursor: PoSBootstrapCursor,
-    ) -> Result<(Vec<u8>, Option<PoSBootstrapCursor>), ModelsError> {
-        // handle deferred credits
+    ) -> Result<(Vec<u8>, PoSBootstrapCursor), ModelsError> {
         let last_slot = if let Some(last_slot) = cursor.credits_slot {
             Excluded(last_slot)
         } else if self.deferred_credits.first_key_value().is_some() {
             Unbounded
         } else {
-            return self.get_cycles_part(cursor);
+            let (part, last_cycle) = self.get_cycles_part(cursor)?;
+            return Ok((
+                part,
+                PoSBootstrapCursor {
+                    credits_slot: None,
+                    cycle: last_cycle,
+                },
+            ));
         };
         let mut part = Vec::new();
-        let mut new_cursor = None;
+        let mut last_credits_slot = None;
         let slot_ser = SlotSerializer::new();
         let amount_ser = AmountSerializer::new();
         for (slot, credits) in self.deferred_credits.range((last_slot, Unbounded)) {
@@ -135,13 +144,17 @@ impl PoSFinalState {
                     part.extend(addr.to_bytes());
                     amount_ser.serialize(amount, &mut part)?;
                 }
-                new_cursor = Some(PoSBootstrapCursor {
-                    credits_slot: Some(*slot),
-                    ..Default::default()
-                })
+                last_credits_slot = Some(*slot);
             }
         }
-        Ok((part, new_cursor))
+        let (part, last_cycle) = self.get_cycles_part(cursor)?;
+        Ok((
+            part,
+            PoSBootstrapCursor {
+                credits_slot: last_credits_slot,
+                cycle: last_cycle,
+            },
+        ))
     }
 }
 
