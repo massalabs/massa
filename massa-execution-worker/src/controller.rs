@@ -69,8 +69,8 @@ impl ExecutionController for ExecutionControllerImpl {
     /// called to signal changes on the current blockclique, also listing newly finalized blocks
     ///
     /// # arguments
-    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks. Each Storage owns the block and its ops/endorsements/endorsed blocks.
-    /// * `blockclique`: new blockclique, replaces the current one in the input. Each Storage owns the block and its ops/endorsements/endorsed blocks.
+    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks. Each Storage owns the block and its ops/endorsements/parents.
+    /// * `blockclique`: new blockclique, replaces the current one in the input. Each Storage owns the block and its ops/endorsements/parents.
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, (BlockId, Storage)>,

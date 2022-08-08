@@ -23,8 +23,8 @@ pub trait ExecutionController: Send + Sync {
     /// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.
     ///
     /// # Arguments
-    /// * `finalized_blocks`: newly finalized blocks. Each Storage owns refs to the block and its ops/endorsements.
-    /// * `blockclique`: new blockclique. Each Storage owns refs to the block and its ops/endorsements/endorsed blocks
+    /// * `finalized_blocks`: newly finalized blocks. Each Storage owns refs to the block and its ops/endorsements/parents.
+    /// * `blockclique`: new blockclique. Each Storage owns refs to the block and its ops/endorsements/parents
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, (BlockId, Storage)>,

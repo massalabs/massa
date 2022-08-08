@@ -117,7 +117,7 @@ impl DeserializeCompact for Clique {
             1u8 => true,
             _ => {
                 return Err(ModelsError::SerializeError(
-                    "could not deserialize active_block.production_events.has_created".into(),
+                    "could not deserialize clique.is_blockclique".into(),
                 ))
             }
         };

@@ -292,7 +292,7 @@ pub struct ConsensusWorkerChannels {
     /// Execution command sender.
     pub execution_controller: Box<dyn ExecutionController>,
     /// Associated Pool command sender.
-    pub pool_command_sender: PoolController,
+    pub pool_command_sender: Box<dyn PoolController>,
     /// Selector controller
     pub selector_controller: Box<dyn SelectorController>,
     /// Channel receiving consensus commands.
@@ -313,7 +313,7 @@ pub struct ConsensusChannels {
     /// incoming link to protocol component
     pub protocol_event_receiver: ProtocolEventReceiver,
     /// outgoing link to pool component
-    pub pool_command_sender: PoolController,
+    pub pool_command_sender: Box<dyn PoolController>,
     /// selector controller
     pub selector_controller: Box<dyn SelectorController>,
 }

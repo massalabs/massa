@@ -28,3 +28,11 @@ pub trait PoolController: Send + Sync {
     /// Useful to allow cloning `Box<dyn PoolController>`.
     fn clone_box(&self) -> Box<dyn PoolController>;
 }
+
+/// Allow cloning `Box<dyn PoolController>`
+/// Uses `PoolController::clone_box` internally
+impl Clone for Box<dyn PoolController> {
+    fn clone(&self) -> Box<dyn PoolController> {
+        self.clone_box()
+    }
+}

@@ -825,7 +825,7 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `slot`: slot to execute
-    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, and endorsement targets) if there is a block a that slot, otherwise None
+    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, aparents) if there is a block a that slot, otherwise None
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
