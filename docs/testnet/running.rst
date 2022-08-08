@@ -11,6 +11,42 @@ Simply run the binaries you downloaded in the previous step:
 Open the `massa-node` folder and run the `massa-node` executable
 Open the `massa-client` folder and run the `massa-client` executable
 
+On Ubuntu / MacOS
+-----------------
+
+**Start the node**
+
+On a first window:
+
+.. code-block:: bash
+
+    cd massa/massa-node/
+
+Launch the node, on Ubuntu:
+
+.. code-block:: bash
+
+    ./massa-node -p <PASSWORD> |& tee logs.txt
+
+Replace <PASSWORD> with a password that you will need to keep to restart your node
+You should leave the window opened.
+
+**Start the client**
+
+On a second window:
+
+.. code-block:: bash
+
+    cd massa/massa-client/
+
+Then:
+
+.. code-block:: bash
+
+    ./massa-client -p <PASSWORD>
+
+Replace <PASSWORD> with a password that you will need to keep to restart your client
+
 From source code
 ================
 
