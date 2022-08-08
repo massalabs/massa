@@ -2541,8 +2541,7 @@ impl BlockGraph {
                 massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
 
                 // Prune shared storage
-                // TODO manage properly
-                self.storage.remove_blocks(&[block_id]);
+                self.storage.drop_block_refs(&[block_id]);
 
                 if let Some(reason) = reason_opt {
                     // add to stats if reason is Stale
@@ -2596,8 +2595,7 @@ impl BlockGraph {
             to_prune.push(*block_id);
         });
         // Prune shared storage
-        // TODO manage properly
-        self.storage.remove_blocks(&to_prune);
+        self.storage.drop_block_refs(&to_prune);
     }
 
     fn prune_discarded(&mut self) -> Result<()> {
@@ -2624,9 +2622,8 @@ impl BlockGraph {
             self.discarded_index.remove(block_id);
         }
         // Prune shared storage
-        // TODO manage properly
         let ids: Vec<BlockId> = discard_hashes.into_iter().map(|(_, id)| id).collect();
-        self.storage.remove_blocks(&ids);
+        self.storage.drop_block_refs(&ids);
         Ok(())
     }
 
