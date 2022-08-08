@@ -40,6 +40,9 @@ Setting up a node
 - `French - Article and tutorial to launch a node using a VPS <https://www.muchco.in/academy/tutoriel-creation-noeud-massa>`_
 - `French - Tutorial to launch a node using a VPS <https://medium.com/@bouqsi/lancer-un-node-chez-massa-labs-8da7e01738c>`_
 - `French - Security best practices article <https://medium.com/@bouqsi/security-best-practices-si-vous-lancez-un-node-validateur-99f44b520f84>`_
+----
+- `Turkish - Article and tutorial to launch a node using a VPS <https://medium.com/@altai0/massa-the-decentralized-and-scaled-blockchain-d%C3%BC%C4%9F%C3%BCm-olu%C5%9Fturma-t%C3%BCrk%C3%A7e-7713d46c246c>`_
+- `Turkish - Tutorial video for starting a node <https://youtu.be/oIueyQIQ734>`_
 
 Tracking the activity of a node
 ===============================
@@ -47,6 +50,7 @@ Tracking the activity of a node
 - `Monitoring scripts and commands <https://github.com/massalabs/massa/wiki/Monitoring-scripts-and-commands>`_
 - `Telegram Bot to track node activity <https://t.me/massacheck_bot>`_
 - `Telegram Bot to track node activity and network statistics <https://t.me/hekumatiarubot>`_
+- `Telegram Bot to track node activity <https://t.me/MassaHelperBot>`_
 - `Website to monitor your node <https://paranormal-brothers.com/massa/>`_
 - `Another website to monitor your node <https://grafana-massa.trend-deposits.com/d/MLcl7dt7k/massa-overview?orgId=2>`_
 - `Script to monitor faulty blocks of your node <https://github.com/WeVouT/massa/tree/main/monitor>`_

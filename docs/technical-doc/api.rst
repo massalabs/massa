@@ -16,6 +16,8 @@ locally running `massa-node`):
 
     curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0", "method": "node_stop", "id": 123 }' 127.0.0.1:33034
 
+You can interact with the Massa RPC API on `OpenRPC Playground <https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/massalabs/massa/main/docs/technical-doc/openrpc.json>`_.
+
 Endpoints are organized in 2 authorizations levels:
 
 **Public** API
