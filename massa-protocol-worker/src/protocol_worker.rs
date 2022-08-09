@@ -2,7 +2,6 @@
 
 use crate::checked_operations::CheckedOperations;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
-use itertools::Itertools;
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
@@ -362,16 +361,11 @@ impl ProtocolWorker {
             "cmd": cmd
         });
         match cmd {
-            ProtocolCommand::IntegratedBlock {
-                block_id,
-                operation_ids,
-                endorsement_ids,
-            } => {
+            ProtocolCommand::IntegratedBlock { block_id, .. } => {
                 massa_trace!(
                     "protocol.protocol_worker.process_command.integrated_block.begin",
                     { "block_id": block_id }
                 );
-                let now = Instant::now();
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // node that isn't asking for that block
                     let cond = node_info.get_known_block(&block_id);

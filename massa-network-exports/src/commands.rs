@@ -138,21 +138,21 @@ pub struct NodeEvent(pub NodeId, pub NodeEventType);
 /// Ask for the info about a block.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum AskForBlocksInfo {
-    // The info about the block is required(list of operations ids).
+    /// The info about the block is required(list of operations ids).
     #[default]
     Info,
-    // The actual operations are required.
+    /// The actual operations are required.
     Operations(OperationIds),
 }
 
-/// Reply with the content required for a block.
+/// Reply with the info about a block.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReplyForBlocksInfo {
-    // The info about the block is required(list of operations ids).
+    /// The info about the block is required(list of operations ids).
     Info(OperationIds),
-    // The actual operations required.
+    /// The actual operations required.
     Operations(OperationIds),
-    // Block not found
+    /// Block not found
     NotFound,
 }
 
@@ -240,11 +240,11 @@ pub enum NetworkCommand {
 /// A node replied with info about a block.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BlockInfoReply {
-    // The info about the block is required(list of operations ids).
+    /// The info about the block is required(list of operations ids).
     Info(OperationIds),
-    // The actual operations required.
+    /// The actual operations required.
     Operations(Operations),
-    // Block not found
+    /// Block not found
     NotFound,
 }
 

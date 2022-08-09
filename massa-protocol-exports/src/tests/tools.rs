@@ -307,13 +307,12 @@ pub async fn assert_hash_asked_to_node(
         NetworkCommand::AskForBlocks { list } => Some(list),
         _ => None,
     };
-    let list = network_controller
+    let mut list = network_controller
         .wait_command(1000.into(), ask_for_block_cmd_filter)
         .await
         .expect("Hash not asked for before timer.");
 
-    // FIXME
-    //assert!(list.get(&node_id).unwrap().contains(&hash_1));
+    assert_eq!(list.get_mut(&node_id).unwrap().pop().unwrap().0, hash_1);
 }
 
 /// retrieve what blocks where asked to which nodes
