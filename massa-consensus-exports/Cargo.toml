@@ -22,10 +22,11 @@ massa_graph = { path = "../massa-graph" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_pool_exports = { path = "../massa-pool-exports" }
+massa_pos_exports = { path = "../massa-pos-exports" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
-massa_pos_exports = { path = "../massa-pos-exports" }
+massa_storage = { path = "../massa-storage" }
 
 [dev-dependencies]
 massa_models = { path = "../massa-models", features = ["testing"] }

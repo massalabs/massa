@@ -51,9 +51,9 @@ impl OperationPool {
     }
 
     /// notify of new final slot
-    pub fn notify_final_cs_periods(&mut self, final_cs_periods: &Vec<u64>) {
+    pub fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final slot counter
-        self.last_cs_final_periods = final_cs_periods.clone();
+        self.last_cs_final_periods = final_cs_periods.to_vec();
 
         // prune old ops
         let mut removed_ops: Set<_> = Default::default();

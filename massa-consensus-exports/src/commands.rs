@@ -6,7 +6,7 @@ use massa_models::prehash::{Map, Set};
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{Address, BlockId, OperationSearchResult, Slot, WrappedEndorsement};
-use massa_signature::KeyPair;
+use massa_storage::Storage;
 use tokio::sync::oneshot;
 
 /// Commands that can be processed by consensus.
@@ -42,23 +42,17 @@ pub enum ConsensusCommand {
         /// wanted address
         address: Address,
         /// response channel
-        response_tx: oneshot::Sender<Map<OperationId, OperationSearchResult>>,
+        response_tx: oneshot::Sender<(Map<OperationId, OperationSearchResult>, Storage)>,
     },
     /// Get some information on operations by operation ids
     GetOperations {
         /// wanted ids
         operation_ids: Set<OperationId>,
         /// response channel
-        response_tx: oneshot::Sender<Map<OperationId, OperationSearchResult>>,
+        response_tx: oneshot::Sender<(Map<OperationId, OperationSearchResult>, Storage)>,
     },
     /// get current stats on consensus
     GetStats(oneshot::Sender<ConsensusStats>),
-    /// Add keys to use them for staking
-    RegisterStakingKeys(Vec<KeyPair>),
-    /// Remove associated staking keys
-    RemoveStakingAddresses(Set<Address>),
-    /// Get staking addresses
-    GetStakingAddresses(oneshot::Sender<Set<Address>>),
     /// Get block id and status by block creator address
     GetBlockIdsByCreator {
         /// wanted address
@@ -71,14 +65,14 @@ pub enum ConsensusCommand {
         /// wanted address
         address: Address,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, WrappedEndorsement>>,
+        response_tx: oneshot::Sender<(Map<EndorsementId, WrappedEndorsement>, Storage)>,
     },
     /// get endorsements by id
     GetEndorsementsById {
         /// Wanted endorsement ids
         endorsements: Set<EndorsementId>,
         /// response channel
-        response_tx: oneshot::Sender<Map<EndorsementId, EndorsementInfo>>,
+        response_tx: oneshot::Sender<(Map<EndorsementId, EndorsementInfo>, Storage)>,
     },
     /// Get cliques
     GetCliques(oneshot::Sender<Vec<Clique>>),

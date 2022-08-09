@@ -542,6 +542,12 @@ impl BitVecSerializer {
     }
 }
 
+impl Default for BitVecSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<BitVec<u8>> for BitVecSerializer {
     fn serialize(&self, value: &BitVec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         let n_entries: u32 = value.len().try_into().map_err(|err| {
@@ -570,6 +576,12 @@ impl BitVecDeserializer {
                 Included(u32::MAX),
             ),
         }
+    }
+}
+
+impl Default for BitVecDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

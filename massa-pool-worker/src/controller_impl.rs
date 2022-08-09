@@ -29,7 +29,7 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// notify of new final consensus periods (1 per thread)
-    fn notify_final_cs_periods(&mut self, final_cs_periods: &Vec<u64>) {
+    fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         self.operation_pool
             .write()
             .expect("could not w-lock operation pool")
