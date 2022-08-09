@@ -315,7 +315,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
     protocol_test(
         protocol_settings,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
+                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {

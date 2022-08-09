@@ -36,7 +36,6 @@ where
     ) = start_protocol_controller(
         protocol_settings,
         5u64,
-        10,
         network_command_sender,
         network_event_receiver,
         Default::default(),
@@ -97,7 +96,6 @@ where
     ) = start_protocol_controller(
         protocol_settings,
         5u64,
-        10,
         network_command_sender,
         network_event_receiver,
         storage.clone(),

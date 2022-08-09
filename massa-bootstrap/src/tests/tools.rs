@@ -15,8 +15,7 @@ use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::constants::default::{
-    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_PER_SLOT,
-    MAX_PARAMETERS_SIZE, MAX_PRODUCTION_EVENTS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_LEDGER_CHANGES_PER_SLOT, MAX_PRODUCTION_EVENTS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
     MAX_ROLLS_COUNTS_LENGTH, MAX_ROLLS_UPDATE_LENGTH,
 };
 use massa_models::constants::{
@@ -24,14 +23,12 @@ use massa_models::constants::{
     MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_POS_CYCLES, MAX_BOOTSTRAP_POS_ENTRIES,
     MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
 };
-use massa_models::operation::OperationSerializer;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     rolls::{RollCounts, RollUpdate, RollUpdateSerializer, RollUpdates},
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Operation,
-    Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Slot,
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
@@ -574,9 +571,6 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         MAX_OPERATIONS_PER_BLOCK,
         MAX_LEDGER_CHANGES_PER_SLOT,
         MAX_PRODUCTION_EVENTS_PER_BLOCK,
-        MAX_DATASTORE_VALUE_LENGTH,
-        MAX_FUNCTION_NAME_LENGTH,
-        MAX_PARAMETERS_SIZE,
     );
 
     let mut bootstrapable_graph_serialized = Vec::new();

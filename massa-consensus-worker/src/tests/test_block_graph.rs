@@ -679,9 +679,6 @@ fn test_bootstrapable_graph_serialized() {
         MAX_OPERATIONS_PER_BLOCK,
         MAX_LEDGER_CHANGES_PER_SLOT,
         MAX_PRODUCTION_EVENTS_PER_BLOCK,
-        MAX_DATASTORE_VALUE_LENGTH,
-        MAX_FUNCTION_NAME_LENGTH,
-        MAX_PARAMETERS_SIZE,
     );
     let mut bytes = Vec::new();
 

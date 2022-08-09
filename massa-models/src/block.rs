@@ -755,10 +755,7 @@ mod test {
     use super::*;
     use crate::{
         endorsement::EndorsementSerializer,
-        node_configuration::{
-            default::{MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE},
-            ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK,
-        },
+        node_configuration::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK},
         Endorsement,
     };
     use massa_serialization::DeserializeError;
@@ -822,17 +819,11 @@ mod test {
             .unwrap();
 
         // deserialize
-        let (rest, res_block): (&[u8], WrappedBlock) =
-            WrappedDeserializer::new(BlockDeserializer::new(
-                THREAD_COUNT,
-                MAX_OPERATIONS_PER_BLOCK,
-                ENDORSEMENT_COUNT,
-                MAX_DATASTORE_VALUE_LENGTH,
-                MAX_FUNCTION_NAME_LENGTH,
-                MAX_PARAMETERS_SIZE,
-            ))
-            .deserialize::<DeserializeError>(&ser_block)
-            .unwrap();
+        let (rest, res_block): (&[u8], WrappedBlock) = WrappedDeserializer::new(
+            BlockDeserializer::new(THREAD_COUNT, MAX_OPERATIONS_PER_BLOCK, ENDORSEMENT_COUNT),
+        )
+        .deserialize::<DeserializeError>(&ser_block)
+        .unwrap();
         assert!(rest.is_empty());
         // check equality
         assert_eq!(orig_block.header.id, res_block.content.header.id);

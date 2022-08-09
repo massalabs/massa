@@ -81,7 +81,7 @@ async fn test_inter_cycle_batch_finalization() {
         cfg.clone(),
         None,
         None,
-        async move |mut pool_controller,
+        async move |pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,

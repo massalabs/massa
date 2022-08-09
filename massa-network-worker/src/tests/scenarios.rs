@@ -26,7 +26,8 @@ use massa_models::EndorsementSerializer;
 use massa_models::{node::NodeId, wrapped::WrappedContent, BlockId, Endorsement, Slot};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
-    ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
+    AskForBlocksInfo, BlockInfoReply, ConnectionClosureReason, ConnectionId, HandshakeErrorType,
+    PeerInfo, PeerType, ReplyForBlocksInfo,
 };
 use massa_serialization::Serializer;
 use massa_signature::KeyPair;
@@ -806,7 +807,7 @@ async fn test_block_not_found() {
             conn1_w
                 .send(
                     &message_serialized,
-                )
+                ).await
                 .expect("Fail to serialize message");
             conn1_w.send(&message_serialized).await.unwrap();
 
@@ -919,7 +920,7 @@ async fn test_block_not_found() {
             conn1_w
                 .send(
                     &message_serialized,
-                )
+                ).await
                 .expect("Fail to serialize message");
             conn1_w.send(&message_serialized).await.unwrap();
             // assert it is sent to protocol

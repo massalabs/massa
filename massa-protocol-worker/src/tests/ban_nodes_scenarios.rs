@@ -41,7 +41,6 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
                 match evt {
                     evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
                     evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
                 }
             })
             .await
@@ -153,7 +152,6 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 match evt {
                     evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
                     evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
                 }
             })
             .await
@@ -181,7 +179,6 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 match evt {
                     evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
                     evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
                 }
             })
             .await
@@ -296,8 +293,8 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     protocol_test(
         protocol_settings,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
-                    mut protocol_command_sender,
+                    protocol_event_receiver,
+                    protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {
             let send_block_or_header_cmd_filter = |cmd| match cmd {
