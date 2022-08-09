@@ -159,10 +159,7 @@ impl PoSFinalState {
     }
 
     /// TODO
-    pub fn set_pos_state_part<'a>(
-        &mut self,
-        part: &'a [u8],
-    ) -> Result<PoSBootstrapCursor, ModelsError> {
+    pub fn set_pos_state_part<'a>(&mut self, part: &'a [u8]) -> Result<(), ModelsError> {
         // TODO: define deserializers limits
         let amount_deser = AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let slot_deser = SlotDeserializer::new(
@@ -172,7 +169,7 @@ impl PoSFinalState {
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let bitvec_deser = BitVecDeserializer::new();
         let address_deser = AddressDeserializer::new();
-        let _result = context(
+        let (rest, (credits, cycles)) = context(
             "Failed PoSFinalState deserialization",
             tuple((
                 context(
@@ -241,9 +238,49 @@ impl PoSFinalState {
                 ),
             )),
         )
-        .map(|(_deferred_credits, _cycles)| 42)
-        .parse(part);
-        Ok(PoSBootstrapCursor::default())
+        .parse(part)
+        .unwrap();
+        // output type: (Vec<(Slot, Vec<(Address, Amount)>)>, Vec<(u64, u64, Vec<(Address, u64)>, bitvec::vec::BitVec<u8>, Vec<(Address, u64, u64)>)>)
+        if rest.is_empty() {
+            let sorted_credits: BTreeMap<Slot, Map<Address, Amount>> = credits
+                .into_iter()
+                .map(|(slot, credits)| (slot, credits.into_iter().collect()))
+                .collect();
+            self.deferred_credits.extend(sorted_credits);
+            for item in cycles {
+                let stats_iter =
+                    item.4
+                        .into_iter()
+                        .map(|(addr, block_success_count, block_failure_count)| {
+                            (
+                                addr,
+                                ProductionStats {
+                                    block_success_count,
+                                    block_failure_count,
+                                },
+                            )
+                        });
+                if let Some(info) = self.cycle_history.front_mut() && info.cycle == item.0 {
+                    info.complete = if item.1 == 1 { true } else { false };
+                    info.roll_counts.extend(item.2);
+                    info.rng_seed.extend(item.3);
+                    info.production_stats.extend(stats_iter);
+                } else {
+                    self.cycle_history.push_front(CycleInfo {
+                        cycle: item.0,
+                        complete: if item.1 == 1 { true } else { false },
+                        roll_counts: item.2.into_iter().collect(),
+                        rng_seed: item.3,
+                        production_stats: stats_iter.collect(),
+                    })
+                }
+            }
+            Ok(())
+        } else {
+            Err(ModelsError::SerializeError(
+                "data is left after PoSFinalState part deserialization".to_string(),
+            ))
+        }
     }
 }
 
