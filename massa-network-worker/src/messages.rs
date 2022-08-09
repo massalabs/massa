@@ -19,7 +19,6 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
 use massa_signature::{PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer};
-use massa_storage::Storage;
 use nom::{
     bytes::complete::take,
     error::{context, ContextError, ParseError},
@@ -107,7 +106,6 @@ pub struct MessageSerializer {
     operations_ids_serializer: OperationIdsSerializer,
     operations_serializer: OperationsSerializer,
     ip_addr_serializer: IpAddrSerializer,
-    storage: Storage,
 }
 
 impl MessageSerializer {
@@ -121,7 +119,6 @@ impl MessageSerializer {
             operations_ids_serializer: OperationIdsSerializer::new(),
             operations_serializer: OperationsSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
-            storage,
         }
     }
 }
