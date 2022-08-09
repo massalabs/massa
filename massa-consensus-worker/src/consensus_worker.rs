@@ -610,7 +610,6 @@ impl ConsensusWorker {
                     finished = true;
                     break;
                 }
-                self.block_db.storage.store_operation(op);
             }
         }
 
