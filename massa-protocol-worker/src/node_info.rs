@@ -22,8 +22,6 @@ pub(crate) struct NodeInfo {
     /// The blocks the node "knows about",
     /// defined as the one the node propagated headers to us for.
     pub(crate) known_blocks: Map<BlockId, (bool, Instant)>,
-    /// The blocks the node asked for.
-    pub(crate) wanted_blocks: Map<BlockId, Instant>,
     /// Blocks we asked that node for
     pub asked_blocks: Map<BlockId, Instant>,
     /// Instant when the node was added
@@ -44,10 +42,6 @@ impl NodeInfo {
         NodeInfo {
             known_blocks: Map::with_capacity_and_hasher(
                 pool_settings.max_node_known_blocks_size,
-                BuildMap::default(),
-            ),
-            wanted_blocks: Map::with_capacity_and_hasher(
-                pool_settings.max_node_wanted_blocks_size,
                 BuildMap::default(),
             ),
             asked_blocks: Default::default(),
@@ -147,52 +141,5 @@ impl NodeInfo {
 
     pub fn knows_op(&self, op: &OperationId) -> bool {
         self.known_operations.contains(op)
-    }
-
-    /// Remove the oldest items from `wanted_blocks`
-    /// to ensure it contains at most `max_node_wanted_blocks_size` items.
-    /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
-    fn remove_excess_wanted_blocks(&mut self, max_node_wanted_blocks_size: usize) {
-        while self.wanted_blocks.len() > max_node_wanted_blocks_size {
-            // remove oldest item
-            let (&h, _) = self
-                .wanted_blocks
-                .iter()
-                .min_by_key(|(h, t)| (*t, *h))
-                .unwrap(); // never None because is the collection is empty, while loop isn't executed.
-            self.wanted_blocks.remove(&h);
-        }
-    }
-
-    /// Insert a block in the wanted list of a node.
-    /// Also lists the block as not known by the node
-    pub fn insert_wanted_block(
-        &mut self,
-        block_id: BlockId,
-        max_node_wanted_blocks_size: usize,
-        max_node_known_blocks_size: usize,
-    ) {
-        // Insert into known_blocks
-        let now = Instant::now();
-        self.wanted_blocks.insert(block_id, now);
-        self.remove_excess_wanted_blocks(max_node_wanted_blocks_size);
-
-        // If the node wants a block, it means that it doesn't have it.
-        // To avoid asking the node for this block in the meantime,
-        // mark the node as not knowing the block.
-        self.insert_known_blocks(&[block_id], false, now, max_node_known_blocks_size);
-    }
-
-    /// returns whether a node wants a block, and if so, updates the timestamp of that info to now()
-    pub fn contains_wanted_block_update_timestamp(&mut self, block_id: &BlockId) -> bool {
-        self.wanted_blocks
-            .get_mut(block_id)
-            .map(|instant| *instant = Instant::now())
-            .is_some()
-    }
-
-    /// Removes given block from wanted block for that node
-    pub fn remove_wanted_block(&mut self, block_id: &BlockId) -> bool {
-        self.wanted_blocks.remove(block_id).is_some()
     }
 }

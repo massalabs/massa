@@ -1345,44 +1345,6 @@ mod tests {
         BlockId(Hash::compute_from(s.as_bytes()))
     }
 
-    /// Test the pruning behavior of `NodeInfo::insert_wanted_block`
-    #[test]
-    #[serial]
-    fn test_node_info_wanted_blocks_pruning() {
-        let protocol_settings = &PROTOCOL_SETTINGS;
-        let mut nodeinfo = NodeInfo::new(protocol_settings);
-
-        // cap to 10 wanted blocks
-        let max_node_wanted_blocks_size = 10;
-
-        // cap to 5 known blocks
-        let max_node_known_blocks_size = 5;
-
-        // try to insert 15 wanted blocks
-        for index in 0usize..15 {
-            let hash = get_dummy_block_id(&index.to_string());
-            nodeinfo.insert_wanted_block(
-                hash,
-                max_node_wanted_blocks_size,
-                max_node_known_blocks_size,
-            );
-        }
-
-        // ensure that only max_node_wanted_blocks_size wanted blocks are kept
-        assert_eq!(
-            nodeinfo.wanted_blocks.len(),
-            max_node_wanted_blocks_size,
-            "wanted_blocks pruning incorrect"
-        );
-
-        // ensure that there are max_node_known_blocks_size entries for known blocks
-        assert_eq!(
-            nodeinfo.known_blocks.len(),
-            max_node_known_blocks_size,
-            "known_blocks pruning incorrect"
-        );
-    }
-
     #[test]
     #[serial]
     fn test_node_info_know_block() {
@@ -1435,62 +1397,6 @@ mod tests {
         for index in 1..9 {
             let hash = get_dummy_block_id(&index.to_string());
             assert!(nodeinfo.get_known_block(&hash).is_some());
-        }
-    }
-
-    #[test]
-    #[serial]
-    fn test_node_info_wanted_block() {
-        let max_node_wanted_blocks_size = 10;
-        let max_node_known_blocks_size = 10;
-        let protocol_settings = &PROTOCOL_SETTINGS;
-        let mut nodeinfo = NodeInfo::new(protocol_settings);
-
-        let hash = get_dummy_block_id("test");
-        nodeinfo.insert_wanted_block(
-            hash,
-            max_node_wanted_blocks_size,
-            max_node_known_blocks_size,
-        );
-        assert!(nodeinfo.contains_wanted_block_update_timestamp(&hash));
-        nodeinfo.remove_wanted_block(&hash);
-        assert!(!nodeinfo.contains_wanted_block_update_timestamp(&hash));
-
-        for index in 0..9 {
-            let hash = get_dummy_block_id(&index.to_string());
-            nodeinfo.insert_wanted_block(
-                hash,
-                max_node_wanted_blocks_size,
-                max_node_known_blocks_size,
-            );
-            assert!(nodeinfo.contains_wanted_block_update_timestamp(&hash));
-        }
-
-        // change the oldest time to now
-        assert!(
-            nodeinfo.contains_wanted_block_update_timestamp(&get_dummy_block_id(&0.to_string()))
-        );
-        // add hash that triggers container pruning
-        nodeinfo.insert_wanted_block(
-            get_dummy_block_id("test2"),
-            max_node_wanted_blocks_size,
-            max_node_known_blocks_size,
-        );
-
-        // 0 is present because because its timestamp has been updated with contains_wanted_block
-        assert!(
-            nodeinfo.contains_wanted_block_update_timestamp(&get_dummy_block_id(&0.to_string()))
-        );
-
-        // 1 has been removed because it's the oldest.
-        assert!(
-            nodeinfo.contains_wanted_block_update_timestamp(&get_dummy_block_id(&1.to_string()))
-        );
-
-        // Other blocks are present.
-        for index in 2..9 {
-            let hash = get_dummy_block_id(&index.to_string());
-            assert!(nodeinfo.contains_wanted_block_update_timestamp(&hash));
         }
     }
 }
