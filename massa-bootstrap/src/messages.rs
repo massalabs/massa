@@ -10,9 +10,6 @@ use massa_models::slot::SlotDeserializer;
 use massa_models::{slot::SlotSerializer, Slot, Version};
 use massa_models::{VecU8Deserializer, VecU8Serializer, VersionDeserializer, VersionSerializer};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
-use massa_proof_of_stake_exports::{
-    ExportProofOfStake, ExportProofOfStakeDeserializer, ExportProofOfStakeSerializer,
-};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -46,8 +43,6 @@ pub enum BootstrapServerMessage {
     },
     /// Consensus state
     ConsensusState {
-        /// PoS
-        pos: ExportProofOfStake,
         /// block graph
         graph: BootstrapableGraph,
     },
@@ -92,7 +87,6 @@ pub struct BootstrapServerMessageSerializer {
     time_serializer: MassaTimeSerializer,
     version_serializer: VersionSerializer,
     peers_serializer: BootstrapPeersSerializer,
-    pos_serializer: ExportProofOfStakeSerializer,
     state_changes_serializer: StateChangesSerializer,
     bootstrapable_graph_serializer: BootstrapableGraphSerializer,
     vec_u8_serializer: VecU8Serializer,
@@ -107,7 +101,6 @@ impl BootstrapServerMessageSerializer {
             time_serializer: MassaTimeSerializer::new(),
             version_serializer: VersionSerializer::new(),
             peers_serializer: BootstrapPeersSerializer::new(),
-            pos_serializer: ExportProofOfStakeSerializer::new(),
             state_changes_serializer: StateChangesSerializer::new(),
             bootstrapable_graph_serializer: BootstrapableGraphSerializer::new(),
             vec_u8_serializer: VecU8Serializer::new(),
@@ -153,10 +146,9 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(&u32::from(MessageServerTypeId::Peers), buffer)?;
                 self.peers_serializer.serialize(peers, buffer)?;
             }
-            BootstrapServerMessage::ConsensusState { pos, graph } => {
+            BootstrapServerMessage::ConsensusState { graph } => {
                 self.u32_serializer
                     .serialize(&u32::from(MessageServerTypeId::ConsensusState), buffer)?;
-                self.pos_serializer.serialize(pos, buffer)?;
                 self.bootstrapable_graph_serializer
                     .serialize(graph, buffer)?;
             }
@@ -204,7 +196,6 @@ pub struct BootstrapServerMessageDeserializer {
     time_deserializer: MassaTimeDeserializer,
     version_deserializer: VersionDeserializer,
     peers_deserializer: BootstrapPeersDeserializer,
-    pos_deserializer: ExportProofOfStakeDeserializer,
     state_changes_deserializer: StateChangesDeserializer,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
     final_state_parts_deserializer: VecU8Deserializer,
@@ -248,14 +239,6 @@ impl BootstrapServerMessageDeserializer {
             )),
             version_deserializer: VersionDeserializer::new(),
             peers_deserializer: BootstrapPeersDeserializer::new(max_advertise_length),
-            pos_deserializer: ExportProofOfStakeDeserializer::new(
-                thread_count,
-                max_bootstrap_pos_cycles,
-                max_rng_seed_length,
-                max_rolls_update_length,
-                max_rolls_counts_length,
-                max_production_stats_length,
-            ),
             state_changes_deserializer: StateChangesDeserializer::new(
                 thread_count,
                 max_async_pool_changes,
@@ -358,16 +341,13 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                 })
                 .map(|peers| BootstrapServerMessage::BootstrapPeers { peers })
                 .parse(input),
-                MessageServerTypeId::ConsensusState => tuple((
-                    context("Failed pos deserialization", |input| {
-                        self.pos_deserializer.deserialize(input)
-                    }),
+                MessageServerTypeId::ConsensusState => {
                     context("Failed graph deserialization", |input| {
                         self.bootstrapable_graph_deserializer.deserialize(input)
-                    }),
-                ))
-                .map(|(pos, graph)| BootstrapServerMessage::ConsensusState { pos, graph })
-                .parse(input),
+                    })
+                    .map(|graph| BootstrapServerMessage::ConsensusState { graph })
+                    .parse(input)
+                }
                 MessageServerTypeId::FinalStatePart => tuple((
                     context("Failed ledger_data deserialization", |input| {
                         self.final_state_parts_deserializer.deserialize(input)

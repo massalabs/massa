@@ -193,6 +193,33 @@ impl OperationId {
     }
 }
 
+/// Deserializer for `OperationId`
+#[derive(Default)]
+pub struct OperationIdDeserializer {
+    hash_deserializer: HashDeserializer,
+}
+
+impl OperationIdDeserializer {
+    /// Creates a new deserializer for `OperationId`
+    pub fn new() -> Self {
+        Self {
+            hash_deserializer: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<OperationId> for OperationIdDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], OperationId, E> {
+        context("Failed OperationId deserialization", |input| {
+            let (rest, hash) = self.hash_deserializer.deserialize(input)?;
+            Ok((rest, OperationId(hash)))
+        })(buffer)
+    }
+}
+
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
 enum OperationTypeId {
@@ -798,7 +825,7 @@ impl WrappedOperation {
         start..=self.content.expire_period
     }
 
-    /// Get the amount of gas used by the operation
+    /// Get the max amount of gas used by the operation (max_gas)
     pub fn get_gas_usage(&self) -> u64 {
         match &self.content.op {
             OperationType::ExecuteSC { max_gas, .. } => *max_gas,
@@ -809,19 +836,26 @@ impl WrappedOperation {
         }
     }
 
-    /// Get the amount of coins used by the operation to pay for gas
-    pub fn get_gas_coins(&self) -> Amount {
+    /// Get the gas price set by the operation
+    pub fn get_gas_price(&self) -> Amount {
         match &self.content.op {
-            OperationType::ExecuteSC {
-                max_gas, gas_price, ..
-            } => gas_price.saturating_mul_u64(*max_gas),
-            OperationType::CallSC {
-                max_gas, gas_price, ..
-            } => gas_price.saturating_mul_u64(*max_gas),
+            OperationType::ExecuteSC { gas_price, .. } => *gas_price,
+            OperationType::CallSC { gas_price, .. } => *gas_price,
             OperationType::RollBuy { .. } => Amount::default(),
             OperationType::RollSell { .. } => Amount::default(),
             OperationType::Transaction { .. } => Amount::default(),
         }
+    }
+
+    /// Get the amount of coins used by the operation to pay for gas
+    pub fn get_gas_coins(&self) -> Amount {
+        self.get_gas_price()
+            .saturating_mul_u64(self.get_gas_usage())
+    }
+
+    /// Get the total fee paid by the creator
+    pub fn get_total_fee(&self) -> Amount {
+        self.get_gas_coins().saturating_add(self.content.fee)
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view
@@ -843,6 +877,40 @@ impl WrappedOperation {
             }
         }
         res
+    }
+
+    /// Gets the maximal amount of sequential coins that may be spent by this operation (incl. fee)
+    pub fn get_max_sequential_spending(&self, roll_price: Amount) -> Amount {
+        // compute the max amount of sequential coins spent outside of the fees
+        let max_nonfee_seq_spending = match &self.content.op {
+            OperationType::Transaction { amount, .. } => *amount,
+            OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
+            OperationType::RollSell { .. } => Amount::zero(),
+            OperationType::ExecuteSC { coins, .. } => *coins,
+            OperationType::CallSC {
+                sequential_coins, ..
+            } => *sequential_coins,
+        };
+
+        // add all fees and return
+        max_nonfee_seq_spending.saturating_add(self.get_total_fee())
+    }
+
+    /// get the addresses that are involved in this operation from a rolls point of view
+    pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
+        let mut res = Set::<Address>::default();
+        match self.content.op {
+            OperationType::Transaction { .. } => {}
+            OperationType::RollBuy { .. } => {
+                res.insert(Address::from_public_key(&self.creator_public_key));
+            }
+            OperationType::RollSell { .. } => {
+                res.insert(Address::from_public_key(&self.creator_public_key));
+            }
+            OperationType::ExecuteSC { .. } => {}
+            OperationType::CallSC { .. } => {}
+        }
+        Ok(res)
     }
 }
 

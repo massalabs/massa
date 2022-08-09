@@ -101,10 +101,22 @@ pub const PERIODS_PER_CYCLE: u64 = 128;
 pub const POS_LOOKBACK_CYCLES: u64 = 2;
 /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
 pub const POS_LOCK_CYCLES: u64 = 1;
+/// PoS sell cycles: when some rolls are sold, we only credit the coins back to their owner after waiting `pos_sell_cycles`
+pub const POS_SELL_CYCLES: u64 = 3;
+/// PoS saved cycles: number of cycles saved in `PoSFinalState`
+pub const POS_SAVED_CYCLES: u64 = 4;
 /// Maximum size batch of data in a part of the ledger
 pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum async messages in a batch of the bootstrap of the async pool
 pub const ASYNC_POOL_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum deferred credits in a bootstrap batch
+pub const DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum cycle info in a bootstrap batch
+pub const CYCLE_INFO_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum rolls in a bootstrap batch
+pub const ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
+/// Maximum production stats in a bootstrap batch
+pub const PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES: u64 = 1000000;
 /// Maximum length of a datastore key
 pub const MAX_DATASTORE_KEY_LENGTH: u8 = 255;
 /// Maximum length of a datastore value

@@ -2,11 +2,16 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
+    array_from_slice,
+    constants::*,
     ledger_models::{LedgerChangeDeserializer, LedgerChangeSerializer, LedgerChanges},
+    prehash::{BuildMap, Map, Set},
     prehash::{Map, Set},
     rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
+    u8_from_slice,
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    *,
+    BlockDeserializer, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
+    SerializeCompact, SerializeVarInt, WrappedBlock,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -42,12 +47,6 @@ pub struct ExportActiveBlock {
     pub dependencies: Set<BlockId>,
     /// for example has its fitness reached the given threshold
     pub is_final: bool,
-    /// Changes caused by this block
-    pub block_ledger_changes: LedgerChanges,
-    /// `Address -> RollUpdate`
-    pub roll_updates: RollUpdates,
-    /// list of `(period, address, did_create)` for all block/endorsement creation events
-    pub production_events: Vec<(u64, Address, bool)>,
 }
 
 impl ExportActiveBlock {
@@ -67,9 +66,6 @@ impl ExportActiveBlock {
             children: a_block.children.clone(),
             dependencies: a_block.dependencies.clone(),
             is_final: a_block.is_final,
-            block_ledger_changes: a_block.block_ledger_changes.clone(),
-            roll_updates: a_block.roll_updates.clone(),
-            production_events: a_block.production_events.clone(),
         })
     }
 
@@ -117,16 +113,10 @@ impl ExportActiveBlock {
             children: self.children.clone(),
             dependencies: self.dependencies.clone(),
             descendants: Default::default(), // will be computed once the full graph is available
-            is_final: self.is_final,
-            block_ledger_changes: self.block_ledger_changes.clone(),
-            operation_set: operation_set
-                .into_iter()
-                .map(|(id, (idx, _))| (id, idx))
-                .collect(),
+            is_final: a_block.is_final,
+            operation_set,
             endorsement_ids,
             addresses_to_operations,
-            roll_updates: self.roll_updates.clone(),
-            production_events: self.production_events.clone(),
             addresses_to_endorsements,
             slot: self.block.content.header.content.slot,
         })

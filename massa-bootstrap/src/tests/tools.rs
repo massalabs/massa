@@ -32,10 +32,6 @@ use massa_models::{
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
-use massa_proof_of_stake_exports::{
-    ExportProofOfStake, ExportProofOfStakeDeserializer, ExportProofOfStakeSerializer,
-    ThreadCycleState,
-};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;

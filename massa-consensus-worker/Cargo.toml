@@ -12,15 +12,11 @@ tokio = { version = "1.19", features = ["full"] }
 tracing = "0.1"
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_cipher = { path = "../massa-cipher" }
 massa_graph = { path = "../massa-graph" }
-massa_hash = { path = "../massa-hash" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
-massa_proof_of_stake_exports = { path = "../massa-proof-of-stake-exports" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
-massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
@@ -33,7 +29,7 @@ massa_execution_exports = { path = "../massa-execution-exports", features = [
 massa_consensus_exports = { path = "../massa-consensus-exports", features = [
     "testing",
 ] }
-massa_pool = { path = "../massa-pool" }
+massa_pool_exports = { path = "../massa-pool-exports" }
 massa_serialization = { path = "../massa-serialization"}
 num = { version = "0.4", features = ["serde"] }
 rand = "0.8"
@@ -47,8 +43,6 @@ instrument = [
     "massa_consensus_exports/instrument",
     "massa_graph/instrument",
     "massa_models/instrument",
-    "massa_proof_of_stake_exports/instrument",
     "massa_protocol_exports/instrument",
-    "massa_time/instrument",
 ]
 sandbox = ["massa_consensus_exports/sandbox"]

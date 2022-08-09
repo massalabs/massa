@@ -8,6 +8,12 @@ pub trait LedgerController: Send + Sync + Debug {
     /// Allows applying `LedgerChanges` to the final ledger
     fn apply_changes(&mut self, changes: LedgerChanges, slot: Slot);
 
+    /// Gets the sequential balance of a ledger entry
+    ///
+    /// # Returns
+    /// The sequential balance, or None if the ledger entry was not found
+    fn get_sequential_balance(&self, addr: &Address) -> Option<Amount>;
+
     /// Gets the parallel balance of a ledger entry
     ///
     /// # Returns

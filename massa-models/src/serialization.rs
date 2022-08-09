@@ -1,20 +1,25 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ModelsError;
+use crate::Amount;
+use bitvec::prelude::BitVec;
+use integer_encoding::VarInt;
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::bytes::complete::take;
 use nom::multi::length_data;
 use nom::sequence::preceded;
 use nom::{branch::alt, Parser, ToUsize};
 use nom::{
-    error::{context, ContextError, ParseError},
+    error::{context, ContextError, ErrorKind, ParseError},
     IResult,
 };
 use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
+use Bound::Included;
 
 /// Serialize min big endian integer
 pub trait SerializeMinBEInt {
@@ -396,6 +401,93 @@ where
             })
             .parse(buffer)?;
         Ok((rest, res?))
+    }
+}
+
+/// `BitVec<u8>` Serializer
+pub struct BitVecSerializer {
+    u32_serializer: U32VarIntSerializer,
+}
+
+impl BitVecSerializer {
+    /// Create a new `BitVec<u8>` Serializer
+    pub fn new() -> BitVecSerializer {
+        BitVecSerializer {
+            u32_serializer: U32VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Default for BitVecSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serializer<BitVec<u8>> for BitVecSerializer {
+    fn serialize(&self, value: &BitVec<u8>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        let n_entries: u32 = value.len().try_into().map_err(|err| {
+            SerializeError::NumberTooBig(format!(
+                "too many entries when serializing a `BitVec<u8>`: {}",
+                err
+            ))
+        })?;
+        self.u32_serializer.serialize(&n_entries, buffer)?;
+        buffer.extend(value.clone().into_vec());
+        Ok(())
+    }
+}
+
+/// `BitVec<u8>` Deserializer
+pub struct BitVecDeserializer {
+    u32_deserializer: U32VarIntDeserializer,
+}
+
+impl BitVecDeserializer {
+    /// Create a new `BitVec<u8>` Deserializer
+    pub fn new() -> BitVecDeserializer {
+        BitVecDeserializer {
+            u32_deserializer: U32VarIntDeserializer::new(
+                Bound::Included(u32::MIN),
+                Included(u32::MAX),
+            ),
+        }
+    }
+}
+
+impl Default for BitVecDeserializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deserializer<BitVec<u8>> for BitVecDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], BitVec<u8>, E> {
+        context("Failed rng_seed deserialization", |input| {
+            let (rest, n_entries) = self.u32_deserializer.deserialize(input)?;
+            let bits_u8_len = n_entries.div_ceil(u8::BITS) as usize;
+            if rest.len() < bits_u8_len {
+                return Err(nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    ErrorKind::Eof,
+                )));
+            }
+            let mut rng_seed: BitVec<u8> = BitVec::try_from_vec(rest[..bits_u8_len].to_vec())
+                .map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, ErrorKind::Eof)))?;
+            rng_seed.truncate(n_entries as usize);
+            if rng_seed.len() != n_entries as usize {
+                return Err(nom::Err::Error(ParseError::from_error_kind(
+                    input,
+                    ErrorKind::Eof,
+                )));
+            }
+            Ok((&rest[bits_u8_len..], rng_seed))
+        })
+        .map(|elements| elements.into_iter().collect())
+        .parse(buffer)
     }
 }
 

@@ -81,6 +81,20 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.apply_changes(changes, slot);
     }
 
+    /// Gets the sequential balance of a ledger entry
+    ///
+    /// # Returns
+    /// The sequential balance, or None if the ledger entry was not found
+    fn get_sequential_balance(&self, addr: &Address) -> Option<Amount> {
+        self.sorted_ledger
+            .get_sub_entry(addr, LedgerSubEntry::SeqBalance)
+            .map(|bytes| {
+                Amount::from_bytes_compact(&bytes)
+                    .expect("critical: invalid sequential balance format")
+                    .0
+            })
+    }
+
     /// Gets the parallel balance of a ledger entry
     ///
     /// # Returns
@@ -89,7 +103,7 @@ impl LedgerController for FinalLedger {
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::ParBalance)
             .map(|bytes| {
                 amount_deserializer
                     .deserialize::<DeserializeError>(&bytes)
@@ -113,7 +127,7 @@ impl LedgerController for FinalLedger {
     /// true if it exists, false otherwise.
     fn entry_exists(&self, addr: &Address) -> bool {
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::SeqBalance)
             .is_some()
     }
 

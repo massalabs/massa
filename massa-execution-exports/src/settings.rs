@@ -2,6 +2,7 @@
 
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
+use massa_models::Amount;
 use massa_time::MassaTime;
 
 /// Execution module configuration
@@ -13,8 +14,12 @@ pub struct ExecutionConfig {
     pub max_final_events: usize,
     /// maximum available gas for asynchronous messages execution
     pub max_async_gas: u64,
+    /// maximum gas per block
+    pub max_gas_per_block: u64,
     /// number of threads
     pub thread_count: u8,
+    /// price of a roll inside the network
+    pub roll_price: Amount,
     /// extra lag to add on the execution cursor to improve performance
     pub cursor_delay: MassaTime,
     /// time compensation in milliseconds
@@ -23,4 +28,12 @@ pub struct ExecutionConfig {
     pub genesis_timestamp: MassaTime,
     /// period duration
     pub t0: MassaTime,
+    /// block creation reward
+    pub block_reward: Amount,
+    /// operation validity period
+    pub operation_validity_period: u64,
+    /// endorsement count
+    pub endorsement_count: u64,
+    /// periods per cycle
+    pub periods_per_cycle: u64,
 }

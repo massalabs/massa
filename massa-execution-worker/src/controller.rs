@@ -11,8 +11,10 @@ use massa_execution_exports::{
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::{Address, Amount};
+use massa_models::prehash::{Map, Set};
+use massa_models::{Address, Amount, OperationId};
 use massa_models::{BlockId, Slot};
+use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
@@ -23,9 +25,9 @@ pub(crate) struct ExecutionInputData {
     /// set stop to true to stop the thread
     pub stop: bool,
     /// list of newly finalized blocks, indexed by slot
-    pub finalized_blocks: HashMap<Slot, BlockId>,
+    pub finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
     /// new blockclique (if there is a new one), blocks indexed by slot
-    pub new_blockclique: Option<HashMap<Slot, BlockId>>,
+    pub new_blockclique: Option<HashMap<Slot, (BlockId, Storage)>>,
     /// queue for read-only execution requests and response MPSCs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
@@ -67,12 +69,12 @@ impl ExecutionController for ExecutionControllerImpl {
     /// called to signal changes on the current blockclique, also listing newly finalized blocks
     ///
     /// # arguments
-    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks
-    /// * `blockclique`: new blockclique, replaces the current one in the input
+    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks. Each Storage owns the block and its ops/endorsements/parents.
+    /// * `blockclique`: new blockclique, replaces the current one in the input. Each Storage owns the block and its ops/endorsements/parents.
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, BlockId>,
-        new_blockclique: HashMap<Slot, BlockId>,
+        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
+        new_blockclique: HashMap<Slot, (BlockId, Storage)>,
     ) {
         // update input data
         let mut input_data = self.input_data.1.lock();
@@ -102,9 +104,25 @@ impl ExecutionController for ExecutionControllerImpl {
         addresses: Vec<Address>,
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
         let lock = self.execution_state.read();
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(addresses.len());
         for addr in addresses {
             result.push(lock.get_final_and_active_parallel_balance(&addr));
+        }
+        result
+    }
+
+    /// Get the final and active values of sequential balances.
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    fn get_final_and_active_sequential_balance(
+        &self,
+        addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)> {
+        let lock = self.execution_state.read();
+        let mut result = Vec::with_capacity(addresses.len());
+        for addr in addresses {
+            result.push(lock.get_final_and_active_sequential_balance(&addr));
         }
         result
     }
@@ -136,6 +154,11 @@ impl ExecutionController for ExecutionControllerImpl {
         self.execution_state
             .read()
             .get_final_and_active_datastore_keys(addr)
+    }
+
+    /// Return the final rolls distribution for the given `cycle`
+    fn get_cycle_rolls(&self, cycle: u64) -> Map<Address, u64> {
+        self.execution_state.read().get_cycle_rolls(cycle)
     }
 
     /// Executes a read-only request
@@ -177,6 +200,13 @@ impl ExecutionController for ExecutionControllerImpl {
                 err
             ))),
         }
+    }
+
+    /// List which operations inside the provided list were not executed
+    fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
+        self.execution_state
+            .read()
+            .unexecuted_ops_among(&ops, thread)
     }
 
     /// Returns a boxed clone of self.

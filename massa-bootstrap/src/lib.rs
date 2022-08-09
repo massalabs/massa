@@ -17,7 +17,6 @@ pub use establisher::types::Establisher;
 use massa_final_state::FinalState;
 use massa_graph::BootstrapableGraph;
 use massa_network_exports::BootstrapPeers;
-use massa_proof_of_stake_exports::ExportProofOfStake;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -42,11 +41,7 @@ pub use settings::BootstrapConfig;
 pub mod tests;
 
 /// a collection of the bootstrap state snapshots of all relevant modules
-#[derive(Debug)]
 pub struct GlobalBootstrapState {
-    /// state of the proof of stake state (distributions, seeds...)
-    pub pos: Option<ExportProofOfStake>,
-
     /// state of the consensus graph
     pub graph: Option<BootstrapableGraph>,
 
@@ -63,7 +58,6 @@ pub struct GlobalBootstrapState {
 impl GlobalBootstrapState {
     fn new(final_state: Arc<RwLock<FinalState>>) -> Self {
         Self {
-            pos: None,
             graph: None,
             compensation_millis: Default::default(),
             peers: None,

@@ -1,4 +1,4 @@
-use massa_hash::HashDeserializer;
+use crate::export_active_block::ExportActiveBlock;
 use massa_models::{
     clique::{Clique, CliqueDeserializer, CliqueSerializer},
     prehash::{Map, Set},
@@ -15,16 +15,6 @@ use nom::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    export_active_block::{
-        ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer,
-    },
-    ledger::{
-        ConsensusLedgerSubset, ConsensusLedgerSubsetDeserializer, ConsensusLedgerSubsetSerializer,
-    },
-};
-use std::ops::Bound::Included;
-
 /// Bootstrap graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BootstrapableGraph {
@@ -38,8 +28,6 @@ pub struct BootstrapableGraph {
     pub gi_head: Map<BlockId, Set<BlockId>>,
     /// List of maximal cliques of compatible blocks.
     pub max_cliques: Vec<Clique>,
-    /// Ledger at last final blocks
-    pub ledger: ConsensusLedgerSubset,
 }
 
 /// Basic serializer for `BootstrapableGraph`
@@ -144,9 +132,8 @@ impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
         for clique in &value.max_cliques {
             self.clique_serializer.serialize(clique, buffer)?;
         }
-        self.consensus_ledger_subset_serializer
-            .serialize(&value.ledger, buffer)?;
-        Ok(())
+
+        Ok(res)
     }
 }
 
@@ -324,20 +311,10 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
                         }),
                     ),
                 ),
-                context("Failed ledger deserialization", |input| {
-                    self.consensus_ledger_data_deserializer.deserialize(input)
-                }),
             )),
         )
         .map(
-            |(
-                active_blocks,
-                best_parents,
-                latest_final_blocks_periods,
-                gi_head,
-                max_cliques,
-                ledger,
-            )| {
+            |(active_blocks, best_parents, latest_final_blocks_periods, gi_head, max_cliques)| {
                 BootstrapableGraph {
                     active_blocks: active_blocks
                         .into_iter()
@@ -350,7 +327,6 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
                         .map(|(id, set)| (id, set.into_iter().collect()))
                         .collect(),
                     max_cliques,
-                    ledger,
                 }
             },
         )

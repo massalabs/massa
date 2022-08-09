@@ -6,7 +6,7 @@ use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_models::ModelsError;
 use massa_network_exports::NetworkError;
-use massa_pool::PoolError;
+use massa_pool_exports::PoolError;
 use massa_time::TimeError;
 use thiserror::Error;
 

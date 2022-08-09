@@ -3,6 +3,9 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(bound_map)]
+#![feature(int_roundings)]
+#[macro_use]
+extern crate lazy_static;
 
 pub use address::{Address, AddressDeserializer};
 pub use amount::{Amount, AmountDeserializer, AmountSerializer};

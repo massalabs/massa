@@ -7,10 +7,14 @@ use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
+use massa_models::prehash::Set;
 use massa_models::Address;
 use massa_models::Amount;
 use massa_models::BlockId;
+use massa_models::OperationId;
 use massa_models::Slot;
+use massa_storage::Storage;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
@@ -19,12 +23,12 @@ pub trait ExecutionController: Send + Sync {
     /// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.
     ///
     /// # Arguments
-    /// * `finalized_blocks`: newly finalized blocks
-    /// * `blockclique`: new blockclique
+    /// * `finalized_blocks`: newly finalized blocks. Each Storage owns refs to the block and its ops/endorsements/parents.
+    /// * `blockclique`: new blockclique. Each Storage owns refs to the block and its ops/endorsements/parents
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, BlockId>,
-        blockclique: HashMap<Slot, BlockId>,
+        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
+        blockclique: HashMap<Slot, (BlockId, Storage)>,
     );
 
     /// Get execution events optionally filtered by:
@@ -35,11 +39,20 @@ pub trait ExecutionController: Send + Sync {
     /// * operation id
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent>;
 
-    /// Get a balance final and active values
+    /// Get the final and active values of paralell balances.
     ///
     /// # Return value
     /// * `(final_balance, active_balance)`
     fn get_final_and_active_parallel_balance(
+        &self,
+        addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)>;
+
+    /// Get the final and active values of sequential balances.
+    ///
+    /// # Return value
+    /// * `(final_balance, active_balance)`
+    fn get_final_and_active_sequential_balance(
         &self,
         addresses: Vec<Address>,
     ) -> Vec<(Option<Amount>, Option<Amount>)>;
@@ -63,6 +76,12 @@ pub trait ExecutionController: Send + Sync {
         addr: &Address,
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>);
 
+    /// Returns for a given cycle the stakers taken into account
+    /// by the selector. That correspond to the roll_counts in `cycle - 1`.
+    ///
+    /// By default it returns an empty map.
+    fn get_cycle_rolls(&self, cycle: u64) -> Map<Address, u64>;
+
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///
     /// # arguments
@@ -75,6 +94,9 @@ pub trait ExecutionController: Send + Sync {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError>;
+
+    /// List which operations inside the provided list were not executed
+    fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

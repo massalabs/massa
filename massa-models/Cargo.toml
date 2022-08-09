@@ -15,6 +15,7 @@ num = { version = "0.4", features = ["serde"] }
 directories = "4.0"
 config = "0.11"
 bs58 = { version = "0.4", features = ["check"] }
+bitvec = { version = "1.0", features = ["serde"] }
 nom = "7.1"
 
 # custom modules
@@ -29,6 +30,6 @@ serial_test = "0.8"
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 hash-prefix = ["massa_signature/hash-prefix"]
-instrument = ["massa_time/instrument"]
+instrument = []
 sandbox = []
 testing = []

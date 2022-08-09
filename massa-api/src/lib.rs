@@ -24,7 +24,8 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
 use massa_models::{Address, BlockId, EndorsementId, Version};
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
-use massa_pool::PoolCommandSender;
+use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_signature::KeyPair;
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
@@ -44,8 +45,10 @@ pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
+    /// link to the selector component
+    pub selector_controller: Box<dyn SelectorController>,
     /// link to the pool component
-    pub pool_command_sender: PoolCommandSender,
+    pub pool_command_sender: PoolController,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings

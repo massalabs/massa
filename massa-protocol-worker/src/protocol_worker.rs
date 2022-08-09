@@ -4,6 +4,7 @@ use crate::checked_operations::CheckedOperations;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::constants::MAX_OPERATIONS_PER_BLOCK;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
@@ -42,13 +43,11 @@ use tracing::{debug, error, info, warn};
 ///
 /// # Arguments
 /// * `protocol_settings`: protocol settings
-/// * `operation_validity_periods`: operation validity duration in periods
 /// * `network_command_sender`: the `NetworkCommandSender` we interact with
 /// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
     protocol_settings: &'static ProtocolSettings,
-    operation_validity_periods: u64,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
     storage: Storage,
@@ -72,7 +71,6 @@ pub async fn start_protocol_controller(
     let join_handle = tokio::spawn(async move {
         let res = ProtocolWorker::new(
             protocol_settings,
-            operation_validity_periods,
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
@@ -130,8 +128,6 @@ impl BlockInfo {
 pub struct ProtocolWorker {
     /// Protocol configuration.
     pub(crate) protocol_settings: &'static ProtocolSettings,
-    /// Operation validity periods
-    operation_validity_periods: u64,
     /// Associated network command sender.
     pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
@@ -184,14 +180,12 @@ impl ProtocolWorker {
     ///
     /// # Arguments
     /// * `protocol_settings`: protocol configuration.
-    /// * `operation_validity_periods`: operation validity periods
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.
     /// * `controller_manager_rx`: Channel receiving management commands.
     pub fn new(
         protocol_settings: &'static ProtocolSettings,
-        operation_validity_periods: u64,
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
@@ -204,7 +198,6 @@ impl ProtocolWorker {
     ) -> ProtocolWorker {
         ProtocolWorker {
             protocol_settings,
-            operation_validity_periods,
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
@@ -874,7 +867,6 @@ impl ProtocolWorker {
     /// Returns :
     /// - a list of seen operation ids, for use in checking the root hash of the block.
     /// - a map of seen operations with indices and validity periods to avoid recomputing them later
-    /// - a boolean indicating whether duplicate operations were noted.
     /// - the sum of all operation's `max_gas`.
     ///
     /// Checks performed:
@@ -886,9 +878,7 @@ impl ProtocolWorker {
         done_signal: Option<oneshot::Sender<()>>,
     ) -> Result<(Vec<OperationId>, Map<OperationId, usize>, bool, u64), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
-        let mut total_gas = 0u64;
         let length = operations.len();
-        let mut has_duplicate_operations = false;
         let mut seen_ops = vec![];
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
@@ -938,7 +928,7 @@ impl ProtocolWorker {
             self.prune_checked_operations();
         }
 
-        Ok((seen_ops, received_ids, has_duplicate_operations, total_gas))
+        Ok((seen_ops, received_ids))
     }
 
     /// Note endorsements coming from a given node,

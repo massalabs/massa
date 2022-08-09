@@ -21,7 +21,10 @@ use std::ops::Bound::Included;
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct LedgerEntry {
     /// The parallel balance of that entry.
-    /// See lib.rs for an explanation on parallel vs sequential balances.
+    /// See lib.rs for an explanation on sequential vs parallel balance.
+    pub sequential_balance: Amount,
+
+    /// The parallel balance of that entry.
     pub parallel_balance: Amount,
 
     /// Executable bytecode
@@ -205,6 +208,8 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
     /// ```
     fn serialize(&self, value: &LedgerEntry, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.amount_serializer
+            .serialize(&value.sequential_balance, buffer)?;
+        self.amount_serializer
             .serialize(&value.parallel_balance, buffer)?;
         self.vec_u8_serializer.serialize(&value.bytecode, buffer)?;
         self.datastore_serializer
@@ -279,6 +284,9 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
         context(
             "Failed LedgerEntry deserialization",
             tuple((
+                context("Failed sequential_balance deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
                 context("Failed parallel_balance deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
                 }),
@@ -290,11 +298,14 @@ impl Deserializer<LedgerEntry> for LedgerEntryDeserializer {
                 }),
             )),
         )
-        .map(|(parallel_balance, bytecode, datastore)| LedgerEntry {
-            parallel_balance,
-            bytecode,
-            datastore,
-        })
+        .map(
+            |(sequential_balance, parallel_balance, bytecode, datastore)| LedgerEntry {
+                sequential_balance,
+                parallel_balance,
+                bytecode,
+                datastore,
+            },
+        )
         .parse(buffer)
     }
 }

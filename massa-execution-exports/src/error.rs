@@ -20,4 +20,22 @@ pub enum ExecutionError {
 
     /// `ModelsError`: {0}
     ModelsError(#[from] massa_models::ModelsError),
+
+    /// RollBuy error: {0}
+    RollBuyError(String),
+
+    /// RollSell error: {0}
+    RollSellError(String),
+
+    /// Block gas error: {0}
+    BlockGasError(String),
+
+    /// Invalid slot range
+    InvalidSlotRange,
+
+    /// Not enough gas in the block: {0}
+    NotEnoughGas(String),
+
+    /// Inlcude operation error: {0}
+    InlcudeOperationError(String),
 }
