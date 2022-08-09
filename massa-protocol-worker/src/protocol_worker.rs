@@ -43,14 +43,12 @@ use tracing::{debug, error, info, warn};
 /// # Arguments
 /// * `protocol_settings`: protocol settings
 /// * `operation_validity_periods`: operation validity duration in periods
-/// * `max_block_gas`: maximum gas per block
 /// * `network_command_sender`: the `NetworkCommandSender` we interact with
 /// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
     protocol_settings: &'static ProtocolSettings,
     operation_validity_periods: u64,
-    max_block_gas: u64,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
     storage: Storage,
@@ -75,7 +73,6 @@ pub async fn start_protocol_controller(
         let res = ProtocolWorker::new(
             protocol_settings,
             operation_validity_periods,
-            max_block_gas,
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
@@ -135,8 +132,6 @@ pub struct ProtocolWorker {
     pub(crate) protocol_settings: &'static ProtocolSettings,
     /// Operation validity periods
     operation_validity_periods: u64,
-    /// Max gas per block
-    max_block_gas: u64,
     /// Associated network command sender.
     pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
@@ -190,7 +185,6 @@ impl ProtocolWorker {
     /// # Arguments
     /// * `protocol_settings`: protocol configuration.
     /// * `operation_validity_periods`: operation validity periods
-    /// * `max_block_gas`: max gas per block
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.
@@ -198,7 +192,6 @@ impl ProtocolWorker {
     pub fn new(
         protocol_settings: &'static ProtocolSettings,
         operation_validity_periods: u64,
-        max_block_gas: u64,
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
@@ -212,7 +205,6 @@ impl ProtocolWorker {
         ProtocolWorker {
             protocol_settings,
             operation_validity_periods,
-            max_block_gas,
             network_command_sender,
             network_event_receiver,
             controller_event_tx,

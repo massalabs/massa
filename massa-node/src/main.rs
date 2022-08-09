@@ -31,8 +31,8 @@ use massa_models::{
         },
         ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
         MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH,
-        MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK,
-        MAX_OPERATIONS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
+        MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK,
+        OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
     prehash::Map,
     Address,
@@ -213,7 +213,6 @@ async fn launch(
     ) = start_protocol_controller(
         &SETTINGS.protocol,
         OPERATION_VALIDITY_PERIODS,
-        MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,
         shared_storage.clone(),
