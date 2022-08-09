@@ -17,7 +17,7 @@ use massa_serialization::{
 };
 use nom::{
     error::{context, ContextError, ParseError},
-    multi::length_count,
+    multi::{length_count, many0},
     sequence::tuple,
     IResult, Parser,
 };
@@ -79,7 +79,8 @@ impl PoSFinalState {
         {
             if part.len() < CYCLE_INFO_SIZE_MESSAGE_BYTES as usize {
                 u64_ser.serialize(cycle, &mut part)?;
-                part.push(*complete as u8);
+                // TODO: consider serializing this bool some other way
+                u64_ser.serialize(&(*complete as u64), &mut part)?;
                 // TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
                 for (addr, count) in roll_counts {
                     part.extend(addr.to_bytes());
@@ -108,10 +109,10 @@ impl PoSFinalState {
     }
 
     /// Gets a part of the Proof of Stake state
-    /// 
+    ///
     /// # Arguments:
     /// cursor: indicates the bootstrap state after the previous payload
-    /// 
+    ///
     /// # Returns
     /// The PoS part and the updated cursor
     pub fn get_pos_state_part(
@@ -140,7 +141,6 @@ impl PoSFinalState {
             if part.len() < DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES as usize {
                 slot_ser.serialize(slot, &mut part)?;
                 for (addr, amount) in credits {
-                    // note: check with aurélien about following, see above too
                     part.extend(addr.to_bytes());
                     amount_ser.serialize(amount, &mut part)?;
                 }
@@ -155,6 +155,84 @@ impl PoSFinalState {
                 cycle: last_cycle,
             },
         ))
+    }
+
+    /// TODO
+    pub fn set_pos_state_part<'a>(
+        &mut self,
+        part: &'a [u8],
+    ) -> Result<PoSBootstrapCursor, ModelsError> {
+        // TODO: define deserializing limits
+        let amount_deser = AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX));
+        let slot_deser = SlotDeserializer::new(
+            (Included(u64::MIN), Included(u64::MAX)),
+            (Included(0), Excluded(THREAD_COUNT)),
+        );
+        let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
+        let bitvec_deser = BitVecDeserializer::new();
+        let address_deser = AddressDeserializer::new();
+        let result = context(
+            "Failed PoSFinalState deserialization",
+            tuple((
+                |input| {
+                    // deferred_credits
+                    many0(|input: &'a [u8]| {
+                        tuple((
+                            // slot
+                            |input| slot_deser.deserialize(input),
+                            // credits
+                            |input| {
+                                many0(|input: &'a [u8]| {
+                                    tuple((
+                                        |input| address_deser.deserialize(input),
+                                        |input| amount_deser.deserialize(input),
+                                    ))(input)
+                                })(input)
+                            },
+                        ))(input)
+                    })(input)
+                },
+                |input| {
+                    // cycle_history
+                    many0(|input: &'a [u8]| {
+                        tuple((
+                            // cycle
+                            |input| u64_deser.deserialize(input),
+                            // complete
+                            |input| u64_deser.deserialize(input),
+                            // roll_counts
+                            |input| {
+                                many0(|input: &'a [u8]| {
+                                    tuple((
+                                        // address
+                                        |input| address_deser.deserialize(input),
+                                        // count
+                                        |input| u64_deser.deserialize(input),
+                                    ))(input)
+                                })(input)
+                            },
+                            // rng_seed
+                            |input| bitvec_deser.deserialize(input),
+                            // production_stats
+                            |input| {
+                                many0(|input: &'a [u8]| {
+                                    tuple((
+                                        // address
+                                        |input| address_deser.deserialize(input),
+                                        // production_stats
+                                        |input| u64_deser.deserialize(input),
+                                        |input| u64_deser.deserialize(input),
+                                    ))(input)
+                                })(input)
+                            },
+                        ))(input)
+                    })(input)
+                },
+            )),
+        )
+        .map(|(deferred_credits, cycles)| 42)
+        .parse(part);
+        Ok(PoSBootstrapCursor::default())
     }
 }
 
