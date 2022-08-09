@@ -38,9 +38,9 @@ impl EndorsementPool {
     }
 
     /// notify of new final CS periods
-    pub fn notify_final_cs_periods(&mut self, final_cs_periods: &Vec<u64>) {
+    pub fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final CS period counter
-        self.last_cs_final_periods = final_cs_periods.clone();
+        self.last_cs_final_periods = final_cs_periods.to_vec();
 
         // remove old endorsements
         let mut removed: Set<EndorsementId> = Default::default();

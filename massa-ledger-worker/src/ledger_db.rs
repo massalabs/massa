@@ -428,7 +428,7 @@ impl LedgerDB {
             let (rest, address) = address_deserializer
                 .deserialize::<DeserializeError>(&key[..])
                 .unwrap();
-            if rest.first() == Some(&BALANCE_IDENT) {
+            if rest.first() == Some(&SEQ_BALANCE_IDENT) {
                 addresses.insert(
                     address,
                     massa_models::Amount::from_bytes_compact(&entry).unwrap().0,

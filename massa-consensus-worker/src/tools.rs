@@ -8,8 +8,7 @@ use massa_consensus_exports::{
     ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
 };
 use massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
-use massa_models::{constants::CHANNEL_SIZE, prehash::Map, Address};
-use massa_signature::KeyPair;
+use massa_models::constants::CHANNEL_SIZE;
 use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};

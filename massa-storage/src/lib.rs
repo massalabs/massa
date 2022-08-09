@@ -16,6 +16,7 @@ use massa_models::{
     BlockId, EndorsementId, OperationId, WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
 use parking_lot::{RwLock, RwLockWriteGuard};
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::{collections::hash_map, sync::Arc};
 
@@ -42,6 +43,13 @@ pub struct Storage {
     local_used_ops: Set<OperationId>,
     /// locally used endorsement references
     local_used_endorsements: Set<EndorsementId>,
+}
+
+impl Debug for Storage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO format storage
+        f.write_str("")
+    }
 }
 
 impl Storage {

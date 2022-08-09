@@ -589,9 +589,10 @@ impl BlockGraph {
     pub fn get_operations_involving_address(
         &self,
         address: &Address,
-    ) -> Result<Map<OperationId, OperationSearchResult>> {
+    ) -> Result<(Map<OperationId, OperationSearchResult>, Storage)> {
         let mut res: Map<OperationId, OperationSearchResult> = Default::default();
-        'outer: for b_id in self.active_index.iter() {
+        let mut storage: Storage = self.storage.clone_without_refs();
+        for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(b_id) {
                 if let Some(ops) = active_block.addresses_to_operations.get(address) {
                     let stored_block = self.storage.retrieve_block(b_id).ok_or_else(|| {
@@ -621,13 +622,15 @@ impl BlockGraph {
                             res.insert(*op, search);
                         }
                         if res.len() >= self.cfg.max_item_return_count {
-                            break 'outer;
+                            storage.claim_operation_refs(&res.keys().cloned().collect());
+                            return Ok((res, storage));
                         }
                     }
                 }
             }
         }
-        Ok(res)
+        storage.claim_operation_refs(&res.keys().cloned().collect());
+        Ok((res, storage))
     }
 
     /// Gets whole compiled block corresponding to given hash, if it is active.
@@ -671,10 +674,10 @@ impl BlockGraph {
     pub fn get_operations(
         &self,
         operation_ids: Set<OperationId>,
-    ) -> Result<Map<OperationId, OperationSearchResult>> {
+    ) -> Result<(Map<OperationId, OperationSearchResult>, Storage)> {
         // The search result.
         let mut res: Map<OperationId, OperationSearchResult> = Default::default();
-
+        let mut storage = self.storage.clone_without_refs();
         // For each operation id we are searching for.
         for op_id in operation_ids.into_iter() {
             // The operation corresponding to the id, initially none.
@@ -719,7 +722,8 @@ impl BlockGraph {
                 res.insert(op_id, result);
             }
         }
-        Ok(res)
+        storage.claim_operation_refs(&res.keys().cloned().collect());
+        Ok((res, storage))
     }
 
     /// signal new slot
@@ -2699,16 +2703,16 @@ impl BlockGraph {
     /// This is used when initializing Execution from Consensus.
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
-    pub fn get_all_final_blocks(&self) -> HashMap<Slot, BlockId> {
+    pub fn get_all_final_blocks(&self) -> HashMap<Slot, (BlockId, Storage)> {
         self.active_index
             .iter()
-            .filter_map(|b_id| {
-                if let Some(a_b) = self.get_active_block(b_id) {
-                    if a_b.is_final {
-                        return Some((a_b.slot, *b_id));
-                    }
+            .filter_map(|b_id| match self.get_active_block(b_id) {
+                Some(a_b) if a_b.is_final => {
+                    let mut storage = self.storage.clone_without_refs();
+                    storage.claim_block_refs(&[b_id].into_iter().cloned().collect());
+                    Some((a_b.slot, (*b_id, storage)))
                 }
-                None
+                _ => None,
             })
             .collect()
     }
@@ -2743,8 +2747,9 @@ impl BlockGraph {
     pub fn get_endorsement_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, WrappedEndorsement>> {
+    ) -> Result<(Map<EndorsementId, WrappedEndorsement>, Storage)> {
         let mut res: Map<EndorsementId, WrappedEndorsement> = Default::default();
+        let mut storage = self.storage.clone_without_refs();
         for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(b_id) {
                 if let Some(eds) = ab.addresses_to_endorsements.get(&address) {
@@ -2764,17 +2769,20 @@ impl BlockGraph {
                 }
             }
         }
-        Ok(res)
+        storage.claim_endorsement_refs(&res.keys().cloned().collect());
+        Ok((res, storage))
     }
 
     /// endorsement info by id
     pub fn get_endorsement_by_id(
         &self,
         endorsements: Set<EndorsementId>,
-    ) -> Result<Map<EndorsementId, EndorsementInfo>> {
+    ) -> Result<(Map<EndorsementId, EndorsementInfo>, Storage)> {
         // iterate on active (final and non-final) blocks
-
         let mut res = Map::default();
+        let mut storage = self.storage.clone_without_refs();
+        let mut endorsed_blocks = Set::<BlockId>::default();
+        let mut endorsed_ops = Set::<OperationId>::default();
         for block_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(block_id) {
                 let block = self.storage.retrieve_block(block_id).ok_or_else(|| {
@@ -2804,11 +2812,22 @@ impl BlockGraph {
                                     is_final: ab.is_final,
                                     endorsement: e.clone(),
                                 });
+                            endorsed_blocks.insert(*block_id);
+                            endorsed_ops.extend(
+                                stored_block
+                                    .content
+                                    .operations
+                                    .iter()
+                                    .map(|wrapped_op| wrapped_op.id),
+                            )
                         }
                     }
                 }
             }
         }
-        Ok(res)
+        storage.claim_endorsement_refs(&res.keys().cloned().collect());
+        storage.claim_block_refs(&endorsed_blocks);
+        storage.claim_operation_refs(&endorsed_ops);
+        Ok((res, storage))
     }
 }

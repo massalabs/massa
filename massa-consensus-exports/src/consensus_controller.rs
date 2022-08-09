@@ -5,7 +5,7 @@ use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, O
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{Address, BlockId, OperationSearchResult, Slot, WrappedEndorsement};
 use massa_protocol_exports::ProtocolEventReceiver;
-use massa_signature::KeyPair;
+use massa_storage::Storage;
 
 use std::collections::VecDeque;
 
@@ -156,7 +156,7 @@ impl ConsensusCommandSender {
     pub async fn get_operations(
         &self,
         operation_ids: Set<OperationId>,
-    ) -> Result<Map<OperationId, OperationSearchResult>, ConsensusError> {
+    ) -> Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_operatiosn", {
             "operation_ids": operation_ids
@@ -210,7 +210,7 @@ impl ConsensusCommandSender {
     pub async fn get_operations_involving_address(
         &self,
         address: Address,
-    ) -> Result<Map<OperationId, OperationSearchResult>, ConsensusError> {
+    ) -> Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!(
             "consensus.consensus_controller.get_operations_involving_address",
@@ -254,58 +254,11 @@ impl ConsensusCommandSender {
         })
     }
 
-    /// Add some staking keys
-    pub async fn register_staking_keys(&self, keys: Vec<KeyPair>) -> Result<(), ConsensusError> {
-        massa_trace!("consensus.consensus_controller.register_staking_keys", {});
-        self.0
-            .send(ConsensusCommand::RegisterStakingKeys(keys))
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError("send error consensus command".to_string())
-            })
-    }
-
-    /// remove some keys from staking keys by associated address
-    /// the node won't be able to stake with these keys anymore
-    /// They will be erased from the staking keys file
-    pub async fn remove_staking_addresses(
-        &self,
-        addresses: Set<Address>,
-    ) -> Result<(), ConsensusError> {
-        massa_trace!("consensus.consensus_controller.remove_staking_addresses", {
-        });
-        self.0
-            .send(ConsensusCommand::RemoveStakingAddresses(addresses))
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError("send error consensus command".to_string())
-            })
-    }
-
-    /// get staking addresses
-    pub async fn get_staking_addresses(&self) -> Result<Set<Address>, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!("consensus.consensus_controller.get_staking_addresses", {});
-        self.0
-            .send(ConsensusCommand::GetStakingAddresses(response_tx))
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError(
-                    "send error consensus command get_staking_addresses".to_string(),
-                )
-            })?;
-        response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(
-                "consensus command get_staking_addresses response read error".to_string(),
-            )
-        })
-    }
-
     /// get endorsements info by involved address
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, WrappedEndorsement>, ConsensusError> {
+    ) -> Result<(Map<EndorsementId, WrappedEndorsement>, Storage), ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!(
             "consensus.consensus_controller.get_endorsements_by_address",
@@ -333,7 +286,7 @@ impl ConsensusCommandSender {
     pub async fn get_endorsements_by_id(
         &self,
         endorsements: Set<EndorsementId>,
-    ) -> Result<Map<EndorsementId, EndorsementInfo>, ConsensusError> {
+    ) -> Result<(Map<EndorsementId, EndorsementInfo>, Storage), ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_endorsements_by_id", {});
         self.0

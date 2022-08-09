@@ -1,28 +1,22 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-use massa_cipher::encrypt;
 use massa_consensus_exports::{
     commands::ConsensusCommand,
     error::{ConsensusError, ConsensusResult as Result},
-    events::ConsensusEvent,
     settings::ConsensusWorkerChannels,
     ConsensusConfig,
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
-use massa_models::address::AddressState;
 use massa_models::api::{LedgerInfo, RollsInfo};
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
+use massa_models::{active_block::ActiveBlock, address::AddressState};
 use massa_models::{stats::ConsensusStats, OperationId};
 use massa_models::{Address, BlockId, Slot};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
-use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::{cmp::max, collections::HashSet, collections::VecDeque};
-use tokio::{
-    sync::mpsc::error::SendTimeoutError,
-    time::{sleep, sleep_until, Sleep},
-};
-use tracing::{debug, info, warn};
+use tokio::time::{sleep, sleep_until, Sleep};
+use tracing::{info, warn};
 
 /// Manages consensus.
 pub struct ConsensusWorker {
@@ -132,18 +126,27 @@ impl ConsensusWorker {
         // notify execution module of current blockclique and final blocks
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
         // because the two modules run concurrently and out of sync
-        channels.execution_controller.update_blockclique_status(
-            block_db.get_all_final_blocks(),
-            block_db
-                .get_blockclique()
-                .into_iter()
-                .filter_map(|block_id| {
-                    block_db
-                        .get_active_block(&block_id)
-                        .map(|a_block| (a_block.slot, block_id))
+
+        let final_blocks = block_db.get_all_final_blocks();
+
+        let blockclique = block_db
+            .get_blockclique()
+            .into_iter()
+            .filter_map(|block_id| {
+                block_db.get_active_block(&block_id).map(|a_block| {
+                    let mut storage = self.block_db.storage.clone_without_refs();
+                    storage.claim_block_refs(&[block].iter().cloned().collect());
+                    storage
+                        .claim_block_refs(block.parents.iter().map(|(id, _)| id.clone()).collect());
+                    storage.claim_endorsement_refs(block.endorsement_ids.keys().cloned().collect());
+                    storage.claim_operation_refs(block.operation_set.keys().cloned().collect());
+                    (a_block.slot, (block_id, storage))
                 })
-                .collect(),
-        );
+            })
+            .collect();
+        channels
+            .execution_controller
+            .update_blockclique_status(final_blocks, blockclique);
 
         Ok(ConsensusWorker {
             block_db,
@@ -167,16 +170,18 @@ impl ConsensusWorker {
     /// It's mostly a tokio::select within a loop.
     pub async fn run_loop(mut self) -> Result<ProtocolEventReceiver> {
         // signal initial state to pool
-        if let Some(previous_slot) = self.previous_slot {
-            self.channels
-                .pool_command_sender
-                .update_current_slot(previous_slot)
-                .await?;
-        }
+        //
+        //
+        // pool slot tick doesn't exist anymore? Is it moved in factory?
+        // if let Some(previous_slot) = self.previous_slot {
+        //    self.channels
+        //        .pool_command_sender
+        //        .update_current_slot(previous_slot)
+        //        .await?;
+        //}
         self.channels
             .pool_command_sender
-            .update_latest_final_periods(self.latest_final_periods.clone())
-            .await?;
+            .notify_final_cs_periods(&self.latest_final_periods);
 
         // set slot timer
         let slot_deadline = get_block_slot_timestamp(
@@ -321,12 +326,6 @@ impl ConsensusWorker {
         }
         */
 
-        // signal tick to pool
-        self.channels
-            .pool_command_sender
-            .update_current_slot(observed_slot)
-            .await?;
-
         self.previous_slot = Some(observed_slot);
         self.next_slot = observed_slot.get_next_slot(self.cfg.thread_count)?;
 
@@ -350,30 +349,6 @@ impl ConsensusWorker {
         self.prune_stats()?;
 
         Ok(())
-    }
-
-    /// Channel management stuff
-    /// todo delete
-    /// or at least introduce some generic
-    async fn send_consensus_event(&self, event: ConsensusEvent) -> Result<()> {
-        let result = self
-            .channels
-            .controller_event_tx
-            .send_timeout(event, self.cfg.max_send_wait.to_duration())
-            .await;
-        match result {
-            Ok(()) => return Ok(()),
-            Err(SendTimeoutError::Closed(event)) => {
-                debug!(
-                    "failed to send ConsensusEvent due to channel closure: {:?}",
-                    event
-                );
-            }
-            Err(SendTimeoutError::Timeout(event)) => {
-                debug!("failed to send ConsensusEvent due to timeout: {:?}", event);
-            }
-        }
-        Err(ConsensusError::ChannelError("failed to send event".into()))
     }
 
     /// Manages given consensus command.
@@ -500,35 +475,6 @@ impl ConsensusWorker {
                 let res = self.get_stats()?;
                 if response_tx.send(res).is_err() {
                     warn!("consensus: could not send get_stats response");
-                }
-                Ok(())
-            }
-            ConsensusCommand::RegisterStakingKeys(keys) => {
-                for key in keys.into_iter() {
-                    let address = Address::from_public_key(&key.get_public_key());
-                    info!("Staking with address {}", address);
-                    self.staking_keys.insert(address, key);
-                }
-                self.dump_staking_keys().await?;
-                Ok(())
-            }
-            ConsensusCommand::RemoveStakingAddresses(addresses) => {
-                for address in addresses.into_iter() {
-                    self.staking_keys.remove(&address);
-                }
-                self.dump_staking_keys().await?;
-                Ok(())
-            }
-            ConsensusCommand::GetStakingAddresses(response_tx) => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_staking_addresses",
-                    {}
-                );
-                if response_tx
-                    .send(self.staking_keys.keys().cloned().collect())
-                    .is_err()
-                {
-                    warn!("consensus: could not send get_staking addresses response");
                 }
                 Ok(())
             }
@@ -729,6 +675,18 @@ impl ConsensusWorker {
         Ok(())
     }
 
+    /// Returns a tuple containing a slot and a blockId from an `ActiveBlock`.
+    /// You also get with the block a storage containing the references of the block,
+    /// his parents, his operations and his endorsements.
+    fn get_block_slot(&self, block: &ActiveBlock) -> (Slot, (BlockId, Storage)) {
+        let mut storage = self.block_db.storage.clone_without_refs();
+        storage.claim_block_refs(&[block].iter().cloned().collect());
+        storage.claim_block_refs(block.parents.iter().map(|(id, _)| id.clone()).collect());
+        storage.claim_endorsement_refs(block.endorsement_ids.keys().cloned().collect());
+        storage.claim_operation_refs(block.operation_set.keys().cloned().collect());
+        (a_block.slot, (block_id, storage))
+    }
+
     /// call me if the block database changed
     /// Processing of final blocks, pruning and producing endorsement.
     /// Please refactor me
@@ -776,32 +734,28 @@ impl ConsensusWorker {
         // get blockclique
         let blockclique_set = self.block_db.get_blockclique();
 
+        let local_storage = self.block_db.storage.clone_without_refs();
         // notify execution
+        let final_blocks = new_final_block_ids
+            .clone()
+            .into_iter()
+            .filter_map(|b_id| match self.block_db.get_active_block(&b_id) {
+                Some(a_b) if a_b.is_final => Some(self.get_block_slot(a_b)),
+                _ => None,
+            })
+            .collect();
+        let blockclique = blockclique_set
+            .clone()
+            .into_iter()
+            .filter_map(|block_id| {
+                self.block_db
+                    .get_active_block(&block_id)
+                    .map(|a_block| self.get_block_slot(a_block))
+            })
+            .collect();
         self.channels
             .execution_controller
-            .update_blockclique_status(
-                new_final_block_ids
-                    .clone()
-                    .into_iter()
-                    .filter_map(|b_id| {
-                        if let Some(a_b) = self.block_db.get_active_block(&b_id) {
-                            if a_b.is_final {
-                                return Some((a_b.slot, b_id));
-                            }
-                        }
-                        None
-                    })
-                    .collect(),
-                blockclique_set
-                    .clone()
-                    .into_iter()
-                    .filter_map(|block_id| {
-                        self.block_db
-                            .get_active_block(&block_id)
-                            .map(|a_block| (a_block.slot, block_id))
-                    })
-                    .collect(),
-            );
+            .update_blockclique_status(final_blocks, blockclique);
 
         // Process new final blocks
         let mut new_final_ops: Map<OperationId, (u64, u8)> = Map::default();
@@ -826,13 +780,6 @@ impl ConsensusWorker {
                     a_block.creator_address,
                 ));
             }
-        }
-        // Notify pool of new final ops
-        if !new_final_ops.is_empty() {
-            self.channels
-                .pool_command_sender
-                .final_operations(new_final_ops)
-                .await?;
         }
 
         // notify protocol of block wishlist
@@ -863,18 +810,12 @@ impl ConsensusWorker {
 
             // update final periods
             self.latest_final_periods = latest_final_periods;
-
-            // send latest final periods to pool
-            self.channels
-                .pool_command_sender
-                .update_latest_final_periods(self.latest_final_periods.clone())
-                .await?;
         }
 
         // add stale blocks to stats
         let new_stale_block_ids_creators_slots = self.block_db.get_new_stale_blocks();
         let timestamp = MassaTime::compensated_now(self.clock_compensation)?;
-        for (b_id, (b_creator, b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
+        for (_b_id, (_b_creator, _b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
             self.stale_block_stats.push_back(timestamp);
 
             /*
