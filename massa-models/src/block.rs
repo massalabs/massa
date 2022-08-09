@@ -214,7 +214,7 @@ impl Default for BlockSerializer {
 impl Serializer<Block> for BlockSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{Block, BlockSerializer, BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent};
+    /// use massa_models::{Block, BlockSerializer, BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent, prehash::Set};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -260,7 +260,7 @@ impl Serializer<Block> for BlockSerializer {
     /// // create block
     /// let orig_block = Block {
     ///     header: orig_header,
-    ///     operations: vec![],
+    ///     operations: Set::default(),
     /// };
     ///
     /// let mut buffer = Vec::new();
@@ -296,7 +296,7 @@ impl BlockDeserializer {
 impl Deserializer<Block> for BlockDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{Block, BlockSerializer, BlockDeserializer, BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent};
+    /// use massa_models::{Block, BlockSerializer, BlockDeserializer, BlockId, constants::THREAD_COUNT, Slot, BlockHeader, BlockHeaderSerializer, Endorsement, EndorsementSerializer, wrapped::WrappedContent, prehash::Set};
     /// use massa_hash::Hash;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
@@ -342,12 +342,12 @@ impl Deserializer<Block> for BlockDeserializer {
     /// // create block
     /// let orig_block = Block {
     ///     header: orig_header,
-    ///     operations: vec![],
+    ///     operations: Set::default(),
     /// };
     ///
     /// let mut buffer = Vec::new();
     /// BlockSerializer::new().serialize(&orig_block, &mut buffer).unwrap();
-    /// let (rest, res_block) = BlockDeserializer::new(THREAD_COUNT, 100, 9, 10000, 10000, 10000).deserialize::<DeserializeError>(&mut buffer).unwrap();
+    /// let (rest, res_block) = BlockDeserializer::new(THREAD_COUNT, 100, 9).deserialize::<DeserializeError>(&mut buffer).unwrap();
     ///
     /// assert!(rest.is_empty());
     /// // check equality

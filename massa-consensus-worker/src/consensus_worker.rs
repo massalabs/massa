@@ -381,6 +381,7 @@ impl ConsensusWorker {
                 if let Some(addr) = block_draw {
                     if let Some(key) = self.staking_keys.get(&addr).cloned() {
                         massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "pubkey": key.get_public_key(), "unlocked": true });
+                        println!("Before create block");
                         self.create_block(cur_slot, &addr, &key).await?;
                         if let Some(next_addr_slot) =
                             self.pos.get_next_selected_slot(self.next_slot, addr)
@@ -1192,7 +1193,7 @@ impl ConsensusWorker {
     /// 12. add stale blocks to stats
     async fn block_db_changed(&mut self) -> Result<()> {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
-
+        println!("TEST6");
         // Propagate new blocks
         for (block_id, (op_ids, endo_ids)) in self.block_db.get_blocks_to_propagate().into_iter() {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {

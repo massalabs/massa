@@ -586,7 +586,7 @@ async fn test_roll_block_creation() {
         .expect("timeout while waiting for slot");
 
     // cycle 0
-
+    println!("Test");
     // respond to first pool batch command
     pool_controller
         .wait_command(300.into(), |cmd| match cmd {
@@ -612,6 +612,7 @@ async fn test_roll_block_creation() {
     let block = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
             ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                println!("Integrated block");
                 let block = storage
                     .retrieve_block(&block_id)
                     .expect(&format!("Block id : {} not found in storage", block_id));

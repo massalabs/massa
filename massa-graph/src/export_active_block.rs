@@ -362,7 +362,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// // create block
     /// let orig_block = Block {
     ///     header: orig_header,
-    ///     operations: vec![],
+    ///     operations: Set::default(),
     /// };
     ///
     /// let mut dependencies = Set::default();
@@ -382,7 +382,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
-    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, 10000, 10000, 10000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
+    /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(32, 9, 1000, 1000, 1000, 1000, 10000, 10000).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block_id, export_active_block.block_id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);
     /// assert_eq!(export_deserialized.dependencies, export_active_block.dependencies);
