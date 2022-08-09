@@ -19,6 +19,7 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
 use massa_signature::{PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer};
+use massa_storage::Storage;
 use nom::{
     bytes::complete::take,
     error::{context, ContextError, ParseError},
@@ -103,8 +104,10 @@ pub struct MessageSerializer {
     u32_serializer: U32VarIntSerializer,
     wrapped_serializer: WrappedSerializer,
     operation_prefix_ids_serializer: OperationPrefixIdsSerializer,
+    operations_ids_serializer: OperationIdsSerializer,
     operations_serializer: OperationsSerializer,
     ip_addr_serializer: IpAddrSerializer,
+    storage: Storage,
 }
 
 impl MessageSerializer {
@@ -115,8 +118,10 @@ impl MessageSerializer {
             u32_serializer: U32VarIntSerializer::new(),
             wrapped_serializer: WrappedSerializer::new(),
             operation_prefix_ids_serializer: OperationPrefixIdsSerializer::new(),
+            operations_ids_serializer: OperationIdsSerializer::new(),
             operations_serializer: OperationsSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
+            storage,
         }
     }
 }
@@ -172,8 +177,27 @@ impl Serializer<Message> for MessageSerializer {
                     }
                 }
             }
-            Message::ReplyForBlocks(_list) => {
-                panic!("Message::ReplyForBlocks should be constructed using shared storage.");
+            Message::ReplyForBlocks(list) => {
+                self.u32_serializer
+                    .serialize(&(MessageTypeId::ReplyForBlocks as u32), buffer)?;
+                self.u32_serializer
+                    .serialize(&(list.len() as u32), buffer)?;
+                for (hash, info) in list {
+                    buffer.extend(hash.to_bytes());
+                    let info_type = match info {
+                        BlockInfoReply::Info(_) => BlockInfoType::Info,
+                        BlockInfoReply::Operations(_) => BlockInfoType::Operations,
+                        BlockInfoReply::NotFound => BlockInfoType::NotFound,
+                    };
+                    self.u32_serializer
+                        .serialize(&u32::from(info_type), buffer)?;
+                    if let BlockInfoReply::Operations(ops) = info {
+                        self.operations_serializer.serialize(&ops, buffer)?;
+                    }
+                    if let BlockInfoReply::Info(ids) = info {
+                        self.operations_ids_serializer.serialize(&ids, buffer)?;
+                    }
+                }
             }
             Message::AskPeerList => {
                 self.u32_serializer
