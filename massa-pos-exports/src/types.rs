@@ -164,7 +164,7 @@ impl PoSFinalState {
         part: &'a [u8],
     ) -> Result<PoSBootstrapCursor, ModelsError> {
         // TODO: define deserializers limits
-        let amount_deser = AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX));
+        let amount_deser = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         let slot_deser = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(THREAD_COUNT)),
@@ -614,7 +614,10 @@ impl CreditDeserializer {
         CreditDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
             address_deserializer: AddressDeserializer::new(),
-            amount_deserializer: AmountDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
         }
     }
 }

@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
 use crate::{
     constants::SLOT_KEY_SIZE,

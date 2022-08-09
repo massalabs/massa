@@ -4,7 +4,7 @@
 #![warn(unused_crate_dependencies)]
 #![feature(bound_map)]
 #![feature(int_roundings)]
-#[macro_use]
+
 extern crate lazy_static;
 
 pub use address::{Address, AddressDeserializer};
@@ -22,15 +22,17 @@ pub use endorsement::{
 };
 pub use error::ModelsError;
 pub use operation::{
-    Operation, OperationDeserializer, OperationId, OperationIds, OperationIdsDeserializer,
-    OperationIdsSerializer, OperationPrefixId, OperationPrefixIdDeserializer, OperationPrefixIds,
-    OperationPrefixIdsDeserializer, OperationPrefixIdsSerializer, OperationSerializer,
-    OperationType, OperationTypeDeserializer, OperationTypeSerializer, Operations,
-    OperationsDeserializer, OperationsSerializer, WrappedOperation,
+    Operation, OperationDeserializer, OperationId, OperationIdDeserializer, OperationIds,
+    OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixId,
+    OperationPrefixIdDeserializer, OperationPrefixIds, OperationPrefixIdsDeserializer,
+    OperationPrefixIdsSerializer, OperationSerializer, OperationType, OperationTypeDeserializer,
+    OperationTypeSerializer, Operations, OperationsDeserializer, OperationsSerializer,
+    WrappedOperation,
 };
 pub use serialization::{
-    array_from_slice, u8_from_slice, DeserializeMinBEInt, IpAddrDeserializer, IpAddrSerializer,
-    SerializeMinBEInt, StringDeserializer, StringSerializer, VecU8Deserializer, VecU8Serializer,
+    array_from_slice, u8_from_slice, BitVecDeserializer, BitVecSerializer, DeserializeMinBEInt,
+    IpAddrDeserializer, IpAddrSerializer, SerializeMinBEInt, StringDeserializer, StringSerializer,
+    VecU8Deserializer, VecU8Serializer,
 };
 pub use slot::{Slot, SlotDeserializer, SlotSerializer};
 pub use version::{Version, VersionDeserializer, VersionSerializer};

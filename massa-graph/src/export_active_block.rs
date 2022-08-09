@@ -6,12 +6,11 @@ use massa_models::{
     constants::*,
     ledger_models::{LedgerChangeDeserializer, LedgerChangeSerializer, LedgerChanges},
     prehash::{BuildMap, Map, Set},
-    prehash::{Map, Set},
     rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
     u8_from_slice,
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    BlockDeserializer, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt, WrappedBlock,
+    AddressDeserializer, Block, BlockDeserializer, BlockId, ModelsError, OperationId, WrappedBlock,
+    WrappedOperation,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -113,8 +112,11 @@ impl ExportActiveBlock {
             children: self.children.clone(),
             dependencies: self.dependencies.clone(),
             descendants: Default::default(), // will be computed once the full graph is available
-            is_final: a_block.is_final,
-            operation_set,
+            is_final: self.is_final,
+            operation_set: operation_set
+                .into_iter()
+                .map(|(id, (idx, _))| (id, idx))
+                .collect(),
             endorsement_ids,
             addresses_to_operations,
             addresses_to_endorsements,
@@ -191,40 +193,6 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
         )?;
         for dep in value.dependencies.iter() {
             buffer.extend(dep.0.to_bytes());
-        }
-        self.length_serializer.serialize(
-            &value.block_ledger_changes.0.len().try_into().map_err(|_| {
-                SerializeError::NumberTooBig("Too many block_ledger_change".to_string())
-            })?,
-            buffer,
-        )?;
-        for (addr, change) in value.block_ledger_changes.0.iter() {
-            buffer.extend(addr.to_bytes());
-            self.ledger_change_serializer.serialize(change, buffer)?;
-        }
-        self.length_serializer.serialize(
-            &value
-                .roll_updates
-                .0
-                .len()
-                .try_into()
-                .map_err(|_| SerializeError::NumberTooBig("Too many roll_updates".to_string()))?,
-            buffer,
-        )?;
-        for (addr, roll_update) in value.roll_updates.0.iter() {
-            buffer.extend(addr.to_bytes());
-            self.roll_update_serializer.serialize(roll_update, buffer)?;
-        }
-        self.length_serializer.serialize(
-            &value.production_events.len().try_into().map_err(|_| {
-                SerializeError::NumberTooBig("Too many production_events".to_string())
-            })?,
-            buffer,
-        )?;
-        for (period, addr, has_created) in value.production_events.iter() {
-            self.period_serializer.serialize(period, buffer)?;
-            buffer.extend(addr.to_bytes());
-            buffer.push(if *has_created { 1u8 } else { 0u8 });
         }
         Ok(())
     }
@@ -450,72 +418,10 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
                         }),
                     ),
                 ),
-                context(
-                    "Failed block_ledger_changes deserialization",
-                    length_count(
-                        context("Failed length deserialization", |input| {
-                            self.block_ledger_changes_length_deserializer
-                                .deserialize(input)
-                        }),
-                        tuple((
-                            context("Failed address deserialization", |input| {
-                                self.address_deserializer.deserialize(input)
-                            }),
-                            context("Failed ledger_change deserialization", |input| {
-                                self.ledger_change_deserializer.deserialize(input)
-                            }),
-                        )),
-                    ),
-                ),
-                context(
-                    "Failed roll_updates deserialization",
-                    length_count(
-                        context("Failed length deserialization", |input| {
-                            self.roll_updates_length_deserializer.deserialize(input)
-                        }),
-                        tuple((
-                            context("Failed address deserialization", |input| {
-                                self.address_deserializer.deserialize(input)
-                            }),
-                            context("Failed roll_update deserialization", |input| {
-                                self.roll_update_deserializer.deserialize(input)
-                            }),
-                        )),
-                    ),
-                ),
-                context(
-                    "Failed production_events deserialization",
-                    length_count(
-                        context("Failed length deserialization", |input| {
-                            self.production_events_deserializer.deserialize(input)
-                        }),
-                        tuple((
-                            context("Failed period deserialization", |input| {
-                                self.period_deserializer.deserialize(input)
-                            }),
-                            context("Failed address deserialization", |input| {
-                                self.address_deserializer.deserialize(input)
-                            }),
-                            context(
-                                "Failed did_create deserialization",
-                                alt((value(true, tag(&[1])), value(false, tag(&[0])))),
-                            ),
-                        )),
-                    ),
-                ),
             )),
         )
         .map(
-            |(
-                is_final,
-                block,
-                parents,
-                children,
-                dependencies,
-                block_ledger_changes,
-                roll_updates,
-                production_events,
-            )| ExportActiveBlock {
+            |(is_final, block, parents, children, dependencies)| ExportActiveBlock {
                 is_final,
                 block_id: block.id,
                 block,
@@ -525,9 +431,6 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
                     .map(|map| map.into_iter().collect())
                     .collect(),
                 dependencies: dependencies.into_iter().collect(),
-                block_ledger_changes: LedgerChanges(block_ledger_changes.into_iter().collect()),
-                roll_updates: RollUpdates(roll_updates.into_iter().collect()),
-                production_events,
             },
         )
         .parse(buffer)

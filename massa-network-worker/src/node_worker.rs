@@ -17,7 +17,7 @@ use massa_network_exports::{
     ConnectionClosureReason, NetworkConfig, NetworkError, NodeCommand, NodeEvent, NodeEventType,
     ReplyForBlocksInfo,
 };
-use massa_serialization::{SerializeError, Serializer};
+use massa_serialization::{SerializeError, Serializer, U32VarIntSerializer};
 use massa_storage::Storage;
 use tokio::{
     sync::mpsc,
@@ -148,6 +148,7 @@ impl NodeWorker {
         let write_timeout = self.cfg.message_timeout;
         let node_id_copy = self.node_id;
         let storage = self.storage.clone_without_refs();
+        let u32_serializer = U32VarIntSerializer::new();
         let node_writer_handle = tokio::spawn(async move {
             loop {
                 match writer_command_rx.recv().await {

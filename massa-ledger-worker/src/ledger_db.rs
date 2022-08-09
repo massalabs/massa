@@ -289,11 +289,12 @@ impl LedgerDB {
         // sequential balance
         // note that Amount::to_bytes_compact() never fails
         if let SetOrKeep::Set(balance) = entry_update.sequential_balance {
-            batch.put_cf(
-                handle,
-                seq_balance_key!(addr),
-                balance.to_bytes_compact().unwrap(),
-            );
+            let mut bytes = Vec::new();
+            // Amount serialization never fails
+            self.amount_serializer
+                .serialize(&balance, &mut bytes)
+                .unwrap();
+            batch.put_cf(handle, seq_balance_key!(addr), bytes);
         }
 
         // parallel balance

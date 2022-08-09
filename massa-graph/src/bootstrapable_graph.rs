@@ -1,4 +1,7 @@
-use crate::export_active_block::ExportActiveBlock;
+use crate::export_active_block::{
+    ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer,
+};
+use massa_hash::HashDeserializer;
 use massa_models::{
     clique::{Clique, CliqueDeserializer, CliqueSerializer},
     prehash::{Map, Set},
@@ -14,6 +17,7 @@ use nom::{
     multi::count,
 };
 use serde::{Deserialize, Serialize};
+use std::ops::Bound::Included;
 
 /// Bootstrap graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,7 +41,6 @@ pub struct BootstrapableGraphSerializer {
     export_active_block_serializer: ExportActiveBlockSerializer,
     period_serializer: U64VarIntSerializer,
     clique_serializer: CliqueSerializer,
-    consensus_ledger_subset_serializer: ConsensusLedgerSubsetSerializer,
 }
 
 impl BootstrapableGraphSerializer {
@@ -48,7 +51,6 @@ impl BootstrapableGraphSerializer {
             export_active_block_serializer: ExportActiveBlockSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
             clique_serializer: CliqueSerializer::new(),
-            consensus_ledger_subset_serializer: ConsensusLedgerSubsetSerializer::new(),
         }
     }
 }
@@ -133,7 +135,7 @@ impl Serializer<BootstrapableGraph> for BootstrapableGraphSerializer {
             self.clique_serializer.serialize(clique, buffer)?;
         }
 
-        Ok(res)
+        Ok(())
     }
 }
 
@@ -145,7 +147,6 @@ pub struct BootstrapableGraphDeserializer {
     set_length_deserializer: U32VarIntDeserializer,
     clique_length_deserializer: U32VarIntDeserializer,
     clique_deserializer: CliqueDeserializer,
-    consensus_ledger_data_deserializer: ConsensusLedgerSubsetDeserializer,
     hash_deserializer: HashDeserializer,
     thread_count: u8,
 }
@@ -187,7 +188,6 @@ impl BootstrapableGraphDeserializer {
                 Included(max_bootstrap_cliques),
             ),
             clique_deserializer: CliqueDeserializer::new(max_bootstrap_blocks),
-            consensus_ledger_data_deserializer: ConsensusLedgerSubsetDeserializer::new(),
             hash_deserializer: HashDeserializer::new(),
             thread_count,
         }

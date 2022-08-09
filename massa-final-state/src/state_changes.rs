@@ -30,6 +30,7 @@ pub struct StateChanges {
 }
 
 /// Basic `StateChanges` serializer.
+#[derive(Default)]
 pub struct StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,

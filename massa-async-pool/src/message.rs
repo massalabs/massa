@@ -2,8 +2,6 @@
 
 //! This file defines the structure representing an asynchronous message
 
-use std::ops::Bound::{Excluded, Included};
-
 use massa_models::address::AddressDeserializer;
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::slot::{SlotDeserializer, SlotSerializer};

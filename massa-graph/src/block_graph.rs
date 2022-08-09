@@ -11,7 +11,7 @@ use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock, api::EndorsementInfo, clique::Clique, wrapped::WrappedContent,
-    WrappedBlock, WrappedEndorsement,
+    WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
 use massa_models::{
     prehash::{BuildMap, Map, Set},
@@ -402,7 +402,7 @@ impl BlockGraph {
                         Ok((
                             b_id,
                             BlockStatus::Active(Box::new(
-                                exported_active_block.to_active_block(storage.clone())?,
+                                exported_active_block.to_active_block(storage.clone_with_refs())?,
                             )),
                         ))
                     })
@@ -1761,7 +1761,7 @@ impl BlockGraph {
         deps: Set<BlockId>,
         incomp: Set<BlockId>,
         inherited_incomp_count: usize,
-        operation_set: Map<OperationId, (usize, u64)>,
+        operation_set: Map<OperationId, usize>,
         endorsement_ids: Map<EndorsementId, u32>,
         addresses_to_operations: Map<Address, Set<OperationId>>,
         addresses_to_endorsements: Map<Address, Set<EndorsementId>>,
@@ -2826,7 +2826,7 @@ impl BlockGraph {
                                     .content
                                     .operations
                                     .iter()
-                                    .map(|wrapped_op| wrapped_op.id),
+                                    .map(|wrapped_op| wrapped_op),
                             )
                         }
                     }

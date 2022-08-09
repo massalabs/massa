@@ -1,9 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ModelsError;
-use crate::Amount;
 use bitvec::prelude::BitVec;
-use integer_encoding::VarInt;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer,

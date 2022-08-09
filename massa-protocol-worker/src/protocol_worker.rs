@@ -876,7 +876,7 @@ impl ProtocolWorker {
         operations: Operations,
         source_node_id: &NodeId,
         done_signal: Option<oneshot::Sender<()>>,
-    ) -> Result<(Vec<OperationId>, Map<OperationId, usize>, bool, u64), ProtocolError> {
+    ) -> Result<(Vec<OperationId>, Map<OperationId, usize>), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let length = operations.len();
         let mut seen_ops = vec![];
@@ -885,19 +885,7 @@ impl ProtocolWorker {
         for (idx, operation) in operations.into_iter().enumerate() {
             let operation_id = operation.id;
             seen_ops.push(operation_id);
-
-            // Note: we always want to update the node's view of known operations,
-            // even if we cached the check previously.
-            let was_present = received_ids.insert(operation_id, idx);
-
-            // There are duplicate operations in this batch.
-            if was_present.is_some() {
-                has_duplicate_operations = true;
-            }
-
-            // Accumulate gas
-            total_gas = total_gas.saturating_add(operation.get_gas_usage());
-
+            received_ids.insert(operation_id, idx);
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(&operation_id) {
                 // check signature
@@ -1100,15 +1088,6 @@ impl ProtocolWorker {
                                 {
                                     let mut received_ids: OperationIds = Default::default();
                                     for op in operations.iter() {
-                                        // check validity period
-                                        if !(op
-                                            .get_validity_range(self.operation_validity_periods)
-                                            .contains(&info.header.content.slot.period))
-                                        {
-                                            should_be_banned = true;
-                                            break;
-                                        }
-
                                         // check thread
                                         if op.thread != info.header.content.slot.thread {
                                             massa_trace!("protocol.protocol_worker.process_block.err_op_thread",

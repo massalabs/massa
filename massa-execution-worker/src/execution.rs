@@ -867,29 +867,29 @@ impl ExecutionState {
                 .clone();
 
             // gather all operations
-            let operations = block_store.with_operations(&stored_block.content.operations, |ops| {
-                ops.iter()
-                    .map(|opt_op| opt_op.expect("block operation absent from storage").clone())
-                    .collect::<Vec<_>>()
-            });
-
-            // gather all available endorsement creators and target blocks
-            let (endorsement_creators, endorsement_targets) = block_store.with_endorsements(
-                &stored_block.content.header.content.endorsements,
-                |endos| {
-                    let (creator_iter, target_iter) = endos
-                        .iter()
-                        .map(|opt_endo| {
-                            let endo = opt_endo.expect("block endorsement absent from storage");
-                            (endo.creator_address, endo.content.endorsed_block)
-                        })
-                        .unzip();
-                    (
-                        creator_iter.collect::<Vec<_>>(),
-                        target_iter.collect::<Vec<_>>(),
-                    )
+            let operations = block_store.with_operations(
+                &stored_block
+                    .content
+                    .operations
+                    .clone()
+                    .into_iter()
+                    .collect(),
+                |ops| {
+                    ops.iter()
+                        .map(|opt_op| opt_op.expect("block operation absent from storage").clone())
+                        .collect::<Vec<_>>()
                 },
             );
+
+            // gather all available endorsement creators and target blocks
+            let (endorsement_creators, endorsement_targets) = &stored_block
+                .content
+                .header
+                .content
+                .endorsements
+                .iter()
+                .map(|endo| (endo.creator_address, endo.content.endorsed_block))
+                .unzip();
             // deduce endorsement target block creators
             let endorsement_target_creators = endorsement_targets
                 .into_iter()
