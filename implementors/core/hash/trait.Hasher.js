@@ -1,3 +1,3 @@
-(function() {var implementors = {};
-implementors["massa_models"] = [{"text":"impl&lt;T:&nbsp;<a class=\"trait\" href=\"massa_models/prehash/trait.PreHashed.html\" title=\"trait massa_models::prehash::PreHashed\">PreHashed</a>&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html\" title=\"trait core::hash::Hasher\">Hasher</a> for <a class=\"struct\" href=\"massa_models/prehash/struct.PreHashedMap.html\" title=\"struct massa_models::prehash::PreHashedMap\">PreHashedMap</a>&lt;T&gt;","synthetic":false,"types":["massa_models::prehash::PreHashedMap"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
+(function() {var implementors = {
+"massa_models":[["impl&lt;T:&nbsp;<a class=\"trait\" href=\"massa_models/prehash/trait.PreHashed.html\" title=\"trait massa_models::prehash::PreHashed\">PreHashed</a>&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html\" title=\"trait core::hash::Hasher\">Hasher</a> for <a class=\"struct\" href=\"massa_models/prehash/struct.PreHashedMap.html\" title=\"struct massa_models::prehash::PreHashedMap\">PreHashedMap</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
