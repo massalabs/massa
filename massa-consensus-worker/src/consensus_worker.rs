@@ -612,7 +612,7 @@ impl ConsensusWorker {
                     operation_set,
                     endorsement_ids,
                     self.previous_slot,
-                    self.block_db.storage,
+                    self.block_db.storage.clone_without_refs(),
                 )?;
                 self.block_db_changed().await?;
             }
@@ -688,7 +688,7 @@ impl ConsensusWorker {
             .clone()
             .into_iter()
             .filter_map(|b_id| match self.block_db.get_active_block(&b_id) {
-                Some((a_b, _)) if a_b.is_final => Some(self.get_block_slot(a_b)),
+                Some((a_b, _)) if a_b.is_final => Some(a_b.slot),
                 _ => None,
             })
             .collect();
@@ -698,7 +698,7 @@ impl ConsensusWorker {
             .filter_map(|block_id| {
                 self.block_db
                     .get_active_block(&block_id)
-                    .map(|(a_block, _)| self.get_block_slot(a_block))
+                    .map(|(a_block, _)| a_block.slot)
             })
             .collect();
         self.channels
