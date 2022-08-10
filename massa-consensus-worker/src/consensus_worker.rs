@@ -132,16 +132,11 @@ impl ConsensusWorker {
         let blockclique = block_db
             .get_blockclique()
             .into_iter()
-            .filter_map(|block_id| {
-                block_db.get_active_block(&block_id).map(|a_block| {
-                    let mut storage = self.block_db.storage.clone_without_refs();
-                    storage.claim_block_refs(&[block].iter().cloned().collect());
-                    storage
-                        .claim_block_refs(block.parents.iter().map(|(id, _)| id.clone()).collect());
-                    storage.claim_endorsement_refs(block.endorsement_ids.keys().cloned().collect());
-                    storage.claim_operation_refs(block.operation_set.keys().cloned().collect());
-                    (a_block.slot, (block_id, storage))
-                })
+            .map(|block_id| {
+                let a_block = block_db
+                    .get_active_block(&block_id)
+                    .expect("could not get active block for execution notification");
+                (a_block.slot, (block_id, a_block.storage.clone()))
             })
             .collect();
         channels
@@ -170,15 +165,6 @@ impl ConsensusWorker {
     /// It's mostly a tokio::select within a loop.
     pub async fn run_loop(mut self) -> Result<ProtocolEventReceiver> {
         // signal initial state to pool
-        //
-        //
-        // pool slot tick doesn't exist anymore? Is it moved in factory?
-        // if let Some(previous_slot) = self.previous_slot {
-        //    self.channels
-        //        .pool_command_sender
-        //        .update_current_slot(previous_slot)
-        //        .await?;
-        //}
         self.channels
             .pool_command_sender
             .notify_final_cs_periods(&self.latest_final_periods);
@@ -673,18 +659,6 @@ impl ConsensusWorker {
         self.final_block_stats.retain(|(t, _, _)| t >= &start_time);
         self.stale_block_stats.retain(|t| t >= &start_time);
         Ok(())
-    }
-
-    /// Returns a tuple containing a slot and a blockId from an `ActiveBlock`.
-    /// You also get with the block a storage containing the references of the block,
-    /// his parents, his operations and his endorsements.
-    fn get_block_slot(&self, block: &ActiveBlock) -> (Slot, (BlockId, Storage)) {
-        let mut storage = self.block_db.storage.clone_without_refs();
-        storage.claim_block_refs(&[block].iter().cloned().collect());
-        storage.claim_block_refs(block.parents.iter().map(|(id, _)| id.clone()).collect());
-        storage.claim_endorsement_refs(block.endorsement_ids.keys().cloned().collect());
-        storage.claim_operation_refs(block.operation_set.keys().cloned().collect());
-        (a_block.slot, (block_id, storage))
     }
 
     /// call me if the block database changed

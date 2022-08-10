@@ -52,9 +52,8 @@ impl Debug for Storage {
     }
 }
 
-impl Storage {
-    /// Clones the object to a new one that has the same references
-    pub fn clone_with_refs(&mut self) -> Self {
+impl Clone for Storage {
+    fn clone(&self) -> Self {
         let mut res = Self::clone_without_refs(self);
 
         // claim one more user of the op refs
@@ -80,7 +79,9 @@ impl Storage {
 
         res
     }
+}
 
+impl Storage {
     /// Clones the object to a new one that has no references
     pub fn clone_without_refs(&self) -> Self {
         Self {

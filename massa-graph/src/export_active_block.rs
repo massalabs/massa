@@ -34,6 +34,8 @@ pub struct ExportActiveBlock {
 
 impl TryFrom<ExportActiveBlock> for ActiveBlock {
     fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
+        //TODO export full objects (block, ops, endorsements) loaded from storage
+
         let operation_set = a_block
             .block
             .content
