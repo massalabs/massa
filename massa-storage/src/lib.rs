@@ -10,13 +10,14 @@
 #![feature(hash_drain_filter)]
 
 use massa_logging::massa_trace;
-use massa_models::active_block::ActiveBlock;
 use massa_models::prehash::{BuildMap, Map, PreHashed, Set};
 use massa_models::wrapped::Id;
 use massa_models::{
-    BlockId, EndorsementId, OperationId, WrappedBlock, WrappedEndorsement, WrappedOperation,
+    Address, BlockId, EndorsementId, OperationId, OperationIds, Operations, WrappedBlock,
+    WrappedEndorsement, WrappedOperation,
 };
 use parking_lot::{RwLock, RwLockWriteGuard};
+use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::{collections::hash_map, sync::Arc};
@@ -27,7 +28,7 @@ pub struct Storage {
     /// global block storage
     blocks: Arc<RwLock<Map<BlockId, Arc<RwLock<WrappedBlock>>>>>,
     /// global operation storage
-    operations: Arc<RwLock<Map<OperationId, WrappedOperation>>>,
+    operations: Arc<RwLock<OperationIndex>>,
     /// global operation storage
     endorsements: Arc<RwLock<Map<EndorsementId, WrappedEndorsement>>>,
 
@@ -44,6 +45,16 @@ pub struct Storage {
     local_used_ops: Set<OperationId>,
     /// locally used endorsement references
     local_used_endorsements: Set<EndorsementId>,
+}
+
+/// Container for all operations and indexes by addresses.
+/// Note: The structure can evolve and store more indexes.
+#[derive(Default)]
+pub struct OperationIndex {
+    /// Operation structure container
+    operations: Map<OperationId, WrappedOperation>,
+    /// Structure mapping creators with the created operations
+    index_by_creator: Map<Address, OperationIds>,
 }
 
 impl Debug for Storage {
@@ -336,8 +347,17 @@ impl Storage {
         if !orphaned_ids.is_empty() {
             let mut ops = self.operations.write();
             for id in orphaned_ids {
-                if ops.remove(&id).is_none() {
-                    panic!("removing absent object from storage")
+                let op = ops
+                    .operations
+                    .remove(&id)
+                    .expect("removing absent object from storage");
+
+                if let Entry::Occupied(mut entry) = ops.index_by_creator.entry(op.creator_address) {
+                    let created_ops = entry.get_mut();
+                    created_ops.remove(&op.id);
+                    if created_ops.is_empty() {
+                        entry.remove();
+                    }
                 }
             }
         }
@@ -353,7 +373,14 @@ impl Storage {
         let mut owners = self.operation_owners.write();
         let ids: Set<OperationId> = operations.iter().map(|op| op.id).collect();
         for op in operations {
-            op_store.entry(op.id).or_insert(op);
+            let id = op.id;
+            let creator = op.creator_address;
+            op_store.operations.entry(id).or_insert(op);
+            op_store
+                .index_by_creator
+                .entry(creator)
+                .or_default()
+                .insert(id);
         }
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_ops);
     }
@@ -363,7 +390,7 @@ impl Storage {
         let operations = self.operations.read();
         operation_ids
             .into_iter()
-            .filter(|id| operations.contains_key(id))
+            .filter(|id| operations.operations.contains_key(id))
             .collect()
     }
 
@@ -372,7 +399,7 @@ impl Storage {
         massa_trace!("storage.storage.retrieve_operation", {
             "operation_id": operation_id
         });
-        self.operations.read().get(operation_id).cloned()
+        self.operations.read().operations.get(operation_id).cloned()
     }
 
     /// Get a clone of the potentially stored operation.
@@ -394,7 +421,7 @@ impl Storage {
         massa_trace!("storage.storage.with_operation", {
             "operation_id": operation_id
         });
-        f(&self.operations.read().get(operation_id))
+        f(&self.operations.read().operations.get(operation_id))
     }
 
     /// Run a closure over a list of references to potentially stored serialized operations.
@@ -406,8 +433,10 @@ impl Storage {
             "operation_ids": operation_ids
         });
         let operations = self.operations.read();
-        let results: Vec<Option<&WrappedOperation>> =
-            operation_ids.iter().map(|id| operations.get(id)).collect();
+        let results: Vec<Option<&WrappedOperation>> = operation_ids
+            .iter()
+            .map(|id| operations.operations.get(id))
+            .collect();
         f(&results)
     }
 
@@ -505,6 +534,18 @@ impl Storage {
             .map(|id| endorsements.get(id))
             .collect();
         f(&results)
+    }
+
+    pub fn get_operations_created_by(&self, addr: &Address) -> Operations {
+        let operations = self.operations.read();
+        match operations.index_by_creator.get(addr) {
+            Some(ids) => ids
+                .iter()
+                .filter_map(|id| operations.operations.get(id))
+                .cloned()
+                .collect(),
+            _ => return Operations::default(),
+        }
     }
 }
 
