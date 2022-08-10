@@ -148,7 +148,11 @@ impl BlockFactoryWorker {
         };
 
         // get best parents and their periods
-        let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
+        let parents: Vec<(BlockId, u64)> = self
+            .channels
+            .consensus
+            .get_best_parents()
+            .expect("Couldn't get best parents"); // Vec<(parent_id, parent_period)>
 
         // generate the local storage object
         let mut block_storage = self.channels.storage.clone_without_refs();

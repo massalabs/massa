@@ -60,6 +60,18 @@ pub enum ConsensusCommand {
         /// response channel
         response_tx: oneshot::Sender<Map<BlockId, Status>>,
     },
+    /// Get a block at a given slot in a blockclique
+    GetBlockcliqueBlockAtSlot {
+        /// wanted slot
+        slot: Slot,
+        /// response channel
+        response_tx: oneshot::Sender<Option<BlockId>>,
+    },
+    /// Get the best parents and their period
+    GetBestParents {
+        /// response channel
+        response_tx: oneshot::Sender<Vec<(BlockId, u64)>>,
+    },
     /// Get Endorsements by involved addresses
     GetEndorsementsByAddress {
         /// wanted address

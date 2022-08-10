@@ -153,23 +153,27 @@ impl EndorsementFactoryWorker {
         }
 
         // get consensus block ID for that slot
-        let endorsed_block: BlockId =
-            match self.channels.consensus.get_blockclique_block_at_slot(&slot) {
-                // error getting block ID at target slot
-                Err(err) => {
-                    warn!(
-                        "could not get blockclique block to create endorsement targeting slot {}",
-                        slot
-                    );
-                    return;
-                }
+        let endorsed_block: BlockId = match self
+            .channels
+            .consensus
+            .get_blockclique_block_at_slot(slot)
+            .await
+        {
+            // error getting block ID at target slot
+            Err(err) => {
+                warn!(
+                    "could not get blockclique block to create endorsement targeting slot {}",
+                    slot
+                );
+                return;
+            }
 
-                // the target slot is a miss: ignore
-                Ok(None) => return,
+            // the target slot is a miss: ignore
+            Ok(None) => return,
 
-                // there is a block a the target slot
-                Ok(Some(b_id)) => b_id,
-            };
+            // there is a block a the target slot
+            Ok(Some(b_id)) => b_id,
+        };
 
         // produce endorsements
         let endorsements: Vec<WrappedEndorsement> = Vec::with_capacity(producers_indices.len());
@@ -183,7 +187,7 @@ impl EndorsementFactoryWorker {
                 self.endorsement_serializer,
                 &keypair,
             )
-            .exepct("could not create endorsement");
+            .expect("could not create endorsement");
 
             // log endorsement creation
             debug!(

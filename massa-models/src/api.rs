@@ -50,7 +50,7 @@ pub struct NodeStatus {
     /// consensus stats
     pub consensus_stats: ConsensusStats,
     /// pool stats
-    pub pool_stats: PoolStats,
+    //pub pool_stats: PoolStats,
     /// network stats
     pub network_stats: NetworkStats,
     /// compact configuration
@@ -80,8 +80,8 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f)?;
 
         writeln!(f, "{}", self.consensus_stats)?;
-
-        writeln!(f, "{}", self.pool_stats)?;
+        //TODO: https://github.com/massalabs/massa/issues/2870
+        //writeln!(f, "{}", self.pool_stats)?;
 
         writeln!(f, "{}", self.network_stats)?;
 

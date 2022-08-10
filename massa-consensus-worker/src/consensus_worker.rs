@@ -476,6 +476,28 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
+            ConsensusCommand::GetBestParents { response_tx } => {
+                if response_tx.send(*self.block_db.get_best_parents()).is_err() {
+                    warn!("consensus: could not send get block ids by creator response");
+                }
+                Ok(())
+            }
+            ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx } => {
+                if response_tx
+                    .send(self.block_db.get_blockclique().into_iter().find(|id| {
+                        if let Some(block) = self.block_db.storage.retrieve_block(id) {
+                            let stored_block = block.read();
+                            stored_block.content.header.content.slot == slot
+                        } else {
+                            false
+                        }
+                    }))
+                    .is_err()
+                {
+                    warn!("consensus: could not send get block ids by creator response");
+                }
+                Ok(())
+            }
             ConsensusCommand::GetEndorsementsByAddress {
                 address,
                 response_tx,

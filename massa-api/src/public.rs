@@ -275,10 +275,11 @@ impl Endpoints for API<Public> {
                 now,
             )?;
 
-            let (consensus_stats, network_stats, pool_stats, peers) = tokio::join!(
+            let (consensus_stats, network_stats, peers) = tokio::join!(
                 consensus_command_sender.get_stats(),
                 network_command_sender.get_network_stats(),
-                pool_command_sender.get_pool_stats(),
+                //TODO: https://github.com/massalabs/massa/issues/2870
+                //pool_command_sender.get_pool_stats(),
                 network_command_sender.get_peers()
             );
             Ok(NodeStatus {
@@ -301,8 +302,7 @@ impl Endpoints for API<Public> {
                     .get_next_slot(consensus_settings.thread_count)?,
                 consensus_stats: consensus_stats?,
                 network_stats: network_stats?,
-                pool_stats: pool_stats?,
-
+                //pool_stats: pool_stats?,
                 config,
                 current_cycle: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
@@ -358,7 +358,8 @@ impl Endpoints for API<Public> {
 
             // simultaneously ask pool and consensus
             let (pool_res, consensus_res) = tokio::join!(
-                pool_command_sender.get_operations(operation_ids.clone()),
+                //TODO: https://github.com/massalabs/massa/issues/2866
+                //pool_command_sender.get_operations(operation_ids.clone()),
                 consensus_command_sender.get_operations(operation_ids)
             );
             let (pool_res, consensus_res) = (pool_res?, consensus_res?);
@@ -422,17 +423,18 @@ impl Endpoints for API<Public> {
             let mut res = consensus_command_sender
                 .get_endorsements_by_id(mapped.clone())
                 .await?;
-            for (id, endorsement) in pool_command_sender.get_endorsements_by_id(mapped).await? {
-                res.entry(id)
-                    .and_modify(|EndorsementInfo { in_pool, .. }| *in_pool = true)
-                    .or_insert(EndorsementInfo {
-                        id,
-                        in_pool: true,
-                        in_blocks: vec![],
-                        is_final: false,
-                        endorsement,
-                    });
-            }
+            //TODO: https://github.com/massalabs/massa/issues/2866
+            // for (id, endorsement) in pool_command_sender.get_endorsements_by_id(mapped).await? {
+            //     res.entry(id)
+            //         .and_modify(|EndorsementInfo { in_pool, .. }| *in_pool = true)
+            //         .or_insert(EndorsementInfo {
+            //             id,
+            //             in_pool: true,
+            //             in_blocks: vec![],
+            //             is_final: false,
+            //             endorsement,
+            //         });
+            // }
             Ok(res.values().cloned().collect())
         };
         Box::pin(closure())
@@ -606,8 +608,8 @@ impl Endpoints for API<Public> {
                         .await?
                         .into_keys()
                         .collect::<Set<BlockId>>();
-
-                    let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
+                    //TODO: https://github.com/massalabs/massa/issues/2866
+                    //let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
                     let get_consensus_ops = cmd_snd.get_operations_involving_address(address);
                     let (get_pool_ops, get_consensus_ops) =
                         tokio::join!(get_pool_ops, get_consensus_ops);

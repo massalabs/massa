@@ -152,13 +152,57 @@ impl ConsensusCommandSender {
         })
     }
 
+    /// get best parents
+    pub async fn get_best_parents(&self) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<Vec<(BlockId, u64)>>();
+        massa_trace!("consensus.consensus_controller.get_best_parents", {});
+        self.0
+            .send(ConsensusCommand::GetBestParents { response_tx })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_best_parents".into(),
+                )
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_best_parents response read error".to_string(),
+            )
+        })
+    }
+
+    /// get block id of a slot in a blockclique
+    pub async fn get_blockclique_block_at_slot(
+        &self,
+        slot: Slot,
+    ) -> Result<Option<BlockId>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!(
+            "consensus.consensus_controller.get_blockclique_block_at_slot",
+            { "slot": slot }
+        );
+        self.0
+            .send(ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_blockclique_block_at_slot".into(),
+                )
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_blockclique_block_at_slot response read error".to_string(),
+            )
+        })
+    }
+
     /// get operation info by operation id
     pub async fn get_operations(
         &self,
         operation_ids: Set<OperationId>,
     ) -> Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
-        massa_trace!("consensus.consensus_controller.get_operatiosn", {
+        massa_trace!("consensus.consensus_controller.get_operations", {
             "operation_ids": operation_ids
         });
         self.0

@@ -163,6 +163,17 @@ pub fn time_range_to_slot_range(
     Ok((start_slot, end_slot))
 }
 
+//TODO: https://github.com/massalabs/massa/issues/2867
+/// TODO DOC
+pub fn get_closest_slot_to_timestamp(
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+    base_time: MassaTime,
+) -> Slot {
+    todo!("Not implemented yet")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
