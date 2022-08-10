@@ -6,8 +6,8 @@ use massa_models::{
     prehash::{Map, Set},
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
     wrapped::WrappedContent,
-    Address, Amount, Block, BlockHeader, BlockId, BlockSerializer, OperationId, Slot,
-    WrappedEndorsement,
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
+    OperationId, Slot, WrappedEndorsement, WrappedHeader,
 };
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -40,7 +40,7 @@ impl BlockFactoryWorker {
         thread::Builder::new()
             .name("block factory worker".into())
             .spawn(|| {
-                let this = Self {
+                let mut this = Self {
                     cfg,
                     wallet,
                     channels,
@@ -135,17 +135,14 @@ impl BlockFactoryWorker {
         };
 
         // check if the block producer address is handled by the wallet
-        let block_producer_keypair = match self
-            .wallet
-            .read()
-            .expect("could not lock wallet")
-            .find_associated_keypair(&block_producer_addr)
-        {
-            // the selected block producer is managed locally => continue to attempt block production
-            Some(kp) => kp,
-            // the selected block producer is not managed locally => quit
-            None => return,
-        };
+        let block_producer_keypair_ref = self.wallet.read().expect("could not lock wallet");
+        let block_producer_keypair =
+            match block_producer_keypair_ref.find_associated_keypair(&block_producer_addr) {
+                // the selected block producer is managed locally => continue to attempt block production
+                Some(kp) => kp,
+                // the selected block producer is not managed locally => quit
+                None => return,
+            };
 
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self
@@ -159,8 +156,12 @@ impl BlockFactoryWorker {
 
         // claim block parents in local storage
         {
-            let claimed_parents = block_storage
-                .claim_block_refs(parents.iter().map(|(b_id, _)| *b_id).copied().collect());
+            let claimed_parents = block_storage.claim_block_refs(
+                &parents
+                    .iter()
+                    .map(|(b_id, _)| *b_id)
+                    .collect::<Set<BlockId>>(),
+            );
             if claimed_parents.len() != parents.len() {
                 warn!("block factory could claim parents for slot {}", slot);
                 return;
@@ -172,7 +173,7 @@ impl BlockFactoryWorker {
         let (same_thread_parent_id, same_thread_parent_period) = parents[slot.thread as usize];
 
         // gather endorsements
-        let (endorsements, endo_storage) = self.channels.pool.get_block_endorsements(
+        let (endorsements_ids, endo_storage) = self.channels.pool.get_block_endorsements(
             &same_thread_parent_id,
             &Slot::new(same_thread_parent_period, slot.thread),
         );
@@ -184,28 +185,42 @@ impl BlockFactoryWorker {
         let global_operations_hash = Hash::compute_from(
             &op_ids
                 .iter()
-                .map(|op_id| op_id.to_bytes())
+                .map(|op_id| *op_id.to_bytes())
                 .flatten()
                 .collect::<Vec<u8>>(),
         );
 
+        //TODO: Do we want ot populate only with endorsement id in the future ?
+        let endorsements: Vec<WrappedEndorsement> = endorsements_ids
+            .iter()
+            .filter(|x| x.is_some())
+            .map(|endo_id| {
+                block_storage
+                    .retrieve_endorsement(&endo_id.unwrap())
+                    .expect("could not retrieve endorsement")
+            })
+            .collect();
+
         // create header
-        let header = BlockHeader::new_wrapped(
+        let header: WrappedHeader = BlockHeader::new_wrapped::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
                 operation_merkle_root: global_operations_hash,
                 endorsements,
             },
-            Default::default(),
+            BlockHeaderSerializer::new(),
             block_producer_keypair,
         )
         .expect("error while producing block header");
 
         // create block
         let block = Block::new_wrapped(
-            Block { header, op_ids },
-            self.block_serializer,
+            Block {
+                header,
+                operations: op_ids.into_iter().collect(),
+            },
+            BlockSerializer::new(),
             block_producer_keypair,
         )
         .expect("error while producing block");
@@ -227,7 +242,7 @@ impl BlockFactoryWorker {
     }
 
     /// main run loop of the block creator thread
-    fn run(self) {
+    fn run(&mut self) {
         let mut prev_slot = None;
         loop {
             // get next slot

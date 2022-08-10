@@ -477,8 +477,11 @@ impl ConsensusWorker {
                 Ok(())
             }
             ConsensusCommand::GetBestParents { response_tx } => {
-                if response_tx.send(*self.block_db.get_best_parents()).is_err() {
-                    warn!("consensus: could not send get block ids by creator response");
+                if response_tx
+                    .send(self.block_db.get_best_parents().clone())
+                    .is_err()
+                {
+                    warn!("consensus: could not send get best parents response");
                 }
                 Ok(())
             }
@@ -494,7 +497,18 @@ impl ConsensusWorker {
                     }))
                     .is_err()
                 {
-                    warn!("consensus: could not send get block ids by creator response");
+                    warn!("consensus: could not send get block clique block at slot response");
+                }
+                Ok(())
+            }
+            ConsensusCommand::SendBlock {
+                block_id,
+                block_storage,
+                response_tx,
+            } => {
+                //TODO: https://github.com/massalabs/massa/pull/2862#issuecomment-1210462093
+                if response_tx.send(()).is_err() {
+                    warn!("consensus: could not send get block clique block at slot response");
                 }
                 Ok(())
             }
@@ -710,17 +724,20 @@ impl ConsensusWorker {
             .clone()
             .into_iter()
             .filter_map(|b_id| match self.block_db.get_active_block(&b_id) {
-                Some((a_b, _)) if a_b.is_final => Some(a_b.slot),
+                Some((a_b, storage)) if a_b.is_final => {
+                    Some((a_b.slot, (a_b.block_id, storage.clone_without_refs())))
+                }
                 _ => None,
             })
             .collect();
         let blockclique = blockclique_set
             .clone()
             .into_iter()
-            .filter_map(|block_id| {
-                self.block_db
-                    .get_active_block(&block_id)
-                    .map(|(a_block, _)| a_block.slot)
+            .filter_map(|b_id| match self.block_db.get_active_block(&b_id) {
+                Some((a_b, storage)) if a_b.is_final => {
+                    Some((a_b.slot, (a_b.block_id, storage.clone_without_refs())))
+                }
+                _ => None,
             })
             .collect();
         self.channels

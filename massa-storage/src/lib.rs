@@ -374,6 +374,17 @@ impl Storage {
         self.operations.read().get(operation_id).cloned()
     }
 
+    /// Get a clone of the potentially stored operation.
+    pub fn retrieve_endorsement(
+        &self,
+        endorsement_id: &EndorsementId,
+    ) -> Option<WrappedEndorsement> {
+        massa_trace!("storage.storage.retrieve_endorsement", {
+            "endorsement_id": endorsement_id
+        });
+        self.endorsements.read().get(endorsement_id).cloned()
+    }
+
     /// Run a closure over a reference to a potentially stored operation.
     pub fn with_operation<F, V>(&self, operation_id: &OperationId, f: F) -> V
     where

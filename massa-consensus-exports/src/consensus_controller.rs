@@ -153,18 +153,17 @@ impl ConsensusCommandSender {
     }
 
     /// get best parents
-    pub async fn get_best_parents(&self) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
+    pub fn get_best_parents(&self) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<Vec<(BlockId, u64)>>();
         massa_trace!("consensus.consensus_controller.get_best_parents", {});
         self.0
-            .send(ConsensusCommand::GetBestParents { response_tx })
-            .await
+            .blocking_send(ConsensusCommand::GetBestParents { response_tx })
             .map_err(|_| {
                 ConsensusError::SendChannelError(
                     "send error consensus command get_best_parents".into(),
                 )
             })?;
-        response_rx.await.map_err(|_| {
+        response_rx.blocking_recv().map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_best_parents response read error".to_string(),
             )
@@ -172,7 +171,7 @@ impl ConsensusCommandSender {
     }
 
     /// get block id of a slot in a blockclique
-    pub async fn get_blockclique_block_at_slot(
+    pub fn get_blockclique_block_at_slot(
         &self,
         slot: Slot,
     ) -> Result<Option<BlockId>, ConsensusError> {
@@ -182,14 +181,13 @@ impl ConsensusCommandSender {
             { "slot": slot }
         );
         self.0
-            .send(ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx })
-            .await
+            .blocking_send(ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx })
             .map_err(|_| {
                 ConsensusError::SendChannelError(
                     "send error consensus command get_blockclique_block_at_slot".into(),
                 )
             })?;
-        response_rx.await.map_err(|_| {
+        response_rx.blocking_recv().map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_blockclique_block_at_slot response read error".to_string(),
             )
@@ -294,6 +292,29 @@ impl ConsensusCommandSender {
         response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_stats response read error".to_string(),
+            )
+        })
+    }
+
+    ///send block
+    pub fn send_block(&self, block: (BlockId, Storage)) -> Result<(), ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!(
+            "consensus.consensus_controller.send_block",
+            { "block_id": block.0 }
+        );
+        self.0
+            .blocking_send(ConsensusCommand::SendBlock {
+                block_id: block.0,
+                block_storage: block.1,
+                response_tx,
+            })
+            .map_err(|_| {
+                ConsensusError::SendChannelError("send error consensus command send_block".into())
+            })?;
+        response_rx.blocking_recv().map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command send_block response read error".to_string(),
             )
         })
     }

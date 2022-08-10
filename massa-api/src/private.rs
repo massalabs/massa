@@ -110,7 +110,7 @@ impl Endpoints for API<Private> {
         let cmd_sender = self.0.consensus_command_sender.clone();
         // TODO: https://github.com/massalabs/massa/issues/2868
         // let closure = async move || Ok(cmd_sender.get_staking_addresses().await?);
-        let closure = async move || Ok(());
+        let closure = async move || Ok(Set::default());
         Box::pin(closure())
     }
 

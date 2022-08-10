@@ -72,6 +72,14 @@ pub enum ConsensusCommand {
         /// response channel
         response_tx: oneshot::Sender<Vec<(BlockId, u64)>>,
     },
+    /// Send a block
+    SendBlock {
+        /// block id
+        block_id: BlockId,
+        /// All the objects for the block
+        block_storage: Storage,
+        response_tx: oneshot::Sender<()>,
+    },
     /// Get Endorsements by involved addresses
     GetEndorsementsByAddress {
         /// wanted address

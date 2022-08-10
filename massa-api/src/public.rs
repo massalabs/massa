@@ -5,7 +5,7 @@ use crate::settings::APISettings;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
-use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
+use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig, ConsensusError};
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
@@ -20,7 +20,9 @@ use massa_models::constants::default::{
 use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
-use massa_models::{Amount, ModelsError, WrappedOperation};
+use massa_models::{
+    Amount, ModelsError, OperationSearchResult, WrappedEndorsement, WrappedOperation,
+};
 use massa_pos_exports::SelectorController;
 use massa_serialization::{DeserializeError, Deserializer};
 
@@ -357,23 +359,27 @@ impl Endpoints for API<Public> {
             let operation_ids: Set<OperationId> = ops.iter().cloned().collect();
 
             // simultaneously ask pool and consensus
-            let (pool_res, consensus_res) = tokio::join!(
-                //TODO: https://github.com/massalabs/massa/issues/2866
+            let (pool_res, consensus_res): (
+                Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError>,
+                Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError>,
+            ) = tokio::join!(
+                //TOxDO: https://github.com/massalabs/massa/issues/2866
                 //pool_command_sender.get_operations(operation_ids.clone()),
+                async { Ok((Map::default(), Storage::default())) },
                 consensus_command_sender.get_operations(operation_ids)
             );
             let (pool_res, consensus_res) = (pool_res?, consensus_res?);
             let mut res: Map<OperationId, OperationInfo> = Map::with_capacity_and_hasher(
-                pool_res.len() + consensus_res.len(),
+                pool_res.0.len() + consensus_res.0.len(),
                 BuildMap::default(),
             );
 
             // add pool info
-            res.extend(pool_res.into_iter().map(|(id, operation)| {
+            res.extend(pool_res.0.into_iter().map(|(id, operation)| {
                 (
                     id,
                     OperationInfo {
-                        operation,
+                        operation: operation.op,
                         in_pool: true,
                         in_blocks: Vec::new(),
                         id,
@@ -383,7 +389,7 @@ impl Endpoints for API<Public> {
             }));
 
             // add consensus info
-            consensus_res.into_iter().for_each(|(op_id, search_new)| {
+            consensus_res.0.into_iter().for_each(|(op_id, search_new)| {
                 let search_new = OperationInfo {
                     id: op_id,
                     in_pool: search_new.in_pool,
@@ -435,7 +441,7 @@ impl Endpoints for API<Public> {
             //             endorsement,
             //         });
             // }
-            Ok(res.values().cloned().collect())
+            Ok(res.0.values().cloned().collect())
         };
         Box::pin(closure())
     }
@@ -609,22 +615,31 @@ impl Endpoints for API<Public> {
                         .into_keys()
                         .collect::<Set<BlockId>>();
                     //TODO: https://github.com/massalabs/massa/issues/2866
-                    //let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
+                    // let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
+                    let get_pool_ops = async { Ok((Map::default(), Storage::default())) };
                     let get_consensus_ops = cmd_snd.get_operations_involving_address(address);
-                    let (get_pool_ops, get_consensus_ops) =
-                        tokio::join!(get_pool_ops, get_consensus_ops);
+                    let (get_pool_ops, get_consensus_ops): (
+                        Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError>,
+                        Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError>,
+                    ) = tokio::join!(get_pool_ops, get_consensus_ops);
                     let gathered: Set<OperationId> = get_pool_ops?
+                        .0
                         .into_keys()
-                        .chain(get_consensus_ops?.into_keys())
+                        .chain(get_consensus_ops?.0.into_keys())
                         .collect();
 
-                    let get_pool_eds = pool_cmd_snd.get_endorsements_by_address(address);
+                    //TODO: https://github.com/massalabs/massa/issues/2866
+                    //let get_pool_eds = pool_cmd_snd.get_endorsements_by_address(address);
+                    let get_pool_eds = async { Ok((Map::default(), Storage::default())) };
                     let get_consensus_eds = cmd_snd.get_endorsements_by_address(address);
-                    let (get_pool_eds, get_consensus_eds) =
-                        tokio::join!(get_pool_eds, get_consensus_eds);
+                    let (get_pool_eds, get_consensus_eds): (
+                        Result<(Map<EndorsementId, WrappedEndorsement>, Storage), ConsensusError>,
+                        Result<(Map<EndorsementId, WrappedEndorsement>, Storage), ConsensusError>,
+                    ) = tokio::join!(get_pool_eds, get_consensus_eds);
                     let gathered_ed: Set<EndorsementId> = get_pool_eds?
+                        .0
                         .into_keys()
-                        .chain(get_consensus_eds?.into_keys())
+                        .chain(get_consensus_eds?.0.into_keys())
                         .collect();
 
                     let balances = exec_snd.get_final_and_active_parallel_balance(vec![address]);
@@ -773,7 +788,7 @@ impl Endpoints for API<Public> {
                 })
                 .collect::<Result<Vec<WrappedOperation>, ApiError>>()?;
             let mut to_send = Storage::default();
-            to_send.store_operations(verified_ops);
+            to_send.store_operations(verified_ops.clone());
             let ids = verified_ops.iter().map(|op| op.id).collect();
             cmd_sender.add_operations(to_send);
             Ok(ids)

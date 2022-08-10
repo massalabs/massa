@@ -300,7 +300,7 @@ async fn launch(
     // launch factory
     let factory_config = FactoryConfig {
         thread_count: THREAD_COUNT,
-        genesis_timestamp: GENESIS_TIMESTAMP,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         clock_compensation_millis: bootstrap_state.compensation_millis,
         initial_delay: SETTINGS.factory.initial_delay,
