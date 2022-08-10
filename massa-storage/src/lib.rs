@@ -10,6 +10,7 @@
 #![feature(hash_drain_filter)]
 
 use massa_logging::massa_trace;
+use massa_models::active_block::ActiveBlock;
 use massa_models::prehash::{BuildMap, Map, PreHashed, Set};
 use massa_models::wrapped::Id;
 use massa_models::{

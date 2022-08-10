@@ -871,8 +871,7 @@ impl ExecutionState {
                 &stored_block
                     .content
                     .operations
-                    .iter()
-                    .copied()
+                    .into_iter()
                     .collect::<Vec<_>>(),
                 |ops| {
                     ops.iter()

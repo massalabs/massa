@@ -9,7 +9,6 @@ use massa_models::{
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
     OperationId, Slot, WrappedEndorsement, WrappedHeader,
 };
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use std::{
