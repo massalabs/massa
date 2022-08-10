@@ -655,8 +655,8 @@ impl ConsensusWorker {
         let mut storage = self.block_db.storage.clone_without_refs();
         storage.claim_block_refs(&[block].iter().cloned().collect());
         storage.claim_block_refs(block.parents.iter().map(|(id, _)| id.clone()).collect());
-        storage.claim_endorsement_refs(block.endorsement_ids.keys().cloned().collect());
-        storage.claim_operation_refs(block.operation_set.keys().cloned().collect());
+        storage.claim_endorsement_refs(block.endorsement_ids.keys().copied().collect());
+        storage.claim_operation_refs(block.operation_set.keys().copied().collect());
         (a_block.slot, (block_id, storage))
     }
 

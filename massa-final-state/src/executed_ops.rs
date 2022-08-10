@@ -46,6 +46,7 @@ impl ExecutedOps {
 }
 
 /// `ExecutedOps` Serializer
+#[derive(Default)]
 pub struct ExecutedOpsSerializer {
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,

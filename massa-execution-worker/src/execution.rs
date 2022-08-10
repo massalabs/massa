@@ -868,12 +868,7 @@ impl ExecutionState {
 
             // gather all operations
             let operations = block_store.with_operations(
-                &stored_block
-                    .content
-                    .operations
-                    .clone()
-                    .into_iter()
-                    .collect(),
+                &stored_block.content.operations.iter().copied().collect(),
                 |ops| {
                     ops.iter()
                         .map(|opt_op| opt_op.expect("block operation absent from storage").clone())
