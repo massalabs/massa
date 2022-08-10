@@ -111,7 +111,7 @@ impl EndorsementPool {
         // prune excess endorsements
         for thread in 0..self.config.thread_count {
             while self.endorsements_sorted[thread as usize].len()
-                > self.config.max_endorements_pool_size_per_thread
+                > self.config.max_endorsements_pool_size_per_thread
             {
                 // won't panic because len was checked above
                 let key = self.endorsements_sorted[thread as usize]

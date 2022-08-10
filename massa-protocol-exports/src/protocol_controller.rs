@@ -278,11 +278,11 @@ impl ProtocolManager {
     pub async fn stop(
         self,
         protocol_event_receiver: ProtocolEventReceiver,
-        protocol_pool_event_receiver: ProtocolPoolEventReceiver,
+        //protocol_pool_event_receiver: ProtocolPoolEventReceiver,
     ) -> Result<NetworkEventReceiver, ProtocolError> {
         drop(self.manager_tx);
         let _remaining_events = protocol_event_receiver.drain().await;
-        let _remaining_events = protocol_pool_event_receiver.drain().await;
+        //let _remaining_events = protocol_pool_event_receiver.drain().await;
         let network_event_receiver = self.join_handle.await??;
         Ok(network_event_receiver)
     }

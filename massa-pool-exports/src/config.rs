@@ -19,7 +19,7 @@ pub struct PoolConfig {
     /// max operation pool size per thread (in number of operations)
     pub max_operation_pool_size_per_thread: usize,
     /// max endorsement pool size per thread (in number of endorsements)
-    pub max_endorements_pool_size_per_thread: usize,
+    pub max_endorsements_pool_size_per_thread: usize,
     /// max number of endorsements per block
     pub max_block_endorsement_count: u32,
 }

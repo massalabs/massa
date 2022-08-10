@@ -5,7 +5,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 extern crate massa_logging;
-use crate::settings::{POOL_CONFIG, SETTINGS};
+use crate::settings::SETTINGS;
 
 use dialoguer::Password;
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
@@ -31,17 +31,18 @@ use massa_models::{
             MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE,
             MAX_PARAMETERS_SIZE,
         },
-        ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
-        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH,
-        MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK,
-        OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
+        BLOCK_REWARD, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
+        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
+        MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK,
+        MAX_OPERATIONS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, ROLL_PRICE, T0,
+        THREAD_COUNT, VERSION,
     },
     prehash::Map,
     Address,
 };
-use massa_network_exports::{Establisher, NetworkManager};
+use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
-use massa_pool_exports::{PoolConfig, PoolController, PoolManager};
+use massa_pool_exports::{PoolConfig, PoolController};
 use massa_pool_worker::start_pool;
 use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
@@ -51,7 +52,7 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
-use parking_lot::RwLock;
+use std::{mem, path::PathBuf, sync::RwLock};
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
@@ -65,7 +66,6 @@ mod settings;
 async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
 ) -> (
-    PoolCommandSender,
     ConsensusEventReceiver,
     Option<BootstrapManager>,
     ConsensusManager,
@@ -115,7 +115,7 @@ async fn launch(
     let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
 
     // Create final state
-    let final_state = Arc::new(RwLock::new(
+    let final_state = Arc::new(parking_lot::RwLock::new(
         FinalState::new(final_state_config, Box::new(ledger)).expect("could not init final state"),
     ));
 
@@ -244,8 +244,8 @@ async fn launch(
         max_async_gas: MAX_ASYNC_GAS,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         roll_price: ROLL_PRICE,
-        thread_count,
-        t0,
+        thread_count: THREAD_COUNT,
+        t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         block_reward: BLOCK_REWARD,
         endorsement_count: ENDORSEMENT_COUNT as u64,
@@ -268,14 +268,14 @@ async fn launch(
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_operation_pool_size_per_thread,
-        max_endorements_pool_size_per_thread: SETTINGS.pool.max_endorements_pool_size_per_thread,
+        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
     };
     let pool_controller = start_pool(
         pool_config,
-        storage.clone_without_refs(),
+        shared_storage.clone_without_refs(),
         execution_controller.clone(),
     );
-    let pool_manager = pool_controller.clone();
+    let pool_manager: Box<dyn PoolController> = Box::new(pool_controller.clone());
 
     // init consensus configuration
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
@@ -287,7 +287,7 @@ async fn launch(
                 execution_controller: execution_controller.clone(),
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: pool_command_sender.clone(),
+                pool_command_sender: pool_manager.clone(),
                 selector_controller: selector_controller.clone(),
             },
             bootstrap_state.graph,
@@ -304,13 +304,13 @@ async fn launch(
         t0: T0,
         clock_compensation_millis: bootstrap_state.compensation_millis,
         initial_delay: SETTINGS.factory.initial_delay,
-        max_block_size: MAX_BLOCK_SIZE,
+        max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
-        consensus: consensus_controller.clone(),
-        pool: pool_command_sender.clone(),
+        consensus: consensus_command_sender.clone(),
+        pool: pool_manager.clone(),
         storage: shared_storage.clone(),
     };
     let factory_manager = start_factory(factory_config, node_wallet, factory_channels);
@@ -343,10 +343,10 @@ async fn launch(
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
         execution_controller.clone(),
+        SETTINGS.api,
         selector_controller.clone(),
-        &SETTINGS.api,
         consensus_config,
-        pool_command_sender.clone(),
+        pool_manager.clone(),
         network_config,
         *VERSION,
         network_command_sender.clone(),
@@ -356,13 +356,12 @@ async fn launch(
     let api_public_handle = api_public.serve(&SETTINGS.api.bind_public);
 
     (
-        pool_command_sender,
         consensus_event_receiver,
         bootstrap_manager,
         consensus_manager,
-        pool_manager,
         execution_manager,
         selector_manager,
+        pool_manager,
         protocol_manager,
         network_manager,
         factory_manager,
@@ -393,7 +392,7 @@ async fn stop(
         pool_manager,
         protocol_manager,
         network_manager,
-        factory_manager,
+        mut factory_manager,
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -432,11 +431,14 @@ async fn stop(
     selector_manager.stop();
 
     // stop pool controller
-    let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
+    // TODO
+    //let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
 
     // stop protocol controller
     let network_event_receiver = protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
+        .stop(
+            protocol_event_receiver, /*, protocol_pool_event_receiver*/
+        )
         .await
         .expect("protocol shutdown failed");
 
@@ -474,7 +476,10 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
                 .expect("IO error: Password reading failed, staking keys file couldn't be created")
         })
     };
-    Ok(Arc::new(RwLock::new(Wallet::new(path, password)?)))
+    Ok(Arc::new(RwLock::new(Wallet::new(
+        PathBuf::from(path),
+        password,
+    )?)))
 }
 
 /// To instrument `massa-node` with `tokio-console` run
@@ -522,7 +527,6 @@ async fn main(args: Args) -> anyhow::Result<()> {
 
     loop {
         let (
-            _,
             mut consensus_event_receiver,
             bootstrap_manager,
             consensus_manager,
@@ -535,7 +539,7 @@ async fn main(args: Args) -> anyhow::Result<()> {
             mut api_private_stop_rx,
             api_private_handle,
             api_public_handle,
-        ) = launch(node_wallet).await;
+        ) = launch(node_wallet.clone()).await;
 
         // interrupt signal listener
         let stop_signal = signal::ctrl_c();

@@ -7,7 +7,7 @@ use enum_map::EnumMap;
 use massa_api::APISettings;
 use massa_consensus_exports::ConsensusSettings;
 use massa_models::constants::{build_massa_settings, OPERATION_VALIDITY_PERIODS, THREAD_COUNT};
-use massa_pool::{PoolConfig, PoolSettings};
+use massa_pool_exports::PoolConfig;
 use massa_protocol_exports::ProtocolSettings;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
@@ -18,11 +18,6 @@ use massa_network_exports::{settings::PeerTypeConnectionConfig, PeerType};
 
 lazy_static::lazy_static! {
     pub static ref SETTINGS: Settings = build_massa_settings("massa-node", "MASSA_NODE");
-    pub static ref POOL_CONFIG: PoolConfig = PoolConfig {
-        settings: SETTINGS.pool,
-        thread_count: THREAD_COUNT,
-        operation_validity_periods: OPERATION_VALIDITY_PERIODS
-    };
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -95,6 +90,22 @@ pub struct BootstrapSettings {
     pub max_bytes_read_write: f64,
 }
 
+/// Factory settings
+#[derive(Debug, Deserialize, Clone)]
+pub struct FactorySettings {
+    pub initial_delay: MassaTime,
+}
+
+/// Pool configuration, read from a file configuration
+#[derive(Debug, Deserialize, Clone)]
+pub struct PoolSettings {
+    pub max_operation_pool_size_per_thread: usize,
+    pub max_endorsements_pool_size_per_thread: usize,
+    pub max_operation_future_validity_start_periods: u64,
+    pub max_endorsement_count: u64,
+    pub max_item_return_count: usize,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub logging: LoggingSettings,
@@ -107,6 +118,7 @@ pub struct Settings {
     pub execution: ExecutionSettings,
     pub ledger: LedgerSettings,
     pub selector: SelectionSettings,
+    pub factory: FactorySettings,
 }
 
 #[cfg(test)]
