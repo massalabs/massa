@@ -155,8 +155,8 @@ impl BlockFactoryWorker {
 
         // claim block parents in local storage
         {
-            let claimed_parents =
-                block_storage.claim_block_refs(parents.iter().map(|(b_id, _)| *b_id).collect());
+            let claimed_parents = block_storage
+                .claim_block_refs(parents.iter().map(|(b_id, _)| *b_id).copied().collect());
             if claimed_parents.len() != parents.len() {
                 warn!("block factory could claim parents for slot {}", slot);
                 return;
@@ -180,7 +180,7 @@ impl BlockFactoryWorker {
         let global_operations_hash = Hash::compute_from(
             &op_ids
                 .iter()
-                .map(|op_id| op_id.as_bytes())
+                .map(|op_id| op_id.to_bytes())
                 .flatten()
                 .collect::<Vec<u8>>(),
         );

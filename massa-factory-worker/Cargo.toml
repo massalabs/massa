@@ -16,6 +16,7 @@ tracing = "0.1"
 massa_models = { path = "../massa-models" }
 massa_factory_exports = { path = "../massa-factory-exports" }
 massa_signature = { path = "../massa-signature" }
+massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
 massa_hash = { path = "../massa-hash" }

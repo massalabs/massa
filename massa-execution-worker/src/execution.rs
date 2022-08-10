@@ -868,7 +868,12 @@ impl ExecutionState {
 
             // gather all operations
             let operations = block_store.with_operations(
-                &stored_block.content.operations.iter().copied().collect(),
+                &stored_block
+                    .content
+                    .operations
+                    .iter()
+                    .copied()
+                    .collect::<Vec<_>>(),
                 |ops| {
                     ops.iter()
                         .map(|opt_op| opt_op.expect("block operation absent from storage").clone())
@@ -877,14 +882,15 @@ impl ExecutionState {
             );
 
             // gather all available endorsement creators and target blocks
-            let (endorsement_creators, endorsement_targets) = &stored_block
-                .content
-                .header
-                .content
-                .endorsements
-                .iter()
-                .map(|endo| (endo.creator_address, endo.content.endorsed_block))
-                .unzip();
+            let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =
+                &stored_block
+                    .content
+                    .header
+                    .content
+                    .endorsements
+                    .iter()
+                    .map(|endo| (endo.creator_address, endo.content.endorsed_block))
+                    .unzip();
             // deduce endorsement target block creators
             let endorsement_target_creators = endorsement_targets
                 .into_iter()
@@ -943,7 +949,7 @@ impl ExecutionState {
                 // credit creator of the endorsement with sequential coins
                 match context.transfer_sequential_coins(
                     None,
-                    Some(endorsement_creator),
+                    Some(*endorsement_creator),
                     block_credit_part,
                     false,
                 ) {

@@ -48,7 +48,7 @@ pub struct Public {
     /// link to the selector component
     pub selector_controller: Box<dyn SelectorController>,
     /// link to the pool component
-    pub pool_command_sender: PoolController,
+    pub pool_command_sender: Box<dyn PoolController>,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings

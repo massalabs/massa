@@ -38,7 +38,7 @@ enum HeaderOrBlock {
     Block {
         id: BlockId,
         slot: Slot,
-        ops: Map<OperationId, (usize, u64)>,
+        ops: Map<OperationId, usize>,
         endorsements: Map<EndorsementId, u32>,
         storage: Storage,
     },
@@ -90,8 +90,12 @@ enum BlockStatus {
     },
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
-        /// Just the header of that block
-        header: WrappedHeader,
+        /// Just the slot of that block
+        slot: Slot,
+        /// Address of the creator of the block
+        creator: Address,
+        /// Ids of parents blocks
+        parents: Vec<BlockId>,
         /// why it was discarded
         reason: DiscardReason,
         /// Used to limit and sort the number of blocks/headers waiting for dependencies
@@ -163,7 +167,7 @@ impl<'a> BlockGraphExport {
             max_cliques: block_graph.max_cliques.clone(),
         };
 
-        let filter = |s| {
+        let filter = |&s| {
             if let Some(s_start) = slot_start {
                 if s < s_start {
                     return false;
@@ -179,15 +183,21 @@ impl<'a> BlockGraphExport {
 
         for (hash, block) in block_graph.block_statuses.iter() {
             match block {
-                BlockStatus::Discarded { header, reason, .. } => {
-                    if filter(header.content.slot) {
+                BlockStatus::Discarded {
+                    slot,
+                    creator,
+                    parents,
+                    reason,
+                    ..
+                } => {
+                    if filter(slot) {
                         export
                             .discarded_blocks
-                            .insert(*hash, (reason.clone(), header.clone()));
+                            .insert(*hash, (reason.clone(), (*slot, *creator, parents.clone())));
                     }
                 }
                 BlockStatus::Active { a_block, storage } => {
-                    if filter(a_block.slot) {
+                    if filter(&a_block.slot) {
                         let stored_block = storage
                             .retrieve_block(hash)
                             .ok_or_else(|| {
@@ -196,11 +206,12 @@ impl<'a> BlockGraphExport {
                                     hash
                                 ))
                             })?
-                            .read();
+                            .read()
+                            .clone();
                         export.active_blocks.insert(
                             *hash,
                             ExportCompiledBlock {
-                                header: stored_block.content.header.clone(),
+                                header: stored_block.content.header,
                                 children: a_block
                                     .children
                                     .iter()
@@ -226,8 +237,8 @@ pub struct BlockGraphExport {
     pub genesis_blocks: Vec<BlockId>,
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: Map<BlockId, ExportCompiledBlock>,
-    /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: Map<BlockId, (DiscardReason, WrappedHeader)>,
+    /// Finite cache of discarded blocks, in exported version (slot, creator_address, parents).
+    pub discarded_blocks: Map<BlockId, (DiscardReason, (Slot, Address, Vec<BlockId>))>,
     /// Best parents hashes in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
@@ -359,7 +370,7 @@ impl BlockGraph {
     pub async fn new(
         cfg: GraphConfig,
         init: Option<BootstrapableGraph>,
-        mut storage: Storage,
+        storage: Storage,
         selector_controller: Box<dyn SelectorController>,
     ) -> Result<Self> {
         // load genesis blocks
@@ -371,7 +382,7 @@ impl BlockGraph {
                 GraphError::GenesisCreationError(format!("genesis error {}", err))
             })?;
             let mut storage = storage.clone_without_refs();
-            storage.store_block(block);
+            storage.store_block(block.clone());
             genesis_block_ids.push(block_id);
             block_statuses.insert(
                 block_id,
@@ -401,7 +412,7 @@ impl BlockGraph {
         massa_trace!("consensus.block_graph.new", {});
         if let Some(boot_graph) = init {
             let mut res_graph = BlockGraph {
-                cfg,
+                cfg: cfg.clone(),
                 sequence_counter: 0,
                 genesis_hashes: genesis_block_ids,
                 active_index: boot_graph.active_blocks.keys().copied().collect(),
@@ -409,9 +420,11 @@ impl BlockGraph {
                     .active_blocks
                     .into_iter()
                     .map(|(b_id, exported_active_block)| {
-                        let a_block: Box<ActiveBlock> = Box::new(exported_active_block.try_into()?);
+                        let a_block: Box<ActiveBlock> = Box::new(
+                            exported_active_block.to_active_block(storage.clone_without_refs())?,
+                        );
                         let mut block_storage = storage.clone_without_refs();
-                        block_storage.store_block(a_block.block.clone()); //TODO export/import full block
+                        block_storage.store_block(exported_active_block.block.clone()); //TODO export/import full block
                         Ok((
                             b_id,
                             BlockStatus::Active {
@@ -734,13 +747,7 @@ impl BlockGraph {
         // For each operation id we are searching for.
         for op_id in operation_ids.into_iter() {
             // The operation is fetched from the storage.
-            let operation =
-                self.storage
-                    .retrieve_operation(&op_id)
-                    .ok_or(GraphError::MissingOperation(format!(
-                        "The operation {} is not in the storage.",
-                        op_id
-                    )))?;
+            let mut operation = None;
 
             // The active blocks in which the operation is found.
             let mut in_blocks: Map<BlockId, (usize, bool)> = Default::default();
@@ -752,36 +759,36 @@ impl BlockGraph {
                 }) = self.block_statuses.get(block_id)
                 {
                     // If the operation is found in the active block.
-                    if let Some((idx, _)) = active_block.operation_set.get(&op_id) {
+                    if let Some(idx) = active_block.operation_set.get(&op_id) {
                         // If this is the first time we encounter the operation as present in an active block.
                         if operation.is_none() {
-                            let stored_block = storage
-                                .retrieve_block(block_id)
-                                .ok_or_else(|| {
+                            let stored_operation =
+                                storage.retrieve_operation(&op_id).ok_or_else(|| {
                                     GraphError::MissingBlock(format!(
-                                        "missing block in get_operations: {}",
+                                        "missing operation in get_operations: {}",
                                         block_id
                                     ))
-                                })?
-                                .read();
+                                })?;
 
                             // Clone the operation.
-                            operation = Some(stored_block.content.operations[*idx].clone());
+                            operation = Some(stored_operation);
                         }
                         in_blocks.insert(*block_id, (*idx, active_block.is_final));
                     }
                 }
             }
 
-            let result = OperationSearchResult {
-                op: operation,
-                in_pool: false,
-                in_blocks,
-                status: OperationSearchResultStatus::InBlock(
-                    OperationSearchResultBlockStatus::Active,
-                ),
-            };
-            res.insert(op_id, result);
+            if let Some(op) = operation {
+                let result = OperationSearchResult {
+                    op,
+                    in_pool: false,
+                    in_blocks,
+                    status: OperationSearchResultStatus::InBlock(
+                        OperationSearchResultBlockStatus::Active,
+                    ),
+                };
+                res.insert(op_id, result);
+            }
         }
 
         // get storage refs
@@ -1095,7 +1102,9 @@ impl BlockGraph {
                         self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
-                                header,
+                                slot: header.content.slot,
+                                creator: header.creator_address,
+                                parents: header.content.parents,
                                 reason,
                                 sequence_number: BlockGraph::new_sequence_number(
                                     &mut self.sequence_counter,
@@ -1136,7 +1145,8 @@ impl BlockGraph {
                 let stored_block = storage
                     .retrieve_block(&block_id)
                     .expect("incoming block not found in storage")
-                    .read();
+                    .read()
+                    .clone();
 
                 match self.check_header(&block_id, &stored_block.content.header, current_slot)? {
                     HeaderCheckOutcome::Proceed {
@@ -1242,7 +1252,9 @@ impl BlockGraph {
                         self.block_statuses.insert(
                             block_id,
                             BlockStatus::Discarded {
-                                header: stored_block.content.header.clone(),
+                                slot: stored_block.content.header.content.slot,
+                                creator: stored_block.creator_address,
+                                parents: stored_block.content.header.content.parents.clone(),
                                 reason,
                                 sequence_number: BlockGraph::new_sequence_number(
                                     &mut self.sequence_counter,
@@ -2154,7 +2166,9 @@ impl BlockGraph {
                 self.block_statuses.insert(
                     stale_block_hash,
                     BlockStatus::Discarded {
-                        header: active_block.content.header, // TODO check what fields we need to have in Discarded and get them from the removed ActiveBlock. No need to seek in storage
+                        slot: active_block.slot,
+                        creator: active_block.creator_address,
+                        parents: active_block.parents.iter().map(|(h, _)| *h).collect(),
                         reason: DiscardReason::Stale,
                         sequence_number: BlockGraph::new_sequence_number(
                             &mut self.sequence_counter,
@@ -2489,7 +2503,9 @@ impl BlockGraph {
             self.block_statuses.insert(
                 discard_active_h,
                 BlockStatus::Discarded {
-                    header: stored_block.content.header.clone(),
+                    slot: stored_block.content.header.content.slot,
+                    creator: stored_block.creator_address,
+                    parents: stored_block.content.header.content.parents.clone(),
                     reason: DiscardReason::Final,
                     sequence_number: BlockGraph::new_sequence_number(&mut self.sequence_counter),
                 },
@@ -2688,7 +2704,9 @@ impl BlockGraph {
                     self.block_statuses.insert(
                         block_id,
                         BlockStatus::Discarded {
-                            header,
+                            slot: header.content.slot,
+                            creator: header.creator_address,
+                            parents: header.content.parents.clone(),
                             reason,
                             sequence_number: BlockGraph::new_sequence_number(
                                 &mut self.sequence_counter,

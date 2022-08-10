@@ -41,6 +41,7 @@ use massa_models::{
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::collections::{BTreeSet, HashSet};
 use std::net::{IpAddr, SocketAddr};
@@ -53,7 +54,7 @@ impl API<Public> {
         api_settings: APISettings,
         selector_controller: Box<dyn SelectorController>,
         consensus_settings: ConsensusConfig,
-        pool_command_sender: PoolController,
+        pool_command_sender: Box<dyn PoolController>,
         network_settings: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
@@ -512,16 +513,16 @@ impl Endpoints for API<Public> {
                     parents: exported_block.header.content.parents,
                 });
             }
-            for (id, (reason, header)) in graph.discarded_blocks.into_iter() {
+            for (id, (reason, (slot, creator, parents))) in graph.discarded_blocks.into_iter() {
                 if reason == DiscardReason::Stale {
                     res.push(BlockSummary {
                         id,
                         is_final: false,
                         is_stale: true,
                         is_in_blockclique: false,
-                        slot: header.content.slot,
-                        creator: header.creator_address,
-                        parents: header.content.parents,
+                        slot,
+                        creator,
+                        parents,
                     });
                 }
             }
@@ -741,7 +742,7 @@ impl Endpoints for API<Public> {
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
             ));
-            let to_send = ops
+            let verified_ops = ops
                 .into_iter()
                 .map(|op_input| {
                     let mut op_serialized = Vec::new();
@@ -762,12 +763,17 @@ impl Endpoints for API<Public> {
                     }
                 })
                 .map(|op| match op {
-                    Ok(operation) => Ok((operation.verify_integrity()?, operation)),
+                    Ok(operation) => {
+                        operation.verify_integrity()?;
+                        Ok(operation)
+                    }
                     Err(e) => Err(e),
                 })
-                .collect::<Result<Map<OperationId, _>, ApiError>>()?;
-            let ids = to_send.keys().copied().collect();
-            cmd_sender.add_operations(to_send).await?;
+                .collect::<Result<Vec<WrappedOperation>, ApiError>>()?;
+            let mut to_send = Storage::default();
+            to_send.store_operations(verified_ops);
+            let ids = verified_ops.iter().map(|op| op.id).collect();
+            cmd_sender.add_operations(to_send);
             Ok(ids)
         };
         Box::pin(closure())

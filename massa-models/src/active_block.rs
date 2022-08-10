@@ -3,8 +3,10 @@ use crate::{
     Address, BlockId, EndorsementId, OperationId, Slot,
 };
 
+use serde::{Deserialize, Serialize};
+
 /// Block that was checked as valid, with some useful pre-computed data
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveBlock {
     /// The creator's address
     pub creator_address: Address,

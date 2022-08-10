@@ -68,10 +68,10 @@ impl ExportActiveBlock {
         })
     }
 
-    fn to_active_block(a_block: ExportActiveBlock, storage: Storage) -> Result<ActiveBlock> {
+    pub fn to_active_block(&self, storage: Storage) -> Result<ActiveBlock> {
         //TODO export full objects (block, ops, endorsements) loaded from storage
 
-        let operation_set = a_block
+        let operation_set = self
             .block
             .content
             .operations

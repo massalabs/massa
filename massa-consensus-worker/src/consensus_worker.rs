@@ -133,10 +133,10 @@ impl ConsensusWorker {
             .get_blockclique()
             .into_iter()
             .map(|block_id| {
-                let a_block = block_db
+                let (a_block, storage) = block_db
                     .get_active_block(&block_id)
                     .expect("could not get active block for execution notification");
-                (a_block.slot, (block_id, a_block.storage.clone()))
+                (a_block.slot, (block_id, storage.clone()))
             })
             .collect();
         channels
@@ -612,6 +612,7 @@ impl ConsensusWorker {
                     operation_set,
                     endorsement_ids,
                     self.previous_slot,
+                    self.block_db.storage,
                 )?;
                 self.block_db_changed().await?;
             }
@@ -687,7 +688,7 @@ impl ConsensusWorker {
             .clone()
             .into_iter()
             .filter_map(|b_id| match self.block_db.get_active_block(&b_id) {
-                Some(a_b) if a_b.is_final => Some(self.get_block_slot(a_b)),
+                Some((a_b, _)) if a_b.is_final => Some(self.get_block_slot(a_b)),
                 _ => None,
             })
             .collect();
@@ -697,7 +698,7 @@ impl ConsensusWorker {
             .filter_map(|block_id| {
                 self.block_db
                     .get_active_block(&block_id)
-                    .map(|a_block| self.get_block_slot(a_block))
+                    .map(|(a_block, _)| self.get_block_slot(a_block))
             })
             .collect();
         self.channels
@@ -710,7 +711,7 @@ impl ConsensusWorker {
             Map::with_capacity_and_hasher(new_final_block_ids.len(), BuildMap::default());
         let timestamp = MassaTime::compensated_now(self.clock_compensation)?;
         for b_id in new_final_block_ids.into_iter() {
-            if let Some(a_block) = self.block_db.get_active_block(&b_id) {
+            if let Some((a_block, _)) = self.block_db.get_active_block(&b_id) {
                 // List new final ops
                 new_final_ops.extend(a_block.operation_set.iter().map(|(id, _)| {
                     // TODO: Discuss this get
