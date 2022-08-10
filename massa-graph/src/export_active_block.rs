@@ -68,9 +68,10 @@ impl ExportActiveBlock {
         })
     }
 
-    /// Try conversion from export active block to active block
-    pub fn to_active_block(&self, storage: Storage) -> Result<ActiveBlock> {
-        let operation_set: Map<OperationId, (usize, WrappedOperation)> = self
+    fn to_active_block(a_block: ExportActiveBlock, storage: Storage) -> Result<ActiveBlock> {
+        //TODO export full objects (block, ops, endorsements) loaded from storage
+
+        let operation_set = a_block
             .block
             .content
             .operations

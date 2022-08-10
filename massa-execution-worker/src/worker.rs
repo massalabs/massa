@@ -227,13 +227,13 @@ impl ExecutionThread {
                 // A block at that slot was found in pending_final_blocks.
                 // Add it to the sequence of active slots.
                 self.active_slots
-                    .insert(slot, Some((*block_id, block_store.clone_with_refs())));
+                    .insert(slot, Some((*block_id, block_store.clone())));
                 self.last_active_slot = slot;
             } else if let Some((block_id, block_store)) = self.blockclique.get(&slot) {
                 // A block at that slot was found in the current blockclique.
                 // Add it to the sequence of active slots.
                 self.active_slots
-                    .insert(slot, Some((*block_id, block_store.clone_with_refs())));
+                    .insert(slot, Some((*block_id, block_store.clone())));
                 self.last_active_slot = slot;
             } else {
                 // No block was found at that slot: it's a miss
@@ -332,9 +332,7 @@ impl ExecutionThread {
 
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
-            Some(b_store) => b_store
-                .as_ref()
-                .map(|(b_id, bs)| (*b_id, bs.clone_with_refs())),
+            Some(b_store) => b_store.as_ref().map(|(b_id, bs)| (*b_id, bs.clone())),
             _ => return false,
         };
 

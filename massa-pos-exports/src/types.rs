@@ -18,7 +18,7 @@ use massa_serialization::{
 };
 use nom::{
     error::{context, ContextError, ParseError},
-    multi::length_count,
+    multi::{length_count, many0},
     sequence::tuple,
     IResult, Parser,
 };
@@ -38,7 +38,7 @@ pub struct PoSFinalState {
     pub selector: Option<Box<dyn SelectorController>>,
 }
 
-/// Cursor object used for the Proof of Stake state streaming
+/// Cursor object used for the Proof of Stake state bootstrap streaming
 #[derive(Default)]
 pub struct PoSBootstrapCursor {
     credits_slot: Option<Slot>,
@@ -80,7 +80,7 @@ impl PoSFinalState {
         {
             if part.len() < CYCLE_INFO_SIZE_MESSAGE_BYTES as usize {
                 u64_ser.serialize(cycle, &mut part)?;
-                // TODO: consider serializing this bool some other way
+                // TODO: consider serializing this boolean some other way
                 u64_ser.serialize(&(*complete as u64), &mut part)?;
                 // TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
                 for (addr, count) in roll_counts {
@@ -109,10 +109,10 @@ impl PoSFinalState {
         Ok((part, last_cycle))
     }
 
-    /// Gets a part of the Proof of Stake state
+    /// Gets a part of the Proof of Stake state. Used only in the bootstrap process.
     ///
     /// # Arguments:
-    /// cursor: indicates the bootstrap state after the previous payload
+    /// `cursor`: indicates the bootstrap state after the previous payload
     ///
     /// # Returns
     /// The PoS part and the updated cursor
@@ -158,11 +158,11 @@ impl PoSFinalState {
         ))
     }
 
-    /// TODO
-    pub fn set_pos_state_part<'a>(
-        &mut self,
-        part: &'a [u8],
-    ) -> Result<PoSBootstrapCursor, ModelsError> {
+    /// Sets a part of the Proof of Stake state. Used only in the bootstrap process.
+    ///
+    /// # Arguments
+    /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
+    pub fn set_pos_state_part<'a>(&mut self, part: &'a [u8]) -> Result<(), ModelsError> {
         // TODO: define deserializers limits
         let amount_deser = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         let slot_deser = SlotDeserializer::new(
@@ -172,78 +172,94 @@ impl PoSFinalState {
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let bitvec_deser = BitVecDeserializer::new();
         let address_deser = AddressDeserializer::new();
-        let _result = context(
+        // NOTE: many0 instead of length_count because of the payload limit making it impossible to serialize the length
+        let (rest, (credits, cycles)) = context(
             "Failed PoSFinalState deserialization",
             tuple((
                 context(
                     "deferred_credits",
-                    length_count(
-                        context("deferred_credits length", |input| {
-                            u64_deser.deserialize::<DeserializeError>(input)
+                    many0(tuple((
+                        context("slot", |input| {
+                            slot_deser.deserialize::<DeserializeError>(input)
                         }),
-                        tuple((
-                            context("slot", |input| slot_deser.deserialize(input)),
-                            length_count(
-                                context("slot credits length", |input| {
-                                    u64_deser.deserialize(input)
-                                }),
-                                tuple((
-                                    context("address", |input| address_deser.deserialize(input)),
-                                    context("amount", |input| amount_deser.deserialize(input)),
-                                )),
-                            ),
-                        )),
-                    ),
+                        many0(tuple((
+                            context("address", |input| address_deser.deserialize(input)),
+                            context("amount", |input| amount_deser.deserialize(input)),
+                        ))),
+                    ))),
                 ),
                 context(
                     "cycle_history",
-                    length_count(
-                        context("cycle_history length", |input| u64_deser.deserialize(input)),
-                        tuple((
-                            context("cycle", |input| u64_deser.deserialize(input)),
-                            context("complete", |input| u64_deser.deserialize(input)),
-                            context(
-                                "roll_counts",
-                                length_count(
-                                    context("roll_counts length", |input| {
-                                        u64_deser.deserialize(input)
-                                    }),
-                                    tuple((
-                                        context("address", |input| {
-                                            address_deser.deserialize(input)
-                                        }),
-                                        context("count", |input| u64_deser.deserialize(input)),
-                                    )),
-                                ),
-                            ),
-                            context("rng_seed", |input| bitvec_deser.deserialize(input)),
-                            context(
-                                "production_stats",
-                                length_count(
-                                    context("production_stats length", |input| {
-                                        u64_deser.deserialize(input)
-                                    }),
-                                    tuple((
-                                        context("address", |input| {
-                                            address_deser.deserialize(input)
-                                        }),
-                                        context("block_success_count", |input| {
-                                            u64_deser.deserialize(input)
-                                        }),
-                                        context("block_failure_count", |input| {
-                                            u64_deser.deserialize(input)
-                                        }),
-                                    )),
-                                ),
-                            ),
-                        )),
-                    ),
+                    many0(tuple((
+                        context("cycle", |input| u64_deser.deserialize(input)),
+                        context("complete", |input| u64_deser.deserialize(input)),
+                        context(
+                            "roll_counts",
+                            many0(tuple((
+                                context("address", |input| address_deser.deserialize(input)),
+                                context("count", |input| u64_deser.deserialize(input)),
+                            ))),
+                        ),
+                        context("rng_seed", |input| bitvec_deser.deserialize(input)),
+                        context(
+                            "production_stats",
+                            many0(tuple((
+                                context("address", |input| address_deser.deserialize(input)),
+                                context("block_success_count", |input| {
+                                    u64_deser.deserialize(input)
+                                }),
+                                context("block_failure_count", |input| {
+                                    u64_deser.deserialize(input)
+                                }),
+                            ))),
+                        ),
+                    ))),
                 ),
             )),
         )
-        .map(|(_deferred_credits, _cycles)| 42)
-        .parse(part);
-        Ok(PoSBootstrapCursor::default())
+        .parse(part)
+        .unwrap();
+        // output type: (Vec<(Slot, Vec<(Address, Amount)>)>, Vec<(u64, u64, Vec<(Address, u64)>, bitvec::vec::BitVec<u8>, Vec<(Address, u64, u64)>)>)
+        if rest.is_empty() {
+            let sorted_credits: BTreeMap<Slot, Map<Address, Amount>> = credits
+                .into_iter()
+                .map(|(slot, credits)| (slot, credits.into_iter().collect()))
+                .collect();
+            self.deferred_credits.extend(sorted_credits);
+            for item in cycles {
+                let stats_iter =
+                    item.4
+                        .into_iter()
+                        .map(|(addr, block_success_count, block_failure_count)| {
+                            (
+                                addr,
+                                ProductionStats {
+                                    block_success_count,
+                                    block_failure_count,
+                                },
+                            )
+                        });
+                if let Some(info) = self.cycle_history.front_mut() && info.cycle == item.0 {
+                    info.complete = if item.1 == 1 { true } else { false };
+                    info.roll_counts.extend(item.2);
+                    info.rng_seed.extend(item.3);
+                    info.production_stats.extend(stats_iter);
+                } else {
+                    self.cycle_history.push_front(CycleInfo {
+                        cycle: item.0,
+                        complete: if item.1 == 1 { true } else { false },
+                        roll_counts: item.2.into_iter().collect(),
+                        rng_seed: item.3,
+                        production_stats: stats_iter.collect(),
+                    })
+                }
+            }
+            Ok(())
+        } else {
+            Err(ModelsError::SerializeError(
+                "data is left after PoSFinalState part deserialization".to_string(),
+            ))
+        }
     }
 }
 
