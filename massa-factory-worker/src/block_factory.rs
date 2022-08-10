@@ -3,13 +3,9 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
-    prehash::{Map, Set},
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
-    wrapped::WrappedContent,
-    Address, Amount, Block, BlockHeader, BlockId, BlockSerializer, OperationId, Slot,
-    WrappedEndorsement,
+    timeslots::get_block_slot_timestamp, wrapped::WrappedContent, Block, BlockHeader, BlockId,
+    BlockSerializer, Slot,
 };
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use std::{
@@ -204,7 +200,10 @@ impl BlockFactoryWorker {
 
         // create block
         let block = Block::new_wrapped(
-            Block { header, op_ids },
+            Block {
+                header,
+                operations: op_ids,
+            },
             self.block_serializer,
             block_producer_keypair,
         )

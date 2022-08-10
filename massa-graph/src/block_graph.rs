@@ -420,15 +420,13 @@ impl BlockGraph {
                     .active_blocks
                     .into_iter()
                     .map(|(b_id, exported_active_block)| {
-                        let a_block: Box<ActiveBlock> = Box::new(
-                            exported_active_block.to_active_block(storage.clone_without_refs())?,
-                        );
                         let mut block_storage = storage.clone_without_refs();
-                        block_storage.store_block(exported_active_block.block.clone()); //TODO export/import full block
+                        //TODO export/import full block
+                        block_storage.store_block(exported_active_block.block.clone());
                         Ok((
                             b_id,
                             BlockStatus::Active {
-                                a_block,
+                                a_block: Box::new(exported_active_block.to_active_block(&storage)?),
                                 storage: block_storage,
                             },
                         ))

@@ -2,14 +2,11 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    array_from_slice,
-    constants::*,
-    ledger_models::{LedgerChangeDeserializer, LedgerChangeSerializer, LedgerChanges},
-    prehash::{BuildMap, Map, Set},
-    rolls::{RollUpdateDeserializer, RollUpdateSerializer, RollUpdates},
-    u8_from_slice,
+    ledger_models::{LedgerChangeDeserializer, LedgerChangeSerializer},
+    prehash::{Map, Set},
+    rolls::{RollUpdateDeserializer, RollUpdateSerializer},
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    AddressDeserializer, Block, BlockDeserializer, BlockId, ModelsError, OperationId, WrappedBlock,
+    AddressDeserializer, Block, BlockDeserializer, BlockId, OperationId, WrappedBlock,
     WrappedOperation,
 };
 use massa_serialization::{
@@ -68,9 +65,8 @@ impl ExportActiveBlock {
         })
     }
 
-    pub fn to_active_block(&self, storage: Storage) -> Result<ActiveBlock> {
+    pub fn to_active_block(&self, storage: &Storage) -> Result<ActiveBlock> {
         //TODO export full objects (block, ops, endorsements) loaded from storage
-
         let operation_set = self
             .block
             .content
