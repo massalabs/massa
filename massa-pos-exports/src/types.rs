@@ -59,10 +59,12 @@ impl PoSFinalState {
         let mut part = Vec::new();
         let mut last_credits_slot = None;
         let slot_ser = SlotSerializer::new();
+        let u64_ser = U64VarIntSerializer::new();
         let amount_ser = AmountSerializer::new();
         for (slot, credits) in self.deferred_credits.range((last_slot, Unbounded)) {
             if part.len() < DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES as usize {
                 slot_ser.serialize(slot, &mut part)?;
+                u64_ser.serialize(&(credits.len() as u64), &mut part)?;
                 for (addr, amount) in credits {
                     part.extend(addr.to_bytes());
                     amount_ser.serialize(amount, &mut part)?;
@@ -84,7 +86,6 @@ impl PoSFinalState {
         &self,
         cursor: PoSBootstrapCursor,
     ) -> Result<(Vec<u8>, PoSBootstrapCursor), ModelsError> {
-        // TODO: serialize lenght when needed
         let cycle_index = if let Some(last_cycle) = cursor.cycle {
             if let Some(mut index) = self
                 .cycle_history
@@ -125,23 +126,18 @@ impl PoSFinalState {
             // TODO: consider serializing this boolean some other way
             u64_ser.serialize(&(*complete as u64), &mut part)?;
             // TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
+            u64_ser.serialize(&(roll_counts.len() as u64), &mut part)?;
             for (addr, count) in roll_counts {
                 part.extend(addr.to_bytes());
                 u64_ser.serialize(&count, &mut part)?;
             }
             bitvec_ser.serialize(rng_seed, &mut part)?;
             // TODO: limit this with PRODUCTION_STATS_PART_SIZE_MESSAGE_BYTES
-            for (
-                addr,
-                ProductionStats {
-                    block_success_count,
-                    block_failure_count,
-                },
-            ) in production_stats
-            {
+            u64_ser.serialize(&(production_stats.len() as u64), &mut part)?;
+            for (addr, stats) in production_stats {
                 part.extend(addr.to_bytes());
-                u64_ser.serialize(&block_success_count, &mut part)?;
-                u64_ser.serialize(&block_failure_count, &mut part)?;
+                u64_ser.serialize(&stats.block_success_count, &mut part)?;
+                u64_ser.serialize(&stats.block_failure_count, &mut part)?;
             }
             last_cycle = Some(*cycle);
         }
