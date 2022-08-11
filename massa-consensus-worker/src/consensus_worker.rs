@@ -506,7 +506,46 @@ impl ConsensusWorker {
                 block_storage,
                 response_tx,
             } => {
-                //TODO: https://github.com/massalabs/massa/pull/2862#issuecomment-1210462093
+                self.block_db.storage.extend(block_storage);
+                let block_ref =
+                    self.block_db
+                        .storage
+                        .retrieve_block(&block_id)
+                        .ok_or_else(|| {
+                            ConsensusError::MissingBlock(format!(
+                                "missing block when processing ConsensusCommand::SendBlock: {}",
+                                block_id
+                            ))
+                        })?;
+                let (slot, operation_ids, endorsement_ids) = {
+                    let block = block_ref.read();
+                    let slot = block.content.header.content.slot;
+                    let operation_ids = block
+                        .content
+                        .operations
+                        .clone()
+                        .into_iter()
+                        .enumerate()
+                        .map(|(idx, op_id)| (op_id, idx))
+                        .collect();
+                    let endorsement_ids = block
+                        .content
+                        .header
+                        .content
+                        .endorsements
+                        .iter()
+                        .map(|end| (end.id, end.content.index))
+                        .collect();
+                    (slot, operation_ids, endorsement_ids)
+                };
+                self.block_db.incoming_block(
+                    block_id,
+                    slot,
+                    operation_ids,
+                    endorsement_ids,
+                    self.previous_slot,
+                    self.block_db.storage.clone_without_refs(),
+                )?;
                 if response_tx.send(()).is_err() {
                     warn!("consensus: could not send get block clique block at slot response");
                 }

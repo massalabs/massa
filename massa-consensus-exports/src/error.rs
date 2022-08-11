@@ -49,6 +49,8 @@ pub enum ConsensusError {
     IOError(#[from] std::io::Error),
     /// serde error
     SerdeError(#[from] serde_json::Error),
+    /// missing block {0}
+    MissingBlock(String),
     /// block creation error {0}
     BlockCreationError(String),
     /// error sending consensus event: {0}
