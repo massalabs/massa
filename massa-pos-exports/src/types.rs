@@ -50,6 +50,7 @@ pub struct PoSBootstrapCursor {
 }
 
 /// Serializer for `PoSBootstrapCursor`
+#[derive(Default)]
 pub struct PoSBootstrapCursorSerializer {
     u64_ser: U64VarIntSerializer,
     slot_ser: SlotSerializer,

@@ -10,7 +10,9 @@ use massa_models::slot::SlotDeserializer;
 use massa_models::{slot::SlotSerializer, Slot, Version};
 use massa_models::{VecU8Deserializer, VecU8Serializer, VersionDeserializer, VersionSerializer};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
-use massa_pos_exports::PoSBootstrapCursor;
+use massa_pos_exports::{
+    PoSBootstrapCursor, PoSBootstrapCursorDeserializer, PoSBootstrapCursorSerializer,
+};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -446,6 +448,7 @@ pub struct BootstrapClientMessageSerializer {
     slot_serializer: SlotSerializer,
     async_message_id_serializer: AsyncMessageIdSerializer,
     key_serializer: KeySerializer,
+    pos_cursor_serializer: PoSBootstrapCursorSerializer,
 }
 
 impl BootstrapClientMessageSerializer {
@@ -456,6 +459,7 @@ impl BootstrapClientMessageSerializer {
             slot_serializer: SlotSerializer::new(),
             async_message_id_serializer: AsyncMessageIdSerializer::new(),
             key_serializer: KeySerializer::new(),
+            pos_cursor_serializer: PoSBootstrapCursorSerializer::new(),
         }
     }
 }
@@ -501,7 +505,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.key_serializer.serialize(key, buffer)?;
                     self.slot_serializer.serialize(slot, buffer)?;
                     self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
-                    // TODO: serialize PoS cursor
+                    self.pos_cursor_serializer.serialize(last_pos_cursor, buffer)?;
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
@@ -531,6 +535,7 @@ pub struct BootstrapClientMessageDeserializer {
     async_message_id_deserializer: AsyncMessageIdDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
     key_deserializer: KeyDeserializer,
+    pos_cursor_deserializer: PoSBootstrapCursorDeserializer,
 }
 
 impl BootstrapClientMessageDeserializer {
@@ -545,6 +550,7 @@ impl BootstrapClientMessageDeserializer {
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
             key_deserializer: KeyDeserializer::new(max_datastore_key_length),
             length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(100000)),
+            pos_cursor_deserializer: PoSBootstrapCursorDeserializer::new(),
         }
     }
 }
@@ -616,15 +622,17 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             context("Failed async_message_id deserialization", |input| {
                                 self.async_message_id_deserializer.deserialize(input)
                             }),
+                            context("Failed pos_cursor deserialization", |input| {
+                                self.pos_cursor_deserializer.deserialize(input)
+                            }),
                         ))
-                        .map(|(last_key, slot, last_async_message_id)| {
+                        .map(|(last_key, slot, last_async_message_id, last_pos_cursor)| {
                             BootstrapClientMessage::AskFinalStatePart {
                                 last_key: Some(last_key),
                                 slot: Some(slot),
                                 last_async_message_id: Some(last_async_message_id),
-                                last_pos_cursor: PoSBootstrapCursor::default(),
+                                last_pos_cursor,
                             }
-                            // TODO: deserialize PoS cursor
                         })
                         .parse(input)
                     }
