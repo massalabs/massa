@@ -62,6 +62,7 @@ async fn stream_final_state(
                 BootstrapServerMessage::FinalStatePart {
                     ledger_data,
                     async_pool_part,
+                    pos_state_part,
                     slot,
                     final_state_changes,
                 } => {

@@ -52,6 +52,8 @@ pub enum BootstrapServerMessage {
         ledger_data: Vec<u8>,
         /// Part of the async pool
         async_pool_part: Vec<u8>,
+        /// Part of the Proof of Stake state
+        pos_state_part: Vec<u8>,
         /// Slot the state changes are attached to
         slot: Slot,
         /// Ledger change for addresses inferior to `address` of the client message until the actual slot.
@@ -155,6 +157,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
             BootstrapServerMessage::FinalStatePart {
                 ledger_data,
                 async_pool_part,
+                pos_state_part,
                 slot,
                 final_state_changes,
             } => {
@@ -162,6 +165,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(&u32::from(MessageServerTypeId::FinalStatePart), buffer)?;
                 self.vec_u8_serializer.serialize(ledger_data, buffer)?;
                 self.vec_u8_serializer.serialize(async_pool_part, buffer)?;
+                self.vec_u8_serializer.serialize(pos_state_part, buffer)?;
                 self.slot_serializer.serialize(slot, buffer)?;
                 self.state_changes_serializer
                     .serialize(final_state_changes, buffer)?;
@@ -355,6 +359,9 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context("Failed async_pool_part deserialization", |input| {
                         self.final_state_parts_deserializer.deserialize(input)
                     }),
+                    context("Failed pos_state_part deserialization", |input| {
+                        self.final_state_parts_deserializer.deserialize(input)
+                    }),
                     context("Failed slot deserialization", |input| {
                         self.slot_deserializer.deserialize(input)
                     }),
@@ -363,10 +370,11 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     }),
                 ))
                 .map(
-                    |(ledger_data, async_pool_part, slot, final_state_changes)| {
+                    |(ledger_data, async_pool_part, pos_state_part, slot, final_state_changes)| {
                         BootstrapServerMessage::FinalStatePart {
                             ledger_data,
                             async_pool_part,
+                            pos_state_part,
                             slot,
                             final_state_changes,
                         }

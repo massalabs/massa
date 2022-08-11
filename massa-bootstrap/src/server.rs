@@ -15,6 +15,7 @@ use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{Slot, Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
+use massa_pos_exports::PoSBootstrapCursor;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -257,12 +258,14 @@ pub async fn send_final_state_stream(
 ) -> Result<(), BootstrapError> {
     let mut old_key = last_key;
     let mut old_last_async_id = last_async_message_id;
+    let mut old_pos_cursor = PoSBootstrapCursor::default();
     let mut old_slot = slot;
 
     loop {
         // Scope of the read in the final state
         let ledger_data;
         let async_pool_data;
+        let pos_state_data;
         let final_state_changes;
         let current_slot;
         {
@@ -284,6 +287,12 @@ pub async fn send_final_state_stream(
                 .get_pool_part(old_last_async_id)?;
             async_pool_data = pool_data;
 
+            let (pos_data, new_pos_cursor) = final_state_read
+                .pos_state
+                .get_pos_state_part(old_pos_cursor)?;
+            pos_state_data = pos_data;
+
+            // TODO: update changes streaming
             if let Some(slot) = old_slot && let Some(key) = &old_key && let Some(async_pool_id) = old_last_async_id && slot != final_state_read.slot {
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
@@ -301,11 +310,12 @@ pub async fn send_final_state_stream(
             if new_last_key.is_some() || !ledger_data.is_empty() {
                 old_key = new_last_key;
             }
+            old_pos_cursor = new_pos_cursor;
             old_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
         }
 
-        if !ledger_data.is_empty() || !async_pool_data.is_empty() {
+        if !ledger_data.is_empty() || !async_pool_data.is_empty() || !pos_state_data.is_empty() {
             if let Ok(final_state_changes) = final_state_changes {
                 match tokio::time::timeout(
                     write_timeout,
@@ -313,6 +323,7 @@ pub async fn send_final_state_stream(
                         ledger_data,
                         slot: current_slot,
                         async_pool_part: async_pool_data,
+                        pos_state_part: pos_state_data,
                         final_state_changes,
                     }),
                 )
