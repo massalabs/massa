@@ -27,6 +27,7 @@ use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 use std::thread::JoinHandle;
@@ -49,6 +50,8 @@ pub struct Public {
     pub selector_controller: Box<dyn SelectorController>,
     /// link to the pool component
     pub pool_command_sender: Box<dyn PoolController>,
+    /// Massa storage
+    pub storage: Storage,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings

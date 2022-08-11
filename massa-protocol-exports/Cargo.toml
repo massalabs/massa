@@ -29,3 +29,4 @@ instrument = [
     "massa_models/instrument",
     "massa_network_exports/instrument",
 ]
+sandbox = ["massa_models/sandbox"]

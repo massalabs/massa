@@ -48,4 +48,4 @@ instrument = [
     "massa_models/instrument",
     "massa_protocol_exports/instrument",
 ]
-sandbox = ["massa_consensus_exports/sandbox"]
+sandbox = ["massa_consensus_exports/sandbox", "massa_protocol_exports/sandbox" ]

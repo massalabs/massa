@@ -60,9 +60,11 @@ use tokio::sync::mpsc;
 use crate::{
     commands::{ConsensusCommand, ConsensusManagementCommand},
     events::ConsensusEvent,
-    test_exports::{
-        generate_default_roll_counts_file, generate_ledger_file, generate_staking_keys_file,
-    },
+};
+
+#[cfg(feature = "testing")]
+use crate::test_exports::{
+    generate_default_roll_counts_file, generate_ledger_file, generate_staking_keys_file,
 };
 
 /// Consensus configuration

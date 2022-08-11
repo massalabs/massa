@@ -121,6 +121,8 @@ pub const MAX_MESSAGE_SIZE: u32 = 3145728;
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 1024;
 /// max number of operation per message
 pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
+/// max size of all serialized operations in bytes in a block
+pub const MAX_SERIALIZED_OPERATIONS_SIZE_PER_BLOCK: usize = 2 ^ 10;
 /// node send channel size
 pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
 /// operation id size
