@@ -1132,10 +1132,7 @@ impl ProtocolWorker {
                                         signature: info.header.signature,
                                         creator_public_key: info.header.creator_public_key,
                                         creator_address: info.header.creator_address,
-                                        thread: info
-                                            .header
-                                            .creator_address
-                                            .get_thread(thread_count),
+                                        thread: info.header.thread,
                                         id: BlockId::new(info.header.id.hash()),
                                         content: block,
                                         serialized_data: content_serialized,
