@@ -352,6 +352,7 @@ async fn launch(
         network_command_sender.clone(),
         bootstrap_state.compensation_millis,
         node_id,
+        shared_storage.clone(),
     );
     let api_public_handle = api_public.serve(&SETTINGS.api.bind_public);
 

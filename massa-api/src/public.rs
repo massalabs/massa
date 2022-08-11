@@ -62,6 +62,7 @@ impl API<Public> {
         network_command_sender: NetworkCommandSender,
         compensation_millis: i64,
         node_id: NodeId,
+        storage: Storage,
     ) -> Self {
         API(Public {
             consensus_command_sender,
@@ -75,6 +76,7 @@ impl API<Public> {
             node_id,
             execution_controller,
             selector_controller,
+            storage,
         })
     }
 }
