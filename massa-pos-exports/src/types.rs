@@ -5,8 +5,8 @@ use std::collections::{BTreeMap, VecDeque};
 use bitvec::prelude::*;
 use massa_models::{
     constants::{
-        default::{CYCLE_INFO_SIZE_MESSAGE_BYTES, DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES},
-        POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT,
+        default::DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+        THREAD_COUNT,
     },
     prehash::Map,
     Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, BitVecDeserializer,
@@ -17,9 +17,11 @@ use massa_serialization::{
     U64VarIntSerializer,
 };
 use nom::{
+    bytes::complete::tag,
+    combinator::opt,
     error::{context, ContextError, ParseError},
     multi::{length_count, many0},
-    sequence::tuple,
+    sequence::{preceded, tuple},
     IResult, Parser,
 };
 use num::rational::Ratio;
@@ -41,8 +43,86 @@ pub struct PoSFinalState {
 /// Cursor object used for the Proof of Stake state bootstrap streaming
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PoSBootstrapCursor {
-    pub credits_slot: Option<Slot>,
+    /// Number of the currently boostrapped cycle
     pub cycle: Option<u64>,
+    /// Last bootstrapped credits slot
+    pub credits_slot: Option<Slot>,
+}
+
+/// Serializer for `PoSBootstrapCursor`
+pub struct PoSBootstrapCursorSerializer {
+    u64_ser: U64VarIntSerializer,
+    slot_ser: SlotSerializer,
+}
+
+impl PoSBootstrapCursorSerializer {
+    /// Creates a new `PoSBootstrapCursorSerializer`
+    pub fn new() -> Self {
+        PoSBootstrapCursorSerializer {
+            u64_ser: U64VarIntSerializer::new(),
+            slot_ser: SlotSerializer::new(),
+        }
+    }
+}
+
+/// Deserializer for `PoSBootstrapCursor`
+pub struct PoSBootstrapCursorDeserializer {
+    u64_ser: U64VarIntDeserializer,
+    slot_ser: SlotDeserializer,
+}
+
+impl PoSBootstrapCursorDeserializer {
+    /// Creates a new `PoSBootstrapCursorDeserializer`
+    pub fn new() -> Self {
+        // TODO: define deserializers limits
+        PoSBootstrapCursorDeserializer {
+            u64_ser: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            slot_ser: SlotDeserializer::new(
+                (Included(u64::MIN), Included(u64::MAX)),
+                (Included(0), Excluded(THREAD_COUNT)),
+            ),
+        }
+    }
+}
+
+impl Serializer<PoSBootstrapCursor> for PoSBootstrapCursorSerializer {
+    fn serialize(
+        &self,
+        value: &PoSBootstrapCursor,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
+        if let Some(cycle) = value.cycle {
+            buffer.push(b'0');
+            self.u64_ser.serialize(&cycle, buffer)?;
+        }
+        if let Some(credits_slot) = value.credits_slot {
+            buffer.push(b'1');
+            self.slot_ser.serialize(&credits_slot, buffer)?;
+        }
+        Ok(())
+    }
+}
+
+impl Deserializer<PoSBootstrapCursor> for PoSBootstrapCursorDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], PoSBootstrapCursor, E> {
+        context(
+            "failed PoSBootstrapCursor deserialization",
+            tuple((
+                opt(preceded(tag(b"0"), |input| self.u64_ser.deserialize(input))),
+                opt(preceded(tag(b"1"), |input| {
+                    self.slot_ser.deserialize(input)
+                })),
+            )),
+        )
+        .map(|(cycle, credits_slot)| PoSBootstrapCursor {
+            cycle,
+            credits_slot,
+        })
+        .parse(buffer)
+    }
 }
 
 impl PoSFinalState {

@@ -118,7 +118,7 @@ impl FinalState {
         last_slot: Slot,
         last_address: Address,
         last_id_async_pool: AsyncMessageId,
-        last_cycle: Option<u64>,
+        _last_cycle: Option<u64>,
     ) -> Result<StateChanges, FinalStateError> {
         let pos_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
