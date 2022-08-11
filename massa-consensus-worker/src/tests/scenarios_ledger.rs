@@ -8,10 +8,9 @@ use super::{
 use crate::start_consensus_controller;
 
 use massa_consensus_exports::settings::ConsensusChannels;
-use massa_consensus_exports::tools::TEST_PASSWORD;
+use massa_consensus_exports::test_exports::TEST_PASSWORD;
 use massa_consensus_exports::ConsensusConfig;
 use massa_execution_exports::test_exports::MockExecutionController;
-use massa_graph::{ledger::Ledger, LedgerConfig};
 use massa_models::ledger_models::LedgerData;
 use massa_models::ledger_models::{LedgerChange, LedgerChanges};
 use massa_models::prehash::Map;

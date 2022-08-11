@@ -5,9 +5,10 @@ use massa_models::{
     WrappedOperation,
 };
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use serial_test::serial;
 use std::str::FromStr;
-
+use massa_execution_exports::test_exports::MockExecutionController;
 use crate::operation_pool::OperationPool;
 
 use super::config::POOL_CONFIG;
@@ -32,8 +33,9 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
 #[test]
 #[serial]
 fn test_pool() {
-    let mut pool = OperationPool::new(&POOL_CONFIG, Default::default());
-
+    let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
+    let mut pool = OperationPool::init(*POOL_CONFIG, Default::default(), execution_controller);
+    let mut storage = Storage::default();
     // generate (id, transactions, range of validity) by threads
     let mut thread_tx_lists = vec![Vec::new(); POOL_CONFIG.thread_count as usize];
     for i in 0..18 {
@@ -46,12 +48,14 @@ fn test_pool() {
         let mut ops = Map::default();
         ops.insert(id, op.clone());
 
-        let newly_added = pool.process_operations(ops.clone()).unwrap();
-        assert_eq!(newly_added, ops.keys().copied().collect());
+        storage.store_operations(ops.values().cloned().collect());
+        pool.add_operations(storage);
+        assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
 
         // duplicate
-        let newly_added = pool.process_operations(ops).unwrap();
-        assert_eq!(newly_added, Set::<OperationId>::default());
+        storage.store_operations(ops.values().cloned().collect());
+        let newly_added = pool.add_operations(storage);
+        assert_eq!(storage.get_op_refs(), ops.keys().collect());
 
         thread_tx_lists[op.thread as usize].push((op, start_period..=expire_period));
     }
@@ -59,7 +63,7 @@ fn test_pool() {
     // sort from bigger fee to smaller and truncate
     for lst in thread_tx_lists.iter_mut() {
         lst.reverse();
-        lst.truncate(POOL_CONFIG.settings.max_pool_size_per_thread as usize);
+        lst.truncate(POOL_CONFIG.max_operation_pool_size_per_thread as usize);
     }
 
     // checks ops are the expected ones for thread 0 and 1 and various periods
@@ -67,12 +71,11 @@ fn test_pool() {
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 3;
-            let res = pool
-                .get_operation_batch(target_slot, Set::<OperationId>::default(), max_count, 10000)
-                .unwrap();
-            assert!(res
+            let (ids, storage) = pool
+                .get_block_operations(&target_slot);
+            assert!(ids
                 .iter()
-                .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                .map(|id| (*id, storage.retrieve_operation(id).unwrap().serialized_data))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
                     .filter(|(_, r)| r.contains(&target_slot.period))
@@ -84,8 +87,7 @@ fn test_pool() {
     // op ending before or at period 45 won't appear in the block due to incompatible validity range
     // we don't keep them as expected ops
     let final_period = 45u64;
-    pool.update_latest_final_periods(vec![final_period; POOL_CONFIG.thread_count as usize])
-        .unwrap();
+    pool.notify_final_cs_periods(&vec![final_period; POOL_CONFIG.thread_count as usize]);
     for lst in thread_tx_lists.iter_mut() {
         lst.retain(|(op, _)| op.content.expire_period > final_period);
     }
@@ -95,12 +97,11 @@ fn test_pool() {
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 4;
-            let res = pool
-                .get_operation_batch(target_slot, Set::<OperationId>::default(), max_count, 10000)
-                .unwrap();
-            assert!(res
+            let (ids, storage) = pool
+                .get_block_operations(&target_slot);
+            assert!(ids
                 .iter()
-                .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                .map(|id| (*id, storage.retrieve_operation(id).unwrap().serialized_data))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
                     .filter(|(_, r)| r.contains(&target_slot.period))

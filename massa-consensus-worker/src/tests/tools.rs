@@ -8,7 +8,7 @@ use super::{
 use crate::start_consensus_controller;
 
 use massa_cipher::decrypt;
-use massa_consensus_exports::{error::ConsensusResult, tools::TEST_PASSWORD};
+use massa_consensus_exports::{error::ConsensusResult, test_exports::TEST_PASSWORD};
 use massa_consensus_exports::{
     settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig, ConsensusEventReceiver,
 };

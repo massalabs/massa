@@ -3,11 +3,10 @@
 use super::tools::{create_executesc, random_address_on_thread};
 use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
 use massa_consensus_exports::{tools::*, ConsensusConfig};
-use massa_graph::ledger::ConsensusLedgerSubset;
 use massa_hash::Hash;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
 use massa_models::wrapped::WrappedContent;
-use massa_models::{ledger_models::LedgerData, OperationType};
+use massa_models::ledger_models::LedgerData;
 use massa_models::{
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, Slot,
     WrappedBlock, WrappedEndorsement,

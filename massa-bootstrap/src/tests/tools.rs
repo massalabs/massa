@@ -2,32 +2,28 @@
 
 use super::mock_establisher::Duplex;
 use crate::settings::BootstrapConfig;
-use bitvec::prelude::*;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::FinalState;
+use massa_final_state::{FinalState, ExecutedOps};
 use massa_graph::{
-    export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset, BootstrapableGraph,
+    export_active_block::ExportActiveBlock, BootstrapableGraph,
 };
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::constants::default::{
-    MAX_LEDGER_CHANGES_PER_SLOT, MAX_PRODUCTION_EVENTS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
-    MAX_ROLLS_COUNTS_LENGTH, MAX_ROLLS_UPDATE_LENGTH,
+    MAX_LEDGER_CHANGES_PER_SLOT, MAX_PRODUCTION_EVENTS_PER_BLOCK
 };
 use massa_models::constants::{
     MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS,
-    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_POS_CYCLES, MAX_BOOTSTRAP_POS_ENTRIES,
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_POS_ENTRIES,
     MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
 };
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
     clique::Clique,
-    ledger_models::{LedgerChange, LedgerChanges, LedgerData},
-    rolls::{RollCounts, RollUpdate, RollUpdateSerializer, RollUpdates},
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Slot,
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
@@ -35,9 +31,9 @@ use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
+use massa_pos_exports::PoSFinalState;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
-use std::str::FromStr;
 use std::{
     collections::BTreeMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -60,6 +56,7 @@ fn get_some_random_bytes() -> Vec<u8> {
 fn get_random_ledger_entry() -> LedgerEntry {
     let mut rng = rand::thread_rng();
     let parallel_balance = Amount::from_raw(rng.gen::<u64>());
+    let sequential_balance = Amount::from_raw(rng.gen::<u64>());
     let bytecode: Vec<u8> = get_some_random_bytes();
     let mut datastore = BTreeMap::new();
     for _ in 0usize..rng.gen_range(0..10) {
@@ -68,6 +65,7 @@ fn get_random_ledger_entry() -> LedgerEntry {
         datastore.insert(key, value);
     }
     LedgerEntry {
+        sequential_balance,
         parallel_balance,
         bytecode,
         datastore,
@@ -97,6 +95,9 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
         Box::new(final_ledger),
         async_pool,
         VecDeque::new(),
+        //TODO: Add values
+        PoSFinalState::default(),
+        ExecutedOps::default()
     )
 }
 
@@ -182,67 +183,6 @@ where
     }
 }
 
-/// asserts that two `ExportProofOfStake` are equal
-pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOfStake) {
-    assert_eq!(
-        v1.cycle_states.len(),
-        v2.cycle_states.len(),
-        "length mismatch between sent and received pos"
-    );
-    for (itm1, itm2) in v1.cycle_states.iter().zip(v2.cycle_states.iter()) {
-        assert_eq!(
-            itm1.len(),
-            itm2.len(),
-            "subitem length mismatch between sent and received pos"
-        );
-        for (itm1, itm2) in itm1.iter().zip(itm2.iter()) {
-            assert_eq!(
-                itm1.cycle, itm2.cycle,
-                "ThreadCycleState.cycle mismatch between sent and received pos"
-            );
-            assert_eq!(
-                itm1.last_final_slot, itm2.last_final_slot,
-                "ThreadCycleState.last_final_slot mismatch between sent and received pos"
-            );
-            assert_eq!(
-                itm1.roll_count.0, itm2.roll_count.0,
-                "ThreadCycleState.roll_count mismatch between sent and received pos"
-            );
-            assert_eq!(
-                itm1.cycle_updates.0.len(),
-                itm2.cycle_updates.0.len(),
-                "ThreadCycleState.cycle_updates.len() mismatch between sent and received pos"
-            );
-            let roll_update_serializer = RollUpdateSerializer::new();
-            for (a1, itm1) in itm1.cycle_updates.0.iter() {
-                let itm2 = itm2.cycle_updates.0.get(a1).expect(
-                    "ThreadCycleState.cycle_updates element miss between sent and received pos",
-                );
-                let mut itm1_bytes = Vec::new();
-                roll_update_serializer
-                    .serialize(itm1, &mut itm1_bytes)
-                    .unwrap();
-                let mut itm2_bytes = Vec::new();
-                roll_update_serializer
-                    .serialize(itm2, &mut itm2_bytes)
-                    .unwrap();
-                assert_eq!(
-                    itm1_bytes, itm2_bytes,
-                    "ThreadCycleState.cycle_updates item mismatch between sent and received pos"
-                );
-            }
-            assert_eq!(
-                itm1.rng_seed, itm2.rng_seed,
-                "ThreadCycleState.rng_seed mismatch between sent and received pos"
-            );
-            assert_eq!(
-                itm1.production_stats, itm2.production_stats,
-                "ThreadCycleState.production_stats mismatch between sent and received pos"
-            );
-        }
-    }
-}
-
 /// asserts that two `BootstrapableGraph` are equal
 pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
     assert_eq!(
@@ -265,22 +205,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
             itm1.block.serialized_data, itm2.block.serialized_data,
             "block mismatch"
         );
-        assert_eq!(
-            itm1.block_ledger_changes.0.len(),
-            itm2.block_ledger_changes.0.len(),
-            "ledger changes length mismatch"
-        );
-        for (id1, itm1) in itm1.block_ledger_changes.0.iter() {
-            let itm2 = itm2.block_ledger_changes.0.get(id1).unwrap();
-            assert_eq!(
-                itm1.balance_delta, itm2.balance_delta,
-                "balance delta mistmatch"
-            );
-            assert_eq!(
-                itm1.balance_increment, itm2.balance_increment,
-                "balance increment mismatch"
-            );
-        }
+
         assert_eq!(itm1.children, itm2.children, "children mismatch");
         assert_eq!(
             itm1.dependencies, itm2.dependencies,
@@ -288,23 +213,6 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
         );
         assert_eq!(itm1.is_final, itm2.is_final, "is_final mismatch");
         assert_eq!(itm1.parents, itm2.parents, "parents mismatch");
-        assert_eq!(
-            itm1.production_events, itm2.production_events,
-            "production events mismatch"
-        );
-        assert_eq!(
-            itm1.roll_updates.0.len(),
-            itm2.roll_updates.0.len(),
-            "roll updates len mismatch"
-        );
-        for (id1, itm1) in itm1.roll_updates.0.iter() {
-            let itm2 = itm2.roll_updates.0.get(id1).unwrap();
-            assert_eq!(
-                itm1.roll_purchases, itm2.roll_purchases,
-                "roll purchases mistmatch"
-            );
-            assert_eq!(itm1.roll_sales, itm2.roll_sales, "roll sales mismatch");
-        }
     }
     assert_eq!(v1.best_parents, v2.best_parents, "best parents mismatch");
     assert_eq!(v1.gi_head, v2.gi_head, "gi_head mismatch");
@@ -312,11 +220,6 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
         v1.latest_final_blocks_periods, v2.latest_final_blocks_periods,
         "latest_final_blocks_periods mismatch"
     );
-    assert_eq!(v1.ledger.0.len(), v1.ledger.0.len(), "ledger len mismatch");
-    for (id1, itm1) in v1.ledger.0.iter() {
-        let itm2 = v2.ledger.0.get(id1).unwrap();
-        assert_eq!(itm1.balance, itm2.balance, "balance mistmatch");
-    }
     assert_eq!(
         v1.max_cliques.len(),
         v2.max_cliques.len(),
@@ -332,61 +235,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
     }
 }
 
-pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
-    let keypair = KeyPair::generate();
-    let address = Address::from_public_key(&keypair.get_public_key());
-
-    let mut ledger_subset = ConsensusLedgerSubset::default();
-    ledger_subset.0.insert(
-        address,
-        LedgerData {
-            balance: Amount::from_str("10").unwrap(),
-        },
-    );
-
-    let cycle_state = ThreadCycleState {
-        cycle: 1,
-        last_final_slot: Slot::new(1, 1),
-        roll_count: RollCounts(
-            vec![(get_random_address(), 123), (get_random_address(), 456)]
-                .into_iter()
-                .collect(),
-        ),
-        cycle_updates: RollUpdates(
-            vec![
-                (
-                    get_random_address(),
-                    RollUpdate {
-                        roll_purchases: 147,
-                        roll_sales: 44788,
-                    },
-                ),
-                (
-                    get_random_address(),
-                    RollUpdate {
-                        roll_purchases: 8887,
-                        roll_sales: 114,
-                    },
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        ),
-        rng_seed: bitvec![u8, Lsb0 ; 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-        production_stats: vec![
-            (get_random_address(), (1, 2)),
-            (get_random_address(), (3, 4)),
-        ]
-        .into_iter()
-        .collect(),
-    };
-    let boot_pos = ExportProofOfStake {
-        cycle_states: vec![
-            vec![cycle_state.clone()].into_iter().collect(),
-            vec![cycle_state].into_iter().collect(),
-        ],
-    };
-
+pub fn get_boot_state() -> BootstrapableGraph {
     let keypair = KeyPair::generate();
 
     let block = Block::new_wrapped(
@@ -455,79 +304,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             .into_iter()
             .collect(),
         is_final: true,
-        block_ledger_changes: LedgerChanges(
-            vec![
-                (
-                    get_random_address(),
-                    LedgerChange {
-                        balance_increment: true,
-                        balance_delta: Amount::from_str("157").unwrap(),
-                    },
-                ),
-                (
-                    get_random_address(),
-                    LedgerChange {
-                        balance_increment: false,
-                        balance_delta: Amount::from_str("44").unwrap(),
-                    },
-                ),
-                (
-                    get_random_address(),
-                    LedgerChange {
-                        balance_increment: false,
-                        balance_delta: Amount::from_str("878").unwrap(),
-                    },
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        ),
-        roll_updates: RollUpdates(
-            vec![
-                (
-                    get_random_address(),
-                    RollUpdate {
-                        roll_purchases: 778,
-                        roll_sales: 54851,
-                    },
-                ),
-                (
-                    get_random_address(),
-                    RollUpdate {
-                        roll_purchases: 788778,
-                        roll_sales: 11451,
-                    },
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        ),
-        production_events: vec![
-            (12, get_random_address(), true),
-            (31, get_random_address(), false),
-        ],
     };
-
-    let export_pos_deserializer = ExportProofOfStakeDeserializer::new(
-        THREAD_COUNT,
-        MAX_BOOTSTRAP_POS_CYCLES,
-        MAX_BOOTSTRAP_POS_ENTRIES,
-        MAX_ROLLS_UPDATE_LENGTH,
-        MAX_ROLLS_COUNTS_LENGTH,
-        MAX_PRODUCTION_STATS_LENGTH,
-    );
-    let export_pos_serializer = ExportProofOfStakeSerializer::new();
-    let mut export_pos_bytes = Vec::new();
-
-    export_pos_serializer
-        .serialize(&boot_pos, &mut export_pos_bytes)
-        .unwrap();
-    let (_, pos_deser) = export_pos_deserializer
-        .deserialize::<DeserializeError>(&export_pos_bytes)
-        .unwrap();
-
-    // check re-serialization
-    assert_eq_thread_cycle_states(&pos_deser, &boot_pos);
 
     let boot_graph = BootstrapableGraph {
         active_blocks: vec![(block1.block_id, block1)].into_iter().collect(),
@@ -551,8 +328,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                 .collect(),
             fitness: 123,
             is_blockclique: true,
-        }],
-        ledger: ledger_subset,
+        }]
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
@@ -579,7 +355,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
 
     assert_eq_bootstrap_graph(&bootstrapable_graph_deserialized, &boot_graph);
 
-    (boot_pos, boot_graph)
+    boot_graph
 }
 
 pub fn get_peers() -> BootstrapPeers {

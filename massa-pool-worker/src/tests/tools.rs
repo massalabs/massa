@@ -1,7 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_protocol_controller::MockProtocolController;
-use crate::{config::PoolConfig, pool_controller, PoolCommandSender, PoolManager};
+use massa_pool_exports::{PoolConfig, PoolController};
+use massa_execution_exports::test_exports::MockExecutionController;
+use crate::start_pool;
 use futures::Future;
 use massa_hash::Hash;
 use massa_models::{
@@ -14,27 +16,24 @@ use std::str::FromStr;
 
 pub async fn pool_test<F, V>(cfg: &'static PoolConfig, test: F)
 where
-    F: FnOnce(MockProtocolController, PoolCommandSender, PoolManager) -> V,
-    V: Future<Output = (MockProtocolController, PoolCommandSender, PoolManager)>,
+    F: FnOnce(MockProtocolController, Box<dyn PoolController>) -> V,
+    V: Future<Output = (MockProtocolController, Box<dyn PoolController>)>,
 {
     let storage: Storage = Default::default();
 
     let (protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
         MockProtocolController::new();
-
-    let (pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
-        cfg,
-        protocol_command_sender,
-        protocol_pool_event_receiver,
+    
+    let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
+    let pool_controller = start_pool(
+        *cfg,
         storage,
-    )
-    .await
-    .unwrap();
+        execution_controller
+    );
 
-    let (_protocol_controller, _pool_command_sender, pool_manager) =
-        test(protocol_controller, pool_command_sender, pool_manager).await;
+    let (_protocol_controller, _pool_controller) =
+        test(protocol_controller, Box::new(pool_controller)).await;
 
-    pool_manager.stop().await.unwrap();
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
