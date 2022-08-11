@@ -11,7 +11,7 @@ use crate::{
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{constants::THREAD_COUNT, Address, Slot};
-use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_pos_exports::{PoSChanges, PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -118,6 +118,7 @@ impl FinalState {
         last_slot: Slot,
         last_address: Address,
         last_id_async_pool: AsyncMessageId,
+        last_cycle: Option<u64>,
     ) -> Result<StateChanges, FinalStateError> {
         let pos_slot = if !self.changes_history.is_empty() {
             // Safe because we checked that there is changes just above.
@@ -138,7 +139,7 @@ impl FinalState {
         };
         let mut res_changes: StateChanges = StateChanges::default();
         for (_, changes) in self.changes_history.range((pos_slot as usize)..) {
-            //Get ledger change that concern address <= last_address.
+            // Get ledger change that concern address <= last_address.
             let ledger_changes: LedgerChanges = LedgerChanges(
                 changes
                     .ledger_changes
@@ -155,7 +156,7 @@ impl FinalState {
             );
             res_changes.ledger_changes = ledger_changes;
 
-            //Get async pool changes that concern ids <= last_id_async_pool
+            // Get async pool changes that concern ids <= last_id_async_pool
             let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
                 changes
                     .async_pool_changes
@@ -170,6 +171,12 @@ impl FinalState {
                     .collect(),
             );
             res_changes.async_pool_changes = async_pool_changes;
+
+            // Get Proof of Stake state changes if current boostrap cycle is the last
+            // NOTE: use bool `is_pos_bootstrap_finished` instead of last_cycle but how to handle
+            if self.pos_state.cycle_history.front().map(|v| v.cycle) == last_cycle {
+                res_changes.roll_state_changes = changes.roll_state_changes.clone();
+            }
         }
         Ok(res_changes)
     }

@@ -492,6 +492,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                 last_key,
                 slot,
                 last_async_message_id,
+                last_pos_cursor,
             } => {
                 self.u32_serializer
                     .serialize(&u32::from(MessageClientTypeId::AskFinalStatePart), buffer)?;
@@ -500,6 +501,7 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.key_serializer.serialize(key, buffer)?;
                     self.slot_serializer.serialize(slot, buffer)?;
                     self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
+                    // TODO: serialize PoS cursor
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
@@ -600,6 +602,7 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_key: None,
                                 slot: None,
                                 last_async_message_id: None,
+                                last_pos_cursor: PoSBootstrapCursor::default(),
                             },
                         ))
                     } else {
@@ -619,7 +622,9 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                                 last_key: Some(last_key),
                                 slot: Some(slot),
                                 last_async_message_id: Some(last_async_message_id),
+                                last_pos_cursor: PoSBootstrapCursor::default(),
                             }
+                            // TODO: deserialize PoS cursor
                         })
                         .parse(input)
                     }

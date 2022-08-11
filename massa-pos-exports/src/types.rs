@@ -39,10 +39,10 @@ pub struct PoSFinalState {
 }
 
 /// Cursor object used for the Proof of Stake state bootstrap streaming
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct PoSBootstrapCursor {
-    credits_slot: Option<Slot>,
-    cycle: Option<u64>,
+    pub credits_slot: Option<Slot>,
+    pub cycle: Option<u64>,
 }
 
 impl PoSFinalState {
