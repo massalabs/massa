@@ -2,8 +2,9 @@
 
 use crate::checked_operations::CheckedOperations;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
-use massa_hash::Hash;
+
 use massa_logging::massa_trace;
+
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
@@ -13,17 +14,14 @@ use massa_models::{
     BlockHeaderSerializer, BlockId, BlockSerializer, EndorsementId, OperationId,
     WrappedEndorsement, WrappedHeader,
 };
-use massa_models::{Block, EndorsementSerializer, OperationSerializer, WrappedBlock};
-use massa_network_exports::{
-    AskForBlocksInfo, BlockInfoReply, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
-    ReplyForBlocksInfo,
-};
+use massa_models::{EndorsementSerializer, OperationSerializer};
+use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
-    ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
-    ProtocolSettings,
+    ProtocolCommand, ProtocolCommandSender, ProtocolConfigs, ProtocolError, ProtocolEvent,
+    ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent,
+    ProtocolPoolEventReceiver,
 };
-use massa_serialization::Serializer;
+
 use massa_storage::Storage;
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
@@ -41,12 +39,12 @@ use tracing::{debug, error, info, warn};
 /// - launch `protocol_controller_fn` in an other task
 ///
 /// # Arguments
-/// * `protocol_settings`: protocol settings
+/// * `configs`: protocol settings
 /// * `network_command_sender`: the `NetworkCommandSender` we interact with
 /// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
-    protocol_settings: &'static ProtocolSettings,
+    configs: ProtocolConfigs,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
     storage: Storage,
@@ -69,7 +67,7 @@ pub async fn start_protocol_controller(
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let join_handle = tokio::spawn(async move {
         let res = ProtocolWorker::new(
-            protocol_settings,
+            configs,
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
@@ -103,22 +101,25 @@ pub async fn start_protocol_controller(
 }
 
 /// Info about a block we've seen
-struct BlockInfo {
+pub(crate) struct BlockInfo {
     /// Endorsements contained in the block header.
-    endorsements: Map<EndorsementId, u32>,
+    pub(crate) endorsements: Map<EndorsementId, u32>,
     /// Operations contained in the block,
     /// if we've received them already, and none otherwise.
-    operations: Option<Set<OperationId>>,
+    pub(crate) operations: Option<Set<OperationId>>,
     /// The header of the block.
-    header: WrappedHeader,
+    pub(crate) header: WrappedHeader,
+    /// Full operations size in bytes
+    pub(crate) operations_size: usize,
 }
 
 impl BlockInfo {
     fn new(endorsements: Map<EndorsementId, u32>, header: WrappedHeader) -> Self {
         BlockInfo {
             endorsements,
-            operations: Default::default(),
+            operations: None,
             header,
+            operations_size: 0,
         }
     }
 }
@@ -126,7 +127,7 @@ impl BlockInfo {
 /// protocol worker
 pub struct ProtocolWorker {
     /// Protocol configuration.
-    pub(crate) protocol_settings: &'static ProtocolSettings,
+    pub(crate) configs: ProtocolConfigs,
     /// Associated network command sender.
     pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
@@ -143,13 +144,13 @@ pub struct ProtocolWorker {
     pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks,
     /// with the info representing their state withint the as_block workflow.
-    block_wishlist: Map<BlockId, AskForBlocksInfo>,
+    pub(crate) block_wishlist: Map<BlockId, AskForBlocksInfo>,
     /// List of processed endorsements
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
     pub(crate) checked_operations: CheckedOperations,
     /// List of processed headers
-    checked_headers: Map<BlockId, BlockInfo>,
+    pub(crate) checked_headers: Map<BlockId, BlockInfo>,
     /// List of ids of operations that we asked to the nodes
     pub(crate) asked_operations: HashMap<OperationPrefixId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
@@ -178,13 +179,13 @@ impl ProtocolWorker {
     /// Creates a new protocol worker.
     ///
     /// # Arguments
-    /// * `protocol_settings`: protocol configuration.
+    /// * `configs`: protocol configuration.
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.
     /// * `controller_manager_rx`: Channel receiving management commands.
     pub fn new(
-        protocol_settings: &'static ProtocolSettings,
+        configs: ProtocolConfigs,
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
@@ -196,7 +197,7 @@ impl ProtocolWorker {
         storage: Storage,
     ) -> ProtocolWorker {
         ProtocolWorker {
-            protocol_settings,
+            configs,
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
@@ -210,16 +211,16 @@ impl ProtocolWorker {
             checked_headers: Default::default(),
             asked_operations: Default::default(),
             op_batch_buffer: OperationBatchBuffer::with_capacity(
-                protocol_settings.operation_batch_buffer_capacity,
+                configs.operation_batch_buffer_capacity,
             ),
             storage,
         }
     }
 
-    async fn send_protocol_event(&self, event: ProtocolEvent) {
+    pub(crate) async fn send_protocol_event(&self, event: ProtocolEvent) {
         let result = self
             .controller_event_tx
-            .send_timeout(event, self.protocol_settings.max_send_wait.to_duration())
+            .send_timeout(event, self.configs.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => {}
@@ -238,7 +239,7 @@ impl ProtocolWorker {
     pub(crate) async fn send_protocol_pool_event(&self, event: ProtocolPoolEvent) {
         let result = self
             .controller_pool_event_tx
-            .send_timeout(event, self.protocol_settings.max_send_wait.to_duration())
+            .send_timeout(event, self.configs.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => {}
@@ -269,16 +270,12 @@ impl ProtocolWorker {
     /// It's mostly a `tokio::select!` within a loop.
     pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
         // TODO: Config variable for the moment 10000 (prune) (100 seconds)
-        let operation_prune_timer = sleep(
-            self.protocol_settings
-                .asked_operations_pruning_period
-                .into(),
-        );
+        let operation_prune_timer = sleep(self.configs.asked_operations_pruning_period.into());
         tokio::pin!(operation_prune_timer);
-        let block_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
+        let block_ask_timer = sleep(self.configs.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
         let operation_batch_proc_period_timer =
-            sleep(self.protocol_settings.operation_batch_proc_period.into());
+            sleep(self.configs.operation_batch_proc_period.into());
         tokio::pin!(operation_batch_proc_period_timer);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
@@ -424,7 +421,7 @@ impl ProtocolWorker {
                         .collect();
                     node_info.insert_known_ops(
                         new_ops.iter().cloned().collect(),
-                        self.protocol_settings.max_node_known_ops_size,
+                        self.configs.max_node_known_ops_size,
                     );
                     if !new_ops.is_empty() {
                         self.network_command_sender
@@ -449,7 +446,7 @@ impl ProtocolWorker {
                         .collect();
                     node_info.insert_known_endorsements(
                         new_endorsements.keys().copied().collect(),
-                        self.protocol_settings.max_node_known_endorsements_size,
+                        self.configs.max_node_known_endorsements_size,
                     );
                     let to_send = new_endorsements
                         .into_iter()
@@ -467,7 +464,11 @@ impl ProtocolWorker {
         Ok(())
     }
 
-    fn stop_asking_blocks(&mut self, remove_hashes: Set<BlockId>) -> Result<(), ProtocolError> {
+    /// Remove the given blocks from the local wishlist
+    pub(crate) fn stop_asking_blocks(
+        &mut self,
+        remove_hashes: Set<BlockId>,
+    ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.stop_asking_blocks", {
             "remove": remove_hashes
         });
@@ -481,7 +482,7 @@ impl ProtocolWorker {
         Ok(())
     }
 
-    async fn update_ask_block(
+    pub(crate) async fn update_ask_block(
         &mut self,
         ask_block_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
@@ -491,7 +492,7 @@ impl ProtocolWorker {
 
         // init timer
         let mut next_tick = now
-            .checked_add(self.protocol_settings.ask_block_timeout.into())
+            .checked_add(self.configs.ask_block_timeout.into())
             .ok_or(TimeError::TimeOverflowError)?;
 
         // list blocks to re-ask and gather candidate nodes to ask from
@@ -508,7 +509,7 @@ impl ProtocolWorker {
                 let ask_time_opt = node_info.asked_blocks.get(hash).copied();
                 let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
                     let t = ask_time
-                        .checked_add(self.protocol_settings.ask_block_timeout.into())
+                        .checked_add(self.configs.ask_block_timeout.into())
                         .ok_or(TimeError::TimeOverflowError)?;
                     (Some(t), t <= now)
                 } else {
@@ -519,7 +520,7 @@ impl ProtocolWorker {
                 // check if the node recently told us it doesn't have the block
                 if let Some((false, info_time)) = knows_block {
                     let info_expires = info_time
-                        .checked_add(self.protocol_settings.ask_block_timeout.into())
+                        .checked_add(self.configs.ask_block_timeout.into())
                         .ok_or(TimeError::TimeOverflowError)?;
                     if info_expires > now {
                         next_tick = std::cmp::min(next_tick, info_expires);
@@ -548,7 +549,7 @@ impl ProtocolWorker {
                                 &[*hash],
                                 false,
                                 timeout_at,
-                                self.protocol_settings.max_node_known_blocks_size,
+                                self.configs.max_node_known_blocks_size,
                             );
                             (2u8, ask_time_opt)
                         } else {
@@ -564,7 +565,7 @@ impl ProtocolWorker {
                                 &[*hash],
                                 false,
                                 timeout_at,
-                                self.protocol_settings.max_node_known_blocks_size,
+                                self.configs.max_node_known_blocks_size,
                             );
                         }
                         (2u8, ask_time_opt)
@@ -575,7 +576,7 @@ impl ProtocolWorker {
                             &[*hash],
                             false,
                             timeout_at,
-                            self.protocol_settings.max_node_known_blocks_size,
+                            self.configs.max_node_known_blocks_size,
                         );
                         (2u8, ask_time_opt)
                     }
@@ -607,7 +608,7 @@ impl ProtocolWorker {
                         .iter()
                         .filter(|(_h, ask_t)| {
                             ask_t
-                                .checked_add(self.protocol_settings.ask_block_timeout.into())
+                                .checked_add(self.configs.ask_block_timeout.into())
                                 .map_or(false, |timeout_t| timeout_t > now)
                         })
                         .count(),
@@ -622,7 +623,7 @@ impl ProtocolWorker {
                 .filter(|(_knowledge, node_id, _)| {
                     // filter out nodes with too many active block requests
                     *active_block_req_count.get(node_id).unwrap_or(&0)
-                        <= self.protocol_settings.max_simultaneous_ask_blocks_per_node
+                        <= self.configs.max_simultaneous_ask_blocks_per_node
                 })
                 .min_by_key(|(knowledge, node_id, _)| {
                     (
@@ -645,7 +646,7 @@ impl ProtocolWorker {
                     .push((hash, required_info.clone()));
 
                 let timeout_at = now
-                    .checked_add(self.protocol_settings.ask_block_timeout.into())
+                    .checked_add(self.configs.ask_block_timeout.into())
                     .ok_or(TimeError::TimeOverflowError)?;
                 next_tick = std::cmp::min(next_tick, timeout_at);
             }
@@ -698,7 +699,7 @@ impl ProtocolWorker {
     /// - Unique indices.
     /// - Slot matches that of the block.
     /// - Block matches that of the block.
-    async fn note_header_from_node(
+    pub(crate) async fn note_header_from_node(
         &mut self,
         header: &WrappedHeader,
         source_node_id: &NodeId,
@@ -730,22 +731,22 @@ impl ProtocolWorker {
                     &header.content.parents,
                     true,
                     now,
-                    self.protocol_settings.max_node_known_blocks_size,
+                    self.configs.max_node_known_blocks_size,
                 );
                 node_info.insert_known_blocks(
                     &[block_id],
                     true,
                     now,
-                    self.protocol_settings.max_node_known_blocks_size,
+                    self.configs.max_node_known_blocks_size,
                 );
                 node_info.insert_known_endorsements(
                     block_info.endorsements.keys().copied().collect(),
-                    self.protocol_settings.max_node_known_endorsements_size,
+                    self.configs.max_node_known_endorsements_size,
                 );
                 if let Some(operations) = block_info.operations.as_ref() {
                     node_info.insert_known_ops(
                         operations.iter().cloned().collect(),
-                        self.protocol_settings.max_node_known_ops_size,
+                        self.configs.max_node_known_ops_size,
                     );
                 }
             }
@@ -824,13 +825,13 @@ impl ProtocolWorker {
                 &header.content.parents,
                 true,
                 now,
-                self.protocol_settings.max_node_known_blocks_size,
+                self.configs.max_node_known_blocks_size,
             );
             node_info.insert_known_blocks(
                 &[block_id],
                 true,
                 now,
-                self.protocol_settings.max_node_known_blocks_size,
+                self.configs.max_node_known_blocks_size,
             );
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
             return Ok(Some((block_id, endorsement_ids, true)));
@@ -840,21 +841,21 @@ impl ProtocolWorker {
 
     /// Prune `checked_endorsements` if it is too large
     fn prune_checked_endorsements(&mut self) {
-        if self.checked_endorsements.len() > self.protocol_settings.max_known_endorsements_size {
+        if self.checked_endorsements.len() > self.configs.max_known_endorsements_size {
             self.checked_endorsements.clear();
         }
     }
 
     /// Prune `checked_operations` if it has grown too large.
     fn prune_checked_operations(&mut self) {
-        if self.checked_operations.len() > self.protocol_settings.max_known_ops_size {
+        if self.checked_operations.len() > self.configs.max_known_ops_size {
             self.checked_operations.clear();
         }
     }
 
     /// Prune `checked_headers` if it is too large
     fn prune_checked_headers(&mut self) {
-        if self.checked_headers.len() > self.protocol_settings.max_known_blocks_size {
+        if self.checked_headers.len() > self.configs.max_known_blocks_size {
             self.checked_headers.clear();
         }
     }
@@ -899,7 +900,7 @@ impl ProtocolWorker {
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_ops(
                 received_ids.keys().copied().collect(),
-                self.protocol_settings.max_node_known_ops_size,
+                self.configs.max_node_known_ops_size,
             );
         }
 
@@ -927,7 +928,7 @@ impl ProtocolWorker {
     ///
     /// Checks performed:
     /// - Valid signature.
-    async fn note_endorsements_from_node(
+    pub(crate) async fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<WrappedEndorsement>,
         source_node_id: &NodeId,
@@ -961,7 +962,7 @@ impl ProtocolWorker {
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_endorsements(
                 endorsement_ids.keys().copied().collect(),
-                self.protocol_settings.max_node_known_endorsements_size,
+                self.configs.max_node_known_endorsements_size,
             );
         }
 
@@ -977,317 +978,6 @@ impl ProtocolWorker {
         }
 
         Ok((endorsement_ids, contains_duplicates))
-    }
-
-    /// Manages network event
-    /// Only used by the worker.
-    ///
-    /// # Argument
-    /// `evt`: event to process
-    /// `block_ask_timer`: Timer to update to the next time we are able to ask a block
-    async fn on_network_event(
-        &mut self,
-        evt: NetworkEvent,
-        block_ask_timer: &mut std::pin::Pin<&mut Sleep>,
-    ) -> Result<(), ProtocolError> {
-        match evt {
-            NetworkEvent::NewConnection(node_id) => {
-                info!("Connected to node {}", node_id);
-                massa_trace!(
-                    "protocol.protocol_worker.on_network_event.new_connection",
-                    { "node": node_id }
-                );
-                self.active_nodes
-                    .insert(node_id, NodeInfo::new(self.protocol_settings));
-                self.update_ask_block(block_ask_timer).await?;
-            }
-            NetworkEvent::ConnectionClosed(node_id) => {
-                massa_trace!(
-                    "protocol.protocol_worker.on_network_event.connection_closed",
-                    { "node": node_id }
-                );
-                if self.active_nodes.remove(&node_id).is_some() {
-                    // deletes all node info
-                    info!("Connection closed with {}", node_id);
-                    self.update_ask_block(block_ask_timer).await?;
-                }
-            }
-            NetworkEvent::ReceivedBlockInfo {
-                node: from_node_id,
-                info,
-            } => {
-                for (block_id, block_info) in info.into_iter() {
-                    match block_info {
-                        BlockInfoReply::Info(operation_list) => {
-                            if let Some(AskForBlocksInfo::Info) = self.block_wishlist.get(&block_id)
-                            {
-                                if let Some(info) = self.checked_headers.get_mut(&block_id) {
-                                    let mut total_hash: Vec<u8> = vec![];
-                                    for op_id in operation_list.iter() {
-                                        let op_hash = op_id.hash().into_bytes();
-                                        total_hash.extend(op_hash);
-                                    }
-
-                                    // Check operation_list against expected operations hash from header.
-                                    if info.header.content.operation_merkle_root
-                                        == Hash::compute_from(&total_hash)
-                                    {
-                                        // Add the ops of info.
-                                        info.operations = Some(operation_list.clone());
-
-                                        let missing_operations = operation_list
-                                            .into_iter()
-                                            .filter(|op| {
-                                                !self.checked_operations.contains(&op.into_prefix())
-                                            })
-                                            .collect();
-
-                                        // Update ask block
-                                        let mut set = Set::<BlockId>::with_capacity_and_hasher(
-                                            1,
-                                            BuildMap::default(),
-                                        );
-                                        set.insert(block_id.clone());
-                                        self.stop_asking_blocks(set)?;
-
-                                        // Re-add to wishlist with new state.
-                                        self.block_wishlist.insert(
-                                            block_id.clone(),
-                                            AskForBlocksInfo::Operations(missing_operations),
-                                        );
-                                    } else {
-                                        let _ = self.ban_node(&from_node_id).await;
-                                    }
-                                } else {
-                                    warn!("Missing block info for {}", block_id);
-                                }
-                            }
-                        }
-                        BlockInfoReply::Operations(operations) => {
-                            // Send operations to pool,
-                            // before performing the below checks,
-                            // and wait for them to have been procesed(i.e. added to storage).
-                            let (tx, rx) = oneshot::channel();
-                            self.note_operations_from_node(
-                                operations.clone(),
-                                &from_node_id,
-                                Some(tx),
-                            )
-                            .await?;
-                            let _ = rx.await;
-
-                            if let Some(AskForBlocksInfo::Operations(wanted_operation_ids)) =
-                                self.block_wishlist.get(&block_id)
-                            {
-                                let mut should_be_banned = false;
-                                let (block, slot, operation_set, endorsement_ids) = if let Some(
-                                    info,
-                                ) =
-                                    self.checked_headers.get_mut(&block_id)
-                                {
-                                    let mut received_ids: OperationIds = Default::default();
-                                    for op in operations.iter() {
-                                        // check thread
-                                        if op.thread != info.header.content.slot.thread {
-                                            massa_trace!("protocol.protocol_worker.process_block.err_op_thread",
-                                                 {"block_id":block_id, "op": op});
-                                            should_be_banned = true;
-                                            break;
-                                        }
-
-                                        // Check for duplicates
-                                        if !received_ids.insert(op.id) {
-                                            should_be_banned = true;
-                                            break;
-                                        }
-                                    }
-
-                                    // Check the ids are exactly what is expected.
-                                    if !(wanted_operation_ids == &received_ids) {
-                                        should_be_banned = true;
-                                    }
-
-                                    if should_be_banned {
-                                        let _ = self.ban_node(&from_node_id).await;
-                                        return Ok(());
-                                    }
-
-                                    // Re-constitute block.
-                                    let endorsement_ids = info.endorsements.clone();
-                                    let block = Block {
-                                        header: info.header.clone(),
-                                        operations: info.operations.clone().unwrap().clone(),
-                                    };
-                                    let content_serializer = BlockSerializer::new();
-                                    let mut content_serialized = Vec::new();
-                                    content_serializer
-                                        .serialize(&block, &mut content_serialized)
-                                        .unwrap();
-                                    let wrapped: WrappedBlock = Wrapped {
-                                        signature: info.header.signature,
-                                        creator_public_key: info.header.creator_public_key,
-                                        creator_address: info.header.creator_address,
-                                        thread: info.header.thread,
-                                        id: BlockId::new(info.header.id.hash()),
-                                        content: block,
-                                        serialized_data: content_serialized,
-                                    };
-                                    (
-                                        wrapped,
-                                        info.header.content.slot,
-                                        info.operations
-                                            .clone()
-                                            .unwrap()
-                                            .into_iter()
-                                            .enumerate()
-                                            .map(|(idx, op_id)| (op_id, idx))
-                                            .collect(),
-                                        endorsement_ids,
-                                    )
-                                } else {
-                                    warn!("Missing block info for {}", block_id);
-                                    return Ok(());
-                                };
-
-                                // Send to graph.
-                                self.send_protocol_event(ProtocolEvent::ReceivedBlock {
-                                    block,
-                                    slot,
-                                    operation_set,
-                                    endorsement_ids,
-                                })
-                                .await;
-
-                                // Update ask block
-                                let mut set = Set::<BlockId>::with_capacity_and_hasher(
-                                    1,
-                                    BuildMap::default(),
-                                );
-                                set.insert(block_id);
-                                self.stop_asking_blocks(set)?;
-                            }
-                        }
-                        BlockInfoReply::NotFound => {
-                            if let Some(info) = self.active_nodes.get_mut(&from_node_id) {
-                                info.insert_known_blocks(
-                                    &[block_id],
-                                    false,
-                                    Instant::now(),
-                                    self.protocol_settings.max_node_known_blocks_size,
-                                );
-                            }
-                        }
-                    }
-                }
-                // Re-run the ask block algorithm.
-                self.update_ask_block(block_ask_timer).await?;
-            }
-            NetworkEvent::AskedForBlocks {
-                node: from_node_id,
-                list,
-            } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.asked_for_blocks", { "node": from_node_id, "hashlist": list});
-                if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
-                    let mut all_blocks_info = vec![];
-                    for (hash, info_wanted) in &list {
-                        let operations_ids = match self.storage.retrieve_block(hash) {
-                            Some(wrapped_block) => wrapped_block.read().content.operations.clone(),
-                            None => {
-                                // let the node know we don't have the block.
-                                all_blocks_info.push((hash.clone(), ReplyForBlocksInfo::NotFound));
-                                continue;
-                            }
-                        };
-                        let block_info = match info_wanted {
-                            AskForBlocksInfo::Info => ReplyForBlocksInfo::Info(operations_ids),
-                            AskForBlocksInfo::Operations(op_ids) => {
-                                // Mark the node as having the block.
-                                node_info.insert_known_blocks(
-                                    &[hash.clone()],
-                                    true,
-                                    Instant::now(),
-                                    self.protocol_settings.max_node_known_blocks_size,
-                                );
-
-                                // Send only the missing operations.
-                                let needed_ops = operations_ids
-                                    .into_iter()
-                                    .filter(|id| op_ids.contains(id))
-                                    .collect();
-                                ReplyForBlocksInfo::Operations(needed_ops)
-                            }
-                        };
-                        all_blocks_info.push((hash.clone(), block_info));
-                    }
-                    self.network_command_sender
-                        .send_block_info(from_node_id, all_blocks_info)
-                        .await
-                        .map_err(|_| {
-                            ProtocolError::ChannelError(
-                                "send block info network command send failed".into(),
-                            )
-                        })?;
-                } else {
-                    return Ok(());
-                }
-            }
-            NetworkEvent::ReceivedBlockHeader {
-                source_node_id,
-                header,
-            } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_block_header", { "node": source_node_id, "header": header});
-                if let Some((block_id, _endorsement_ids, is_new)) =
-                    self.note_header_from_node(&header, &source_node_id).await?
-                {
-                    if is_new {
-                        self.send_protocol_event(ProtocolEvent::ReceivedBlockHeader {
-                            block_id,
-                            header,
-                        })
-                        .await;
-                    }
-                    self.update_ask_block(block_ask_timer).await?;
-                } else {
-                    warn!(
-                        "node {} sent us critically incorrect header, which may be an attack attempt by the remote node or a loss of sync between us and the remote node",
-                        source_node_id,
-                    );
-                    let _ = self.ban_node(&source_node_id).await;
-                }
-            }
-            NetworkEvent::ReceivedOperations { node, operations } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
-                self.on_operations_received(node, operations).await;
-            }
-            NetworkEvent::ReceivedEndorsements { node, endorsements } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
-                if self
-                    .note_endorsements_from_node(endorsements, &node, true)
-                    .await
-                    .is_err()
-                {
-                    warn!("node {} sent us critically incorrect endorsements, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node,);
-                    let _ = self.ban_node(&node).await;
-                }
-            }
-            NetworkEvent::ReceivedOperationAnnouncements {
-                node,
-                operation_prefix_ids,
-            } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_announcements", { "node": node, "operation_ids": operation_prefix_ids});
-                self.on_operations_announcements_received(operation_prefix_ids, node)
-                    .await?;
-            }
-            NetworkEvent::ReceiveAskForOperations {
-                node,
-                operation_prefix_ids,
-            } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.receive_ask_for_operations", { "node": node, "operation_ids": operation_prefix_ids});
-                self.on_asked_operations_received(node, operation_prefix_ids)
-                    .await?;
-            }
-        }
-        Ok(())
     }
 }
 
@@ -1310,8 +1000,8 @@ mod tests {
     #[serial]
     fn test_node_info_know_block() {
         let max_node_known_blocks_size = 10;
-        let protocol_settings = &PROTOCOL_SETTINGS;
-        let mut nodeinfo = NodeInfo::new(protocol_settings);
+        let configs = &PROTOCOL_SETTINGS;
+        let mut nodeinfo = NodeInfo::new(configs);
         let instant = Instant::now();
 
         let hash_test = get_dummy_block_id("test");

@@ -11,7 +11,7 @@ use massa_models::{
     prehash::{BuildMap, Map, Set},
 };
 use massa_models::{BlockId, EndorsementId, OperationId};
-use massa_protocol_exports::ProtocolSettings;
+use massa_protocol_exports::ProtocolConfigs;
 use std::collections::VecDeque;
 use tokio::time::Instant;
 
@@ -38,7 +38,7 @@ pub(crate) struct NodeInfo {
 
 impl NodeInfo {
     /// Creates empty node info
-    pub fn new(pool_settings: &'static ProtocolSettings) -> NodeInfo {
+    pub fn new(pool_settings: &ProtocolConfigs) -> NodeInfo {
         NodeInfo {
             known_blocks: Map::with_capacity_and_hasher(
                 pool_settings.max_node_known_blocks_size,

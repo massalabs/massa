@@ -216,7 +216,7 @@ async fn launch(
         protocol_pool_event_receiver,
         protocol_manager,
     ) = start_protocol_controller(
-        &SETTINGS.protocol,
+        SETTINGS.protocol.into(),
         network_command_sender.clone(),
         network_event_receiver,
         shared_storage.clone(),
