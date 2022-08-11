@@ -35,7 +35,6 @@ where
         protocol_manager,
     ) = start_protocol_controller(
         protocol_settings,
-        5u64,
         network_command_sender,
         network_event_receiver,
         Default::default(),
@@ -59,7 +58,9 @@ where
     .await;
 
     protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
+        .stop(
+            protocol_event_receiver, /*protocol_pool_event_receiver*/
+        )
         .await
         .expect("Failed to shutdown protocol.");
 }
@@ -95,7 +96,6 @@ where
         protocol_manager,
     ) = start_protocol_controller(
         protocol_settings,
-        5u64,
         network_command_sender,
         network_event_receiver,
         storage.clone(),
@@ -120,7 +120,9 @@ where
     .await;
 
     protocol_manager
-        .stop(protocol_event_receiver, protocol_pool_event_receiver)
+        .stop(
+            protocol_event_receiver, /*protocol_pool_event_receiver*/
+        )
         .await
         .expect("Failed to shutdown protocol.");
 }

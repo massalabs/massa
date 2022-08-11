@@ -5,6 +5,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(map_first_last)]
+#![feature(async_closure)]
 
 mod controller_impl;
 mod endorsement_pool;

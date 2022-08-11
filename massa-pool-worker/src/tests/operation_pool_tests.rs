@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use crate::operation_pool::OperationPool;
 
-use super::settings::POOL_CONFIG;
+use super::config::POOL_CONFIG;
 
 fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
     let sender_keypair = KeyPair::generate();

@@ -1793,6 +1793,7 @@ dependencies = [
  "massa_ledger_worker",
  "massa_models",
  "massa_pos_exports",
+ "massa_pos_worker",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2036,11 +2037,13 @@ dependencies = [
  "massa_hash",
  "massa_models",
  "massa_pool_exports",
+ "massa_protocol_exports",
  "massa_signature",
  "massa_storage",
  "massa_time",
  "num",
  "serial_test",
+ "tokio",
 ]
 
 [[package]]

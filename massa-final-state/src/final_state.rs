@@ -11,7 +11,7 @@ use crate::{
 use massa_async_pool::{AsyncMessageId, AsyncPool, AsyncPoolChanges, Change};
 use massa_ledger_exports::{LedgerChanges, LedgerController};
 use massa_models::{constants::THREAD_COUNT, Address, Slot};
-use massa_pos_exports::{PoSChanges, PoSFinalState, SelectorController};
+use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 
 /// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
@@ -236,12 +236,12 @@ mod tests {
         final_state.changes_history = history_state_changes;
         // Test slot filter
         let part = final_state
-            .get_state_changes_part(Slot::new(2, 0), low_address, message.compute_id())
+            .get_state_changes_part(Slot::new(2, 0), low_address, message.compute_id(), None)
             .unwrap();
         assert_eq!(part.ledger_changes.0.len(), 1);
         // Test address filter
         let part = final_state
-            .get_state_changes_part(Slot::new(2, 0), high_address, message.compute_id())
+            .get_state_changes_part(Slot::new(2, 0), high_address, message.compute_id(), None)
             .unwrap();
         assert_eq!(part.ledger_changes.0.len(), 1);
     }

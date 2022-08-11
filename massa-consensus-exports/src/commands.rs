@@ -78,6 +78,7 @@ pub enum ConsensusCommand {
         block_id: BlockId,
         /// All the objects for the block
         block_storage: Storage,
+        /// response channel
         response_tx: oneshot::Sender<()>,
     },
     /// Get Endorsements by involved addresses

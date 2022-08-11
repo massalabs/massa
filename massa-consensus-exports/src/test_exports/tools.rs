@@ -1,14 +1,6 @@
+use std::collections::HashMap;
+
 use massa_cipher::encrypt;
-use massa_consensus_exports::settings::ConsensusConfig;
-use massa_consensus_exports::{
-    commands::{ConsensusCommand, ConsensusManagementCommand},
-    error::{ConsensusError, ConsensusResult as Result},
-    events::ConsensusEvent,
-    settings::{ConsensusChannels, ConsensusWorkerChannels},
-    ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
-};
-use massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
-use massa_models::{constants::CHANNEL_SIZE, prehash::Map, Address};
 use massa_models::{
     ledger_models::LedgerData,
     rolls::{RollCounts, RollUpdate, RollUpdates},
@@ -16,8 +8,6 @@ use massa_models::{
 };
 use massa_signature::KeyPair;
 use tempfile::NamedTempFile;
-use tokio::sync::mpsc;
-use tracing::{debug, error, info};
 
 /// Password used for encryption in tests
 pub const TEST_PASSWORD: &str = "PASSWORD";

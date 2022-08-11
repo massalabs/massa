@@ -18,6 +18,11 @@ impl Default for ExecutionConfig {
             thread_count: THREAD_COUNT,
             roll_price: ROLL_PRICE,
             cursor_delay: CURSOR_DELAY,
+            block_reward: BLOCK_REWARD,
+            endorsement_count: ENDORSEMENT_COUNT as u64,
+            max_gas_per_block: MAX_GAS_PER_BLOCK,
+            operation_validity_period: OPERATION_VALIDITY_PERIODS,
+            periods_per_cycle: PERIODS_PER_CYCLE,
             clock_compensation: Default::default(),
             // reset genesis timestamp because we are in test mode that can take a while to process
             genesis_timestamp: MassaTime::now().expect("Impossible to reset the timestamp in test"),

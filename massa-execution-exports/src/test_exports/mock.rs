@@ -4,7 +4,13 @@
 
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
 use massa_ledger_exports::LedgerEntry;
-use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, Amount, BlockId, Slot};
+use massa_models::{
+    api::EventFilter,
+    output_event::SCOutputEvent,
+    prehash::{Map, Set},
+    Address, Amount, BlockId, OperationId, Slot,
+};
+use massa_storage::Storage;
 use std::{
     collections::{BTreeSet, HashMap},
     sync::{
@@ -23,9 +29,9 @@ pub enum MockExecutionControllerMessage {
     /// update blockclique status
     UpdateBlockcliqueStatus {
         /// newly finalized blocks
-        finalized_blocks: HashMap<Slot, BlockId>,
+        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
         /// current clique of higher fitness
-        blockclique: HashMap<Slot, BlockId>,
+        blockclique: HashMap<Slot, (BlockId, Storage)>,
     },
     /// filter for smart contract output event request
     GetFilteredScOutputEvent {
@@ -80,8 +86,8 @@ impl MockExecutionController {
 impl ExecutionController for MockExecutionController {
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, BlockId>,
-        blockclique: HashMap<Slot, BlockId>,
+        finalized_blocks: HashMap<Slot, (BlockId, Storage)>,
+        blockclique: HashMap<Slot, (BlockId, Storage)>,
     ) {
         self.0
             .lock()
@@ -113,6 +119,13 @@ impl ExecutionController for MockExecutionController {
         Vec::default()
     }
 
+    fn get_final_and_active_sequential_balance(
+        &self,
+        _addresses: Vec<Address>,
+    ) -> Vec<(Option<Amount>, Option<Amount>)> {
+        Vec::default()
+    }
+
     fn get_final_and_active_data_entry(
         &self,
         _: Vec<(Address, Vec<u8>)>,
@@ -138,6 +151,14 @@ impl ExecutionController for MockExecutionController {
             .send(MockExecutionControllerMessage::ExecuteReadonlyRequest { req, response_tx })
             .unwrap();
         response_rx.recv().unwrap()
+    }
+
+    fn get_cycle_rolls(&self, _cycle: u64) -> Map<Address, u64> {
+        Map::default()
+    }
+
+    fn unexecuted_ops_among(&self, _ops: &Set<OperationId>, _thread: u8) -> Set<OperationId> {
+        Set::default()
     }
 
     fn clone_box(&self) -> Box<dyn ExecutionController> {

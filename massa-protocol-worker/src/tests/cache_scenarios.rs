@@ -6,7 +6,6 @@ use super::tools::protocol_test;
 use massa_models::constants::THREAD_COUNT;
 use massa_models::{self, Address, Slot};
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::ProtocolEvent;
 use massa_protocol_exports::ProtocolSettings;
 use serial_test::serial;
 

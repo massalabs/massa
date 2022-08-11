@@ -20,3 +20,4 @@ massa_storage = { path = "../massa-storage" }
 instrument = [
     "massa_models/instrument",
 ]
+testing = []

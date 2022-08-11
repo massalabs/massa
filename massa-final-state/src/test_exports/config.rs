@@ -34,7 +34,7 @@ impl Default for FinalState {
             config,
             changes_history: Default::default(), // no changes in history
             pos_state,
-            executed_ops
+            executed_ops,
         }
     }
 }

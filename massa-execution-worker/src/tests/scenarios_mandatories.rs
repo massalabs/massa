@@ -17,6 +17,8 @@ use massa_models::{
     OperationSerializer, OperationType, WrappedBlock, WrappedOperation,
 };
 use massa_models::{Address, Amount, Slot};
+use massa_pos_exports::SelectorConfig;
+use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use parking_lot::RwLock;
@@ -66,8 +68,13 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
 #[serial]
 fn test_execution_shutdown() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (mut manager, _) =
-        start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
+    let (_selector_manager, selector_controller) = start_selector_worker(SelectorConfig::default());
+    let (mut manager, _) = start_execution_worker(
+        ExecutionConfig::default(),
+        sample_state,
+        Default::default(),
+        selector_controller,
+    );
     manager.stop();
 }
 
@@ -75,8 +82,13 @@ fn test_execution_shutdown() {
 #[serial]
 fn test_sending_command() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
+    let (_selector_manager, selector_controller) = start_selector_worker(SelectorConfig::default());
+    let (mut manager, controller) = start_execution_worker(
+        ExecutionConfig::default(),
+        sample_state,
+        Default::default(),
+        selector_controller,
+    );
     controller.update_blockclique_status(Default::default(), Default::default());
     manager.stop();
 }
@@ -85,8 +97,13 @@ fn test_sending_command() {
 #[serial]
 fn test_sending_read_only_execution_command() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
+    let (_selector_manager, selector_controller) = start_selector_worker(SelectorConfig::default());
+    let (mut manager, controller) = start_execution_worker(
+        ExecutionConfig::default(),
+        sample_state,
+        Default::default(),
+        selector_controller,
+    );
     controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
@@ -119,9 +136,11 @@ fn test_nested_call_gas_usage() {
     // get a sample final state
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
     // init the storage
-    let storage = Storage::default();
+    let mut storage = Storage::default();
     // start the execution worker
-    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
+    let (_selector_manager, selector_controller) = start_selector_worker(SelectorConfig::default());
+    let (mut manager, controller) =
+        start_execution_worker(exec_cfg, sample_state, storage.clone(), selector_controller);
     // get random keypair
     let (_, keypair) = get_random_address_full();
     // load bytecode you can check the source code of the
@@ -129,14 +148,17 @@ fn test_nested_call_gas_usage() {
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
     // create the block containing the smart contract execution operation
     let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
-    storage.store_operation(operation.clone());
+    storage.store_operations(vec![operation.clone()]);
     let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
     controller.update_blockclique_status(finalized_blocks.clone(), Default::default());
 
     // sleep for 300ms to reach the message execution period
@@ -160,13 +182,18 @@ fn test_nested_call_gas_usage() {
         address,
     )
     .unwrap();
-    storage.store_operation(operation.clone());
+    // Init new storage for this block
+    let mut storage = Storage::default();
+    storage.store_operations(vec![operation.clone()]);
     let block = create_block(vec![operation], Slot::new(1, 1)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
     // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(300));
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
@@ -214,9 +241,11 @@ fn send_and_receive_async_message() {
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
 
     // init the storage
-    let storage = Storage::default();
+    let mut storage = Storage::default();
     // start the execution worker
-    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
+    let (_selector_manager, selector_controller) = start_selector_worker(SelectorConfig::default());
+    let (mut manager, controller) =
+        start_execution_worker(exec_cfg, sample_state, storage.clone(), selector_controller);
     // get random keypair
     let (_, keypair) = get_random_address_full();
     // load send_message bytecode you can check the source code of the
@@ -225,14 +254,17 @@ fn send_and_receive_async_message() {
     // create the block contaning the smart contract execution operation
 
     let operation = create_execute_sc_operation(&keypair, bytecode).unwrap();
-    storage.store_operation(operation.clone());
+    storage.store_operations(vec![operation.clone()]);
     let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
     // store the block in storage
     storage.store_block(block.clone());
 
     // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let mut finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    finalized_blocks.insert(
+        block.content.header.content.slot,
+        (block.id, storage.clone()),
+    );
     controller.update_blockclique_status(finalized_blocks, Default::default());
 
     // sleep for 300ms to reach the message execution period
@@ -260,23 +292,25 @@ fn generate_events() {
         t0: 10.into(),
         ..ExecutionConfig::default()
     };
-    let storage: Storage = Default::default();
+    let mut storage: Storage = Default::default();
     let (sample_state, _keep_file, _keep_dir) = get_sample_state().unwrap();
-    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
+    let (_selector_manager, selector_controller) = start_selector_worker(SelectorConfig::default());
+    let (mut manager, controller) =
+        start_execution_worker(exec_cfg, sample_state, storage.clone(), selector_controller);
 
     let (sender_address, keypair) = get_random_address_full();
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
     let operation = create_execute_sc_operation(&keypair, event_test_data).unwrap();
-    storage.store_operation(operation.clone());
+    storage.store_operations(vec![operation.clone()]);
     let block = create_block(vec![operation], Slot::new(1, 0)).unwrap();
     let slot = block.content.header.content.slot;
 
     storage.store_block(block.clone());
 
-    let finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    let mut blockclique: HashMap<Slot, BlockId> = Default::default();
+    let finalized_blocks: HashMap<Slot, (BlockId, Storage)> = Default::default();
+    let mut blockclique: HashMap<Slot, (BlockId, Storage)> = Default::default();
 
-    blockclique.insert(slot, block.id);
+    blockclique.insert(slot, (block.id, storage.clone()));
 
     controller.update_blockclique_status(finalized_blocks, blockclique);
 

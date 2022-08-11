@@ -169,7 +169,7 @@ async fn test_node_worker_operations_message() {
 
     let keypair = KeyPair::generate();
     let mock_node_id = NodeId(keypair.get_public_key());
-    let storage: Storage = Default::default();
+    let mut storage: Storage = Default::default();
 
     // Create transaction.
     let transaction = get_transaction(50, 10);
@@ -803,7 +803,7 @@ async fn test_block_not_found() {
                 .serialize(
                     &Message::AskForBlocks(vec![(wanted_hash, AskForBlocksInfo::Info)]),
                     &mut message_serialized
-                );
+                ).unwrap();
             conn1_w
                 .send(
                     &message_serialized,
@@ -916,7 +916,7 @@ async fn test_block_not_found() {
                         wanted_hash4,
                     ]),
                     &mut message_serialized
-                );
+                ).unwrap();
             conn1_w
                 .send(
                     &message_serialized,

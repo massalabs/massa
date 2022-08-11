@@ -9,7 +9,7 @@ use massa_ledger_exports::LedgerController;
 use massa_models::Slot;
 use massa_pos_exports::PoSFinalState;
 
-use crate::{FinalState, FinalStateConfig, StateChanges, ExecutedOps};
+use crate::{ExecutedOps, FinalState, FinalStateConfig, StateChanges};
 
 /// Create a `FinalState` from pre-set values
 pub fn create_final_state(
@@ -28,7 +28,7 @@ pub fn create_final_state(
         async_pool,
         changes_history,
         pos_state,
-        executed_ops
+        executed_ops,
     }
 }
 

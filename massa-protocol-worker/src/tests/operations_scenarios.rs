@@ -399,7 +399,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
     protocol_test(
         protocol_settings,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
+                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {
@@ -792,7 +792,7 @@ async fn test_protocol_on_ask_operations() {
                     protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver,
-                    storage| {
+                    mut storage| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
@@ -809,7 +809,7 @@ async fn test_protocol_on_ask_operations() {
                 .await;
 
             // Store in shared storage.
-            storage.store_operation(operation.clone());
+            storage.store_operations(vec![operation.clone()]);
 
             // 3. A node asks for the operation.
             let asker_node = nodes.pop().expect("Failed to get the second node info.");

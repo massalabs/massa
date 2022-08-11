@@ -60,6 +60,9 @@ use tokio::sync::mpsc;
 use crate::{
     commands::{ConsensusCommand, ConsensusManagementCommand},
     events::ConsensusEvent,
+    test_exports::{
+        generate_default_roll_counts_file, generate_ledger_file, generate_staking_keys_file,
+    },
 };
 
 /// Consensus configuration
@@ -470,7 +473,7 @@ impl From<&std::path::Path> for ConsensusConfig {
             staking_keys.push(KeyPair::generate());
         }
         ConsensusSettings {
-            staking_keys_path: crate::tools::generate_staking_keys_file(&staking_keys)
+            staking_keys_path: generate_staking_keys_file(&staking_keys)
                 .path()
                 .to_path_buf(),
             ledger_path: tempfile::tempdir()
@@ -580,7 +583,6 @@ impl Default for ConsensusConfig {
 impl ConsensusConfig {
     /// default consensus configuration
     pub fn default_with_paths() -> Self {
-        use crate::tools::*;
         let staking_keys: Vec<KeyPair> = (0..1).map(|_| KeyPair::generate()).collect();
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
         let staking_file = generate_staking_keys_file(&staking_keys);
@@ -599,7 +601,6 @@ impl ConsensusConfig {
 
     /// Default consensus configuration from staking keypairs
     pub fn default_with_staking_keys(staking_keys: &[KeyPair]) -> Self {
-        use crate::tools::*;
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
         let staking_file = generate_staking_keys_file(staking_keys);
         let rolls_file = generate_default_roll_counts_file(staking_keys.to_vec());
@@ -623,7 +624,6 @@ impl ConsensusConfig {
             massa_models::ledger_models::LedgerData,
         >,
     ) -> Self {
-        use crate::tools::*;
         let ledger_file = generate_ledger_file(ledger);
         let staking_file = generate_staking_keys_file(staking_keys);
         let rolls_file = generate_default_roll_counts_file(staking_keys.to_vec());

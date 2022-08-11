@@ -117,8 +117,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
     protocol_test(
         protocol_settings,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
-                    mut protocol_command_sender,
+                    protocol_event_receiver,
+                    protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {
             let send_block_or_header_cmd_filter = |cmd| match cmd {
