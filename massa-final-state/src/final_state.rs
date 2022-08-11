@@ -173,10 +173,10 @@ impl FinalState {
             res_changes.async_pool_changes = async_pool_changes;
 
             // Get Proof of Stake state changes if current boostrap cycle is the last
-            // NOTE: use bool `is_pos_bootstrap_finished` instead of last_cycle but how to handle
-            if self.pos_state.cycle_history.front().map(|v| v.cycle) == last_cycle {
-                res_changes.roll_state_changes = changes.roll_state_changes.clone();
-            }
+            // NOTE: should use bool `is_pos_bootstrap_finished` instead of last_cycle but how to handle?
+            // if self.pos_state.cycle_history.front().map(|v| v.cycle) == last_cycle {
+            //     res_changes.roll_state_changes = changes.roll_state_changes.clone();
+            // }
         }
         Ok(res_changes)
     }

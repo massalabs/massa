@@ -293,7 +293,6 @@ pub async fn send_final_state_stream(
                 .get_pos_state_part(old_pos_cursor)?;
             pos_state_data = pos_data;
 
-            // TODO: take back here
             if let Some(slot) = old_slot && let Some(key) = &old_key && let Some(async_pool_id) = old_last_async_id && slot != final_state_read.slot {
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
