@@ -293,12 +293,13 @@ pub async fn send_final_state_stream(
                 .get_pos_state_part(old_pos_cursor)?;
             pos_state_data = pos_data;
 
-            // TODO: update changes streaming
+            // TODO: take back here
             if let Some(slot) = old_slot && let Some(key) = &old_key && let Some(async_pool_id) = old_last_async_id && slot != final_state_read.slot {
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
                     get_address_from_key(key).ok_or_else(|| BootstrapError::GeneralError("Malformed key in slot changes".to_string()))?,
                     async_pool_id,
+                    new_pos_cursor.cycle,
                 );
             } else {
                 final_state_changes = Ok(StateChanges::default());

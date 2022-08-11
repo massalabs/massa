@@ -386,6 +386,7 @@ pub async fn get_state(
             last_key: None,
             slot: None,
             last_async_message_id: None,
+            last_pos_cursor: PoSBootstrapCursor::default(),
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     loop {
