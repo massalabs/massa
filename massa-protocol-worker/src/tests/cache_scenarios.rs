@@ -6,17 +6,17 @@ use super::tools::protocol_test;
 use massa_models::constants::THREAD_COUNT;
 use massa_models::{self, Address, Slot};
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::ProtocolSettings;
+use massa_protocol_exports::{ProtocolConfig, ProtocolSettings};
 use serial_test::serial;
 
 lazy_static::lazy_static! {
-    pub static ref CUSTOM_PROTOCOL_SETTINGS: ProtocolSettings = {
-        let mut protocol_settings = *tools::PROTOCOL_SETTINGS;
+    pub static ref CUSTOM_PROTOCOL_CONFIG: ProtocolConfig = {
+        let mut protocol_config = *tools::PROTOCOL_CONFIG;
 
         // Set max_node_known_blocks_size to zero.
-        protocol_settings.max_node_known_blocks_size = 0;
+        protocol_config.max_node_known_blocks_size = 0;
 
-        protocol_settings
+        protocol_config
     };
 }
 
@@ -24,10 +24,10 @@ lazy_static::lazy_static! {
 #[serial]
 #[ignore]
 async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size() {
-    let protocol_settings = &CUSTOM_PROTOCOL_SETTINGS;
+    let protocol_config = &CUSTOM_PROTOCOL_CONFIG;
 
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,

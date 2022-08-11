@@ -52,7 +52,7 @@ impl ProtocolWorker {
                 info!("Connected to node {}", node_id);
                 massa_trace!(NEW_CONN, { "node": node_id });
                 self.active_nodes
-                    .insert(node_id, NodeInfo::new(&self.configs));
+                    .insert(node_id, NodeInfo::new(&self.config));
                 self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
@@ -183,7 +183,7 @@ impl ProtocolWorker {
                         &[*hash],
                         true,
                         Instant::now(),
-                        self.configs.max_node_known_blocks_size,
+                        self.config.max_node_known_blocks_size,
                     );
 
                     // Send only the missing operations.
@@ -273,7 +273,7 @@ impl ProtocolWorker {
             // Update ask block
             ret.insert(block_id);
 
-            if info.operations_size > self.configs.max_serialized_operations_size_per_block {
+            if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(ret);
             }
@@ -335,7 +335,7 @@ impl ProtocolWorker {
             full_op_size = full_op_size.saturating_add(op.serialized_size());
             if op.thread != info.header.content.slot.thread
                 || !received_ids.insert(op.id)
-                || full_op_size > self.configs.max_serialized_operations_size_per_block
+                || full_op_size > self.config.max_serialized_operations_size_per_block
             {
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(());
@@ -420,7 +420,7 @@ impl ProtocolWorker {
                         &[block_id],
                         false,
                         Instant::now(),
-                        self.configs.max_node_known_blocks_size,
+                        self.config.max_node_known_blocks_size,
                     );
                 }
                 Ok(())

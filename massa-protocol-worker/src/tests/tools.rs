@@ -1,12 +1,12 @@
 use crate::start_protocol_controller;
 use futures::Future;
 use massa_protocol_exports::{
-    tests::mock_network_controller::MockNetworkController, ProtocolCommandSender,
+    tests::mock_network_controller::MockNetworkController, ProtocolCommandSender, ProtocolConfig,
     ProtocolEventReceiver, ProtocolManager, ProtocolPoolEventReceiver, ProtocolSettings,
 };
 use massa_storage::Storage;
 
-pub async fn protocol_test<F, V>(protocol_settings: &'static ProtocolSettings, test: F)
+pub async fn protocol_test<F, V>(protocol_config: &ProtocolConfig, test: F)
 where
     F: FnOnce(
         MockNetworkController,
@@ -34,7 +34,7 @@ where
         protocol_pool_event_receiver,
         protocol_manager,
     ) = start_protocol_controller(
-        protocol_settings,
+        *protocol_config,
         network_command_sender,
         network_event_receiver,
         Default::default(),
@@ -65,7 +65,7 @@ where
         .expect("Failed to shutdown protocol.");
 }
 
-pub async fn protocol_test_with_storage<F, V>(protocol_settings: &'static ProtocolSettings, test: F)
+pub async fn protocol_test_with_storage<F, V>(protocol_config: &ProtocolConfig, test: F)
 where
     F: FnOnce(
         MockNetworkController,
@@ -95,7 +95,7 @@ where
         protocol_pool_event_receiver,
         protocol_manager,
     ) = start_protocol_controller(
-        protocol_settings,
+        *protocol_config,
         network_command_sender,
         network_event_receiver,
         storage.clone(),

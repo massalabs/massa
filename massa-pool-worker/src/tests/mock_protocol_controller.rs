@@ -50,7 +50,7 @@ impl MockProtocolController {
         self.pool_event_tx
             .send(ProtocolPoolEvent::ReceivedOperations {
                 operations,
-                done_signal: None
+                done_signal: None,
             })
             .await
             .expect("could not send protocol pool event");

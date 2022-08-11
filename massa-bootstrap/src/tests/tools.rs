@@ -5,33 +5,30 @@ use crate::settings::BootstrapConfig;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::{FinalState, ExecutedOps};
-use massa_graph::{
-    export_active_block::ExportActiveBlock, BootstrapableGraph,
-};
+use massa_final_state::{ExecutedOps, FinalState};
+use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::constants::default::{
-    MAX_LEDGER_CHANGES_PER_SLOT, MAX_PRODUCTION_EVENTS_PER_BLOCK
+    MAX_LEDGER_CHANGES_PER_SLOT, MAX_PRODUCTION_EVENTS_PER_BLOCK,
 };
 use massa_models::constants::{
     MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS,
-    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_POS_ENTRIES,
-    MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_POS_ENTRIES, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
 };
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    clique::Clique,
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Slot,
+    clique::Clique, Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId,
+    Endorsement, Slot,
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
+use massa_pos_exports::PoSFinalState;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
-use massa_pos_exports::PoSFinalState;
 use rand::Rng;
 use std::collections::{HashMap, VecDeque};
 use std::{
@@ -97,7 +94,7 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
         VecDeque::new(),
         //TODO: Add values
         PoSFinalState::default(),
-        ExecutedOps::default()
+        ExecutedOps::default(),
     )
 }
 
@@ -328,7 +325,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
                 .collect(),
             fitness: 123,
             is_blockclique: true,
-        }]
+        }],
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();

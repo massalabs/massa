@@ -221,3 +221,6 @@
     # Maximum number of computed cycle's draws we keep in cache
     max_draw_cache = 10
 
+[factory]
+    # TODO: Document
+    initial_delay = 100

@@ -89,7 +89,7 @@ impl ProtocolWorker {
                 // otherwise add in future_set
                 if wish.0
                     < now
-                        .checked_sub(self.configs.operation_batch_proc_period.into())
+                        .checked_sub(self.config.operation_batch_proc_period.into())
                         .ok_or(TimeError::TimeOverflowError)?
                 {
                     count_reask += 1;
@@ -107,12 +107,12 @@ impl ProtocolWorker {
         if count_reask > 0 {
             massa_trace!("re-ask operations.", { "count": count_reask });
         }
-        if self.op_batch_buffer.len() < self.configs.operation_batch_buffer_capacity
+        if self.op_batch_buffer.len() < self.config.operation_batch_buffer_capacity
             && !future_set.is_empty()
         {
             self.op_batch_buffer.push_back(OperationBatchItem {
                 instant: now
-                    .checked_add(self.configs.operation_batch_proc_period.into())
+                    .checked_add(self.config.operation_batch_proc_period.into())
                     .ok_or(TimeError::TimeOverflowError)?,
                 node_id,
                 operations_prefix_ids: future_set,
@@ -152,7 +152,7 @@ impl ProtocolWorker {
         self.asked_operations.clear();
         // reset timer
         let instant = Instant::now()
-            .checked_add(self.configs.asked_operations_pruning_period.into())
+            .checked_add(self.config.asked_operations_pruning_period.into())
             .ok_or(TimeError::TimeOverflowError)?;
         ask_operations_timer.set(sleep_until(instant));
         Ok(())
@@ -179,7 +179,7 @@ impl ProtocolWorker {
             operation_batch_proc_period_timer.set(sleep_until(item.instant));
         } else {
             let next_tick = now
-                .checked_add(self.configs.operation_batch_proc_period.into())
+                .checked_add(self.config.operation_batch_proc_period.into())
                 .ok_or(TimeError::TimeOverflowError)?;
             operation_batch_proc_period_timer.set(sleep_until(next_tick));
         }

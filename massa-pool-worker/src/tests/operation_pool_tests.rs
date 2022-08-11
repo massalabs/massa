@@ -1,3 +1,5 @@
+use crate::operation_pool::OperationPool;
+use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::{
     prehash::{Map, Set},
     wrapped::WrappedContent,
@@ -8,8 +10,6 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use serial_test::serial;
 use std::str::FromStr;
-use massa_execution_exports::test_exports::MockExecutionController;
-use crate::operation_pool::OperationPool;
 
 use super::config::POOL_CONFIG;
 
@@ -71,8 +71,7 @@ fn test_pool() {
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 3;
-            let (ids, storage) = pool
-                .get_block_operations(&target_slot);
+            let (ids, storage) = pool.get_block_operations(&target_slot);
             assert!(ids
                 .iter()
                 .map(|id| (*id, storage.retrieve_operation(id).unwrap().serialized_data))
@@ -97,8 +96,7 @@ fn test_pool() {
         for period in 0u64..70 {
             let target_slot = Slot::new(period, thread);
             let max_count = 4;
-            let (ids, storage) = pool
-                .get_block_operations(&target_slot);
+            let (ids, storage) = pool.get_block_operations(&target_slot);
             assert!(ids
                 .iter()
                 .map(|id| (*id, storage.retrieve_operation(id).unwrap().serialized_data))
@@ -117,18 +115,11 @@ fn test_pool() {
         let expire_period: u64 = 300;
         let op = get_transaction(expire_period, fee);
         let id = op.verify_integrity().unwrap();
-        let mut ops = Map::default();
-        ops.insert(id, op.clone());
-        let newly_added = pool.process_operations(ops).unwrap();
-        assert_eq!(newly_added, Set::<OperationId>::default());
-        let res = pool
-            .get_operation_batch(
-                Slot::new(expire_period - 1, op.thread),
-                Set::<OperationId>::default(),
-                10,
-                10000,
-            )
-            .unwrap();
+        let mut storage = Storage::default();
+        storage.store_operations(vec![op.clone()]);
+        pool.add_operations(storage).unwrap();
+        assert_eq!(storage.get_op_refs(), Set::<OperationId>::default());
+        let res = pool.get_block_operations(&Slot::new(expire_period - 1, op.thread));
         assert!(res.is_empty());
     }
 }
