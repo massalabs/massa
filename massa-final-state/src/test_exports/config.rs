@@ -20,6 +20,12 @@ impl Default for FinalState {
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
 
+        // create the pos state
+        let pos_state = Default::default();
+
+        // create a default executed ops
+        let executed_ops = Default::default();
+
         // generate the final state
         FinalState {
             slot,
@@ -27,6 +33,8 @@ impl Default for FinalState {
             async_pool,
             config,
             changes_history: Default::default(), // no changes in history
+            pos_state,
+            executed_ops
         }
     }
 }

@@ -4,7 +4,6 @@ use crate::checked_operations::CheckedOperations;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use massa_hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::constants::MAX_OPERATIONS_PER_BLOCK;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
@@ -12,7 +11,7 @@ use massa_models::{
     prehash::{BuildMap, Map, Set},
     wrapped::{Id, Wrapped},
     BlockHeaderSerializer, BlockId, BlockSerializer, EndorsementId, OperationId,
-    WrappedEndorsement, WrappedHeader, THREAD_COUNT,
+    WrappedEndorsement, WrappedHeader,
 };
 use massa_models::{Block, EndorsementSerializer, OperationSerializer, WrappedBlock};
 use massa_network_exports::{
@@ -1124,10 +1123,6 @@ impl ProtocolWorker {
                                     content_serializer
                                         .serialize(&block, &mut content_serialized)
                                         .unwrap();
-                                    #[cfg(feature = "sandbox")]
-                                    let thread_count = *THREAD_COUNT;
-                                    #[cfg(not(feature = "sandbox"))]
-                                    let thread_count = THREAD_COUNT;
                                     let wrapped: WrappedBlock = Wrapped {
                                         signature: info.header.signature,
                                         creator_public_key: info.header.creator_public_key,

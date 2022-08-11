@@ -2019,16 +2019,10 @@ name = "massa_pool_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "futures 0.3.21",
- "lazy_static",
- "massa_hash",
  "massa_models",
- "massa_signature",
  "massa_storage",
- "massa_time",
  "num",
  "serde 1.0.143",
- "serial_test",
  "thiserror",
 ]
 

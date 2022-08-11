@@ -166,10 +166,10 @@ pub fn time_range_to_slot_range(
 //TODO: https://github.com/massalabs/massa/issues/2867
 /// TODO DOC
 pub fn get_closest_slot_to_timestamp(
-    thread_count: u8,
-    t0: MassaTime,
-    genesis_timestamp: MassaTime,
-    base_time: MassaTime,
+    _thread_count: u8,
+    _t0: MassaTime,
+    _genesis_timestamp: MassaTime,
+    _base_time: MassaTime,
 ) -> Slot {
     todo!("Not implemented yet")
 }

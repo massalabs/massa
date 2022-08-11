@@ -14,7 +14,7 @@ use massa_models::{constants::THREAD_COUNT, Address, Slot};
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use std::collections::VecDeque;
 
-/// Represents a final state `(ledger, async pool)`
+/// Represents a final state `(ledger, async pool, executed_ops and the state of the PoS)`
 pub struct FinalState {
     /// execution state configuration
     pub(crate) config: FinalStateConfig,

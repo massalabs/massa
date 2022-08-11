@@ -536,6 +536,7 @@ impl Storage {
         f(&results)
     }
 
+    /// Get all operations created by an address
     pub fn get_operations_created_by(&self, addr: &Address) -> Operations {
         let operations = self.operations.read();
         match operations.index_by_creator.get(addr) {

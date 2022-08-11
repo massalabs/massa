@@ -176,7 +176,7 @@ async fn test_node_worker_operations_message() {
     let ref_id = transaction.verify_integrity().unwrap();
 
     // Add to storage.
-    storage.store_operation(transaction.clone());
+    storage.store_operations(vec![transaction.clone()]);
 
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
@@ -1089,7 +1089,7 @@ async fn test_operation_messages() {
                     mut network_event_receiver,
                     network_manager,
                     mut mock_interface,
-                    storage| {
+                    mut storage| {
             // accept connection from controller to peer
             let (conn1_id, mut conn1_r, mut conn1_w) = tools::full_connection_from_controller(
                 &mut network_event_receiver,
@@ -1138,7 +1138,7 @@ async fn test_operation_messages() {
             let ref_id2 = transaction2.verify_integrity().unwrap();
 
             // Add to storage.
-            storage.store_operation(transaction2);
+            storage.store_operations(vec![transaction2]);
 
             // reply with another transaction
             network_command_sender

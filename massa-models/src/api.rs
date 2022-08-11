@@ -4,7 +4,7 @@ use crate::address::AddressCycleProductionStats;
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
 use crate::prehash::Set;
-use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
+use crate::stats::{ConsensusStats, NetworkStats};
 use crate::WrappedEndorsement;
 use crate::WrappedOperation;
 use crate::{

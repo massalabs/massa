@@ -50,7 +50,8 @@ pub fn assert_eq_ledger(v1: &Box<dyn LedgerController>, v2: &Box<dyn LedgerContr
             (
                 *addr,
                 LedgerEntry {
-                    parallel_balance: *balance,
+                    sequential_balance: *balance,
+                    parallel_balance: v1.get_parallel_balance(addr).unwrap_or_default(),
                     bytecode: v1.get_bytecode(addr).unwrap_or_default(),
                     datastore: v1.get_entire_datastore(addr),
                 },
@@ -64,7 +65,8 @@ pub fn assert_eq_ledger(v1: &Box<dyn LedgerController>, v2: &Box<dyn LedgerContr
             (
                 *addr,
                 LedgerEntry {
-                    parallel_balance: *balance,
+                    sequential_balance: *balance,
+                    parallel_balance: v1.get_parallel_balance(addr).unwrap_or_default(),
                     bytecode: v2.get_bytecode(addr).unwrap_or_default(),
                     datastore: v2.get_entire_datastore(addr),
                 },
