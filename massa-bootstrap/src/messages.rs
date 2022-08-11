@@ -10,6 +10,7 @@ use massa_models::slot::SlotDeserializer;
 use massa_models::{slot::SlotSerializer, Slot, Version};
 use massa_models::{VecU8Deserializer, VecU8Serializer, VersionDeserializer, VersionSerializer};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
+use massa_pos_exports::PoSBootstrapCursor;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
 };
@@ -416,6 +417,8 @@ pub enum BootstrapClientMessage {
         slot: Option<Slot>,
         /// Last async message id  of the async message pool we received from the server
         last_async_message_id: Option<AsyncMessageId>,
+        /// Last Proof of Stake cursor revceived from the server
+        last_pos_cursor: PoSBootstrapCursor,
     },
     /// Bootstrap error
     BootstrapError {

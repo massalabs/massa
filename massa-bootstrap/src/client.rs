@@ -4,6 +4,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::Version;
+use massa_pos_exports::PoSBootstrapCursor;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use nom::AsBytes;
@@ -71,6 +72,9 @@ async fn stream_final_state(
                     let last_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part.as_bytes())?;
+                    let last_pos_cursor = write_final_state
+                        .pos_state
+                        .set_pos_state_part(pos_state_part.as_bytes())?;
                     write_final_state
                         .ledger
                         .apply_changes(final_state_changes.ledger_changes.clone(), slot);
@@ -91,6 +95,7 @@ async fn stream_final_state(
                         last_key,
                         slot: Some(slot),
                         last_async_message_id: last_last_async_id,
+                        last_pos_cursor,
                     };
                 }
                 BootstrapServerMessage::FinalStateFinished => {
@@ -104,6 +109,7 @@ async fn stream_final_state(
                         last_key: None,
                         slot: None,
                         last_async_message_id: None,
+                        last_pos_cursor: PoSBootstrapCursor::default(),
                     };
                     return Ok(());
                 }

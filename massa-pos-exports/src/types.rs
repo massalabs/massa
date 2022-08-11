@@ -162,7 +162,10 @@ impl PoSFinalState {
     ///
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
-    pub fn set_pos_state_part<'a>(&mut self, part: &'a [u8]) -> Result<(), ModelsError> {
+    pub fn set_pos_state_part<'a>(
+        &mut self,
+        part: &'a [u8],
+    ) -> Result<PoSBootstrapCursor, ModelsError> {
         // TODO: define deserializers limits
         let amount_deser = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         let slot_deser = SlotDeserializer::new(
@@ -254,7 +257,10 @@ impl PoSFinalState {
                     })
                 }
             }
-            Ok(())
+            Ok(PoSBootstrapCursor {
+                credits_slot: self.deferred_credits.last_key_value().map(|(k, _)| *k),
+                cycle: self.cycle_history.front().map(|v| v.cycle),
+            })
         } else {
             Err(ModelsError::SerializeError(
                 "data is left after PoSFinalState part deserialization".to_string(),

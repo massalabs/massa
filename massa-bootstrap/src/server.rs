@@ -254,11 +254,12 @@ pub async fn send_final_state_stream(
     final_state: Arc<RwLock<FinalState>>,
     slot: Option<Slot>,
     last_async_message_id: Option<AsyncMessageId>,
+    last_pos_cursor: PoSBootstrapCursor,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     let mut old_key = last_key;
     let mut old_last_async_id = last_async_message_id;
-    let mut old_pos_cursor = PoSBootstrapCursor::default();
+    let mut old_pos_cursor = last_pos_cursor;
     let mut old_slot = slot;
 
     loop {
@@ -465,6 +466,7 @@ async fn manage_bootstrap(
                     last_key,
                     slot,
                     last_async_message_id,
+                    last_pos_cursor,
                 } => {
                     send_final_state_stream(
                         server,
@@ -472,6 +474,7 @@ async fn manage_bootstrap(
                         final_state.clone(),
                         slot,
                         last_async_message_id,
+                        last_pos_cursor,
                         write_timeout,
                     )
                     .await?;
