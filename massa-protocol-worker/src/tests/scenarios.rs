@@ -313,7 +313,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
+                    protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {
@@ -325,7 +325,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
             // 1. Create a block coming from one node.
             let block = create_block(&creator_node.keypair);
 
-            let expected_hash = block.id;
+            let _expected_hash = block.id;
 
             // TODO: rewrite with block info.
 
@@ -348,8 +348,8 @@ async fn test_protocol_block_not_found() {
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
-                    mut protocol_command_sender,
+                    protocol_event_receiver,
+                    protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {
             // Create 1 node.
