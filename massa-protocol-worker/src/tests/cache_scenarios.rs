@@ -6,7 +6,7 @@ use super::tools::protocol_test;
 use massa_models::constants::THREAD_COUNT;
 use massa_models::{self, Address, Slot};
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::{ProtocolConfig, ProtocolSettings};
+use massa_protocol_exports::ProtocolConfig;
 use serial_test::serial;
 
 lazy_static::lazy_static! {
@@ -41,7 +41,7 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
 
-            let block = tools::create_block_with_operations(
+            let _block = tools::create_block_with_operations(
                 &nodes[0].keypair,
                 Slot::new(1, thread),
                 vec![operation.clone()],

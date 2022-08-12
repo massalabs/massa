@@ -1,7 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::*;
-use massa_consensus_exports::{tools::*, ConsensusConfig};
+use massa_consensus_exports::test_exports::{
+    generate_default_roll_counts_file, generate_ledger_file, generate_staking_keys_file,
+};
+use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::ledger_models::LedgerData;
 use massa_models::{Amount, Slot};

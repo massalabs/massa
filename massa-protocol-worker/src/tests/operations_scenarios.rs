@@ -673,7 +673,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             let thread = address.get_thread(THREAD_COUNT);
 
             // 2. Create a block coming from node creator_node, and including the operation.
-            let block = tools::create_block_with_operations(
+            let _block = tools::create_block_with_operations(
                 &creator_node.keypair,
                 Slot::new(1, thread),
                 vec![operation.clone()],

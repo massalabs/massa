@@ -10,8 +10,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, OperationPrefixId, Operations},
     prehash::{BuildMap, Map, Set},
-    wrapped::{Id, Wrapped},
-    BlockHeaderSerializer, BlockId, BlockSerializer, EndorsementId, OperationId,
+    BlockHeaderSerializer, BlockId, EndorsementId, OperationId,
     WrappedEndorsement, WrappedHeader,
 };
 use massa_models::{EndorsementSerializer, OperationSerializer};

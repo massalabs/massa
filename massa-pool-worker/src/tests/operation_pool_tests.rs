@@ -55,7 +55,7 @@ fn test_pool() {
         // duplicate
         storage.store_operations(ops.values().cloned().collect());
         let newly_added = pool.add_operations(storage);
-        assert_eq!(storage.get_op_refs(), ops.keys().collect());
+        assert_eq!(storage.get_op_refs(), &ops.keys().copied().collect::<Set<OperationId>>());
 
         thread_tx_lists[op.thread as usize].push((op, start_period..=expire_period));
     }
@@ -110,16 +110,17 @@ fn test_pool() {
 
     // add transactions with a high fee but too much in the future: should be ignored
     {
-        pool.update_current_slot(Slot::new(10, 0));
+        //TODO: update current slot
+        //pool.update_current_slot(Slot::new(10, 0));
         let fee = 1000;
         let expire_period: u64 = 300;
         let op = get_transaction(expire_period, fee);
         let id = op.verify_integrity().unwrap();
         let mut storage = Storage::default();
         storage.store_operations(vec![op.clone()]);
-        pool.add_operations(storage).unwrap();
-        assert_eq!(storage.get_op_refs(), Set::<OperationId>::default());
-        let res = pool.get_block_operations(&Slot::new(expire_period - 1, op.thread));
-        assert!(res.is_empty());
+        pool.add_operations(storage);
+        assert_eq!(storage.get_op_refs(), &Set::<OperationId>::default());
+        let (ids, _) = pool.get_block_operations(&Slot::new(expire_period - 1, op.thread));
+        assert!(ids.is_empty());
     }
 }

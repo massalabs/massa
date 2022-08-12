@@ -1,9 +1,8 @@
 use crate::tests::tools::get_dummy_block_id;
 use massa_consensus_exports::ConsensusConfig;
 use massa_graph::{
-    create_genesis_block, export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset,
-    settings::GraphConfig, BlockGraph, BootstrapableGraph, BootstrapableGraphDeserializer,
-    BootstrapableGraphSerializer,
+    create_genesis_block, export_active_block::ExportActiveBlock, settings::GraphConfig,
+    BlockGraph, BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
 use massa_hash::Hash;
 use massa_models::{
@@ -87,35 +86,6 @@ fn get_export_active_test_block() -> (WrappedBlock, ExportActiveBlock) {
             .into_iter()
             .collect()],
             is_final: true,
-            block_ledger_changes: LedgerChanges(
-                vec![
-                    (
-                        Address::from_bytes(&Hash::compute_from("addr01".as_bytes()).into_bytes()),
-                        LedgerChange {
-                            balance_delta: Amount::from_str("1").unwrap(),
-                            balance_increment: true, // whether to increment or decrement balance of delta
-                        },
-                    ),
-                    (
-                        Address::from_bytes(&Hash::compute_from("addr02".as_bytes()).into_bytes()),
-                        LedgerChange {
-                            balance_delta: Amount::from_str("2").unwrap(),
-                            balance_increment: false, // whether to increment or decrement balance of delta
-                        },
-                    ),
-                    (
-                        Address::from_bytes(&Hash::compute_from("addr11".as_bytes()).into_bytes()),
-                        LedgerChange {
-                            balance_delta: Amount::from_str("3").unwrap(),
-                            balance_increment: false, // whether to increment or decrement balance of delta
-                        },
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            roll_updates: Default::default(),
-            production_events: vec![],
         },
     )
 }
@@ -148,12 +118,9 @@ pub async fn test_get_ledger_at_parents() {
         dependencies: export_active_block.dependencies,
         descendants: Default::default(),
         is_final: export_active_block.is_final,
-        block_ledger_changes: export_active_block.block_ledger_changes,
         operation_set: Default::default(),
         endorsement_ids: Default::default(),
         addresses_to_operations: Default::default(),
-        roll_updates: export_active_block.roll_updates, // no roll updates in genesis blocks
-        production_events: export_active_block.production_events,
         block_id: export_active_block.block_id,
         addresses_to_endorsements: Default::default(),
         slot: block.content.header.content.slot,
@@ -506,25 +473,6 @@ pub async fn test_get_ledger_at_parents() {
         gi_head: Default::default(),
         /// List of maximal cliques of compatible blocks.
         max_cliques: vec![],
-        /// Ledger at last final blocks
-        ledger: ConsensusLedgerSubset(
-            vec![
-                (
-                    address_a,
-                    LedgerData {
-                        balance: Amount::from_str("1000000000").unwrap(),
-                    },
-                ),
-                (
-                    address_b,
-                    LedgerData {
-                        balance: Amount::from_str("2000000000").unwrap(),
-                    },
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        ),
     };
 
     let block_graph = BlockGraph::new(GraphConfig::from(&cfg), Some(export_graph), storage)

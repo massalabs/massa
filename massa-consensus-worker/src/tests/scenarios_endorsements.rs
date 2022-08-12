@@ -9,7 +9,7 @@ use serial_test::serial;
 use std::{collections::HashMap, str::FromStr};
 
 use super::tools::*;
-use massa_consensus_exports::{tools::*, ConsensusConfig};
+use massa_consensus_exports::{test_exports::generate_default_roll_counts_file, ConsensusConfig};
 
 #[tokio::test]
 #[serial]

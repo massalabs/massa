@@ -2,7 +2,8 @@
 
 use super::tools::{create_executesc, random_address_on_thread};
 use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
-use massa_consensus_exports::{tools::*, ConsensusConfig};
+use massa_consensus_exports::test_exports::{generate_ledger_file, generate_roll_counts_file};
+use massa_consensus_exports::ConsensusConfig;
 use massa_hash::Hash;
 use massa_models::ledger_models::LedgerData;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
@@ -310,17 +311,6 @@ async fn test_interleaving_block_creation_with_reception() {
         disable_block_creation: false,
         ..ConsensusConfig::default_with_staking_keys_and_ledger(&[keypair_1], &ledger)
     };
-    serde_json::from_str::<ConsensusLedgerSubset>(
-        &tokio::fs::read_to_string(&cfg.initial_ledger_path)
-            .await
-            .unwrap(),
-    )
-    .unwrap();
-    println!(
-        "init ledger path {} {}",
-        cfg.initial_ledger_path.to_str().unwrap(),
-        std::env::current_dir().unwrap().to_str().unwrap()
-    );
     // init roll count
     let mut roll_counts = RollCounts::default();
     let update = RollUpdate {

@@ -29,7 +29,7 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from one node.
-            let mut block = tools::create_block(&creator_node.keypair);
+            let mut _block = tools::create_block(&creator_node.keypair);
 
             // TODO: send something for node to get banned.
 
@@ -338,7 +338,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
                     .wait_command(1000.into(), send_block_or_header_cmd_filter)
                     .await
                 {
-                    Some(NetworkCommand::SendBlockInfo { node, info }) => {
+                    Some(NetworkCommand::SendBlockInfo { node, info: _ }) => {
                         //assert_eq!(expected_hash, block_id);
                         assert!(expecting_block.remove(&node));
                     }

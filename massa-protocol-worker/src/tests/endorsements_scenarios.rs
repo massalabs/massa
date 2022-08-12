@@ -367,7 +367,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
+                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {

@@ -2,7 +2,7 @@ use crate::start_protocol_controller;
 use futures::Future;
 use massa_protocol_exports::{
     tests::mock_network_controller::MockNetworkController, ProtocolCommandSender, ProtocolConfig,
-    ProtocolEventReceiver, ProtocolManager, ProtocolPoolEventReceiver, ProtocolSettings,
+    ProtocolEventReceiver, ProtocolManager, ProtocolPoolEventReceiver,
 };
 use massa_storage::Storage;
 
@@ -47,7 +47,7 @@ where
         protocol_event_receiver,
         _protocol_command_sender,
         protocol_manager,
-        protocol_pool_event_receiver,
+        _protocol_pool_event_receiver,
     ) = test(
         network_controller,
         protocol_event_receiver,
@@ -108,7 +108,7 @@ where
         protocol_event_receiver,
         _protocol_command_sender,
         protocol_manager,
-        protocol_pool_event_receiver,
+        _protocol_pool_event_receiver,
     ) = test(
         network_controller,
         protocol_event_receiver,
