@@ -4,10 +4,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use bitvec::prelude::*;
 use massa_models::{
-    constants::{
-        default::DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-        THREAD_COUNT,
-    },
+    constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
     prehash::Map,
     Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, BitVecDeserializer,
     BitVecSerializer, ModelsError, Slot, SlotDeserializer, SlotSerializer,
@@ -20,7 +17,7 @@ use nom::{
     bytes::complete::tag,
     combinator::opt,
     error::{context, ContextError, ParseError},
-    multi::{length_count, many0, many1},
+    multi::length_count,
     sequence::{preceded, tuple},
     IResult, Parser,
 };
@@ -142,16 +139,25 @@ impl PoSFinalState {
         let slot_ser = SlotSerializer::new();
         let u64_ser = U64VarIntSerializer::new();
         let amount_ser = AmountSerializer::new();
+        if self
+            .deferred_credits
+            .range((last_slot, Unbounded))
+            .last()
+            .is_some()
+        {
+            u64_ser.serialize(&(self.deferred_credits.len() as u64), &mut part)?;
+        }
         for (slot, credits) in self.deferred_credits.range((last_slot, Unbounded)) {
-            if part.len() < DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES as usize {
-                slot_ser.serialize(slot, &mut part)?;
-                u64_ser.serialize(&(credits.len() as u64), &mut part)?;
-                for (addr, amount) in credits {
-                    part.extend(addr.to_bytes());
-                    amount_ser.serialize(amount, &mut part)?;
-                }
-                last_credits_slot = Some(*slot);
+            println!("SLOT {:?}", slot);
+            // TODO: limit this with DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES
+            // NOTE: above will prevent the use of lenght_count combinator, many0 did not do the job
+            slot_ser.serialize(slot, &mut part)?;
+            u64_ser.serialize(&(credits.len() as u64), &mut part)?;
+            for (addr, amount) in credits {
+                part.extend(addr.to_bytes());
+                amount_ser.serialize(amount, &mut part)?;
             }
+            last_credits_slot = Some(*slot);
         }
         Ok((part, last_credits_slot))
     }
@@ -202,6 +208,7 @@ impl PoSFinalState {
             production_stats,
         }) = self.cycle_history.get(cycle_index)
         {
+            println!("CYCLE: {}", cycle);
             // TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
             u64_ser.serialize(cycle, &mut part)?;
             // TODO: consider serializing this boolean some other way
@@ -223,8 +230,8 @@ impl PoSFinalState {
             last_cycle = Some(*cycle);
         }
         let (credits_part, last_slot) = self.get_deferred_credits(cursor)?;
-        println!("PART: {:?}", part);
-        println!("CREDITS PART: {:?}", credits_part);
+        // println!("PART: {:?}", part);
+        // println!("CREDITS PART: {:?}", credits_part);
         part.extend(credits_part);
         Ok((
             part,
@@ -243,6 +250,7 @@ impl PoSFinalState {
         &mut self,
         part: &'a [u8],
     ) -> Result<PoSBootstrapCursor, ModelsError> {
+        println!("PART: {:?}", part);
         if part.is_empty() {
             return Ok(PoSBootstrapCursor::default());
         }
@@ -258,7 +266,7 @@ impl PoSFinalState {
         let (rest, (cycle, credits)) = context(
             "Failed PoSFinalState deserialization",
             tuple((
-                context(
+                opt(context(
                     "cycle_history",
                     tuple((
                         context("cycle", |input| u64_deser.deserialize(input)),
@@ -292,25 +300,32 @@ impl PoSFinalState {
                             ),
                         ),
                     )),
-                ),
-                context(
+                )),
+                opt(context(
                     "deferred_credits",
-                    many0(tuple((
-                        context("slot", |input| {
-                            slot_deser.deserialize::<DeserializeError>(input)
+                    length_count(
+                        context("deferred_credits length", |input| {
+                            u64_deser.deserialize(input)
                         }),
-                        context(
-                            "credits",
-                            length_count(
-                                context("credits length", |input| u64_deser.deserialize(input)),
-                                tuple((
-                                    context("address", |input| address_deser.deserialize(input)),
-                                    context("amount", |input| amount_deser.deserialize(input)),
-                                )),
+                        tuple((
+                            context("slot", |input| {
+                                slot_deser.deserialize::<DeserializeError>(input)
+                            }),
+                            context(
+                                "credits",
+                                length_count(
+                                    context("credits length", |input| u64_deser.deserialize(input)),
+                                    tuple((
+                                        context("address", |input| {
+                                            address_deser.deserialize(input)
+                                        }),
+                                        context("amount", |input| amount_deser.deserialize(input)),
+                                    )),
+                                ),
                             ),
-                        ),
-                    ))),
-                ),
+                        )),
+                    ),
+                )),
             )),
         )
         .parse(part)
@@ -319,24 +334,26 @@ impl PoSFinalState {
         // cycle output type: Vec<(u64, u64, Vec<(Address, u64)>, bitvec::vec::BitVec<u8>, Vec<(Address, u64, u64)>)>)
         if rest.is_empty() {
             let sorted_credits: BTreeMap<Slot, Map<Address, Amount>> = credits
+                .unwrap_or_default()
                 .into_iter()
                 .map(|(slot, credits)| (slot, credits.into_iter().collect()))
                 .collect();
             self.deferred_credits.extend(sorted_credits);
-            let stats_iter =
-                cycle
-                    .4
-                    .into_iter()
-                    .map(|(addr, block_success_count, block_failure_count)| {
-                        (
-                            addr,
-                            ProductionStats {
-                                block_success_count,
-                                block_failure_count,
-                            },
-                        )
-                    });
-            if let Some(info) = self.cycle_history.front_mut() && info.cycle == cycle.0 {
+            if let Some(cycle) = cycle {
+                let stats_iter =
+                    cycle
+                        .4
+                        .into_iter()
+                        .map(|(addr, block_success_count, block_failure_count)| {
+                            (
+                                addr,
+                                ProductionStats {
+                                    block_success_count,
+                                    block_failure_count,
+                                },
+                            )
+                        });
+                if let Some(info) = self.cycle_history.front_mut() && info.cycle == cycle.0 {
                 info.complete = if cycle.1 == 1 { true } else { false };
                 info.roll_counts.extend(cycle.2);
                 info.rng_seed.extend(cycle.3);
@@ -349,6 +366,7 @@ impl PoSFinalState {
                     rng_seed: cycle.3,
                     production_stats: stats_iter.collect(),
                 })
+            }
             }
             println!("GOOD LAD");
             Ok(PoSBootstrapCursor {
