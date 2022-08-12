@@ -98,17 +98,17 @@ fn get_random_pos_state() -> PoSFinalState {
         });
     }
     let mut deferred_credits = BTreeMap::new();
-    for i in 0usize..rng.gen_range(8..16) {
-        let mut credits = Map::default();
-        credits.insert(get_random_address(), Amount::from_raw(42));
-        deferred_credits.insert(
-            Slot {
-                period: i as u64,
-                thread: 0,
-            },
-            credits,
-        );
-    }
+    // for i in 0usize..rng.gen_range(3..6) {
+    //     let mut credits = Map::default();
+    //     credits.insert(get_random_address(), Amount::from_raw(42));
+    //     deferred_credits.insert(
+    //         Slot {
+    //             period: i as u64,
+    //             thread: 0,
+    //         },
+    //         credits,
+    //     );
+    // }
     PoSFinalState {
         cycle_history,
         deferred_credits,

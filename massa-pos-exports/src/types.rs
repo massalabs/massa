@@ -20,7 +20,7 @@ use nom::{
     bytes::complete::tag,
     combinator::opt,
     error::{context, ContextError, ParseError},
-    multi::{length_count, many0},
+    multi::{length_count, many0, many1},
     sequence::{preceded, tuple},
     IResult, Parser,
 };
@@ -222,12 +222,15 @@ impl PoSFinalState {
             }
             last_cycle = Some(*cycle);
         }
-        let (part, last_slot) = self.get_deferred_credits(cursor)?;
+        let (credits_part, last_slot) = self.get_deferred_credits(cursor)?;
+        println!("PART: {:?}", part);
+        println!("CREDITS PART: {:?}", credits_part);
+        part.extend(credits_part);
         Ok((
             part,
             PoSBootstrapCursor {
-                credits_slot: last_slot,
                 cycle: last_cycle,
+                credits_slot: last_slot,
             },
         ))
     }
@@ -240,7 +243,6 @@ impl PoSFinalState {
         &mut self,
         part: &'a [u8],
     ) -> Result<PoSBootstrapCursor, ModelsError> {
-        println!("PART: {:?}", part);
         if part.is_empty() {
             return Ok(PoSBootstrapCursor::default());
         }
@@ -348,11 +350,13 @@ impl PoSFinalState {
                     production_stats: stats_iter.collect(),
                 })
             }
+            println!("GOOD LAD");
             Ok(PoSBootstrapCursor {
                 credits_slot: self.deferred_credits.last_key_value().map(|(k, _)| *k),
                 cycle: self.cycle_history.front().map(|v| v.cycle),
             })
         } else {
+            println!("FOOCKING HELL: {:?}", rest);
             Err(ModelsError::SerializeError(
                 "data is left after PoSFinalState part deserialization".to_string(),
             ))
