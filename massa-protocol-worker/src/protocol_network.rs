@@ -52,7 +52,7 @@ impl ProtocolWorker {
                 info!("Connected to node {}", node_id);
                 massa_trace!(NEW_CONN, { "node": node_id });
                 self.active_nodes
-                    .insert(node_id, NodeInfo::new(&self.configs));
+                    .insert(node_id, NodeInfo::new(&self.config));
                 self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
@@ -183,7 +183,7 @@ impl ProtocolWorker {
                         &[*hash],
                         true,
                         Instant::now(),
-                        self.configs.max_node_known_blocks_size,
+                        self.config.max_node_known_blocks_size,
                     );
 
                     // Send only the missing operations.
@@ -220,25 +220,21 @@ impl ProtocolWorker {
     /// # Result
     /// return an error if stopping asking block failed. The error should be forwarded at the
     /// root. todo: check if if make panic.
-    ///
-    /// # Return
-    /// A set of blocks (one or zero) that we should stop to ask.
     async fn on_block_operation_list_received(
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
         operation_ids: OperationIds,
-    ) -> Result<Set<BlockId>, ProtocolError> {
-        let mut ret = Set::with_capacity_and_hasher(1, BuildMap::default());
+    ) -> Result<(), ProtocolError> {
         match self.block_wishlist.get(&block_id) {
             Some(AskForBlocksInfo::Info) => {}
-            _ => return Ok(ret),
+            _ => return Ok(()),
         }
         let mut info = match self.checked_headers.get_mut(&block_id) {
             Some(info) => info,
             _ => {
                 warn!("Missing block header for {}", block_id);
-                return Ok(ret);
+                return Ok(());
             }
         };
         let mut total_hash: Vec<u8> = vec![];
@@ -270,13 +266,15 @@ impl ProtocolWorker {
                 })
                 .collect();
 
-            // Update ask block
-            ret.insert(block_id);
-
-            if info.operations_size > self.configs.max_serialized_operations_size_per_block {
+            if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 let _ = self.ban_node(&from_node_id).await;
-                return Ok(ret);
+                return Ok(());
             }
+
+            // Update ask block
+            let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
+            set.insert(block_id.clone());
+            self.stop_asking_blocks(set)?;
 
             // Re-add to wishlist with new state.
             self.block_wishlist
@@ -284,7 +282,7 @@ impl ProtocolWorker {
         } else {
             let _ = self.ban_node(&from_node_id).await;
         }
-        Ok(ret)
+        Ok(())
     }
 
     /// Checks full block operations that we asked. (Because their was missing in the
@@ -335,7 +333,7 @@ impl ProtocolWorker {
             full_op_size = full_op_size.saturating_add(op.serialized_size());
             if op.thread != info.header.content.slot.thread
                 || !received_ids.insert(op.id)
-                || full_op_size > self.configs.max_serialized_operations_size_per_block
+                || full_op_size > self.config.max_serialized_operations_size_per_block
             {
                 let _ = self.ban_node(&from_node_id).await;
                 return Ok(());
@@ -402,10 +400,8 @@ impl ProtocolWorker {
                 // that block.
                 // Ban the node if the operation ids hash doesn't match with the hash contained in
                 // the block_header.
-                let stop_asking_blocks = self
-                    .on_block_operation_list_received(from_node_id, block_id, operation_list)
-                    .await?;
-                self.stop_asking_blocks(stop_asking_blocks)
+                self.on_block_operation_list_received(from_node_id, block_id, operation_list)
+                    .await
             }
             BlockInfoReply::Operations(operations) => {
                 // Send operations to pool,
@@ -420,7 +416,7 @@ impl ProtocolWorker {
                         &[block_id],
                         false,
                         Instant::now(),
-                        self.configs.max_node_known_blocks_size,
+                        self.config.max_node_known_blocks_size,
                     );
                 }
                 Ok(())

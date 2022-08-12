@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::constants::CHANNEL_SIZE;
-use massa_pool_exports::{PoolCommand, PoolController};
+use massa_pool_exports::PoolController;
 use massa_time::MassaTime;
 use tokio::{
     sync::{mpsc, oneshot},

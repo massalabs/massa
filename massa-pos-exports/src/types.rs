@@ -240,6 +240,10 @@ impl PoSFinalState {
         &mut self,
         part: &'a [u8],
     ) -> Result<PoSBootstrapCursor, ModelsError> {
+        println!("PART: {:?}", part);
+        if part.is_empty() {
+            return Ok(PoSBootstrapCursor::default());
+        }
         // TODO: define deserializers limits
         let amount_deser = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         let slot_deser = SlotDeserializer::new(
@@ -309,6 +313,7 @@ impl PoSFinalState {
         )
         .parse(part)
         .unwrap();
+        // .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
         // cycle output type: Vec<(u64, u64, Vec<(Address, u64)>, bitvec::vec::BitVec<u8>, Vec<(Address, u64, u64)>)>)
         if rest.is_empty() {
             let sorted_credits: BTreeMap<Slot, Map<Address, Amount>> = credits

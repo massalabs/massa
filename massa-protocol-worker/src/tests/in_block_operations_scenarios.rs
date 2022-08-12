@@ -26,9 +26,9 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     // .timestamp(stderrlog::Timestamp::Millisecond)
     // .init()
     // .unwrap();
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,

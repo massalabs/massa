@@ -1,15 +1,15 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_protocol_controller::MockProtocolController;
-use massa_pool_exports::{PoolConfig, PoolController};
-use massa_execution_exports::test_exports::MockExecutionController;
 use crate::start_pool;
 use futures::Future;
+use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
 use massa_models::{
     wrapped::WrappedContent, Address, Amount, BlockId, Endorsement, EndorsementSerializer,
     Operation, OperationSerializer, OperationType, Slot, WrappedEndorsement, WrappedOperation,
 };
+use massa_pool_exports::{PoolConfig, PoolController};
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use std::str::FromStr;
@@ -23,17 +23,12 @@ where
 
     let (protocol_controller, protocol_command_sender, protocol_pool_event_receiver) =
         MockProtocolController::new();
-    
+
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
-    let pool_controller = start_pool(
-        *cfg,
-        storage,
-        execution_controller
-    );
+    let pool_controller = start_pool(*cfg, storage, execution_controller);
 
     let (_protocol_controller, _pool_controller) =
         test(protocol_controller, Box::new(pool_controller)).await;
-
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {

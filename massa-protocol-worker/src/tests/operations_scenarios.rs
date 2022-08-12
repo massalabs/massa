@@ -17,9 +17,9 @@ use std::time::Duration;
 #[tokio::test]
 #[serial]
 async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -98,9 +98,9 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -153,9 +153,9 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 #[tokio::test]
 #[serial]
 async fn test_protocol_propagates_operations_to_active_nodes() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -227,9 +227,9 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -311,9 +311,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 #[ignore]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_block_integration(
 ) {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -395,9 +395,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 #[ignore]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_get_block_results(
 ) {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -475,9 +475,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 #[ignore]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
 ) {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -561,9 +561,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 #[ignore]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header_wrong_root_hash(
 ) {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -653,9 +653,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 #[serial]
 #[ignore]
 async fn test_protocol_does_not_propagates_operations_when_receiving_those_inside_a_block() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -673,7 +673,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             let thread = address.get_thread(THREAD_COUNT);
 
             // 2. Create a block coming from node creator_node, and including the operation.
-            let block = tools::create_block_with_operations(
+            let _block = tools::create_block_with_operations(
                 &creator_node.keypair,
                 Slot::new(1, thread),
                 vec![operation.clone()],
@@ -729,9 +729,9 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
 #[tokio::test]
 #[serial]
 async fn test_protocol_ask_operations_on_batch_received() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -784,9 +784,9 @@ async fn test_protocol_ask_operations_on_batch_received() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_on_ask_operations() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test_with_storage(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,

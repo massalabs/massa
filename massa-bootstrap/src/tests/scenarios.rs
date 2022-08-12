@@ -10,9 +10,7 @@ use super::{
 use crate::BootstrapConfig;
 use crate::{
     get_state, start_bootstrap_server,
-    tests::tools::{
-        assert_eq_bootstrap_graph, get_bootstrap_config,
-    },
+    tests::tools::{assert_eq_bootstrap_graph, get_bootstrap_config},
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
@@ -141,9 +139,7 @@ async fn test_bootstrap_server() {
         None => panic!("timeout waiting for get boot graph consensus command"),
     };
     let sent_graph = get_boot_state();
-    response
-        .send(sent_graph.clone())
-        .unwrap();
+    response.send(sent_graph.clone()).unwrap();
 
     // wait for get_state
     let bootstrap_res = get_state_h

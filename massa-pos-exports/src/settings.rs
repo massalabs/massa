@@ -31,14 +31,9 @@ pub struct SelectorConfig {
 
 impl Default for SelectorConfig {
     fn default() -> Self {
-        #[cfg(not(feature = "sandbox"))]
-        let thread_count = THREAD_COUNT;
-        #[cfg(feature = "sandbox")]
-        let thread_count = *THREAD_COUNT;
-
         Self {
-            thread_count,
-            blocks_in_cycle: thread_count as usize * PERIODS_PER_CYCLE as usize,
+            thread_count: THREAD_COUNT,
+            blocks_in_cycle: THREAD_COUNT as usize * PERIODS_PER_CYCLE as usize,
             endorsement_count: ENDORSEMENT_COUNT,
             max_draw_cache: 0,
             lookback_cycles: POS_LOOKBACK_CYCLES,

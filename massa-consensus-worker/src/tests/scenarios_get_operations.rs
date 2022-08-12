@@ -3,17 +3,15 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
+use massa_graph::BootstrapableGraph;
 use massa_models::WrappedOperation;
 use massa_models::{
-    clique::Clique, ledger_models::LedgerData, Amount, BlockId, OperationSearchResult,
-    OperationSearchResultStatus, Slot,
+    clique::Clique, BlockId, OperationSearchResult, OperationSearchResultStatus, Slot,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 #[tokio::test]
 #[serial]
@@ -56,13 +54,7 @@ async fn test_get_operation() {
         op5.clone(),
     ];
 
-    let boot_ledger = ConsensusLedgerSubset(
-        vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
-            .into_iter()
-            .collect(),
-    );
-
-    let (boot_graph, b1, b2) = get_bootgraph(vec![op2.clone(), op3.clone()], boot_ledger);
+    let (boot_graph, b1, b2) = get_bootgraph(vec![op2.clone(), op3.clone()]);
     // there is only one node so it should be drawn at every slot
 
     consensus_pool_test(
@@ -137,10 +129,7 @@ async fn test_get_operation() {
     .await;
 }
 
-fn get_bootgraph(
-    operations: Vec<WrappedOperation>,
-    ledger: ConsensusLedgerSubset,
-) -> (BootstrapableGraph, BlockId, BlockId) {
+fn get_bootgraph(operations: Vec<WrappedOperation>) -> (BootstrapableGraph, BlockId, BlockId) {
     let genesis_0 = get_export_active_test_block(vec![], vec![], Slot::new(0, 0), true);
     let genesis_1 = get_export_active_test_block(vec![], vec![], Slot::new(0, 1), true);
     let p1t0 = get_export_active_test_block(
@@ -206,7 +195,6 @@ fn get_bootgraph(
                 fitness: 123,
                 is_blockclique: true,
             }],
-            ledger,
         },
         p1t0.block_id,
         p2t0.block_id,

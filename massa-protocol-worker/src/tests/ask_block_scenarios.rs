@@ -2,7 +2,7 @@
 
 use super::tools::protocol_test;
 use massa_models::prehash::Set;
-use massa_models::BlockId;
+use massa_models::{BlockId, Slot};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{asked_list, assert_hash_asked_to_node};
@@ -13,10 +13,10 @@ use serial_test::serial;
 #[serial]
 async fn test_without_a_priori() {
     // start
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
 
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -91,9 +91,9 @@ async fn test_without_a_priori() {
 #[serial]
 async fn test_someone_knows_it() {
     // start
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -113,7 +113,13 @@ async fn test_someone_knows_it() {
                 .unwrap();
 
             // 2. Create a block coming from node 0.
-            let block = tools::create_block(&node_a.keypair);
+            let op = tools::create_operation_with_expire_period(&node_a.keypair, 5);
+
+            let block = tools::create_block_with_operations(
+                &node_a.keypair,
+                Slot::new(1, 0),
+                vec![op.clone()],
+            );
             let hash_1 = block.id;
             // end set up
 
@@ -138,11 +144,14 @@ async fn test_someone_knows_it() {
 
             assert_hash_asked_to_node(hash_1, node_c.id, &mut network_controller).await;
 
-            // node C replied with the block
+            // node C replied with the block info containing the operation id.
             network_controller
                 .send_block_info(
                     node_c.id,
-                    vec![(block.id, BlockInfoReply::Info(Default::default()))],
+                    vec![(
+                        block.id,
+                        BlockInfoReply::Info(vec![op].into_iter().map(|op| op.id).collect()),
+                    )],
                 )
                 .await;
 
@@ -182,9 +191,9 @@ async fn test_someone_knows_it() {
 #[serial]
 async fn test_dont_want_it_anymore() {
     // start
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -259,10 +268,10 @@ async fn test_dont_want_it_anymore() {
 #[serial]
 async fn test_no_one_has_it() {
     // start
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
 
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -338,10 +347,10 @@ async fn test_no_one_has_it() {
 #[serial]
 async fn test_multiple_blocks_without_a_priori() {
     // start
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
 
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,

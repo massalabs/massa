@@ -2,8 +2,8 @@
 
 use super::mock_network_controller::MockNetworkController;
 use crate::{
-    ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent, ProtocolPoolEventReceiver,
-    ProtocolSettings,
+    ProtocolConfig, ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent,
+    ProtocolPoolEventReceiver,
 };
 use massa_hash::Hash;
 use massa_models::node::NodeId;
@@ -230,12 +230,12 @@ pub fn create_operation_with_expire_period(
 
 lazy_static::lazy_static! {
     /// protocol settings
-    pub static ref PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
+    pub static ref PROTOCOL_CONFIG: ProtocolConfig = create_protocol_config();
 }
 
 /// create a `ProtocolConfig` with typical values
-pub fn create_protocol_settings() -> ProtocolSettings {
-    ProtocolSettings {
+pub fn create_protocol_config() -> ProtocolConfig {
+    ProtocolConfig {
         ask_block_timeout: 500.into(),
         max_known_blocks_size: 100,
         max_node_known_blocks_size: 100,
@@ -250,6 +250,8 @@ pub fn create_protocol_settings() -> ProtocolSettings {
         operation_batch_proc_period: 200.into(),
         asked_operations_pruning_period: 500.into(),
         max_operations_per_message: 1024,
+        thread_count: 32,
+        max_serialized_operations_size_per_block: 1024,
     }
 }
 

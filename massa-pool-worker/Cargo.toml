@@ -27,4 +27,4 @@ massa_time = { path = "../massa-time" }
 instrument = [
     "massa_models/instrument",
 ]
-testing = ["massa_pool_exports/testing"]
+testing = ["massa_pool_exports/testing", "massa_execution_exports/testing"]

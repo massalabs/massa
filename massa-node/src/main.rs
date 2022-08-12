@@ -267,8 +267,8 @@ async fn launch(
         roll_price: ROLL_PRICE,
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-        max_operation_pool_size_per_thread: SETTINGS.pool.max_operation_pool_size_per_thread,
-        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
+        max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
     };
     let pool_controller = start_pool(
         pool_config,

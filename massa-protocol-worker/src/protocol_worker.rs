@@ -10,14 +10,13 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, OperationPrefixId, Operations},
     prehash::{BuildMap, Map, Set},
-    wrapped::{Id, Wrapped},
-    BlockHeaderSerializer, BlockId, BlockSerializer, EndorsementId, OperationId,
+    BlockHeaderSerializer, BlockId, EndorsementId, OperationId,
     WrappedEndorsement, WrappedHeader,
 };
 use massa_models::{EndorsementSerializer, OperationSerializer};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfigs, ProtocolError, ProtocolEvent,
+    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolError, ProtocolEvent,
     ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent,
     ProtocolPoolEventReceiver,
 };
@@ -39,12 +38,12 @@ use tracing::{debug, error, info, warn};
 /// - launch `protocol_controller_fn` in an other task
 ///
 /// # Arguments
-/// * `configs`: protocol settings
+/// * `config`: protocol settings
 /// * `network_command_sender`: the `NetworkCommandSender` we interact with
 /// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
-    configs: ProtocolConfigs,
+    config: ProtocolConfig,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
     storage: Storage,
@@ -67,7 +66,7 @@ pub async fn start_protocol_controller(
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let join_handle = tokio::spawn(async move {
         let res = ProtocolWorker::new(
-            configs,
+            config,
             ProtocolWorkerChannels {
                 network_command_sender,
                 network_event_receiver,
@@ -127,7 +126,7 @@ impl BlockInfo {
 /// protocol worker
 pub struct ProtocolWorker {
     /// Protocol configuration.
-    pub(crate) configs: ProtocolConfigs,
+    pub(crate) config: ProtocolConfig,
     /// Associated network command sender.
     pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
@@ -179,13 +178,13 @@ impl ProtocolWorker {
     /// Creates a new protocol worker.
     ///
     /// # Arguments
-    /// * `configs`: protocol configuration.
+    /// * `config`: protocol configuration.
     /// * `network_controller`: associated network controller.
     /// * `controller_event_tx`: Channel to send protocol events.
     /// * `controller_command_rx`: Channel receiving commands.
     /// * `controller_manager_rx`: Channel receiving management commands.
     pub fn new(
-        configs: ProtocolConfigs,
+        config: ProtocolConfig,
         ProtocolWorkerChannels {
             network_command_sender,
             network_event_receiver,
@@ -197,7 +196,7 @@ impl ProtocolWorker {
         storage: Storage,
     ) -> ProtocolWorker {
         ProtocolWorker {
-            configs,
+            config,
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
@@ -211,7 +210,7 @@ impl ProtocolWorker {
             checked_headers: Default::default(),
             asked_operations: Default::default(),
             op_batch_buffer: OperationBatchBuffer::with_capacity(
-                configs.operation_batch_buffer_capacity,
+                config.operation_batch_buffer_capacity,
             ),
             storage,
         }
@@ -220,7 +219,7 @@ impl ProtocolWorker {
     pub(crate) async fn send_protocol_event(&self, event: ProtocolEvent) {
         let result = self
             .controller_event_tx
-            .send_timeout(event, self.configs.max_send_wait.to_duration())
+            .send_timeout(event, self.config.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => {}
@@ -239,7 +238,7 @@ impl ProtocolWorker {
     pub(crate) async fn send_protocol_pool_event(&self, event: ProtocolPoolEvent) {
         let result = self
             .controller_pool_event_tx
-            .send_timeout(event, self.configs.max_send_wait.to_duration())
+            .send_timeout(event, self.config.max_send_wait.to_duration())
             .await;
         match result {
             Ok(()) => {}
@@ -270,12 +269,12 @@ impl ProtocolWorker {
     /// It's mostly a `tokio::select!` within a loop.
     pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
         // TODO: Config variable for the moment 10000 (prune) (100 seconds)
-        let operation_prune_timer = sleep(self.configs.asked_operations_pruning_period.into());
+        let operation_prune_timer = sleep(self.config.asked_operations_pruning_period.into());
         tokio::pin!(operation_prune_timer);
-        let block_ask_timer = sleep(self.configs.ask_block_timeout.into());
+        let block_ask_timer = sleep(self.config.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
         let operation_batch_proc_period_timer =
-            sleep(self.configs.operation_batch_proc_period.into());
+            sleep(self.config.operation_batch_proc_period.into());
         tokio::pin!(operation_batch_proc_period_timer);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
@@ -421,7 +420,7 @@ impl ProtocolWorker {
                         .collect();
                     node_info.insert_known_ops(
                         new_ops.iter().cloned().collect(),
-                        self.configs.max_node_known_ops_size,
+                        self.config.max_node_known_ops_size,
                     );
                     if !new_ops.is_empty() {
                         self.network_command_sender
@@ -446,7 +445,7 @@ impl ProtocolWorker {
                         .collect();
                     node_info.insert_known_endorsements(
                         new_endorsements.keys().copied().collect(),
-                        self.configs.max_node_known_endorsements_size,
+                        self.config.max_node_known_endorsements_size,
                     );
                     let to_send = new_endorsements
                         .into_iter()
@@ -492,7 +491,7 @@ impl ProtocolWorker {
 
         // init timer
         let mut next_tick = now
-            .checked_add(self.configs.ask_block_timeout.into())
+            .checked_add(self.config.ask_block_timeout.into())
             .ok_or(TimeError::TimeOverflowError)?;
 
         // list blocks to re-ask and gather candidate nodes to ask from
@@ -509,7 +508,7 @@ impl ProtocolWorker {
                 let ask_time_opt = node_info.asked_blocks.get(hash).copied();
                 let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
                     let t = ask_time
-                        .checked_add(self.configs.ask_block_timeout.into())
+                        .checked_add(self.config.ask_block_timeout.into())
                         .ok_or(TimeError::TimeOverflowError)?;
                     (Some(t), t <= now)
                 } else {
@@ -520,7 +519,7 @@ impl ProtocolWorker {
                 // check if the node recently told us it doesn't have the block
                 if let Some((false, info_time)) = knows_block {
                     let info_expires = info_time
-                        .checked_add(self.configs.ask_block_timeout.into())
+                        .checked_add(self.config.ask_block_timeout.into())
                         .ok_or(TimeError::TimeOverflowError)?;
                     if info_expires > now {
                         next_tick = std::cmp::min(next_tick, info_expires);
@@ -549,7 +548,7 @@ impl ProtocolWorker {
                                 &[*hash],
                                 false,
                                 timeout_at,
-                                self.configs.max_node_known_blocks_size,
+                                self.config.max_node_known_blocks_size,
                             );
                             (2u8, ask_time_opt)
                         } else {
@@ -565,7 +564,7 @@ impl ProtocolWorker {
                                 &[*hash],
                                 false,
                                 timeout_at,
-                                self.configs.max_node_known_blocks_size,
+                                self.config.max_node_known_blocks_size,
                             );
                         }
                         (2u8, ask_time_opt)
@@ -576,7 +575,7 @@ impl ProtocolWorker {
                             &[*hash],
                             false,
                             timeout_at,
-                            self.configs.max_node_known_blocks_size,
+                            self.config.max_node_known_blocks_size,
                         );
                         (2u8, ask_time_opt)
                     }
@@ -608,7 +607,7 @@ impl ProtocolWorker {
                         .iter()
                         .filter(|(_h, ask_t)| {
                             ask_t
-                                .checked_add(self.configs.ask_block_timeout.into())
+                                .checked_add(self.config.ask_block_timeout.into())
                                 .map_or(false, |timeout_t| timeout_t > now)
                         })
                         .count(),
@@ -623,7 +622,7 @@ impl ProtocolWorker {
                 .filter(|(_knowledge, node_id, _)| {
                     // filter out nodes with too many active block requests
                     *active_block_req_count.get(node_id).unwrap_or(&0)
-                        <= self.configs.max_simultaneous_ask_blocks_per_node
+                        <= self.config.max_simultaneous_ask_blocks_per_node
                 })
                 .min_by_key(|(knowledge, node_id, _)| {
                     (
@@ -646,7 +645,7 @@ impl ProtocolWorker {
                     .push((hash, required_info.clone()));
 
                 let timeout_at = now
-                    .checked_add(self.configs.ask_block_timeout.into())
+                    .checked_add(self.config.ask_block_timeout.into())
                     .ok_or(TimeError::TimeOverflowError)?;
                 next_tick = std::cmp::min(next_tick, timeout_at);
             }
@@ -731,22 +730,22 @@ impl ProtocolWorker {
                     &header.content.parents,
                     true,
                     now,
-                    self.configs.max_node_known_blocks_size,
+                    self.config.max_node_known_blocks_size,
                 );
                 node_info.insert_known_blocks(
                     &[block_id],
                     true,
                     now,
-                    self.configs.max_node_known_blocks_size,
+                    self.config.max_node_known_blocks_size,
                 );
                 node_info.insert_known_endorsements(
                     block_info.endorsements.keys().copied().collect(),
-                    self.configs.max_node_known_endorsements_size,
+                    self.config.max_node_known_endorsements_size,
                 );
                 if let Some(operations) = block_info.operations.as_ref() {
                     node_info.insert_known_ops(
                         operations.iter().cloned().collect(),
-                        self.configs.max_node_known_ops_size,
+                        self.config.max_node_known_ops_size,
                     );
                 }
             }
@@ -825,13 +824,13 @@ impl ProtocolWorker {
                 &header.content.parents,
                 true,
                 now,
-                self.configs.max_node_known_blocks_size,
+                self.config.max_node_known_blocks_size,
             );
             node_info.insert_known_blocks(
                 &[block_id],
                 true,
                 now,
-                self.configs.max_node_known_blocks_size,
+                self.config.max_node_known_blocks_size,
             );
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
             return Ok(Some((block_id, endorsement_ids, true)));
@@ -841,21 +840,21 @@ impl ProtocolWorker {
 
     /// Prune `checked_endorsements` if it is too large
     fn prune_checked_endorsements(&mut self) {
-        if self.checked_endorsements.len() > self.configs.max_known_endorsements_size {
+        if self.checked_endorsements.len() > self.config.max_known_endorsements_size {
             self.checked_endorsements.clear();
         }
     }
 
     /// Prune `checked_operations` if it has grown too large.
     fn prune_checked_operations(&mut self) {
-        if self.checked_operations.len() > self.configs.max_known_ops_size {
+        if self.checked_operations.len() > self.config.max_known_ops_size {
             self.checked_operations.clear();
         }
     }
 
     /// Prune `checked_headers` if it is too large
     fn prune_checked_headers(&mut self) {
-        if self.checked_headers.len() > self.configs.max_known_blocks_size {
+        if self.checked_headers.len() > self.config.max_known_blocks_size {
             self.checked_headers.clear();
         }
     }
@@ -900,7 +899,7 @@ impl ProtocolWorker {
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_ops(
                 received_ids.keys().copied().collect(),
-                self.configs.max_node_known_ops_size,
+                self.config.max_node_known_ops_size,
             );
         }
 
@@ -962,7 +961,7 @@ impl ProtocolWorker {
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_endorsements(
                 endorsement_ids.keys().copied().collect(),
-                self.configs.max_node_known_endorsements_size,
+                self.config.max_node_known_endorsements_size,
             );
         }
 
@@ -985,11 +984,12 @@ impl ProtocolWorker {
 mod tests {
     use super::*;
     use crate::node_info::NodeInfo;
-    use massa_protocol_exports::tests::tools::create_protocol_settings;
+    use massa_hash::Hash;
+    use massa_protocol_exports::{tests::tools::create_protocol_config, ProtocolConfig};
     use serial_test::serial;
 
     lazy_static::lazy_static! {
-        static ref PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
+        static ref PROTOCOL_CONFIG: ProtocolConfig = create_protocol_config();
     }
 
     pub fn get_dummy_block_id(s: &str) -> BlockId {
@@ -1000,8 +1000,8 @@ mod tests {
     #[serial]
     fn test_node_info_know_block() {
         let max_node_known_blocks_size = 10;
-        let configs = &PROTOCOL_SETTINGS;
-        let mut nodeinfo = NodeInfo::new(configs);
+        let config = &PROTOCOL_CONFIG;
+        let mut nodeinfo = NodeInfo::new(config);
         let instant = Instant::now();
 
         let hash_test = get_dummy_block_id("test");

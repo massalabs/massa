@@ -15,9 +15,9 @@ use std::time::Duration;
 #[serial]
 #[ignore]
 async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
@@ -29,7 +29,7 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from one node.
-            let mut block = tools::create_block(&creator_node.keypair);
+            let mut _block = tools::create_block(&creator_node.keypair);
 
             // TODO: send something for node to get banned.
 
@@ -63,9 +63,9 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -120,9 +120,9 @@ async fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
@@ -201,9 +201,9 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -289,9 +289,9 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
 #[serial]
 #[ignore]
 async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -338,7 +338,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
                     .wait_command(1000.into(), send_block_or_header_cmd_filter)
                     .await
                 {
-                    Some(NetworkCommand::SendBlockInfo { node, info }) => {
+                    Some(NetworkCommand::SendBlockInfo { node, info: _ }) => {
                         //assert_eq!(expected_hash, block_id);
                         assert!(expecting_block.remove(&node));
                     }
@@ -377,9 +377,9 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -484,9 +484,9 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_removes_banned_node_on_disconnection() {
-    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
-        protocol_settings,
+        protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,

@@ -40,7 +40,7 @@ pub struct ProtocolSettings {
 
 /// Dinamic protocol configuration mixin static settings and constants configurations.
 #[derive(Debug, Deserialize, Clone, Copy)]
-pub struct ProtocolConfigs {
+pub struct ProtocolConfig {
     /// running threads count
     pub thread_count: u8,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
@@ -76,7 +76,7 @@ pub struct ProtocolConfigs {
     pub max_serialized_operations_size_per_block: usize,
 }
 
-impl From<ProtocolSettings> for ProtocolConfigs {
+impl From<ProtocolSettings> for ProtocolConfig {
     fn from(settings: ProtocolSettings) -> Self {
         #[cfg(feature = "sandbox")]
         let thread_count = *THREAD_COUNT;

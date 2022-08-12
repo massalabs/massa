@@ -758,14 +758,9 @@ pub async fn consensus_pool_test_with_storage<F, V>(
                 protocol_event_receiver,
                 pool_command_sender,
             },
-            boot_pos,
             boot_graph,
             storage.clone(),
             0,
-            password.clone(),
-            load_initial_staking_keys(&cfg.staking_keys_path, &password)
-                .await
-                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
