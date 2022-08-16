@@ -290,7 +290,6 @@ pub async fn send_final_state_stream(
                 .get_pool_part(old_last_async_id)?;
             async_pool_data = pool_data;
 
-            // TODO HERE
             let (cycle_data, new_last_cycle, complete) = final_state_read
                 .pos_state
                 .get_cycle_history_part(old_cycle)?;
@@ -301,7 +300,7 @@ pub async fn send_final_state_stream(
                 .get_deferred_credits_part(old_credits_slot)?;
             pos_credits_data = credits_data;
 
-            // TODO: handle deferred credits changes
+            // IMPORTANT TODO: handle deferred credits changes
             if let Some(slot) = old_slot && let Some(key) = &old_key && let Some(async_pool_id) = old_last_async_id && slot != final_state_read.slot {
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
