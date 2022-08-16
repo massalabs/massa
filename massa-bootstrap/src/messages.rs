@@ -519,7 +519,6 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.slot_serializer.serialize(slot, buffer)?;
                     self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
                     // IMPORTANT TODO: SER BOTH
-
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
