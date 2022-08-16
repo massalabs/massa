@@ -9,19 +9,18 @@ use massa_models::{
     active_block::ActiveBlock,
     clique::Clique,
     constants::{
-        default::{
-            MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_PER_SLOT,
-            MAX_PARAMETERS_SIZE, MAX_PRODUCTION_EVENTS_PER_BLOCK,
-        },
+        default::{MAX_LEDGER_CHANGES_PER_SLOT, MAX_PRODUCTION_EVENTS_PER_BLOCK},
         MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS, MAX_BOOTSTRAP_POS_ENTRIES,
         MAX_OPERATIONS_PER_BLOCK,
     },
-    ledger_models::{LedgerChange, LedgerChanges, LedgerData},
+    ledger_models::LedgerData,
     prehash::{Map, Set},
     wrapped::WrappedContent,
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
     Endorsement, EndorsementSerializer, Slot, WrappedBlock,
 };
+use massa_pos_exports::SelectorConfig;
+use massa_pos_worker::start_selector_worker;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
@@ -106,7 +105,7 @@ pub async fn test_get_ledger_at_parents() {
     //    .with(tracing_layer)
     //    .init();
     let thread_count: u8 = 2;
-    let storage: Storage = Default::default();
+    let mut storage: Storage = Default::default();
     let (block, export_active_block): (WrappedBlock, ExportActiveBlock) =
         get_export_active_test_block();
     storage.store_block(block.clone());
@@ -158,9 +157,6 @@ pub async fn test_get_ledger_at_parents() {
         children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
         dependencies: Default::default(), // dependencies required for validity check
         is_final: true,
-        block_ledger_changes: Default::default(),
-        roll_updates: Default::default(),
-        production_events: vec![],
     };
     let export_genesist1 = ExportActiveBlock {
         block: block_genesist1,
@@ -169,9 +165,6 @@ pub async fn test_get_ledger_at_parents() {
         children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
         dependencies: Default::default(), // dependencies required for validity check
         is_final: true,
-        block_ledger_changes: Default::default(),
-        roll_updates: Default::default(),
-        production_events: vec![],
     };
     let block: WrappedBlock = {
         let block_locked = storage
@@ -199,27 +192,6 @@ pub async fn test_get_ledger_at_parents() {
 
     active_block_p1t0.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
     active_block_p1t0.is_final = true;
-    active_block_p1t0.block_ledger_changes = LedgerChanges::default();
-    active_block_p1t0
-        .block_ledger_changes
-        .apply(
-            &address_a,
-            &LedgerChange {
-                balance_delta: Amount::from_str("1").unwrap(),
-                balance_increment: false,
-            },
-        )
-        .unwrap();
-    active_block_p1t0
-        .block_ledger_changes
-        .apply(
-            &address_b,
-            &LedgerChange {
-                balance_delta: Amount::from_str("2").unwrap(),
-                balance_increment: true,
-            },
-        )
-        .unwrap();
 
     let mut block_p1t0 = block.clone();
     block_p1t0.content.header.creator_public_key = pubkey_a;
@@ -237,27 +209,6 @@ pub async fn test_get_ledger_at_parents() {
     let mut active_block_p1t1 = active_block.clone();
     active_block_p1t1.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
     active_block_p1t1.is_final = true;
-    active_block_p1t1.block_ledger_changes = LedgerChanges::default();
-    active_block_p1t1
-        .block_ledger_changes
-        .apply(
-            &address_a,
-            &LedgerChange {
-                balance_delta: Amount::from_str("160").unwrap(),
-                balance_increment: true,
-            },
-        )
-        .unwrap();
-    active_block_p1t1
-        .block_ledger_changes
-        .apply(
-            &address_b,
-            &LedgerChange {
-                balance_delta: Amount::from_str("159").unwrap(),
-                balance_increment: false,
-            },
-        )
-        .unwrap();
 
     let mut block_p1t1 = block.clone();
     block_p1t1.content.header.creator_public_key = pubkey_b;
@@ -277,18 +228,6 @@ pub async fn test_get_ledger_at_parents() {
         (hash_genesist1, 0),
     ];
     active_block_p2t0.is_final = false;
-    active_block_p2t0.block_ledger_changes = LedgerChanges::default();
-    active_block_p2t0
-        .block_ledger_changes
-        .apply(
-            &address_a,
-            &LedgerChange {
-                balance_delta: Amount::from_str("1").unwrap(),
-                balance_increment: true,
-            },
-        )
-        .unwrap();
-
     let mut block_p2t0 = block.clone();
     block_p2t0.content.header.creator_public_key = pubkey_a;
     block_p2t0.content.header.content.slot = Slot::new(2, 0);
@@ -308,28 +247,6 @@ pub async fn test_get_ledger_at_parents() {
         (get_dummy_block_id("active_block_p1t1"), 1),
     ];
     active_block_p2t1.is_final = true;
-    active_block_p2t1.block_ledger_changes = LedgerChanges::default();
-    active_block_p2t1
-        .block_ledger_changes
-        .apply(
-            &address_a,
-            &LedgerChange {
-                balance_delta: Amount::from_str("10").unwrap(),
-                balance_increment: true,
-            },
-        )
-        .unwrap();
-    active_block_p2t1
-        .block_ledger_changes
-        .apply(
-            &address_b,
-            &LedgerChange {
-                balance_delta: Amount::from_str("9").unwrap(),
-                balance_increment: false,
-            },
-        )
-        .unwrap();
-
     let mut block_p2t1 = block.clone();
     block_p2t1.content.header.creator_public_key = pubkey_b;
     block_p2t1.content.header.content.slot = Slot::new(2, 1);
@@ -349,28 +266,6 @@ pub async fn test_get_ledger_at_parents() {
         (get_dummy_block_id("active_block_p1t1"), 1),
     ];
     active_block_p3t0.is_final = false;
-    active_block_p3t0.block_ledger_changes = LedgerChanges::default();
-    active_block_p3t0
-        .block_ledger_changes
-        .apply(
-            &address_a,
-            &LedgerChange {
-                balance_delta: Amount::from_str("2047").unwrap(),
-                balance_increment: false,
-            },
-        )
-        .unwrap();
-    active_block_p3t0
-        .block_ledger_changes
-        .apply(
-            &address_c,
-            &LedgerChange {
-                balance_delta: Amount::from_str("2048").unwrap(),
-                balance_increment: true,
-            },
-        )
-        .unwrap();
-
     let mut block_p3t0 = block.clone();
     block_p3t0.content.header.creator_public_key = pubkey_a;
     block_p3t0.content.header.content.slot = Slot::new(3, 0);
@@ -389,28 +284,6 @@ pub async fn test_get_ledger_at_parents() {
         (get_dummy_block_id("active_block_p2t1"), 2),
     ];
     active_block_p3t1.is_final = false;
-    active_block_p3t1.block_ledger_changes = LedgerChanges::default();
-    active_block_p3t1
-        .block_ledger_changes
-        .apply(
-            &address_a,
-            &LedgerChange {
-                balance_delta: Amount::from_str("100").unwrap(),
-                balance_increment: true,
-            },
-        )
-        .unwrap();
-    active_block_p3t1
-        .block_ledger_changes
-        .apply(
-            &address_b,
-            &LedgerChange {
-                balance_delta: Amount::from_str("99").unwrap(),
-                balance_increment: false,
-            },
-        )
-        .unwrap();
-
     let mut block_p3t1 = block.clone();
     block_p3t1.content.header.creator_public_key = pubkey_b;
     block_p3t1.content.header.content.slot = Slot::new(3, 1);
@@ -474,10 +347,19 @@ pub async fn test_get_ledger_at_parents() {
         /// List of maximal cliques of compatible blocks.
         max_cliques: vec![],
     };
-
-    let block_graph = BlockGraph::new(GraphConfig::from(&cfg), Some(export_graph), storage)
-        .await
-        .unwrap();
+    let selector_config = SelectorConfig {
+        initial_rolls_path: cfg.initial_rolls_path.clone(),
+        ..Default::default()
+    };
+    let (mut selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let _block_graph = BlockGraph::new(
+        GraphConfig::from(&cfg),
+        Some(export_graph),
+        storage,
+        selector_controller,
+    )
+    .await
+    .unwrap();
 
     // Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
     warn!(
@@ -485,67 +367,69 @@ pub async fn test_get_ledger_at_parents() {
         get_dummy_block_id("active_block_p3t0"),
         get_dummy_block_id("active_block_p3t1")
     );
-    let res = block_graph
-        .get_ledger_at_parents(
-            &[
-                get_dummy_block_id("active_block_p3t0"),
-                get_dummy_block_id("active_block_p3t1"),
-            ],
-            &vec![address_a, address_b, address_c, address_d]
-                .into_iter()
-                .collect(),
-        )
-        .unwrap();
-    println!("res: {:#?}", res);
-    // Result ledger:
-    // A: 999994127
-    // B: 1999999901 = 2000_000_000 - 99
-    // C: 2048
-    // D: 0
-    assert_eq!(
-        res.0[&address_a].balance,
-        Amount::from_str("999998224").unwrap()
-    );
-    assert_eq!(
-        res.0[&address_b].balance,
-        Amount::from_str("1999999901").unwrap()
-    );
-    assert_eq!(res.0[&address_c].balance, Amount::from_str("2048").unwrap());
-    assert_eq!(res.0[&address_d].balance, Amount::from_str("0").unwrap());
+    //TODO: make the test with execution ledger
+    // let res = block_graph
+    //     .get_ledger_at_parents(
+    //         &[
+    //             get_dummy_block_id("active_block_p3t0"),
+    //             get_dummy_block_id("active_block_p3t1"),
+    //         ],
+    //         &vec![address_a, address_b, address_c, address_d]
+    //             .into_iter()
+    //             .collect(),
+    //     )
+    //     .unwrap();
+    // println!("res: {:#?}", res);
+    // // Result ledger:
+    // // A: 999994127
+    // // B: 1999999901 = 2000_000_000 - 99
+    // // C: 2048
+    // // D: 0
+    // assert_eq!(
+    //     res.0[&address_a].balance,
+    //     Amount::from_str("999998224").unwrap()
+    // );
+    // assert_eq!(
+    //     res.0[&address_b].balance,
+    //     Amount::from_str("1999999901").unwrap()
+    // );
+    // assert_eq!(res.0[&address_c].balance, Amount::from_str("2048").unwrap());
+    // assert_eq!(res.0[&address_d].balance, Amount::from_str("0").unwrap());
 
-    // ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
-    let res = block_graph
-        .get_ledger_at_parents(
-            &[
-                get_dummy_block_id("active_block_p1t0"),
-                get_dummy_block_id("active_block_p1t1"),
-            ],
-            &vec![address_a].into_iter().collect(),
-        )
-        .unwrap();
-    println!("res: {:#?}", res);
-    // Result ledger:
-    // A: 999994127
-    // B: 1999999903
-    // C: 2048
-    // D: 0
-    assert_eq!(
-        res.0[&address_a].balance,
-        Amount::from_str("1000000160").unwrap()
-    );
+    // // ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
+    // let res = block_graph
+    //     .get_ledger_at_parents(
+    //         &[
+    //             get_dummy_block_id("active_block_p1t0"),
+    //             get_dummy_block_id("active_block_p1t1"),
+    //         ],
+    //         &vec![address_a].into_iter().collect(),
+    //     )
+    //     .unwrap();
+    // println!("res: {:#?}", res);
+    // // Result ledger:
+    // // A: 999994127
+    // // B: 1999999903
+    // // C: 2048
+    // // D: 0
+    // assert_eq!(
+    //     res.0[&address_a].balance,
+    //     Amount::from_str("1000000160").unwrap()
+    // );
 
-    // ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
-    let res = block_graph.get_ledger_at_parents(
-        &[
-            get_dummy_block_id("active_block_p1t0"),
-            get_dummy_block_id("active_block_p1t1"),
-        ],
-        &vec![address_a, address_b].into_iter().collect(),
-    );
-    println!("res: {:#?}", res);
-    if res.is_ok() {
-        panic!("get_ledger_at_parents should return an error");
-    }
+    // // ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
+    // let res = block_graph.get_ledger_at_parents(
+    //     &[
+    //         get_dummy_block_id("active_block_p1t0"),
+    //         get_dummy_block_id("active_block_p1t1"),
+    //     ],
+    //     &vec![address_a, address_b].into_iter().collect(),
+    // );
+    // println!("res: {:#?}", res);
+    // if res.is_ok() {
+    //     panic!("get_ledger_at_parents should return an error");
+    // }
+    selector_manager.stop();
 }
 
 #[test]
@@ -612,7 +496,6 @@ fn test_bootstrapable_graph_serialized() {
             fitness: 12,
             is_blockclique: true,
         }],
-        ledger: Default::default(),
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
@@ -659,9 +542,15 @@ async fn test_clique_calculation() {
     let ledger_file = generate_ledger_file(&Map::default());
     let cfg = ConsensusConfig::from(ledger_file.path());
     let storage: Storage = Default::default();
-    let mut block_graph = BlockGraph::new(GraphConfig::from(&cfg), None, storage)
-        .await
-        .unwrap();
+    let selector_config = SelectorConfig {
+        initial_rolls_path: cfg.initial_rolls_path.clone(),
+        ..Default::default()
+    };
+    let (mut selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let mut block_graph =
+        BlockGraph::new(GraphConfig::from(&cfg), None, storage, selector_controller)
+            .await
+            .unwrap();
     let hashes: Vec<BlockId> = vec![
         "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
         "JnWwNHRR1tUD7UJfnEFgDB4S4gfDTX2ezLadr7pcwuZnxTvn1",
@@ -702,6 +591,7 @@ async fn test_clique_calculation() {
     for expected in expected_sets.into_iter() {
         assert!(computed_sets.iter().any(|v| v == &expected));
     }
+    selector_manager.stop();
 }
 
 /// generate a named temporary JSON ledger file

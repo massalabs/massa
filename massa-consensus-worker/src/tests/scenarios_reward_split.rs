@@ -5,6 +5,7 @@ use massa_consensus_exports::ConsensusConfig;
 use massa_models::ledger_models::LedgerData;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{Address, Amount, BlockId, Endorsement, EndorsementSerializer, Slot};
+use massa_pos_exports::Selection;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -44,7 +45,10 @@ async fn test_reward_split() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             // Check initial balances.
             let addresses_state = consensus_command_sender
                 .get_addresses_info(vec![address_a, address_b].into_iter().collect())
@@ -63,15 +67,10 @@ async fn test_reward_split() {
                 Amount::from_str("10").unwrap()
             );
 
-            let draws: HashMap<_, _> = consensus_command_sender
-                .get_selection_draws(Slot::new(1, 0), Slot::new(3, 0))
-                .await
-                .unwrap()
-                .into_iter()
-                .collect();
+            let draws: Selection = selector_controller.get_selection(Slot::new(1, 0)).unwrap();
 
-            let slot_one_block_addr = draws.get(&Slot::new(1, 0)).unwrap().0;
-            let slot_one_endorsements_addrs = draws.get(&Slot::new(1, 0)).unwrap().1.clone();
+            let slot_one_block_addr = draws.producer;
+            let slot_one_endorsements_addrs = draws.endorsements;
 
             let slot_one_keypair = if slot_one_block_addr == address_a {
                 keypair_a.clone()
@@ -101,7 +100,7 @@ async fn test_reward_split() {
             )
             .await;
 
-            let slot_two_block_addr = draws.get(&Slot::new(2, 0)).unwrap().0;
+            let slot_two_block_addr = selector_controller.get_producer(Slot::new(2, 0)).unwrap();
 
             let slot_two_keypair = if slot_two_block_addr == address_a {
                 keypair_a.clone()
@@ -289,6 +288,7 @@ async fn test_reward_split() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

@@ -6,7 +6,7 @@ use massa_models::{
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 
 use super::tools::*;
 use massa_consensus_exports::{test_exports::generate_default_roll_counts_file, ConsensusConfig};
@@ -46,17 +46,22 @@ async fn test_endorsement_check() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let draws: HashMap<_, _> = consensus_command_sender
-                .get_selection_draws(Slot::new(1, 0), Slot::new(2, 0))
-                .await
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
+            let address_a = selector_controller
+                .get_selection(Slot::new(1, 0))
                 .unwrap()
-                .into_iter()
-                .collect();
-
-            let address_a = draws.get(&Slot::new(1, 0)).unwrap().0;
-            let address_b = draws.get(&Slot::new(1, 0)).unwrap().1[0];
-            let address_c = draws.get(&Slot::new(1, 1)).unwrap().1[0];
+                .producer;
+            let address_b = selector_controller
+                .get_selection(Slot::new(1, 0))
+                .unwrap()
+                .endorsements[0];
+            let address_c = selector_controller
+                .get_selection(Slot::new(1, 1))
+                .unwrap()
+                .endorsements[1];
 
             let keypair_a = if address_a == address_1 {
                 keypair_1.clone()
@@ -148,6 +153,7 @@ async fn test_endorsement_check() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

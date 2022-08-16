@@ -163,15 +163,47 @@ pub fn time_range_to_slot_range(
     Ok((start_slot, end_slot))
 }
 
-//TODO: https://github.com/massalabs/massa/issues/2867
 /// TODO DOC
 pub fn get_closest_slot_to_timestamp(
-    _thread_count: u8,
-    _t0: MassaTime,
-    _genesis_timestamp: MassaTime,
-    _base_time: MassaTime,
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+    timestamp: MassaTime,
 ) -> Slot {
-    todo!("Not implemented yet")
+    // get the latest past slot at this timestamp (if any)
+    let latest_past_slot =
+        match get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, timestamp)
+            .unwrap()
+        {
+            None => return Slot::new(0, 0), // we are before genesis
+            Some(s) => s,
+        };
+
+    // compute the time of the latest past slot
+    let t_latest = get_block_slot_timestamp(
+        thread_count,
+        t0,
+        genesis_timestamp,
+        latest_past_slot
+    ).expect("t_latest computation failed but it should be computable because that slot was obtained with get_latest_block_slot_at_timestamp");
+
+    // compute how much time has passed since that latest slot
+    let delta_t = timestamp.saturating_sub(t_latest);
+
+    // check whether delta_t is lower than half the time difference between two consecutive slots
+    if delta_t
+        .checked_mul(2)
+        .expect("delta_t should be multiplicate by 2")
+        <= t0
+            .checked_div_u64(thread_count as u64)
+            .expect("thread_count should not be 0")
+    {
+        latest_past_slot
+    } else {
+        latest_past_slot
+            .get_next_slot(thread_count)
+            .unwrap_or(latest_past_slot)
+    }
 }
 
 #[cfg(test)]
@@ -255,5 +287,19 @@ mod tests {
         .unwrap();
         assert_eq!(out_start, Some(Slot::new(0, 1)));
         assert_eq!(out_end, Some(Slot::new(2, 0)));
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_closest_slot_to_timestamp() {
+        let thread_count = 3u8;
+        let t0: MassaTime = 30.into();
+        let genesis_timestamp: MassaTime = 100.into();
+        /* slots:   (0, 0)  (0, 1)  (0, 2)  (1, 0)  (1, 1)  (1, 2)  (2, 0)  (2, 1)  (2, 2)
+            time:    100      110     120    130      140    150     160     170     180
+        */
+        let out_slot =
+            get_closest_slot_to_timestamp(thread_count, t0, genesis_timestamp, 150.into());
+        assert_eq!(out_slot, Slot::new(1, 2));
     }
 }

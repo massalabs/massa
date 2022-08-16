@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_protocol_controller::MockProtocolController;
-use crate::start_pool;
+use crate::{controller_impl::PoolControllerImpl, start_pool};
 use futures::Future;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;

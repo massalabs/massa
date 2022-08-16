@@ -541,7 +541,7 @@ pub struct EventFilter {
     /// optional operation id
     pub original_operation_id: Option<OperationId>,
     /// optional event status
-    /// 
+    ///
     /// Some(true) means candidate
     /// Some(false) means final
     /// None means final _and_ candidate

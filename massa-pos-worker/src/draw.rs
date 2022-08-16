@@ -99,7 +99,7 @@ impl SelectorThread {
                     Slot::new(0, draw_thread),
                     Selection {
                         producer: genesis_addr,
-                        endorsments: vec![genesis_addr; self.cfg.endorsement_count as usize],
+                        endorsements: vec![genesis_addr; self.cfg.endorsement_count as usize],
                     },
                 );
             }
@@ -125,7 +125,7 @@ impl SelectorThread {
                     Slot::new(draw_period, draw_thread),
                     Selection {
                         producer: res[0],
-                        endorsments: res[1..].to_vec(),
+                        endorsements: res[1..].to_vec(),
                     },
                 );
             }

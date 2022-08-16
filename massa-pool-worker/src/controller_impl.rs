@@ -1,4 +1,4 @@
-use massa_models::{BlockId, EndorsementId, OperationId, Slot};
+use massa_models::{Address, BlockId, EndorsementId, OperationId, Operations, Slot};
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_storage::Storage;
 use std::sync::{Arc, RwLock};
@@ -64,5 +64,13 @@ impl PoolController for PoolControllerImpl {
     /// Allows cloning `Box<dyn PoolController>`,
     fn clone_box(&self) -> Box<dyn PoolController> {
         Box::new(self.clone())
+    }
+
+    fn get_operations_involving_address(&self, address: &Address) -> Operations {
+        self.operation_pool
+            .read()
+            .expect("could not r-lock operation pool")
+            .storage
+            .get_operations_created_by(address)
     }
 }

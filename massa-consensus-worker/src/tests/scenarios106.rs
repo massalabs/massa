@@ -32,7 +32,10 @@ async fn test_unsorted_block() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let start_period = 3;
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -130,6 +133,7 @@ async fn test_unsorted_block() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -157,7 +161,10 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             // create test blocks
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -223,6 +230,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -250,7 +258,10 @@ async fn test_too_many_blocks_in_the_future() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             // get genesis block hashes
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -327,6 +338,7 @@ async fn test_too_many_blocks_in_the_future() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -353,7 +365,10 @@ async fn test_dep_in_back_order() {
     };
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -490,6 +505,7 @@ async fn test_dep_in_back_order() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -517,7 +533,10 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -620,6 +639,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -646,7 +666,10 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -717,6 +740,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

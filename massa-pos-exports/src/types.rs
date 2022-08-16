@@ -896,7 +896,7 @@ impl Deserializer<Map<Address, Amount>> for CreditDeserializer {
 #[derive(Clone)]
 pub struct Selection {
     /// Choosen endorsements
-    pub endorsments: Vec<Address>,
+    pub endorsements: Vec<Address>,
     /// Choosen block producer
     pub producer: Address,
 }

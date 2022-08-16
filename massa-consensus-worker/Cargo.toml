@@ -29,6 +29,8 @@ massa_execution_exports = { path = "../massa-execution-exports", features = [
 massa_consensus_exports = { path = "../massa-consensus-exports", features = [
     "testing",
 ] }
+massa_pos_exports = { path = "../massa-pos-exports" }
+massa_pos_worker = { path = "../massa-pos-worker" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 massa_serialization = { path = "../massa-serialization"}
 massa_hash = { path = "../massa-hash" }
