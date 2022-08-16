@@ -28,7 +28,9 @@ use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_wallet::Wallet;
 use std::net::{IpAddr, SocketAddr};
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use tokio::sync::mpsc;
@@ -82,6 +84,8 @@ pub struct Private {
     pub api_settings: &'static APISettings,
     /// stop channel
     pub stop_node_channel: mpsc::Sender<()>,
+    /// User wallet
+    pub node_wallet: Arc<RwLock<Wallet>>,
 }
 
 /// The API wrapper

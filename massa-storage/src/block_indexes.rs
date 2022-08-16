@@ -41,12 +41,12 @@ impl BlockIndexes {
     pub(crate) fn remove(&mut self, block_id: &BlockId) {
         let block = self
             .blocks
-            .remove(&block_id)
+            .remove(block_id)
             .expect("removing absent object from storage");
         let creator = block.read().creator_address;
         let slot = block.read().content.header.content.slot;
         let entry = self.index_by_creator.entry(creator).or_default();
-        entry.remove(&block_id);
+        entry.remove(block_id);
         if entry.is_empty() {
             self.index_by_creator.remove(&creator);
         }
