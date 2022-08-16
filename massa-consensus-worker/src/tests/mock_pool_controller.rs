@@ -34,13 +34,6 @@ impl PoolController for MockPoolController {
         todo!("")
     }
 
-    fn get_operations_involving_address(
-        &self,
-        address: &massa_models::Address,
-    ) -> massa_models::Operations {
-        todo!("")
-    }
-
     fn clone_box(&self) -> Box<dyn PoolController> {
         Box::new(self.clone())
     }
