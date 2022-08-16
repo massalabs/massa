@@ -2,8 +2,7 @@
 #![allow(clippy::ptr_arg)] // this allow &Vec<..> as function argument type
 
 use super::{
-    mock_pool_controller::{MockPoolController, PoolCommandSink},
-    mock_protocol_controller::MockProtocolController,
+    mock_pool_controller::MockPoolController, mock_protocol_controller::MockProtocolController,
 };
 use crate::start_consensus_controller;
 
@@ -23,6 +22,8 @@ use massa_models::{
     Endorsement, EndorsementSerializer, Operation, OperationSerializer, OperationType, Slot,
     WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
+use massa_pos_exports::SelectorConfig;
+use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -311,19 +312,21 @@ pub async fn wait_pool_slot(
     period: u64,
     thread: u8,
 ) -> Slot {
-    pool_controller
-        .wait_command(t0.checked_mul(2).unwrap(), |cmd| match cmd {
-            PoolCommand::UpdateCurrentSlot(s) => {
-                if s >= Slot::new(period, thread) {
-                    Some(s)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        })
-        .await
-        .expect("timeout while waiting for slot")
+    // TODO: Replace ??
+    // pool_controller
+    //     .wait_command(t0.checked_mul(2).unwrap(), |cmd| match cmd {
+    //         PoolCommand::UpdateCurrentSlot(s) => {
+    //             if s >= Slot::new(period, thread) {
+    //                 Some(s)
+    //             } else {
+    //                 None
+    //             }
+    //         }
+    //         _ => None,
+    //     })
+    //     .await
+    //     .expect("timeout while waiting for slot")
+    Slot::new(period, thread)
 }
 
 pub fn create_transaction(
@@ -504,9 +507,6 @@ pub fn get_export_active_test_block(
         block_id: block.id,
         children: vec![Default::default(), Default::default()],
         is_final,
-        block_ledger_changes: Default::default(),
-        roll_updates: Default::default(),
-        production_events: vec![],
     }
 }
 
@@ -615,7 +615,6 @@ pub async fn load_initial_staking_keys(
 /// Runs a consensus test, passing a mock pool controller to it.
 pub async fn consensus_pool_test<F, V>(
     cfg: ConsensusConfig,
-    boot_pos: Option<ExportProofOfStake>,
     boot_graph: Option<BootstrapableGraph>,
     test: F,
 ) where
@@ -634,7 +633,7 @@ pub async fn consensus_pool_test<F, V>(
         ),
     >,
 {
-    let storage: Storage = Default::default();
+    let mut storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
         for (_, export_block) in &graph.active_blocks {
             storage.store_block(export_block.block.clone());
@@ -643,7 +642,7 @@ pub async fn consensus_pool_test<F, V>(
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let pool_controller = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -653,8 +652,13 @@ pub async fn consensus_pool_test<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
+    let selector_config = SelectorConfig {
+        initial_rolls_path: cfg.initial_rolls_path.clone(),
+        ..Default::default()
+    };
     // launch consensus controller
     let password = TEST_PASSWORD.to_string();
+    let (selector_manager, selector_controller) = start_selector_worker(selector_config);
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -662,16 +666,12 @@ pub async fn consensus_pool_test<F, V>(
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender,
+                pool_command_sender: Box::new(pool_controller.clone()),
+                selector_controller,
             },
-            boot_pos,
             boot_graph,
             storage.clone(),
             0,
-            password.clone(),
-            load_initial_staking_keys(&cfg.staking_keys_path, &password)
-                .await
-                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -692,13 +692,11 @@ pub async fn consensus_pool_test<F, V>(
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
     tokio::pin!(stop_fut);
     protocol_controller
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
-    pool_sink.stop().await;
 
     // stop sinks
     *stop_sinks.lock().unwrap() = true;
@@ -708,7 +706,6 @@ pub async fn consensus_pool_test<F, V>(
 /// Runs a consensus test, passing a mock pool controller to it.
 pub async fn consensus_pool_test_with_storage<F, V>(
     cfg: ConsensusConfig,
-    boot_pos: Option<ExportProofOfStake>,
     boot_graph: Option<BootstrapableGraph>,
     test: F,
 ) where
@@ -728,7 +725,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         ),
     >,
 {
-    let storage: Storage = Default::default();
+    let mut storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
         for (_, export_block) in &graph.active_blocks {
             storage.store_block(export_block.block.clone());
@@ -737,7 +734,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let pool_controller = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -747,6 +744,11 @@ pub async fn consensus_pool_test_with_storage<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
+    let selector_config = SelectorConfig {
+        initial_rolls_path: cfg.initial_rolls_path.clone(),
+        ..Default::default()
+    };
+    let (selector_manager, selector_controller) = start_selector_worker(selector_config);
     // launch consensus controller
     let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -756,7 +758,8 @@ pub async fn consensus_pool_test_with_storage<F, V>(
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender,
+                pool_command_sender: Box::new(pool_controller.clone()),
+                selector_controller,
             },
             boot_graph,
             storage.clone(),
@@ -782,13 +785,11 @@ pub async fn consensus_pool_test_with_storage<F, V>(
 
     // stop controller while ignoring all commands
     let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
     tokio::pin!(stop_fut);
     protocol_controller
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
-    pool_sink.stop().await;
 
     // stop sinks
     *stop_sinks.lock().unwrap() = true;
@@ -811,7 +812,12 @@ where
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let pool_controller = MockPoolController::new();
+    let selector_config = SelectorConfig {
+        initial_rolls_path: cfg.initial_rolls_path.clone(),
+        ..Default::default()
+    };
+    let (selector_manager, selector_controller) = start_selector_worker(selector_config);
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -821,7 +827,6 @@ where
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
     // launch consensus controller
     let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -831,16 +836,12 @@ where
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender,
+                pool_command_sender: Box::new(pool_controller),
+                selector_controller,
             },
-            None,
             None,
             storage.clone(),
             0,
-            password.clone(),
-            load_initial_staking_keys(&cfg.staking_keys_path, &password)
-                .await
-                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -860,7 +861,6 @@ where
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
-    pool_sink.stop().await;
 
     // stop sinks
     *stop_sinks.lock().unwrap() = true;
@@ -884,7 +884,7 @@ where
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let pool_controller = MockPoolController::new();
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -894,7 +894,11 @@ where
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
+    let selector_config = SelectorConfig {
+        initial_rolls_path: cfg.initial_rolls_path.clone(),
+        ..Default::default()
+    };
+    let (selector_manager, selector_controller) = start_selector_worker(selector_config);
     // launch consensus controller
     let password = TEST_PASSWORD.to_string();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -904,16 +908,12 @@ where
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender,
+                pool_command_sender: Box::new(pool_controller),
+                selector_controller,
             },
-            None,
             None,
             storage.clone(),
             0,
-            password.clone(),
-            load_initial_staking_keys(&cfg.staking_keys_path, &password)
-                .await
-                .unwrap(),
         )
         .await
         .expect("could not start consensus controller");
@@ -934,7 +934,6 @@ where
         .ignore_commands_while(stop_fut)
         .await
         .unwrap();
-    pool_sink.stop().await;
 
     // stop sinks
     *stop_sinks.lock().unwrap() = true;

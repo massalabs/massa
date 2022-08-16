@@ -4,7 +4,7 @@ use massa_models::Amount;
 use serde::{Deserialize, Serialize};
 
 /// Pool configuration
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct PoolConfig {
     /// thread count
     pub thread_count: u8,

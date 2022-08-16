@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{BlockId, EndorsementId, OperationId, Slot};
+use massa_models::{Address, BlockId, EndorsementId, OperationId, Operations, Slot};
 use massa_storage::Storage;
 
 /// Trait defining a pool controller
@@ -27,6 +27,9 @@ pub trait PoolController: Send + Sync {
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.
     fn clone_box(&self) -> Box<dyn PoolController>;
+
+    /// Returns operations related to an address
+    fn get_operations_involving_address(&self, address: &Address) -> Operations;
 }
 
 /// Allow cloning `Box<dyn PoolController>`

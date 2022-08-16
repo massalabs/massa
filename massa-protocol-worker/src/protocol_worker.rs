@@ -10,8 +10,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, OperationPrefixId, Operations},
     prehash::{BuildMap, Map, Set},
-    BlockHeaderSerializer, BlockId, EndorsementId, OperationId,
-    WrappedEndorsement, WrappedHeader,
+    BlockHeaderSerializer, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
 };
 use massa_models::{EndorsementSerializer, OperationSerializer};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};

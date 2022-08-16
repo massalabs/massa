@@ -225,6 +225,7 @@ async fn launch(
     .expect("could not start protocol controller");
 
     // launch selector worker
+    //TODO: Add initial roll path
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
         max_draw_cache: SETTINGS.selector.max_draw_cache,
         ..SelectorConfig::default()

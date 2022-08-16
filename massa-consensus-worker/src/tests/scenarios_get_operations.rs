@@ -59,7 +59,6 @@ async fn test_get_operation() {
 
     consensus_pool_test(
         cfg.clone(),
-        None,
         Some(boot_graph),
         async move |pool_controller,
                     protocol_controller,

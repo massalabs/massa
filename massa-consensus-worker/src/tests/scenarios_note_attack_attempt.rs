@@ -2,8 +2,7 @@
 
 use super::tools::*;
 use super::{
-    mock_pool_controller::{MockPoolController, PoolCommandSink},
-    mock_protocol_controller::MockProtocolController,
+    mock_pool_controller::MockPoolController, mock_protocol_controller::MockProtocolController,
 };
 use crate::start_consensus_controller;
 
@@ -34,7 +33,6 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -102,7 +100,6 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
-    let pool_sink = PoolCommandSink::new(pool_controller).await;
     let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
