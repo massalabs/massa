@@ -36,7 +36,7 @@ async fn test_get_operation() {
     };
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let (address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (_address_a, keypair_a) = random_address_on_thread(0, cfg.thread_count).into();
     let (address_b, _) = random_address_on_thread(0, cfg.thread_count).into();
     // to avoid timing pb for block in the future
 
@@ -64,7 +64,7 @@ async fn test_get_operation() {
                     protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver| {
-            let ops = consensus_command_sender
+            let (ops, _storage) = consensus_command_sender
                 .get_operations(ops.iter().map(|op| op.id).collect())
                 .await
                 .unwrap();

@@ -105,7 +105,7 @@ pub async fn test_get_ledger_at_parents() {
     //    .with(tracing_layer)
     //    .init();
     let thread_count: u8 = 2;
-    let storage: Storage = Default::default();
+    let mut storage: Storage = Default::default();
     let (block, export_active_block): (WrappedBlock, ExportActiveBlock) =
         get_export_active_test_block();
     storage.store_block(block.clone());
@@ -351,8 +351,8 @@ pub async fn test_get_ledger_at_parents() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (selector_manager, selector_controller) = start_selector_worker(selector_config);
-    let block_graph = BlockGraph::new(
+    let (mut selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let _block_graph = BlockGraph::new(
         GraphConfig::from(&cfg),
         Some(export_graph),
         storage,
@@ -429,6 +429,7 @@ pub async fn test_get_ledger_at_parents() {
     // if res.is_ok() {
     //     panic!("get_ledger_at_parents should return an error");
     // }
+    selector_manager.stop();
 }
 
 #[test]
@@ -545,7 +546,7 @@ async fn test_clique_calculation() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (mut selector_manager, selector_controller) = start_selector_worker(selector_config);
     let mut block_graph =
         BlockGraph::new(GraphConfig::from(&cfg), None, storage, selector_controller)
             .await
@@ -590,6 +591,7 @@ async fn test_clique_calculation() {
     for expected in expected_sets.into_iter() {
         assert!(computed_sets.iter().any(|v| v == &expected));
     }
+    selector_manager.stop();
 }
 
 /// generate a named temporary JSON ledger file

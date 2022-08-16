@@ -21,7 +21,10 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -31,12 +34,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
             // create test blocks
             let slot = Slot::new(1 + start_slot, 0);
-            let draw = consensus_command_sender
-                .get_selection_draws(slot, Slot::new(2 + start_slot, 0))
-                .await
-                .expect("could not get selection draws.")[0]
-                .1
-                 .0;
+            let draw = selector_controller.get_selection(slot).unwrap().producer;
             let creator = get_creator_for_draw(&draw, &staking_keys.clone());
             let t0s1 = create_block(
                 &cfg,
@@ -68,6 +66,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -86,7 +85,10 @@ async fn test_consensus_block_not_found() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -113,6 +115,7 @@ async fn test_consensus_block_not_found() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

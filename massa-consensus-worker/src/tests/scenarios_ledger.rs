@@ -505,7 +505,7 @@
 //     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
 //     // launch consensus controller
-//     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+//     let (consensus_command_sender, consensus_event_receiver, selector_controller, consensus_manager) =
 //         start_consensus_controller(
 //             cfg.clone(),
 //             ConsensusChannels {

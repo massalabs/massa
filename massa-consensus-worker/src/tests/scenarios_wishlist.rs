@@ -23,21 +23,21 @@ async fn test_wishlist_delta_with_empty_remove() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
-
             // create test blocks
             let slot = Slot::new(1, 0);
-            let draw = consensus_command_sender
-                .get_selection_draws(slot, Slot::new(2, 0))
-                .await
-                .expect("could not get selection draws.")[0]
-                .1
-                 .0;
+            let draw = selector_controller
+                .get_selection(slot)
+                .expect("could not get selection draws.")
+                .producer;
             let creator = get_creator_for_draw(&draw, &staking_keys.clone());
             let t0s1 = create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone(), &creator);
 
@@ -59,6 +59,7 @@ async fn test_wishlist_delta_with_empty_remove() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -77,7 +78,10 @@ async fn test_wishlist_delta_remove() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -120,6 +124,7 @@ async fn test_wishlist_delta_remove() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

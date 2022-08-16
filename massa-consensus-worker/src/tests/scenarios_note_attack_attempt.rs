@@ -7,12 +7,12 @@ use super::{
 use crate::start_consensus_controller;
 
 use massa_consensus_exports::settings::ConsensusChannels;
-use massa_consensus_exports::test_exports::TEST_PASSWORD;
 use massa_consensus_exports::ConsensusConfig;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
-use massa_models::prehash::Map;
 use massa_models::{BlockId, Slot};
+use massa_pos_exports::SelectorConfig;
+use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use serial_test::serial;
@@ -32,24 +32,27 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let selector_config = SelectorConfig {
+        initial_rolls_path: cfg.initial_rolls_path.clone(),
+        ..Default::default()
+    };
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let pool_controller = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+    let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             ConsensusChannels {
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender,
+                pool_command_sender: Box::new(pool_controller),
+                selector_controller,
             },
-            None,
             None,
             storage,
             0,
-            TEST_PASSWORD.to_string(),
-            Map::default(),
         )
         .await
         .expect("could not start consensus controller");
@@ -74,15 +77,6 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     protocol_controller.receive_block(block.clone()).await;
 
     validate_notify_block_attack_attempt(&mut protocol_controller, block.id, 1000).await;
-
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
 }
 
 #[tokio::test]
@@ -98,25 +92,28 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
-    let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let pool_controller = MockPoolController::new();
+    let selector_config = SelectorConfig {
+        initial_rolls_path: cfg.initial_rolls_path.clone(),
+        ..Default::default()
+    };
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     let storage: Storage = Default::default();
     // launch consensus controller
-    let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
+    let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             ConsensusChannels {
                 execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender,
+                pool_command_sender: Box::new(pool_controller),
+                selector_controller,
             },
-            None,
             None,
             storage,
             0,
-            TEST_PASSWORD.to_string(),
-            Map::default(),
         )
         .await
         .expect("could not start consensus controller");
@@ -143,13 +140,4 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         .await;
 
     validate_notify_block_attack_attempt(&mut protocol_controller, block.id, 1000).await;
-
-    // stop controller while ignoring all commands
-    let stop_fut = consensus_manager.stop(consensus_event_receiver);
-    tokio::pin!(stop_fut);
-    protocol_controller
-        .ignore_commands_while(stop_fut)
-        .await
-        .unwrap();
-    pool_sink.stop().await;
 }

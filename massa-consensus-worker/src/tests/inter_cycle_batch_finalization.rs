@@ -84,7 +84,8 @@ async fn test_inter_cycle_batch_finalization() {
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
-                    storage| {
+                    mut storage,
+                    selector_controller| {
             // wait for consensus warmup time
             tokio::time::sleep(warmup_time.to_duration()).await;
 
@@ -182,6 +183,7 @@ async fn test_inter_cycle_batch_finalization() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

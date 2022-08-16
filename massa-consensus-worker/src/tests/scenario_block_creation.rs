@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::{create_executesc, random_address_on_thread};
-use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
+use crate::tests::tools::{self, create_roll_transaction, create_transaction};
 use massa_consensus_exports::test_exports::{generate_ledger_file, generate_roll_counts_file};
 use massa_consensus_exports::ConsensusConfig;
 use massa_hash::Hash;
@@ -9,8 +9,8 @@ use massa_models::ledger_models::LedgerData;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, EndorsementId,
-    Slot, WrappedBlock, WrappedEndorsement,
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, Slot,
+    WrappedBlock, WrappedEndorsement,
 };
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::KeyPair;
@@ -56,7 +56,10 @@ async fn test_genesis_block_creation() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let _genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -67,6 +70,7 @@ async fn test_genesis_block_creation() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -174,10 +178,11 @@ async fn test_block_creation_with_draw() {
     let operation_fee = 0;
     tools::consensus_without_pool_with_storage_test(
         cfg.clone(),
-        async move |storage,
+        async move |mut storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -217,16 +222,14 @@ async fn test_block_creation_with_draw() {
             }
 
             // get draws for cycle 3 (lookback = cycle 0)
-            let draws: HashMap<_, _> = consensus_command_sender
-                .get_selection_draws(
-                    Slot::new(3 * cfg.periods_per_cycle, 0),
-                    Slot::new(4 * cfg.periods_per_cycle, 0),
-                )
-                .await
-                .unwrap()
-                .into_iter()
-                .map(|(s, (b, _e))| (s, b))
-                .collect();
+            let mut draws: HashMap<Slot, Address> = HashMap::default();
+            for i in (3 * cfg.periods_per_cycle)..(4 * cfg.periods_per_cycle) {
+                let slot = Slot::new(i, 0);
+                draws.insert(
+                    slot,
+                    selector_controller.get_selection(slot).unwrap().producer,
+                );
+            }
             let nb_address1_draws = draws.iter().filter(|(_, addr)| **addr == address_1).count();
             // fair coin test. See https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair
             // note: this is a statistical test. It may fail in rare occasions.
@@ -271,6 +274,7 @@ async fn test_block_creation_with_draw() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -329,28 +333,21 @@ async fn test_interleaving_block_creation_with_reception() {
         async move |storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    selector_controller| {
             let mut parents = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            let draws: HashMap<_, _> = consensus_command_sender
-                .get_selection_draws(Slot::new(1, 0), Slot::new(11, 0))
-                .await
-                .unwrap()
-                .into_iter()
-                .map(|(s, (b, _e))| (s, b))
-                .collect();
-
-            sleep_until(
+            sleep_until(tokio::time::Instant::from_std(
                 cfg.genesis_timestamp
                     .saturating_add(cfg.t0)
                     .saturating_sub(150.into())
                     .estimate_instant(0)
                     .expect("could  not estimate instant for genesis timestamps"),
-            )
+            ))
             .await;
 
             // check 10 draws
@@ -360,7 +357,10 @@ async fn test_interleaving_block_creation_with_reception() {
             // and sent to the local node through protocol
             for i in 1..11 {
                 let cur_slot = Slot::new(i, 0);
-                let creator = draws.get(&cur_slot).expect("missing slot in drawss");
+                let creator = &selector_controller
+                    .get_selection(cur_slot)
+                    .expect("missing slot in drawss")
+                    .producer;
 
                 let block_id = if *creator == address_1 {
                     // wait block propagation
@@ -411,6 +411,7 @@ async fn test_interleaving_block_creation_with_reception() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -472,11 +473,12 @@ async fn test_order_of_inclusion() {
     tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
-        async move |mut pool_controller,
+        async move |pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
-                    storage| {
+                    storage,
+                    selector_controller| {
             //TODO: Replace
             // wait for first slot
             // pool_controller
@@ -571,6 +573,7 @@ async fn test_order_of_inclusion() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -647,11 +650,12 @@ async fn test_block_filling() {
     tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
-        async move |mut pool_controller,
+        async move |pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
-                    storage| {
+                    storage,
+                    selector_controller| {
             let op_size = 10;
 
             // wait for slot
@@ -846,6 +850,7 @@ async fn test_block_filling() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

@@ -43,10 +43,11 @@ async fn test_operations_check() {
 
     consensus_without_pool_with_storage_test(
         cfg.clone(),
-        async move |storage,
+        async move |mut storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -127,6 +128,7 @@ async fn test_operations_check() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -154,10 +156,11 @@ async fn test_execution_check() {
 
     consensus_without_pool_with_storage_test(
         cfg.clone(),
-        async move |storage,
+        async move |mut storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -193,6 +196,7 @@ async fn test_execution_check() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

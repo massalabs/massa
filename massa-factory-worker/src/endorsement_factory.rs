@@ -122,7 +122,7 @@ impl EndorsementFactoryWorker {
     fn process_slot(&mut self, slot: Slot) {
         // get endorsement producer addresses for that slot
         let producer_addrs = match self.channels.selector.get_selection(slot) {
-            Ok(sel) => sel.endorsments,
+            Ok(sel) => sel.endorsements,
             Err(err) => {
                 warn!(
                     "endorsement factory could not get selector draws for slot {}: {}",
