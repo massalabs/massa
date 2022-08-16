@@ -59,7 +59,7 @@ impl EndorsementFactoryWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the previous_slot parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get current absolute time
-        let mut now = MassaTime::compensated_now(self.cfg.clock_compensation_millis)
+        let now = MassaTime::compensated_now(self.cfg.clock_compensation_millis)
             .expect("could not get current time");
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
@@ -106,15 +106,13 @@ impl EndorsementFactoryWorker {
     /// # Return value
     /// Returns `true` if the instant was reached, otherwise `false` if there was an interruption.
     fn interruptible_wait_until(&self, duration: Instant) -> bool {
-        loop {
-            match self.factory_receiver.recv_deadline(duration) {
-                // message received => quit main loop
-                Ok(()) => return false,
-                // timeout => continue main loop
-                Err(mpsc::RecvTimeoutError::Timeout) => return true,
-                // channel disconnected (sender dropped) => quit main loop
-                Err(mpsc::RecvTimeoutError::Disconnected) => return false,
-            }
+        match self.factory_receiver.recv_deadline(duration) {
+            // message received => quit main loop
+            Ok(()) => false,
+            // timeout => continue main loop
+            Err(mpsc::RecvTimeoutError::Timeout) => true,
+            // channel disconnected (sender dropped) => quit main loop
+            Err(mpsc::RecvTimeoutError::Disconnected) => false,
         }
     }
 
@@ -133,7 +131,7 @@ impl EndorsementFactoryWorker {
         };
 
         // get creators if they are managed by our wallet
-        let mut producers_indices: Vec<(KeyPair, usize)> = Vec::new();
+        let producers_indices: Vec<(KeyPair, usize)> = Vec::new();
         {
             let wallet = self.wallet.read().expect("could not lock wallet");
             for (index, producer_addr) in producer_addrs.into_iter().enumerate() {
@@ -156,7 +154,7 @@ impl EndorsementFactoryWorker {
         let endorsed_block: BlockId =
             match self.channels.consensus.get_blockclique_block_at_slot(slot) {
                 // error getting block ID at target slot
-                Err(err) => {
+                Err(_) => {
                     warn!(
                         "could not get blockclique block to create endorsement targeting slot {}",
                         slot
