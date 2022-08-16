@@ -815,17 +815,33 @@ impl ExecutionState {
     /// * emitter address
     /// * original caller address
     /// * operation id
+    /// * event state (candidate, final or both)
     pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
-        self.final_events
-            .get_filtered_sc_output_event(&filter)
-            .into_iter()
-            .chain(
-                self.active_history
-                    .read()
-                    .0
-                    .iter()
-                    .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
-            )
-            .collect()
+        match filter.candidate {
+            Some(true) => self
+                .active_history
+                .read()
+                .0
+                .iter()
+                .flat_map(|item| item.events.get_filtered_sc_output_event(&filter))
+                .collect(),
+            Some(false) => self
+                .final_events
+                .get_filtered_sc_output_event(&filter)
+                .into_iter()
+                .collect(),
+            None => self
+                .final_events
+                .get_filtered_sc_output_event(&filter)
+                .into_iter()
+                .chain(
+                    self.active_history
+                        .read()
+                        .0
+                        .iter()
+                        .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
+                )
+                .collect(),
+        }
     }
 }
