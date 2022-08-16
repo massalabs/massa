@@ -3,7 +3,7 @@
 use super::tools::protocol_test;
 use massa_models::prehash::Set;
 use massa_models::{BlockId, Slot};
-use massa_network_exports::NetworkCommand;
+use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
 use massa_signature::KeyPair;
@@ -13,7 +13,6 @@ use std::time::Duration;
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
@@ -125,7 +124,7 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
         protocol_config,
         async move |mut network_controller,
                     mut protocol_event_receiver,
-                    protocol_command_sender,
+                    mut protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {
             // Create 1 node.
@@ -133,32 +132,52 @@ async fn test_protocol_bans_node_sending_header_with_invalid_signature() {
 
             let to_ban_node = nodes.pop().expect("Failed to get node info.");
 
-            // 1. Create a block coming from one node.
-            let mut block = tools::create_block(&to_ban_node.keypair);
+            // 1. Create two operations.
+            let op_1 = tools::create_operation_with_expire_period(&to_ban_node.keypair, 5);
+            let op_2 = tools::create_operation_with_expire_period(&to_ban_node.keypair, 5);
 
-            // 2. Change the slot.
-            block.content.header.content.slot = Slot::new(1, 1);
+            // 2. Add one op to the block.
+            let block = tools::create_block_with_operations(
+                &to_ban_node.keypair,
+                Slot::new(1, 0),
+                vec![op_1],
+            );
 
             // 3. Send header to protocol.
             network_controller
-                .send_header(to_ban_node.id, block.content.header)
+                .send_header(to_ban_node.id, block.content.header.clone())
+                .await;
+
+            match protocol_event_receiver.wait_event().await.unwrap() {
+                ProtocolEvent::ReceivedBlockHeader { .. } => {}
+                _ => panic!("unexpected protocol event"),
+            };
+
+            // send wishlist
+            protocol_command_sender
+                .send_wishlist_delta(
+                    vec![block.id].into_iter().collect(),
+                    Set::<BlockId>::default(),
+                )
+                .await
+                .unwrap();
+
+            tools::assert_hash_asked_to_node(block.id, to_ban_node.id, &mut network_controller)
+                .await;
+
+            // Reply with the other operation.
+            network_controller
+                .send_block_info(
+                    to_ban_node.id,
+                    vec![(
+                        block.id,
+                        BlockInfoReply::Info(vec![op_2].into_iter().map(|op| op.id).collect()),
+                    )],
+                )
                 .await;
 
             // The node is banned.
             tools::assert_banned_nodes(vec![to_ban_node.id], &mut network_controller).await;
-
-            // Check protocol does not send block to consensus.
-            match tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                match evt {
-                    evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                }
-            })
-            .await
-            {
-                None => {}
-                _ => panic!("Protocol unexpectedly sent block or header."),
-            }
 
             // Create another node.
             let not_banned = tools::create_and_connect_nodes(1, &mut network_controller)

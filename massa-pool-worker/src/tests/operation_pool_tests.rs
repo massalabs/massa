@@ -55,7 +55,10 @@ fn test_pool() {
         // duplicate
         storage.store_operations(ops.values().cloned().collect());
         let newly_added = pool.add_operations(storage);
-        assert_eq!(storage.get_op_refs(), &ops.keys().copied().collect::<Set<OperationId>>());
+        assert_eq!(
+            storage.get_op_refs(),
+            &ops.keys().copied().collect::<Set<OperationId>>()
+        );
 
         thread_tx_lists[op.thread as usize].push((op, start_period..=expire_period));
     }
