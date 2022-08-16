@@ -133,9 +133,9 @@ impl PoSFinalState {
     /// The PoS part and the updated cursor
     pub fn get_cycle_history_part(
         &self,
-        cursor: PoSBootstrapCursor,
+        cursor: Option<u64>,
     ) -> Result<(Vec<u8>, Option<u64>, Option<bool>), ModelsError> {
-        let cycle_index = if let Some(last_cycle) = cursor.cycle {
+        let cycle_index = if let Some(last_cycle) = cursor {
             if let Some(mut index) = self
                 .cycle_history
                 .iter()
@@ -199,9 +199,9 @@ impl PoSFinalState {
     /// The PoS part and the updated cursor
     pub fn get_deferred_credits_part(
         &self,
-        cursor: PoSBootstrapCursor,
+        cursor: Option<Slot>,
     ) -> Result<(Vec<u8>, Option<Slot>), ModelsError> {
-        let last_slot = if let Some(last_slot) = cursor.credits_slot {
+        let last_slot = if let Some(last_slot) = cursor {
             Excluded(last_slot)
         } else {
             Unbounded

@@ -4,7 +4,6 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::Version;
-use massa_pos_exports::PoSBootstrapCursor;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use nom::AsBytes;
@@ -63,7 +62,8 @@ async fn stream_final_state(
                 BootstrapServerMessage::FinalStatePart {
                     ledger_data,
                     async_pool_part,
-                    pos_state_part,
+                    pos_cycle_part,
+                    pos_credits_part,
                     slot,
                     final_state_changes,
                 } => {
@@ -72,9 +72,12 @@ async fn stream_final_state(
                     let last_last_async_id = write_final_state
                         .async_pool
                         .set_pool_part(async_pool_part.as_bytes())?;
-                    let last_pos_cursor = write_final_state
+                    let last_cycle = write_final_state
                         .pos_state
-                        .set_pos_state_part(pos_state_part.as_bytes())?;
+                        .set_cycle_history_part(pos_cycle_part.as_bytes())?;
+                    let last_credits_slot = write_final_state
+                        .pos_state
+                        .set_deferred_credits_part(pos_credits_part.as_bytes())?;
                     write_final_state
                         .ledger
                         .apply_changes(final_state_changes.ledger_changes.clone(), slot);
@@ -95,7 +98,8 @@ async fn stream_final_state(
                         last_key,
                         slot: Some(slot),
                         last_async_message_id: last_last_async_id,
-                        last_pos_cursor,
+                        last_cycle,
+                        last_credits_slot,
                     };
                 }
                 BootstrapServerMessage::FinalStateFinished => {
@@ -109,7 +113,8 @@ async fn stream_final_state(
                         last_key: None,
                         slot: None,
                         last_async_message_id: None,
-                        last_pos_cursor: PoSBootstrapCursor::default(),
+                        last_cycle: None,
+                        last_credits_slot: None,
                     };
                     return Ok(());
                 }
@@ -386,7 +391,8 @@ pub async fn get_state(
             last_key: None,
             slot: None,
             last_async_message_id: None,
-            last_pos_cursor: PoSBootstrapCursor::default(),
+            last_cycle: None,
+            last_credits_slot: None,
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state.clone());
     loop {
