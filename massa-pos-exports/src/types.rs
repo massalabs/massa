@@ -124,55 +124,17 @@ impl Deserializer<PoSBootstrapCursor> for PoSBootstrapCursorDeserializer {
 }
 
 impl PoSFinalState {
-    /// Private function used in `get_pos_state_part`
-    fn get_deferred_credits(
-        &self,
-        cursor: PoSBootstrapCursor,
-    ) -> Result<(Vec<u8>, Option<Slot>), ModelsError> {
-        let last_slot = if let Some(last_slot) = cursor.credits_slot {
-            Excluded(last_slot)
-        } else {
-            Unbounded
-        };
-        let mut part = Vec::new();
-        let mut last_credits_slot = None;
-        let slot_ser = SlotSerializer::new();
-        let u64_ser = U64VarIntSerializer::new();
-        let amount_ser = AmountSerializer::new();
-        if self
-            .deferred_credits
-            .range((last_slot, Unbounded))
-            .last()
-            .is_some()
-        {
-            u64_ser.serialize(&(self.deferred_credits.len() as u64), &mut part)?;
-        }
-        for (slot, credits) in self.deferred_credits.range((last_slot, Unbounded)) {
-            println!("SLOT {:?}", slot);
-            // TODO: limit this with DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES
-            // NOTE: above will prevent the use of lenght_count combinator, many0 did not do the job
-            slot_ser.serialize(slot, &mut part)?;
-            u64_ser.serialize(&(credits.len() as u64), &mut part)?;
-            for (addr, amount) in credits {
-                part.extend(addr.to_bytes());
-                amount_ser.serialize(amount, &mut part)?;
-            }
-            last_credits_slot = Some(*slot);
-        }
-        Ok((part, last_credits_slot))
-    }
-
-    /// Gets a part of the Proof of Stake state. Used only in the bootstrap process.
+    /// Gets a part of the Proof of Stake cycle_history. Used only in the bootstrap process.
     ///
     /// # Arguments:
     /// `cursor`: indicates the bootstrap state after the previous payload
     ///
     /// # Returns
     /// The PoS part and the updated cursor
-    pub fn get_pos_state_part(
+    pub fn get_cycle_history_part(
         &self,
         cursor: PoSBootstrapCursor,
-    ) -> Result<(Vec<u8>, PoSBootstrapCursor, Option<bool>), ModelsError> {
+    ) -> Result<(Vec<u8>, Option<u64>, Option<bool>), ModelsError> {
         let cycle_index = if let Some(last_cycle) = cursor.cycle {
             if let Some(mut index) = self
                 .cycle_history
@@ -184,18 +146,10 @@ impl PoSFinalState {
                 }
                 index
             } else {
-                let (part, last_slot) = self.get_deferred_credits(cursor)?;
-                return Ok((
-                    part,
-                    PoSBootstrapCursor {
-                        credits_slot: last_slot,
-                        cycle: None,
-                    },
-                    None,
-                ));
+                return Ok((Vec::default(), None, None));
             }
         } else {
-            // get prev to last element to avoid the bootstrap safety cycle
+            // get previous to last element to avoid the bootstrap safety cycle
             self.cycle_history.len().saturating_sub(2)
         };
         let mut part = Vec::new();
@@ -233,25 +187,62 @@ impl PoSFinalState {
             last_cycle = Some(*cycle);
             complete_ident = Some(*complete);
         }
-        let (credits_part, last_slot) = self.get_deferred_credits(cursor)?;
-        // println!("PART: {:?}", part);
-        // println!("CREDITS PART: {:?}", credits_part);
-        part.extend(credits_part);
-        Ok((
-            part,
-            PoSBootstrapCursor {
-                cycle: last_cycle,
-                credits_slot: last_slot,
-            },
-            complete_ident,
-        ))
+        Ok((part, last_cycle, complete_ident))
     }
 
-    /// TODO
-    pub fn set_cycle_history<'a>(
+    /// Gets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
+    ///
+    /// # Arguments:
+    /// `cursor`: indicates the bootstrap state after the previous payload
+    ///
+    /// # Returns
+    /// The PoS part and the updated cursor
+    pub fn get_deferred_credits_part(
+        &self,
+        cursor: PoSBootstrapCursor,
+    ) -> Result<(Vec<u8>, Option<Slot>), ModelsError> {
+        let last_slot = if let Some(last_slot) = cursor.credits_slot {
+            Excluded(last_slot)
+        } else {
+            Unbounded
+        };
+        let mut part = Vec::new();
+        let mut last_credits_slot = None;
+        let slot_ser = SlotSerializer::new();
+        let u64_ser = U64VarIntSerializer::new();
+        let amount_ser = AmountSerializer::new();
+        if self
+            .deferred_credits
+            .range((last_slot, Unbounded))
+            .last()
+            .is_some()
+        {
+            u64_ser.serialize(&(self.deferred_credits.len() as u64), &mut part)?;
+        }
+        for (slot, credits) in self.deferred_credits.range((last_slot, Unbounded)) {
+            println!("SLOT {:?}", slot);
+            // TODO: limit this with DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES
+            // NOTE: above will prevent the use of lenght_count combinator, many0 did not do the job
+            slot_ser.serialize(slot, &mut part)?;
+            u64_ser.serialize(&(credits.len() as u64), &mut part)?;
+            for (addr, amount) in credits {
+                part.extend(addr.to_bytes());
+                amount_ser.serialize(amount, &mut part)?;
+            }
+            last_credits_slot = Some(*slot);
+        }
+        Ok((part, last_credits_slot))
+    }
+
+    /// Sets a part of the Proof of Stake cycle_history. Used only in the bootstrap process.
+    ///
+    /// # Arguments
+    /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
+    pub fn set_cycle_history_part<'a>(
         &mut self,
         part: &'a [u8],
-    ) -> Result<PoSBootstrapCursor, ModelsError> {
+    ) -> Result<Option<u64>, ModelsError> {
+        println!("C PART: {:?}", part);
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let bitvec_deser = BitVecDeserializer::new();
         let address_deser = AddressDeserializer::new();
@@ -299,6 +290,7 @@ impl PoSFinalState {
         )
         .parse(part)
         .unwrap();
+        // .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
         let stats_iter =
             cycle
                 .4
@@ -327,169 +319,68 @@ impl PoSFinalState {
                     production_stats: stats_iter.collect(),
                 })
             }
-            Ok(PoSBootstrapCursor {
-                credits_slot: self.deferred_credits.last_key_value().map(|(k, _)| *k),
-                cycle: self.cycle_history.front().map(|v| v.cycle),
-            })
+            Ok(self.cycle_history.front().map(|v| v.cycle))
         } else {
             Err(ModelsError::SerializeError(
-                "data is left after set_cycle_history PoSFinalState part deserialization"
+                "data is left after set_cycle_history_part PoSFinalState part deserialization"
                     .to_string(),
             ))
         }
     }
 
-    /// Sets a part of the Proof of Stake state. Used only in the bootstrap process.
+    /// Sets a part of the Proof of Stake deferred_credits. Used only in the bootstrap process.
     ///
     /// # Arguments
     /// `part`: the raw data received from `get_pos_state_part` and used to update PoS State
-    pub fn set_pos_state_part<'a>(
+    pub fn set_deferred_credits_part<'a>(
         &mut self,
         part: &'a [u8],
-    ) -> Result<PoSBootstrapCursor, ModelsError> {
-        println!("PART: {:?}", part);
-        if part.is_empty() {
-            return Ok(PoSBootstrapCursor::default());
-        }
-        // TODO: define deserializers limits
+    ) -> Result<Option<Slot>, ModelsError> {
+        println!("D PART: {:?}", part);
         let amount_deser = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         let slot_deser = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(THREAD_COUNT)),
         );
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
-        let bitvec_deser = BitVecDeserializer::new();
         let address_deser = AddressDeserializer::new();
-        let (rest, (cycle, credits)) = context(
-            "Failed PoSFinalState deserialization",
-            tuple((
-                opt(context(
-                    "cycle_history",
-                    preceded(
-                        context("cycle_history tag is missing", tag("ch")),
-                        tuple((
-                            context("cycle", |input| u64_deser.deserialize(input)),
-                            context("complete", |input| u64_deser.deserialize(input)),
-                            context(
-                                "roll_counts",
-                                length_count(
-                                    context("roll_counts length", |input| {
-                                        u64_deser.deserialize(input)
-                                    }),
-                                    tuple((
-                                        context("address", |input| {
-                                            address_deser.deserialize(input)
-                                        }),
-                                        context("count", |input| u64_deser.deserialize(input)),
-                                    )),
-                                ),
-                            ),
-                            context("rng_seed", |input| bitvec_deser.deserialize(input)),
-                            context(
-                                "production_stats",
-                                length_count(
-                                    context("production_stats length", |input| {
-                                        u64_deser.deserialize(input)
-                                    }),
-                                    tuple((
-                                        context("address", |input| {
-                                            address_deser.deserialize(input)
-                                        }),
-                                        context("block_success_count", |input| {
-                                            u64_deser.deserialize(input)
-                                        }),
-                                        context("block_failure_count", |input| {
-                                            u64_deser.deserialize(input)
-                                        }),
-                                    )),
-                                ),
-                            ),
-                        )),
-                    ),
-                )),
-                opt(context(
-                    "deferred_credits",
-                    preceded(
-                        context("deferred_credits tag is missing", tag("dc")),
+        let (rest, credits) = context(
+            "deferred_credits",
+            length_count(
+                context("deferred_credits length", |input| {
+                    u64_deser.deserialize(input)
+                }),
+                tuple((
+                    context("slot", |input| {
+                        slot_deser.deserialize::<DeserializeError>(input)
+                    }),
+                    context(
+                        "credits",
                         length_count(
-                            context("deferred_credits length", |input| {
-                                u64_deser.deserialize(input)
-                            }),
+                            context("credits length", |input| u64_deser.deserialize(input)),
                             tuple((
-                                context("slot", |input| {
-                                    slot_deser.deserialize::<DeserializeError>(input)
-                                }),
-                                context(
-                                    "credits",
-                                    length_count(
-                                        context("credits length", |input| {
-                                            u64_deser.deserialize(input)
-                                        }),
-                                        tuple((
-                                            context("address", |input| {
-                                                address_deser.deserialize(input)
-                                            }),
-                                            context("amount", |input| {
-                                                amount_deser.deserialize(input)
-                                            }),
-                                        )),
-                                    ),
-                                ),
+                                context("address", |input| address_deser.deserialize(input)),
+                                context("amount", |input| amount_deser.deserialize(input)),
                             )),
                         ),
                     ),
                 )),
-            )),
+            ),
         )
         .parse(part)
         .unwrap();
         // .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
-        // cycle output type: Vec<(u64, u64, Vec<(Address, u64)>, bitvec::vec::BitVec<u8>, Vec<(Address, u64, u64)>)>)
         if rest.is_empty() {
             let sorted_credits: BTreeMap<Slot, Map<Address, Amount>> = credits
-                .unwrap_or_default()
                 .into_iter()
                 .map(|(slot, credits)| (slot, credits.into_iter().collect()))
                 .collect();
             self.deferred_credits.extend(sorted_credits);
-            if let Some(cycle) = cycle {
-                let stats_iter =
-                    cycle
-                        .4
-                        .into_iter()
-                        .map(|(addr, block_success_count, block_failure_count)| {
-                            (
-                                addr,
-                                ProductionStats {
-                                    block_success_count,
-                                    block_failure_count,
-                                },
-                            )
-                        });
-                if let Some(info) = self.cycle_history.front_mut() && info.cycle == cycle.0 {
-                info.complete = if cycle.1 == 1 { true } else { false };
-                info.roll_counts.extend(cycle.2);
-                info.rng_seed.extend(cycle.3);
-                info.production_stats.extend(stats_iter);
-            } else {
-                self.cycle_history.push_front(CycleInfo {
-                    cycle: cycle.0,
-                    complete: if cycle.1 == 1 { true } else { false },
-                    roll_counts: cycle.2.into_iter().collect(),
-                    rng_seed: cycle.3,
-                    production_stats: stats_iter.collect(),
-                })
-            }
-            }
-            println!("GOOD LAD");
-            Ok(PoSBootstrapCursor {
-                credits_slot: self.deferred_credits.last_key_value().map(|(k, _)| *k),
-                cycle: self.cycle_history.front().map(|v| v.cycle),
-            })
+            Ok(self.deferred_credits.last_key_value().map(|(k, _)| *k))
         } else {
-            println!("FOOCKING HELL: {:?}", rest);
             Err(ModelsError::SerializeError(
-                "data is left after PoSFinalState part deserialization".to_string(),
+                "data is left after set_deferred_credits_part PoSFinalState part deserialization"
+                    .to_string(),
             ))
         }
     }
