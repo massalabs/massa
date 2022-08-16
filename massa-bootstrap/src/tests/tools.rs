@@ -2,6 +2,7 @@
 
 use super::mock_establisher::Duplex;
 use crate::settings::BootstrapConfig;
+use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
@@ -18,6 +19,7 @@ use massa_models::constants::{
     MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS,
     MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_POS_ENTRIES, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
 };
+use massa_models::prehash::Map;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
     clique::Clique, Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId,
@@ -25,7 +27,7 @@ use massa_models::{
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
-use massa_pos_exports::PoSFinalState;
+use massa_pos_exports::{CycleInfo, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
@@ -69,6 +71,51 @@ fn get_random_ledger_entry() -> LedgerEntry {
     }
 }
 
+/// generates a random pos final state
+fn get_random_pos_state() -> PoSFinalState {
+    let mut rng = rand::thread_rng();
+    let mut cycle_history = VecDeque::new();
+    for i in 0usize..rng.gen_range(3..6) {
+        let mut roll_counts = Map::default();
+        let mut production_stats = Map::default();
+        for j in 0usize..rng.gen_range(8..16) {
+            roll_counts.insert(get_random_address(), j as u64);
+            production_stats.insert(
+                get_random_address(),
+                ProductionStats {
+                    block_success_count: (j * 3) as u64,
+                    block_failure_count: j as u64,
+                },
+            );
+        }
+        let rng_seed: BitVec<u8> = BitVec::try_from_vec([0, 1, 2].to_vec()).unwrap();
+        cycle_history.push_front(CycleInfo {
+            cycle: i as u64,
+            roll_counts,
+            complete: true,
+            rng_seed,
+            production_stats,
+        });
+    }
+    let mut deferred_credits = BTreeMap::new();
+    for i in 0usize..rng.gen_range(3..6) {
+        let mut credits = Map::default();
+        credits.insert(get_random_address(), Amount::from_raw(42));
+        deferred_credits.insert(
+            Slot {
+                period: i as u64,
+                thread: 0,
+            },
+            credits,
+        );
+    }
+    PoSFinalState {
+        cycle_history,
+        deferred_credits,
+        selector: None,
+    }
+}
+
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
     let mut rng = rand::thread_rng();
@@ -92,8 +139,8 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
         Box::new(final_ledger),
         async_pool,
         VecDeque::new(),
-        //TODO: Add values
-        PoSFinalState::default(),
+        get_random_pos_state(),
+        // PoSFinalState::default(),
         ExecutedOps::default(),
     )
 }
