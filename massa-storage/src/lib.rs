@@ -9,9 +9,11 @@
 #![warn(missing_docs)]
 #![feature(hash_drain_filter)]
 
+mod block_indexes;
 mod endorsement_indexes;
 mod operation_indexes;
 
+use block_indexes::BlockIndexes;
 use endorsement_indexes::EndorsementIndexes;
 use massa_logging::massa_trace;
 use massa_models::prehash::{BuildMap, Map, PreHashed, Set};
@@ -29,7 +31,7 @@ use std::{collections::hash_map, sync::Arc};
 #[derive(Default)]
 pub struct Storage {
     /// global block storage
-    blocks: Arc<RwLock<Map<BlockId, Arc<RwLock<WrappedBlock>>>>>,
+    blocks: Arc<RwLock<BlockIndexes>>,
     /// global operation storage
     operations: Arc<RwLock<OperationIndexes>>,
     /// global operation storage
@@ -251,9 +253,7 @@ impl Storage {
             for id in orphaned_ids {
                 ops.unlink_operations_from_block(&id);
                 endorsements.unlink_endorsements_from_block(&id);
-                if blocks.remove(&id).is_none() {
-                    panic!("removing absent object from storage")
-                }
+                blocks.remove(&id);
             }
         }
     }
@@ -280,9 +280,7 @@ impl Storage {
                 .map(|e| e.id)
                 .collect(),
         );
-        blocks
-            .entry(id)
-            .or_insert_with(|| Arc::new(RwLock::new(block)));
+        blocks.insert(block);
         // update local reference counters
         Storage::internal_claim_refs(
             &vec![id].into_iter().collect(),
@@ -294,7 +292,11 @@ impl Storage {
     /// Get a (mutable) reference to a stored block.
     pub fn retrieve_block(&self, block_id: &BlockId) -> Option<Arc<RwLock<WrappedBlock>>> {
         massa_trace!("storage.storage.retrieve_block", { "block_id": block_id });
-        self.blocks.read().get(block_id).map(Arc::clone)
+        self.blocks
+            .read()
+            .blocks
+            .get(block_id)
+            .map(|block| Arc::clone(block))
     }
 
     /// Claim operation references.
@@ -526,6 +528,16 @@ impl Storage {
     /// Get the operation indexes to fetch operations by indexes
     pub fn get_operation_indexes(&self) -> &Arc<RwLock<OperationIndexes>> {
         &self.operations
+    }
+
+    /// Get the endorsement indexes to fetch endorsements by indexes
+    pub fn get_endorsement_indexes(&self) -> &Arc<RwLock<EndorsementIndexes>> {
+        &self.endorsements
+    }
+
+    /// Get the block indexes to fetch blocks by indexes
+    pub fn get_block_indexes(&self) -> &Arc<RwLock<BlockIndexes>> {
+        &self.blocks
     }
 }
 

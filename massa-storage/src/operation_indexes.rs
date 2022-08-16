@@ -31,10 +31,11 @@ impl OperationIndexes {
                 .remove(&id)
                 .expect("removing absent object from storage");
             let creator = operation.creator_address;
-            self.index_by_creator
-                .entry(creator)
-                .or_default()
-                .remove(&id);
+            let entry = self.index_by_creator.entry(creator).or_default();
+            entry.remove(&id);
+            if entry.is_empty() {
+                self.index_by_creator.remove(&creator);
+            }
         }
     }
 

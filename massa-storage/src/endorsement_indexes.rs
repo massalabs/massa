@@ -32,10 +32,11 @@ impl EndorsementIndexes {
                 .remove(&id)
                 .expect("removing absent object from storage");
             let creator = operation.creator_address;
-            self.index_by_creator
-                .entry(creator)
-                .or_default()
-                .remove(&id);
+            let entry = self.index_by_creator.entry(creator).or_default();
+            entry.remove(&id);
+            if entry.is_empty() {
+                self.index_by_creator.remove(&creator);
+            }
         }
     }
 
@@ -54,7 +55,7 @@ impl EndorsementIndexes {
         self.index_by_block.remove(block_id);
     }
 
-    pub fn get_endorsements_created_by(&self, address: &Address) -> Vec<WrappedEndorsement> {
+    pub fn _get_endorsements_created_by(&self, address: &Address) -> Vec<WrappedEndorsement> {
         match self.index_by_creator.get(address) {
             Some(ids) => ids
                 .iter()
@@ -65,7 +66,7 @@ impl EndorsementIndexes {
         }
     }
 
-    pub fn get_endorsements_in_block(&self, block_id: &BlockId) -> Vec<WrappedEndorsement> {
+    pub fn _get_endorsements_in_block(&self, block_id: &BlockId) -> Vec<WrappedEndorsement> {
         match self.index_by_block.get(block_id) {
             Some(ids) => ids
                 .iter()
