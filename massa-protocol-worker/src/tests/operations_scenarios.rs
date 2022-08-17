@@ -5,8 +5,8 @@
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::constants::THREAD_COUNT;
 use massa_models::prehash::Map;
-use massa_models::{self, Address, Amount, Slot};
-use massa_models::{operation::OperationIds, prehash::Set};
+use massa_models::prehash::Set;
+use massa_models::{self, Address, Amount, OperationId, Slot};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
@@ -188,7 +188,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops = OperationIds::default();
+            let mut ops: Set<OperationId> = Set::default();
             ops.insert(expected_operation_id);
             protocol_command_sender
                 .propagate_operations(ops)
@@ -267,7 +267,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops = OperationIds::default();
+            let mut ops: Set<OperationId> = Set::default();
             ops.insert(expected_operation_id);
 
             // send endorsement to protocol
@@ -355,7 +355,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
-            let mut ops = OperationIds::default();
+            let mut ops: Set<OperationId> = Set::default();
             ops.insert(operation_id);
             protocol_command_sender
                 .propagate_operations(ops)
@@ -425,7 +425,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             // Send the block as search results.
             let mut results: BlocksResults = Map::default();
-            let mut ops = OperationIds::default();
+            let mut ops: Set<OperationId> = Set::default();
             ops.insert(operation_id);
             results.insert(expected_block_id, Some((Some(ops), None)));
 
@@ -750,7 +750,7 @@ async fn test_protocol_ask_operations_on_batch_received() {
             network_controller
                 .send_operation_batch(
                     creator_node.id,
-                    OperationIds::from_iter(vec![expected_operation_id].iter().cloned()),
+                    Set::from_iter(vec![expected_operation_id].iter().cloned()),
                 )
                 .await;
 
@@ -815,10 +815,7 @@ async fn test_protocol_on_ask_operations() {
             let asker_node = nodes.pop().expect("Failed to get the second node info.");
 
             network_controller
-                .send_ask_for_operation(
-                    asker_node.id,
-                    OperationIds::from_iter(vec![expected_operation_id]),
-                )
+                .send_ask_for_operation(asker_node.id, Set::from_iter(vec![expected_operation_id]))
                 .await;
 
             // 4. Assert the operation is sent to the node.

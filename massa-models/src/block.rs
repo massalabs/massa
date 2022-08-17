@@ -6,8 +6,8 @@ use crate::prehash::{Map, PreHashed, Set};
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
     Address, Endorsement, EndorsementDeserializer, EndorsementId, ModelsError, OperationId,
-    OperationIds, OperationIdsDeserializer, OperationIdsSerializer, Slot, SlotDeserializer,
-    SlotSerializer, WrappedEndorsement, WrappedOperation,
+    OperationIdsDeserializer, OperationIdsSerializer, Slot, SlotDeserializer, SlotSerializer,
+    WrappedEndorsement, WrappedOperation,
 };
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
@@ -125,7 +125,7 @@ pub struct Block {
     /// signed header
     pub header: WrappedHeader,
     /// operations
-    pub operations: OperationIds,
+    pub operations: Vec<OperationId>,
 }
 
 /// Wrapped Block

@@ -1,4 +1,4 @@
-use massa_models::{Address, BlockId, EndorsementId, OperationId, Operations, Slot};
+use massa_models::{Address, BlockId, EndorsementId, OperationId, Slot};
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_storage::Storage;
 use std::sync::{Arc, RwLock};

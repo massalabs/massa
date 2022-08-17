@@ -1,10 +1,8 @@
 use crate::operation_pool::OperationPool;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::{
-    prehash::{Map, Set},
-    wrapped::WrappedContent,
-    Address, Amount, Operation, OperationId, OperationSerializer, OperationType, Slot,
-    WrappedOperation,
+    prehash::Map, wrapped::WrappedContent, Address, Amount, Operation, OperationSerializer,
+    OperationType, Slot, WrappedOperation,
 };
 use massa_signature::KeyPair;
 use massa_storage::Storage;
