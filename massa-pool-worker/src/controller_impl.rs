@@ -65,12 +65,4 @@ impl PoolController for PoolControllerImpl {
     fn clone_box(&self) -> Box<dyn PoolController> {
         Box::new(self.clone())
     }
-
-    fn get_operations_involving_address(&self, address: &Address) -> Operations {
-        self.operation_pool
-            .read()
-            .expect("could not r-lock operation pool")
-            .storage
-            .get_operations_created_by(address)
-    }
 }

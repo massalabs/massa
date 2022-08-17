@@ -27,9 +27,6 @@ pub trait PoolController: Send + Sync {
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.
     fn clone_box(&self) -> Box<dyn PoolController>;
-
-    /// Returns operations related to an address
-    fn get_operations_involving_address(&self, address: &Address) -> Operations;
 }
 
 /// Allow cloning `Box<dyn PoolController>`
