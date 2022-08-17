@@ -279,7 +279,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_block_integration(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -310,18 +309,15 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 .send_ask_for_block(nodes[0].id, vec![(expected_block_id, Default::default())])
                 .await;
 
-            // Integrate the block,
+            // Send the header,
             // this should note the node as knowing about the endorsement.
-            protocol_command_sender
-                .integrated_block(expected_block_id, Default::default(), vec![endorsement_id])
-                .await
-                .unwrap();
-
-            // TODO: rewrite
+            network_controller
+                .send_header(nodes[0].id, block.content.header)
+                .await;
 
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it
-            // because of the previously integrated block.
+            // because of the previously received header.
             let mut ops = Map::default();
             ops.insert(endorsement_id, endorsement);
             protocol_command_sender
