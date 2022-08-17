@@ -21,7 +21,7 @@ use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
 use massa_models::{
-    Amount, ModelsError, OperationSearchResult, WrappedEndorsement, WrappedOperation, Block,
+    Amount, Block, ModelsError, OperationSearchResult, WrappedEndorsement, WrappedOperation,
 };
 use massa_pos_exports::SelectorController;
 use massa_serialization::{DeserializeError, Deserializer};
@@ -476,7 +476,7 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_block_in_blockclique_by_slot(
+    fn get_blockclique_block_by_slot(
         &self,
         slot: Slot,
     ) -> BoxFuture<Result<Option<Block>, ApiError>> {

@@ -186,10 +186,7 @@ impl Endpoints for API<Private> {
         crate::wrong_api::<BlockInfo>()
     }
 
-    fn get_block_in_blockclique_by_slot(
-        &self,
-        _: Slot,
-    ) -> BoxFuture<Result<Option<Block>, ApiError>> {
+    fn get_blockclique_block_by_slot(&self, _: Slot) -> BoxFuture<Result<Option<Block>, ApiError>> {
         crate::wrong_api::<Option<Block>>()
     }
 

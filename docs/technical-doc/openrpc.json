@@ -205,7 +205,7 @@
                 },
                 "name": "Block"
             },
-            "name": "get_block_in_blockclique_by_slot",
+            "name": "get_blockclique_block_by_slot",
             "summary": "Get a block in the blockclique",
             "description": "Get the block in the blockclique that is associated to the slot"
         },
