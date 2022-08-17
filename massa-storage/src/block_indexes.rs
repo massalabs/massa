@@ -19,6 +19,9 @@ pub struct BlockIndexes {
 }
 
 impl BlockIndexes {
+    /// Insert a block and populate the indexes.
+    /// Arguments:
+    /// - block: the block to insert
     pub(crate) fn insert(&mut self, block: WrappedBlock) {
         let id = block.id;
         let creator = block.creator_address;
@@ -30,6 +33,9 @@ impl BlockIndexes {
             .or_insert(Arc::new(RwLock::new(block)));
     }
 
+    /// Remove a block, remove from the indexes and made some clean-up in indexes if necessary.
+    /// Arguments:
+    /// - block_id: the block id to remove
     pub(crate) fn remove(&mut self, block_id: &BlockId) {
         let block = self
             .blocks
@@ -45,6 +51,12 @@ impl BlockIndexes {
         self.index_by_slot.remove(&slot);
     }
 
+    /// Get the block ids created by an address.
+    /// Arguments:
+    /// - address: the address to get the blocks created by
+    ///
+    /// Returns:
+    /// - the block ids created by the address
     pub fn get_blocks_created_by(&self, address: &Address) -> Vec<BlockId> {
         match self.index_by_creator.get(address) {
             Some(blocks) => blocks.iter().cloned().collect(),
@@ -52,6 +64,12 @@ impl BlockIndexes {
         }
     }
 
+    /// Get the block id of the block at a slot.
+    /// Arguments:
+    /// - slot: the slot to get the block id of
+    ///
+    /// Returns:
+    /// - the block id of the block at the slot if exists, None otherwise
     pub fn get_block_by_slot(&self, slot: Slot) -> Option<&BlockId> {
         self.index_by_slot.get(&slot)
     }
