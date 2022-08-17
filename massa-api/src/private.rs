@@ -20,7 +20,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
-use massa_models::{Address, BlockId, EndorsementId, OperationId};
+use massa_models::{Address, Block, BlockId, EndorsementId, OperationId, Slot};
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::KeyPair;
 use massa_wallet::Wallet;
@@ -180,6 +180,10 @@ impl Endpoints for API<Private> {
 
     fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>> {
         crate::wrong_api::<BlockInfo>()
+    }
+
+    fn get_blockclique_block_by_slot(&self, _: Slot) -> BoxFuture<Result<Option<Block>, ApiError>> {
+        crate::wrong_api::<Option<Block>>()
     }
 
     fn get_graph_interval(

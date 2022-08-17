@@ -576,12 +576,13 @@ impl Command {
             }
 
             Command::get_filtered_sc_output_event => {
-                let p_list: [&str; 5] = [
+                let p_list: [&str; 6] = [
                     "start",
                     "end",
                     "emitter_address",
                     "caller_address",
                     "operation_id",
+                    "candidate",
                 ];
                 let mut p: HashMap<&str, &str> = HashMap::new();
                 for v in parameters {
@@ -598,9 +599,7 @@ impl Command {
                     emitter_address: parse_value(&p, p_list[2]),
                     original_caller_address: parse_value(&p, p_list[3]),
                     original_operation_id: parse_value(&p, p_list[4]),
-                    // TODO: update client to enable this option
-                    // see `EventFilter` description for more info
-                    candidate: None,
+                    candidate: parse_value(&p, p_list[5]),
                 };
                 match client.public.get_filtered_sc_output_event(filter).await {
                     Ok(events) => Ok(Box::new(events)),
