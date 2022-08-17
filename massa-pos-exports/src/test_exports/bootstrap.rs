@@ -10,7 +10,7 @@ pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
         "PoS cycle_history mismatching"
     );
     assert_eq!(
-        s1.deferred_credits, s2.deferred_credits,
+        s1.deferred_credits.0, s2.deferred_credits.0,
         "PoS deferred_credits mismatching"
     );
 }

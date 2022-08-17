@@ -33,9 +33,34 @@ pub struct PoSFinalState {
     /// contiguous cycle history. Front = newest.
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
-    pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
+    pub deferred_credits: DeferredCredits,
     /// selector controller to feed the cycle when completed
     pub selector: Option<Box<dyn SelectorController>>,
+}
+
+#[derive(Debug, Default, Clone)]
+/// Structure containing all the PoS deferred credits information
+pub struct DeferredCredits(pub BTreeMap<Slot, Map<Address, Amount>>);
+
+impl DeferredCredits {
+    /// Extends the current DeferredCredits with another but accumulates the addresses and amounts
+    pub fn nested_extend(&mut self, other: Self) {
+        for (slot, new_credits) in other.0 {
+            self.0
+                .entry(slot)
+                .and_modify(|current_credits| {
+                    for (address, new_amount) in new_credits.iter() {
+                        current_credits
+                            .entry(*address)
+                            .and_modify(|current_amount| {
+                                current_amount.checked_add(*new_amount);
+                            })
+                            .or_insert(*new_amount);
+                    }
+                })
+                .or_insert(new_credits);
+        }
+    }
 }
 
 impl PoSFinalState {
@@ -127,14 +152,15 @@ impl PoSFinalState {
         let amount_ser = AmountSerializer::new();
         if self
             .deferred_credits
+            .0
             .range((last_slot, Unbounded))
             .last()
             .is_some()
         {
-            u64_ser.serialize(&(self.deferred_credits.len() as u64), &mut part)?;
+            u64_ser.serialize(&(self.deferred_credits.0.len() as u64), &mut part)?;
         }
         // TODO: iterate in reverse order to avoid steaming credits that will be soon removed
-        for (slot, credits) in self.deferred_credits.range((last_slot, Unbounded)) {
+        for (slot, credits) in self.deferred_credits.0.range((last_slot, Unbounded)) {
             // TODO: limit this with DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES
             // NOTE: above will prevent the use of lenght_count combinator, many0 did not do the job
             slot_ser.serialize(slot, &mut part)?;
@@ -290,13 +316,14 @@ impl PoSFinalState {
         .parse(part)
         .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
         if rest.is_empty() {
-            let sorted_credits: BTreeMap<Slot, Map<Address, Amount>> = credits
-                .into_iter()
-                .map(|(slot, credits)| (slot, credits.into_iter().collect()))
-                .collect();
-            // IMPORTANT TODO: this overrides on changes of the same key, should extend sub-values as well
-            self.deferred_credits.extend(sorted_credits);
-            Ok(self.deferred_credits.last_key_value().map(|(k, _)| *k))
+            let new_credits = DeferredCredits(
+                credits
+                    .into_iter()
+                    .map(|(slot, credits)| (slot, credits.into_iter().collect()))
+                    .collect(),
+            );
+            self.deferred_credits.nested_extend(new_credits);
+            Ok(self.deferred_credits.0.last_key_value().map(|(k, _)| *k))
         } else {
             Err(ModelsError::SerializeError(
                 "data is left after set_deferred_credits_part PoSFinalState part deserialization"
@@ -366,7 +393,7 @@ pub struct PoSChanges {
 
     /// set deferred credits indexed by target slot (can be set to 0 to cancel some, in case of slash)
     /// ordered structure to ensure slot iteration order is deterministic
-    pub deferred_credits: BTreeMap<Slot, Map<Address, Amount>>,
+    pub deferred_credits: DeferredCredits,
 }
 
 impl PoSChanges {
@@ -387,18 +414,7 @@ impl PoSChanges {
         }
 
         // extend deferred credits
-        for (other_slot, other_credits) in other.deferred_credits {
-            let self_credits = self
-                .deferred_credits
-                .entry(other_slot)
-                .or_insert_with(|| Default::default());
-            for (other_addr, other_amount) in other_credits {
-                let self_amount = self_credits
-                    .entry(other_addr)
-                    .or_insert_with(|| Default::default());
-                *self_amount = self_amount.saturating_add(other_amount);
-            }
-        }
+        self.deferred_credits.nested_extend(other.deferred_credits);
     }
 }
 
@@ -462,12 +478,12 @@ impl Serializer<PoSChanges> for PoSChangesSerializer {
             self.u64_serializer.serialize(block_failure_count, buffer)?;
         }
 
-        // deferred_credit
+        // deferred_credits
         let entry_count: u64 = value.production_stats.len().try_into().map_err(|err| {
             SerializeError::GeneralError(format!("too many entries in deferred_credits: {}", err))
         })?;
         self.u64_serializer.serialize(&entry_count, buffer)?;
-        for (slot, credits) in value.deferred_credits.iter() {
+        for (slot, credits) in value.deferred_credits.0.iter() {
             self.slot_serializer.serialize(slot, buffer)?;
             let credits_entry_count: u64 = credits.len().try_into().map_err(|err| {
                 SerializeError::GeneralError(format!("too many entries in credits: {}", err))
@@ -640,11 +656,11 @@ impl DeferredCreditsDeserializer {
     }
 }
 
-impl Deserializer<BTreeMap<Slot, Map<Address, Amount>>> for DeferredCreditsDeserializer {
+impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], BTreeMap<Slot, Map<Address, Amount>>, E> {
+    ) -> IResult<&'a [u8], DeferredCredits, E> {
         context(
             "Failed DeferredCredits deserialization",
             length_count(
@@ -657,7 +673,7 @@ impl Deserializer<BTreeMap<Slot, Map<Address, Amount>>> for DeferredCreditsDeser
                 )),
             ),
         )
-        .map(|elements| elements.into_iter().collect())
+        .map(|elements| DeferredCredits(elements.into_iter().collect()))
         .parse(buffer)
     }
 }
