@@ -21,7 +21,7 @@ use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
 use massa_models::{
-    Amount, ModelsError, OperationSearchResult, WrappedEndorsement, WrappedOperation,
+    Amount, ModelsError, OperationSearchResult, WrappedEndorsement, WrappedOperation, Block,
 };
 use massa_pos_exports::SelectorController;
 use massa_serialization::{DeserializeError, Deserializer};
