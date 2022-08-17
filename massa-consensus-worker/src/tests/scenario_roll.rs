@@ -609,7 +609,7 @@ async fn test_roll_block_creation() {
     // wait for block
     let block = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+            ProtocolCommand::IntegratedBlock { block_id } => {
                 println!("Integrated block");
                 let block = storage
                     .retrieve_block(&block_id)
@@ -675,7 +675,7 @@ async fn test_roll_block_creation() {
     // wait for block
     let block = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+            ProtocolCommand::IntegratedBlock { block_id } => {
                 let block = storage
                     .retrieve_block(&block_id)
                     .expect(&format!("Block id : {} not found in storage", block_id));
@@ -717,7 +717,7 @@ async fn test_roll_block_creation() {
     // wait for block
     let block = protocol_controller
         .wait_command(500.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+            ProtocolCommand::IntegratedBlock { block_id } => {
                 let block = storage
                     .retrieve_block(&block_id)
                     .expect(&format!("Block id : {} not found in storage", block_id));

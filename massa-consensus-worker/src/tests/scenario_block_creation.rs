@@ -247,7 +247,7 @@ async fn test_block_creation_with_draw() {
                 // wait block propagation
                 let block_creator = protocol_controller
                     .wait_command(3500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                        ProtocolCommand::IntegratedBlock { block_id } => {
                             let block = storage
                                 .retrieve_block(&block_id)
                                 .expect(&format!("Block id : {} not found in storage", block_id));
@@ -366,7 +366,7 @@ async fn test_interleaving_block_creation_with_reception() {
                     // wait block propagation
                     let (header, id) = protocol_controller
                         .wait_command(cfg.t0.saturating_add(300.into()), |cmd| match cmd {
-                            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                            ProtocolCommand::IntegratedBlock { block_id } => {
                                 let block = storage.retrieve_block(&block_id).expect(&format!(
                                     "Block id : {} not found in storage",
                                     block_id
@@ -548,7 +548,7 @@ async fn test_order_of_inclusion() {
             // wait for block
             let block = protocol_controller
                 .wait_command(300.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                    ProtocolCommand::IntegratedBlock { block_id } => {
                         let block = storage
                             .retrieve_block(&block_id)
                             .expect(&format!("Block id : {} not found in storage", block_id));
@@ -689,7 +689,7 @@ async fn test_block_filling() {
                 //     // wait for block
                 //     let block = protocol_controller
                 //         .wait_command(500.into(), |cmd| match cmd {
-                //             ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                //             ProtocolCommand::IntegratedBlock { block_id } => {
                 //                 let block = storage
                 //                     .retrieve_block(&block_id)
                 //                     .expect(&format!("Block id : {} not found in storage", block_id));
@@ -789,7 +789,7 @@ async fn test_block_filling() {
             // wait for block
             let block = protocol_controller
                 .wait_command(500.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                    ProtocolCommand::IntegratedBlock { block_id } => {
                         let block = storage
                             .retrieve_block(&block_id)
                             .expect(&format!("Block id : {} not found in storage", block_id));

@@ -342,11 +342,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Integrate the block,
             // this should note the node as knowing about the endorsement.
             protocol_command_sender
-                .integrated_block(
-                    block_id,
-                    vec![operation_id].into_iter().collect(),
-                    Default::default(),
-                )
+                .integrated_block(block_id)
                 .await
                 .unwrap();
 
@@ -750,7 +746,7 @@ async fn test_protocol_ask_operations_on_batch_received() {
             network_controller
                 .send_operation_batch(
                     creator_node.id,
-                    Set::from_iter(vec![expected_operation_id].iter().cloned()),
+                    vec![expected_operation_id].iter().cloned().collect(),
                 )
                 .await;
 
@@ -815,7 +811,7 @@ async fn test_protocol_on_ask_operations() {
             let asker_node = nodes.pop().expect("Failed to get the second node info.");
 
             network_controller
-                .send_ask_for_operation(asker_node.id, Set::from_iter(vec![expected_operation_id]))
+                .send_ask_for_operation(asker_node.id, vec![expected_operation_id])
                 .await;
 
             // 4. Assert the operation is sent to the node.

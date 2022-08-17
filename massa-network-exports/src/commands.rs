@@ -18,7 +18,7 @@
 //!    +-------------->|                |           Forward to Protocol
 //!    |               +--------------->|           Forward to Network, then Node
 //!    |               |                #
-//!    |               |                #           Propagate the batch of Set<OperationId> through the network
+//!    |               |                #           Propagate the batch of Vec<OperationId> through the network
 //! ```
 //!
 //! When receiving an operation batch from the network, the `NodeWorker` will
@@ -92,7 +92,7 @@ pub enum NodeCommand {
     /// Close the node worker.
     Close(ConnectionClosureReason),
     /// Send full Operations (send to a node that previously asked for)
-    SendOperations(Set<OperationId>),
+    SendOperations(Vec<OperationId>),
     /// Send a batch of operation ids
     SendOperationAnnouncements(OperationPrefixIds),
     /// Ask for a set of operations
@@ -212,7 +212,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// operations
-        operations: Set<OperationId>,
+        operations: Vec<OperationId>,
     },
     /// Send operation ids batch to a node
     SendOperationAnnouncements {

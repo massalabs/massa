@@ -211,7 +211,7 @@ impl ProtocolWorker {
         let found = self.storage.find_operations(req_operation_ids);
         if !found.is_empty() {
             self.network_command_sender
-                .send_operations(node_id, found)
+                .send_operations(node_id, found.into_iter().collect())
                 .await?;
         }
         Ok(())

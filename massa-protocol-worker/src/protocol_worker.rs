@@ -340,7 +340,7 @@ impl ProtocolWorker {
             "cmd": cmd
         });
         match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+            ProtocolCommand::IntegratedBlock { block_id } => {
                 massa_trace!(
                     "protocol.protocol_worker.process_command.integrated_block.begin",
                     { "block_id": block_id }

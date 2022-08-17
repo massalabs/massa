@@ -26,7 +26,10 @@ impl BlockIndexes {
         let id = block.id;
         let creator = block.creator_address;
         self.index_by_creator.entry(creator).or_default().insert(id);
-        self.index_by_slot.entry(block.content.header.content.slot).or_default().insert(block.id);
+        self.index_by_slot
+            .entry(block.content.header.content.slot)
+            .or_default()
+            .insert(block.id);
         self.blocks
             .entry(id)
             .or_insert(Arc::new(RwLock::new(block)));
@@ -69,7 +72,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - the block id of the block at the slot if exists, None otherwise
-    pub fn get_block_by_slot(&self, slot: Slot) -> Option<&Set<BlockId>> {
+    pub fn get_blocks_by_slot(&self, slot: Slot) -> Option<&Set<BlockId>> {
         self.index_by_slot.get(&slot)
     }
 }

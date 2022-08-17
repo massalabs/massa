@@ -172,7 +172,7 @@ impl NetworkCommandSender {
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: Set<OperationId>,
+        operations: Vec<OperationId>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })
@@ -183,7 +183,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    /// Create a new call to the network, sending a announcement of `Set<OperationId>` to a
+    /// Create a new call to the network, sending a announcement of operation ID prefixes to a
     /// target node (`to_node`)
     ///
     /// # Returns
