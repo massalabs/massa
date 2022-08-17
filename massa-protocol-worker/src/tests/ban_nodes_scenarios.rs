@@ -13,7 +13,7 @@ use std::time::Duration;
 
 #[tokio::test]
 #[serial]
-async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
+async fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
         protocol_config,
@@ -28,9 +28,15 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
             // 1. Create a block coming from one node.
-            let mut _block = tools::create_block(&creator_node.keypair);
+            let mut block = tools::create_block(&creator_node.keypair);
 
-            // TODO: send something for node to get banned.
+            // 2. Change the slot.
+            block.content.header.content.slot = Slot::new(1, 1);
+
+            // 3. Send header to protocol.
+            network_controller
+                .send_header(creator_node.id, block.content.header.clone())
+                .await;
 
             // The node is banned.
             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
