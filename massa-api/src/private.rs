@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ApiError;
 use crate::settings::APISettings;
@@ -85,9 +85,7 @@ impl Endpoints for API<Private> {
             let mut w_wallet = node_wallet
                 .write()
                 .expect("w-lock wallet unexpectedly failed");
-            for key in keys {
-                w_wallet.add_keypair(key)?;
-            }
+            w_wallet.add_keypairs(keys)?;
             Ok(())
         };
         Box::pin(closure())
@@ -113,9 +111,7 @@ impl Endpoints for API<Private> {
             let mut w_wallet = node_wallet
                 .write()
                 .expect("w-lock wallet unexpectedly failed");
-            for address in addresses.iter() {
-                w_wallet.remove_address(address)?;
-            }
+            w_wallet.remove_addresses(&addresses)?;
             Ok(())
         };
         Box::pin(closure())

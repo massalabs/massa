@@ -626,52 +626,39 @@ impl Command {
 
             Command::wallet_generate_secret_key => {
                 let key = KeyPair::generate();
-                let ad = wallet.add_keypair(key.clone())?;
+                let ad = wallet.add_keypairs(vec![key.clone()])?[0];
                 if json {
                     Ok(Box::new(ad.to_string()))
                 } else {
                     println!("Generated {} address and added it to the wallet", ad);
-                    println!(
-                        "Type `node_add_staking_secret_keys {}` to start staking with this key.\n",
-                        key
-                    );
+                    println!("Type `node_add_staking_secret_keys <your secret key>` to start staking with this key.\n");
                     Ok(Box::new(()))
                 }
             }
 
             Command::wallet_add_secret_keys => {
-                let addresses = parse_vec::<KeyPair>(parameters)?
-                    .into_iter()
-                    .map(|key| Ok((wallet.add_keypair(key.clone())?, key)))
-                    .collect::<Result<HashMap<Address, KeyPair>>>()?;
+                let keypairs = parse_vec::<KeyPair>(parameters)?;
+                let addresses = wallet.add_keypairs(keypairs)?;
                 if json {
-                    return Ok(Box::new(addresses.into_keys().collect::<Vec<Address>>()));
+                    return Ok(Box::new(addresses));
                 } else {
-                    for (address, key) in addresses.iter() {
+                    for address in addresses {
                         println!("Derived and added address {} to the wallet.", address);
-                        println!(
-                            "Type `node_add_staking_secret_keys {}` to start staking with this key.\n",
-                            key
-                        );
                     }
+                    println!("Type `node_add_staking_secret_keys <your secret key>` to start staking with the corresponding key.\n");
                 }
                 Ok(Box::new(()))
             }
 
             Command::wallet_remove_addresses => {
                 let mut res = "".to_string();
-                for key in parse_vec::<Address>(parameters)?.into_iter() {
-                    match wallet.remove_address(&key) {
-                        Ok(_) => {
-                            let _ = writeln!(res, "Removed address {} from the wallet", key);
-                        }
-                        Err(WalletError::MissingKeyError(_)) => {
-                            let _ = writeln!(res, "Address {} wasn't in the wallet", key);
-                        }
-                        Err(_) => {
-                            let _ =
-                                writeln!(res, "Failed to remove address {} from the wallet", key);
-                        }
+                let addresses = parse_vec::<Address>(parameters)?;
+                match wallet.remove_addresses(&addresses) {
+                    Ok(_) => {
+                        let _ = writeln!(res, "Addresses removed from the wallet");
+                    }
+                    Err(_) => {
+                        let _ = writeln!(res, "Wallet error while removing addresses");
                     }
                 }
                 if !json {
