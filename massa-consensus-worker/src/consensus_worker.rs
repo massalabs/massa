@@ -493,7 +493,7 @@ impl ConsensusWorker {
                         .get_blockclique()
                         .intersection(stored_blocks)
                         .next()
-                        .map(|block| block.clone())
+                        .cloned()
                 } else {
                     None
                 };
