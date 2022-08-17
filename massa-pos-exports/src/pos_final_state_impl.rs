@@ -44,7 +44,7 @@ impl PoSFinalState {
                     cycle,
                     ..Default::default()
                 });
-                // add 1 for the current cycle and 1 as bootstrap safety
+                // add 1 for the current cycle and 1 for bootstrap safety
                 while self.cycle_history.len() as u64 > POS_SAVED_CYCLES + 2 {
                     self.cycle_history.pop_front();
                 }

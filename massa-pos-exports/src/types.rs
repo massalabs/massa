@@ -14,6 +14,9 @@ use massa_serialization::{
     U64VarIntSerializer,
 };
 use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::value,
     error::{context, ContextError, ParseError},
     multi::length_count,
     sequence::tuple,
@@ -54,14 +57,15 @@ impl PoSFinalState {
                 .position(|cycle| cycle.cycle == last_cycle)
             {
                 if index == 0 {
-                    return Ok((Vec::default(), None, None));
+                    return Ok((Vec::default(), cursor, Some(false)));
                 }
                 index.saturating_sub(1)
             } else {
-                return Ok((Vec::default(), None, None));
+                // if an outdated cycle is provided restart from the beginning
+                // get previous to last element to avoid the bootstrap safety cycle
+                self.cycle_history.len().saturating_sub(2)
             }
         } else {
-            // get previous to last element to avoid the bootstrap safety cycle
             self.cycle_history.len().saturating_sub(2)
         };
         let mut part = Vec::new();
@@ -79,8 +83,7 @@ impl PoSFinalState {
         {
             // TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
             u64_ser.serialize(cycle, &mut part)?;
-            // TODO: consider serializing this boolean some other way
-            u64_ser.serialize(&(*complete as u64), &mut part)?;
+            part.push(if *complete { 1 } else { 0 });
             // TODO: limit this with ROLL_COUNTS_PART_SIZE_MESSAGE_BYTES
             u64_ser.serialize(&(roll_counts.len() as u64), &mut part)?;
             for (addr, count) in roll_counts {
@@ -163,7 +166,7 @@ impl PoSFinalState {
             &[u8],
             (
                 u64,
-                u64,
+                bool,
                 Vec<(Address, u64)>,
                 bitvec::vec::BitVec<u8>,
                 Vec<(Address, u64, u64)>,
@@ -174,7 +177,10 @@ impl PoSFinalState {
                 context("cycle", |input| {
                     u64_deser.deserialize::<DeserializeError>(input)
                 }),
-                context("complete", |input| u64_deser.deserialize(input)),
+                context(
+                    "complete",
+                    alt((value(true, tag(&[1])), value(false, tag(&[0])))),
+                ),
                 context(
                     "roll_counts",
                     length_count(
@@ -218,14 +224,14 @@ impl PoSFinalState {
                 });
         if rest.is_empty() {
             if let Some(info) = self.cycle_history.front_mut() && info.cycle == cycle.0 {
-                info.complete = if cycle.1 == 1 { true } else { false };
+                info.complete = cycle.1;
                 info.roll_counts.extend(cycle.2);
                 info.rng_seed.extend(cycle.3);
                 info.production_stats.extend(stats_iter);
             } else {
                 self.cycle_history.push_front(CycleInfo {
                     cycle: cycle.0,
-                    complete: if cycle.1 == 1 { true } else { false },
+                    complete: cycle.1,
                     roll_counts: cycle.2.into_iter().collect(),
                     rng_seed: cycle.3,
                     production_stats: stats_iter.collect(),
@@ -288,6 +294,7 @@ impl PoSFinalState {
                 .into_iter()
                 .map(|(slot, credits)| (slot, credits.into_iter().collect()))
                 .collect();
+            // IMPORTANT TODO: this overrides on changes of the same key, should extend sub-values as well
             self.deferred_credits.extend(sorted_credits);
             Ok(self.deferred_credits.last_key_value().map(|(k, _)| *k))
         } else {
