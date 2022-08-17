@@ -464,14 +464,14 @@ impl LedgerDB {
 
         let mut addresses = std::collections::BTreeMap::new();
         let address_deserializer = AddressDeserializer::new();
-        for (key, entry) in ledger {
+        for (key, entry) in ledger.iter().flatten() {
             let (rest, address) = address_deserializer
                 .deserialize::<DeserializeError>(&key[..])
                 .unwrap();
             if rest.first() == Some(&SEQ_BALANCE_IDENT) {
                 let (_, amount) = self
                     .amount_deserializer
-                    .deserialize::<DeserializeError>(&entry)
+                    .deserialize::<DeserializeError>(entry)
                     .unwrap();
                 addresses.insert(address, amount);
             }
