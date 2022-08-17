@@ -159,6 +159,7 @@ impl ActiveHistory {
                     .state_changes
                     .roll_state_changes
                     .deferred_credits
+                    .0
                     .range(slot..)
                     .filter_map(|(&slot, credits)| credits.get(addr).map(|&amount| (slot, amount)))
             })
@@ -177,6 +178,7 @@ impl ActiveHistory {
                     .state_changes
                     .roll_state_changes
                     .deferred_credits
+                    .0
                     .get(slot)
                     .cloned()
             })

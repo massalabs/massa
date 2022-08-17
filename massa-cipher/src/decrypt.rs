@@ -4,8 +4,8 @@
 //!
 //! Read `lib.rs` module documentation for more information.
 
-use aes_gcm::aead::{Aead, NewAead};
-use aes_gcm::{Aes256Gcm, Key, Nonce};
+use aes_gcm::aead::Aead;
+use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
 use pbkdf2::{
     password_hash::{PasswordHasher, SaltString},
     Pbkdf2,
@@ -55,7 +55,7 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<(u32, Vec<u8>), CipherErro
     })?);
 
     // decrypt the data
-    let cipher = Aes256Gcm::new(Key::from_slice(password_hash.as_bytes()));
+    let cipher = Aes256Gcm::new_from_slice(password_hash.as_bytes()).expect("invalid size key");
     let decrypted_bytes = cipher
         .decrypt(
             nonce,

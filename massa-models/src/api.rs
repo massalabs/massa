@@ -49,8 +49,8 @@ pub struct NodeStatus {
     pub next_slot: Slot,
     /// consensus stats
     pub consensus_stats: ConsensusStats,
-    /// pool stats
-    //pub pool_stats: PoolStats,
+    /// pool stats (operation count and endorsement count)
+    pub pool_stats: (usize, usize),
     /// network stats
     pub network_stats: NetworkStats,
     /// compact configuration

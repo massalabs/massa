@@ -314,7 +314,7 @@ async fn launch(
         pool: pool_manager.clone(),
         storage: shared_storage.clone(),
     };
-    let factory_manager = start_factory(factory_config, node_wallet, factory_channels);
+    let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
 
     // launch bootstrap server
     let bootstrap_manager = start_bootstrap_server(
@@ -337,6 +337,7 @@ async fn launch(
         execution_controller.clone(),
         &SETTINGS.api,
         consensus_config.clone(),
+        node_wallet,
     );
     let api_private_handle = api_private.serve(&SETTINGS.api.bind_private);
 
