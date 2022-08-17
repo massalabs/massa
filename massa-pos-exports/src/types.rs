@@ -77,7 +77,6 @@ impl PoSFinalState {
             production_stats,
         }) = self.cycle_history.get(cycle_index)
         {
-            println!("CYCLE: {}", cycle);
             // TODO: limit the whole info with CYCLE_INFO_SIZE_MESSAGE_BYTES
             u64_ser.serialize(cycle, &mut part)?;
             // TODO: consider serializing this boolean some other way
@@ -133,7 +132,6 @@ impl PoSFinalState {
         }
         // TODO: iterate in reverse order to avoid steaming credits that will be soon removed
         for (slot, credits) in self.deferred_credits.range((last_slot, Unbounded)) {
-            println!("SLOT {:?}", slot);
             // TODO: limit this with DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES
             // NOTE: above will prevent the use of lenght_count combinator, many0 did not do the job
             slot_ser.serialize(slot, &mut part)?;
@@ -155,7 +153,6 @@ impl PoSFinalState {
         &mut self,
         part: &'a [u8],
     ) -> Result<Option<u64>, ModelsError> {
-        println!("CYCLE PART: {:?}", part);
         if part.is_empty() {
             return Ok(None);
         }
@@ -205,8 +202,7 @@ impl PoSFinalState {
             )),
         )
         .parse(part)
-        .unwrap();
-        // .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
+        .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
         let stats_iter =
             cycle
                 .4
@@ -252,7 +248,6 @@ impl PoSFinalState {
         &mut self,
         part: &'a [u8],
     ) -> Result<Option<Slot>, ModelsError> {
-        println!("CREDITS PART: {:?}", part);
         if part.is_empty() {
             return Ok(None);
         }
@@ -287,8 +282,7 @@ impl PoSFinalState {
             ),
         )
         .parse(part)
-        .unwrap();
-        // .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
+        .map_err(|err| ModelsError::DeserializeError(err.to_string()))?;
         if rest.is_empty() {
             let sorted_credits: BTreeMap<Slot, Map<Address, Amount>> = credits
                 .into_iter()
@@ -306,7 +300,7 @@ impl PoSFinalState {
 }
 
 /// State of a cycle for all threads
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct CycleInfo {
     /// cycle number
     pub cycle: u64,
@@ -321,7 +315,7 @@ pub struct CycleInfo {
 }
 
 /// Block production statistic
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ProductionStats {
     /// Number of successfully created blocks
     pub block_success_count: u64,
