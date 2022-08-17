@@ -131,6 +131,7 @@ impl PoSFinalState {
         {
             u64_ser.serialize(&(self.deferred_credits.len() as u64), &mut part)?;
         }
+        // TODO: iterate in reverse order to avoid steaming credits that will be soon removed
         for (slot, credits) in self.deferred_credits.range((last_slot, Unbounded)) {
             println!("SLOT {:?}", slot);
             // TODO: limit this with DEFERRED_CREDITS_PART_SIZE_MESSAGE_BYTES
@@ -154,7 +155,10 @@ impl PoSFinalState {
         &mut self,
         part: &'a [u8],
     ) -> Result<Option<u64>, ModelsError> {
-        println!("C PART: {:?}", part);
+        println!("CYCLE PART: {:?}", part);
+        if part.is_empty() {
+            return Ok(None);
+        }
         let u64_deser = U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX));
         let bitvec_deser = BitVecDeserializer::new();
         let address_deser = AddressDeserializer::new();
@@ -248,7 +252,10 @@ impl PoSFinalState {
         &mut self,
         part: &'a [u8],
     ) -> Result<Option<Slot>, ModelsError> {
-        println!("D PART: {:?}", part);
+        println!("CREDITS PART: {:?}", part);
+        if part.is_empty() {
+            return Ok(None);
+        }
         let amount_deser = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
         let slot_deser = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
