@@ -269,6 +269,7 @@ impl LedgerDB {
                 opt,
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
+            .flatten()
             .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
             .collect()
     }
@@ -340,11 +341,15 @@ impl LedgerDB {
         // datastore
         let mut opt = ReadOptions::default();
         opt.set_iterate_upper_bound(end_prefix(data_prefix!(addr)).unwrap());
-        for (key, _) in self.db.iterator_cf_opt(
-            handle,
-            opt,
-            IteratorMode::From(data_prefix!(addr), Direction::Forward),
-        ) {
+        for (key, _) in self
+            .db
+            .iterator_cf_opt(
+                handle,
+                opt,
+                IteratorMode::From(data_prefix!(addr), Direction::Forward),
+            )
+            .flatten()
+        {
             batch.delete_cf(handle, key);
         }
     }
@@ -382,13 +387,15 @@ impl LedgerDB {
         let mut last_key = None;
 
         // Iterates over the whole database
-        for (key, entry) in db_iterator {
-            if (part.len() as u64) < (LEDGER_PART_SIZE_MESSAGE_BYTES) {
-                key_serializer.serialize(&key.to_vec(), &mut part)?;
-                ser.serialize(&entry.to_vec(), &mut part)?;
-                last_key = Some(key.to_vec());
-            } else {
-                break;
+        for res in db_iterator {
+            if let Ok((key, entry)) = res {
+                if (part.len() as u64) < (LEDGER_PART_SIZE_MESSAGE_BYTES) {
+                    key_serializer.serialize(&key.to_vec(), &mut part)?;
+                    ser.serialize(&entry.to_vec(), &mut part)?;
+                    last_key = Some(key.to_vec());
+                } else {
+                    break;
+                }
             }
         }
         Ok((part, last_key))
@@ -494,6 +501,7 @@ impl LedgerDB {
                 opt,
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
+            .flatten()
             .map(|(key, data)| {
                 (
                     key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),

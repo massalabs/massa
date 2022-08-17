@@ -17,7 +17,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 parking_lot = "0.12"
-tokio = { version = "1.19", features = ["full"] }
+tokio = { version = "1.20", features = ["full"] }
 tracing = "0.1"
 
 # custom modules
@@ -37,7 +37,7 @@ massa_pos_exports = { path = "../massa-pos-exports" }
 
 [dev-dependencies]
 bitvec = { version = "1.0", features = ["serde"] }
-serial_test = "0.8"
+serial_test = "0.9"
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
 massa_ledger_worker = { path = "../massa-ledger-worker", features = [

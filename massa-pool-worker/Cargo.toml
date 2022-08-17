@@ -13,9 +13,9 @@ massa_pool_exports = { path = "../massa-pool-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 
 [dev-dependencies]
-serial_test = "0.8"
-tokio = { version = "1.19", features = ["full"] }
-lazy_static = "1.4.0"
+serial_test = "0.9"
+tokio = { version = "1.20", features = ["full"] }
+lazy_static = "1.4"
 massa_signature = { path = "../massa-signature" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_hash = { path = "../massa-hash" }
