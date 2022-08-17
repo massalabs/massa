@@ -48,15 +48,15 @@ impl PoSFinalState {
         cursor: Option<u64>,
     ) -> Result<(Vec<u8>, Option<u64>, Option<bool>), ModelsError> {
         let cycle_index = if let Some(last_cycle) = cursor {
-            if let Some(mut index) = self
+            if let Some(index) = self
                 .cycle_history
                 .iter()
                 .position(|cycle| cycle.cycle == last_cycle)
             {
-                if self.cycle_history.get(index).unwrap().complete {
-                    index = index.saturating_add(1);
+                if index == 0 {
+                    return Ok((Vec::default(), None, None));
                 }
-                index
+                index.saturating_sub(1)
             } else {
                 return Ok((Vec::default(), None, None));
             }

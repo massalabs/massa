@@ -17,3 +17,6 @@ pub use controller_traits::{SelectorController, SelectorManager};
 pub use error::*;
 pub use settings::SelectorConfig;
 pub use types::*;
+
+#[cfg(feature = "testing")]
+pub mod test_exports;
