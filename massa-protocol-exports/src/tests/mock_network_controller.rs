@@ -1,11 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{
-    constants::CHANNEL_SIZE,
-    node::NodeId,
-    operation::{OperationIds, Operations},
-};
-use massa_models::{BlockId, WrappedEndorsement, WrappedHeader};
+use massa_models::{constants::CHANNEL_SIZE, node::NodeId, prehash::Set, OperationId};
+use massa_models::{BlockId, WrappedEndorsement, WrappedHeader, WrappedOperation};
 use massa_network_exports::{
     AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkCommandSender, NetworkEvent,
     NetworkEventReceiver,
@@ -83,7 +79,11 @@ impl MockNetworkController {
 
     /// send operations
     /// todo inconsistency with names
-    pub async fn send_operations(&mut self, source_node_id: NodeId, operations: Operations) {
+    pub async fn send_operations(
+        &mut self,
+        source_node_id: NodeId,
+        operations: Vec<WrappedOperation>,
+    ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
                 node: source_node_id,
@@ -98,7 +98,7 @@ impl MockNetworkController {
     pub async fn send_operation_batch(
         &mut self,
         source_node_id: NodeId,
-        operation_ids: OperationIds,
+        operation_ids: Set<OperationId>,
     ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperationAnnouncements {
@@ -114,7 +114,7 @@ impl MockNetworkController {
     pub async fn send_ask_for_operation(
         &mut self,
         source_node_id: NodeId,
-        operation_ids: OperationIds,
+        operation_ids: Set<OperationId>,
     ) {
         self.network_event_tx
             .send(NetworkEvent::ReceiveAskForOperations {

@@ -268,7 +268,7 @@ impl Storage {
         // insert block
         self.operations
             .write()
-            .link_operations_with_block(&id, &block.content.operations);
+            .link_operations_with_block(&id, &block.content.operations.iter().cloned().collect());
         self.endorsements.write().link_endorsements_with_block(
             &id,
             &block
@@ -359,7 +359,7 @@ impl Storage {
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
             let mut ops = self.operations.write();
-            ops.batch_remove(orphaned_ids);
+            ops.batch_remove(orphaned_ids.into_iter().collect());
         }
     }
 

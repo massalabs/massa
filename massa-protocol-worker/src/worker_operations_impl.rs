@@ -14,8 +14,9 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
-    operation::{OperationIds, OperationPrefixIds, Operations},
-    prehash::BuildMap,
+    operation::OperationPrefixIds,
+    prehash::{BuildMap, Set},
+    WrappedOperation,
 };
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
@@ -132,7 +133,11 @@ impl ProtocolWorker {
     /// - Update the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
-    pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
+    pub(crate) async fn on_operations_received(
+        &mut self,
+        node_id: NodeId,
+        operations: Vec<WrappedOperation>,
+    ) {
         if self
             .note_operations_from_node(operations, &node_id, None)
             .await
@@ -197,7 +202,7 @@ impl ProtocolWorker {
         node_id: NodeId,
         op_pre_ids: OperationPrefixIds,
     ) -> Result<(), ProtocolError> {
-        let mut req_operation_ids = OperationIds::default();
+        let mut req_operation_ids = Set::default();
         for prefix in op_pre_ids {
             if let Some(op_id) = self.checked_operations.get(&prefix) {
                 req_operation_ids.insert(*op_id);

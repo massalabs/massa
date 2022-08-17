@@ -914,12 +914,10 @@ impl WrappedOperation {
     }
 }
 
-/// Set of operation ids
-pub type OperationIds = Set<OperationId>;
 /// Set of operation id's prefix
 pub type OperationPrefixIds = Set<OperationPrefixId>;
 
-/// Serializer for `OperationIds`
+/// Serializer for `Set<OperationId>`
 pub struct OperationIdsSerializer {
     u32_serializer: U32VarIntSerializer,
 }
@@ -939,22 +937,28 @@ impl Default for OperationIdsSerializer {
     }
 }
 
-impl Serializer<OperationIds> for OperationIdsSerializer {
+impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
     /// ## Example:
     /// ```
-    /// use massa_models::{OperationIds, OperationId, OperationIdsSerializer};
+    /// use massa_models::{OperationId, OperationIdsSerializer};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     ///
-    /// let mut operations_ids = OperationIds::default();
-    /// operations_ids.insert(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
-    /// operations_ids.insert(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// let mut operations_ids = Vec::new();
+    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
     /// let mut buffer = Vec::new();
     /// OperationIdsSerializer::new().serialize(&operations_ids, &mut buffer).unwrap();
     /// ```
-    fn serialize(&self, value: &OperationIds, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+    fn serialize(
+        &self,
+        value: &Vec<OperationId>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         let list_len: u32 = value.len().try_into().map_err(|_| {
-            SerializeError::NumberTooBig("could not encode OperationIds list length as u32".into())
+            SerializeError::NumberTooBig(
+                "could not encode Set<OperationId> list length as u32".into(),
+            )
         })?;
         self.u32_serializer.serialize(&list_len, buffer)?;
         for hash in value {
@@ -964,7 +968,7 @@ impl Serializer<OperationIds> for OperationIdsSerializer {
     }
 }
 
-/// Deserializer for `OperationIds`
+/// Deserializer for `Set<OperationId>`
 pub struct OperationIdsDeserializer {
     length_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
@@ -983,16 +987,16 @@ impl OperationIdsDeserializer {
     }
 }
 
-impl Deserializer<OperationIds> for OperationIdsDeserializer {
+impl Deserializer<Vec<OperationId>> for OperationIdsDeserializer {
     /// ## Example:
     /// ```
-    /// use massa_models::{OperationIds, OperationId, OperationIdsSerializer, OperationIdsDeserializer};
+    /// use massa_models::{OperationId, OperationIdsSerializer, OperationIdsDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let mut operations_ids = OperationIds::default();
-    /// operations_ids.insert(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
-    /// operations_ids.insert(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// let mut operations_ids = Vec::new();
+    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
+    /// operations_ids.push(OperationId::from_str("2AGSu2kBG9FZ649h18F82CYfsymkhVH2epMafMN2sPZNBQXTrz").unwrap());
     /// let mut buffer = Vec::new();
     /// OperationIdsSerializer::new().serialize(&operations_ids, &mut buffer).unwrap();
     /// let (rest, deserialized_operations_ids) = OperationIdsDeserializer::new(1000).deserialize::<DeserializeError>(&buffer).unwrap();
@@ -1002,9 +1006,9 @@ impl Deserializer<OperationIds> for OperationIdsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], OperationIds, E> {
+    ) -> IResult<&'a [u8], Vec<OperationId>, E> {
         context(
-            "Failed OperationIds deserialization",
+            "Failed Set<OperationId> deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.length_deserializer.deserialize(input)
@@ -1154,7 +1158,9 @@ impl Serializer<OperationPrefixIds> for OperationPrefixIdsSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         let list_len: u32 = value.len().try_into().map_err(|_| {
-            SerializeError::NumberTooBig("could not encode OperationIds list length as u32".into())
+            SerializeError::NumberTooBig(
+                "could not encode Set<OperationId> list length as u32".into(),
+            )
         })?;
         self.u32_serializer.serialize(&list_len, buffer)?;
         for prefix in value {
@@ -1163,9 +1169,6 @@ impl Serializer<OperationPrefixIds> for OperationPrefixIdsSerializer {
         Ok(())
     }
 }
-
-/// Set of self containing signed operations.
-pub type Operations = Vec<WrappedOperation>;
 
 /// Serializer for `Operations`
 pub struct OperationsSerializer {
@@ -1189,10 +1192,10 @@ impl Default for OperationsSerializer {
     }
 }
 
-impl Serializer<Operations> for OperationsSerializer {
+impl Serializer<Vec<WrappedOperation>> for OperationsSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{WrappedOperation, wrapped::WrappedContent, OperationSerializer, Address, Amount, Operations, Operation, OperationType, OperationsSerializer};
+    /// use massa_models::{WrappedOperation, wrapped::WrappedContent, OperationSerializer, Address, Amount, Operation, OperationType, OperationsSerializer};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -1212,7 +1215,11 @@ impl Serializer<Operations> for OperationsSerializer {
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
     /// ```
-    fn serialize(&self, value: &Operations, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+    fn serialize(
+        &self,
+        value: &Vec<WrappedOperation>,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         let list_len: u32 = value.len().try_into().map_err(|_| {
             SerializeError::NumberTooBig("could not encode Operations list length as u32".into())
         })?;
@@ -1252,10 +1259,10 @@ impl OperationsDeserializer {
     }
 }
 
-impl Deserializer<Operations> for OperationsDeserializer {
+impl Deserializer<Vec<WrappedOperation>> for OperationsDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{WrappedOperation, wrapped::WrappedContent, OperationSerializer, Address, Amount, Operations, Operation, OperationType, OperationsSerializer, OperationsDeserializer};
+    /// use massa_models::{WrappedOperation, wrapped::WrappedContent, OperationSerializer, Address, Amount, Operation, OperationType, OperationsSerializer, OperationsDeserializer};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -1285,7 +1292,7 @@ impl Deserializer<Operations> for OperationsDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Operations, E> {
+    ) -> IResult<&'a [u8], Vec<WrappedOperation>, E> {
         context(
             "Failed Operations deserialization",
             length_count(

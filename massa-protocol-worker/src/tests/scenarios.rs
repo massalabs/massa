@@ -257,7 +257,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 .map(|endo| endo.id)
                 .collect();
             protocol_command_sender
-                .integrated_block(ref_hash, op_ids, endo_ids)
+                .integrated_block(ref_hash, op_ids.into_iter().collect(), endo_ids)
                 .await
                 .expect("Failed to ask for block.");
 

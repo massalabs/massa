@@ -79,9 +79,10 @@ impl EventSender {
 pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
+    use massa_models::WrappedOperation;
     use massa_models::{
-        node::NodeId, operation::OperationPrefixIds, operation::Operations, wrapped::Id, BlockId,
-        WrappedEndorsement, WrappedHeader,
+        node::NodeId, operation::OperationPrefixIds, wrapped::Id, BlockId, WrappedEndorsement,
+        WrappedHeader,
     };
     use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NodeCommand};
     use massa_network_exports::{NetworkError, NetworkEvent};
@@ -192,7 +193,7 @@ pub mod event_impl {
     pub async fn on_received_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operations: Operations,
+        operations: Vec<WrappedOperation>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
