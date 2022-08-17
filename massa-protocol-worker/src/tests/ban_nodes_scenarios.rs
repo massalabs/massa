@@ -306,7 +306,6 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
@@ -334,14 +333,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
             let expected_hash = block.id;
 
-            // 3. Simulate two nodes asking for a block.
-            for node in nodes.iter().take(2) {
-                network_controller
-                    .send_ask_for_block(node.id, vec![(expected_hash, Default::default())])
-                    .await;
-            }
-
-            // Get one node banned.
+            // 3. Get one node banned.
             let mut bad_block = tools::create_block(&nodes[1].keypair);
             bad_block.content.header.content.slot = Slot::new(1, 1);
             network_controller
@@ -349,7 +341,14 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
                 .await;
             tools::assert_banned_nodes(vec![nodes[1].id], &mut network_controller).await;
 
-            // 4. Check that protocol sends the non-banned node the full block.
+            // 4. Simulate two nodes asking for a block.
+            for node in nodes.iter().take(2) {
+                network_controller
+                    .send_ask_for_block(node.id, vec![(expected_hash, Default::default())])
+                    .await;
+            }
+
+            // 5. Check that protocol sends the non-banned node the full block.
             let mut expecting_block = HashSet::new();
             expecting_block.insert(nodes[0].id);
             loop {
