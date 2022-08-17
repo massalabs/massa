@@ -11,8 +11,8 @@ use massa_models::{slot::SlotSerializer, Slot, Version};
 use massa_models::{VecU8Deserializer, VecU8Serializer, VersionDeserializer, VersionSerializer};
 use massa_network_exports::{BootstrapPeers, BootstrapPeersDeserializer, BootstrapPeersSerializer};
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
-    U64VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
@@ -457,13 +457,13 @@ enum MessageClientTypeId {
 }
 
 /// Serializer for `BootstrapClientMessage`
-#[derive(Default)]
 pub struct BootstrapClientMessageSerializer {
     u32_serializer: U32VarIntSerializer,
-    u64_serializer: U64VarIntSerializer,
     slot_serializer: SlotSerializer,
     async_message_id_serializer: AsyncMessageIdSerializer,
     key_serializer: KeySerializer,
+    opt_u64_serializer: OptionSerializer<u64, U64VarIntSerializer>,
+    opt_slot_serializer: OptionSerializer<Slot, SlotSerializer>,
 }
 
 impl BootstrapClientMessageSerializer {
@@ -471,10 +471,11 @@ impl BootstrapClientMessageSerializer {
     pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
-            u64_serializer: U64VarIntSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             async_message_id_serializer: AsyncMessageIdSerializer::new(),
             key_serializer: KeySerializer::new(),
+            opt_u64_serializer: OptionSerializer::new(U64VarIntSerializer::new()),
+            opt_slot_serializer: OptionSerializer::new(SlotSerializer::new()),
         }
     }
 }
@@ -521,16 +522,8 @@ impl Serializer<BootstrapClientMessage> for BootstrapClientMessageSerializer {
                     self.key_serializer.serialize(key, buffer)?;
                     self.slot_serializer.serialize(slot, buffer)?;
                     self.async_message_id_serializer.serialize(last_async_message_id, buffer)?;
-                    if let Some(cycle) = last_cycle {
-                        self.u64_serializer.serialize(cycle, buffer)?;
-                    } else {
-                        buffer.push(b'0');
-                    }
-                    if let Some(credits_slot) = last_credits_slot {
-                        self.slot_serializer.serialize(credits_slot, buffer)?;
-                    } else {
-                        buffer.push(b'1');
-                    }
+                    self.opt_u64_serializer.serialize(last_cycle, buffer)?;
+                    self.opt_slot_serializer.serialize(last_credits_slot, buffer)?;
                 }
             }
             BootstrapClientMessage::BootstrapError { error } => {
@@ -560,6 +553,8 @@ pub struct BootstrapClientMessageDeserializer {
     async_message_id_deserializer: AsyncMessageIdDeserializer,
     length_error_deserializer: U32VarIntDeserializer,
     key_deserializer: KeyDeserializer,
+    opt_u64_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
+    opt_slot_deserializer: OptionDeserializer<Slot, SlotDeserializer>,
 }
 
 impl BootstrapClientMessageDeserializer {
@@ -574,6 +569,14 @@ impl BootstrapClientMessageDeserializer {
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
             key_deserializer: KeyDeserializer::new(max_datastore_key_length),
             length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(100000)),
+            opt_u64_deserializer: OptionDeserializer::new(U64VarIntDeserializer::new(
+                Included(0),
+                Included(100000),
+            )),
+            opt_slot_deserializer: OptionDeserializer::new(SlotDeserializer::new(
+                (Included(0), Included(u64::MAX)),
+                (Included(0), Excluded(thread_count)),
+            )),
         }
     }
 }
@@ -646,17 +649,30 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             context("Failed async_message_id deserialization", |input| {
                                 self.async_message_id_deserializer.deserialize(input)
                             }),
+                            context("Failed cycle deserialization", |input| {
+                                self.opt_u64_deserializer.deserialize(input)
+                            }),
+                            context("Failed credits_slot deserialization", |input| {
+                                self.opt_slot_deserializer.deserialize(input)
+                            }),
                         ))
-                        .map(|(last_key, slot, last_async_message_id)| {
-                            BootstrapClientMessage::AskFinalStatePart {
-                                last_key: Some(last_key),
-                                slot: Some(slot),
-                                last_async_message_id: Some(last_async_message_id),
-                                last_cycle: None,
-                                last_credits_slot: None,
-                            }
-                            // IMPORTANT TODO: DESER BOTH
-                        })
+                        .map(
+                            |(
+                                last_key,
+                                slot,
+                                last_async_message_id,
+                                last_cycle,
+                                last_credits_slot,
+                            )| {
+                                BootstrapClientMessage::AskFinalStatePart {
+                                    last_key: Some(last_key),
+                                    slot: Some(slot),
+                                    last_async_message_id: Some(last_async_message_id),
+                                    last_cycle,
+                                    last_credits_slot,
+                                }
+                            },
+                        )
                         .parse(input)
                     }
                 }
