@@ -5,7 +5,7 @@ use crate::settings::APISettings;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
-use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig, ConsensusError};
+use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
@@ -20,9 +20,7 @@ use massa_models::constants::default::{
 use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
-use massa_models::{
-    Amount, ModelsError, OperationSearchResult, WrappedEndorsement, WrappedOperation,
-};
+use massa_models::{Amount, ModelsError, WrappedOperation};
 use massa_pos_exports::SelectorController;
 use massa_serialization::{DeserializeError, Deserializer};
 
@@ -267,7 +265,7 @@ impl Endpoints for API<Public> {
         let version = self.0.version;
         let consensus_settings = self.0.consensus_config.clone();
         let compensation_millis = self.0.compensation_millis;
-        let mut pool_command_sender = self.0.pool_command_sender.clone();
+        let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
         let closure = async move || {
@@ -282,8 +280,6 @@ impl Endpoints for API<Public> {
             let (consensus_stats, network_stats, peers) = tokio::join!(
                 consensus_command_sender.get_stats(),
                 network_command_sender.get_network_stats(),
-                //TODO: https://github.com/massalabs/massa/issues/2870
-                //pool_command_sender.get_pool_stats(),
                 network_command_sender.get_peers()
             );
             Ok(NodeStatus {
@@ -306,7 +302,7 @@ impl Endpoints for API<Public> {
                     .get_next_slot(consensus_settings.thread_count)?,
                 consensus_stats: consensus_stats?,
                 network_stats: network_stats?,
-                //pool_stats: pool_stats?,
+                pool_stats: pool_command_sender.get_stats(),
                 config,
                 current_cycle: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
@@ -352,7 +348,7 @@ impl Endpoints for API<Public> {
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
         let api_cfg = self.0.api_settings;
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let mut pool_command_sender = self.0.pool_command_sender.clone();
+        let pool_command_sender = self.0.pool_command_sender.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
@@ -360,31 +356,25 @@ impl Endpoints for API<Public> {
 
             let operation_ids: Set<OperationId> = ops.iter().cloned().collect();
 
-            // simultaneously ask pool and consensus
-            let (pool_res, consensus_res): (
-                Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError>,
-                Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError>,
-            ) = tokio::join!(
-                //TOxDO: https://github.com/massalabs/massa/issues/2866
-                //pool_command_sender.get_operations(operation_ids.clone()),
-                async { Ok((Map::default(), Storage::default())) },
-                consensus_command_sender.get_operations(operation_ids)
-            );
-            let (pool_res, consensus_res) = (pool_res?, consensus_res?);
+            // ask pool and consensus
+            let pool_res = pool_command_sender.get_operations_by_ids(&operation_ids);
+            let consensus_res = consensus_command_sender
+                .get_operations(operation_ids)
+                .await?;
             let mut res: Map<OperationId, OperationInfo> = Map::with_capacity_and_hasher(
-                pool_res.0.len() + consensus_res.0.len(),
+                pool_res.len() + consensus_res.0.len(),
                 BuildMap::default(),
             );
 
             // add pool info
-            res.extend(pool_res.0.into_iter().map(|(id, operation)| {
+            res.extend(pool_res.into_iter().map(|operation| {
                 (
-                    id,
+                    operation.id,
                     OperationInfo {
-                        operation: operation.op,
+                        id: operation.id,
+                        operation,
                         in_pool: true,
                         in_blocks: Vec::new(),
-                        id,
                         is_final: false,
                     },
                 )
@@ -428,22 +418,20 @@ impl Endpoints for API<Public> {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
             let mapped: Set<EndorsementId> = eds.into_iter().collect();
-            let mut res = consensus_command_sender
-                .get_endorsements_by_id(mapped.clone())
-                .await?;
-            //TODO: https://github.com/massalabs/massa/issues/2866
-            // for (id, endorsement) in pool_command_sender.get_endorsements_by_id(mapped).await? {
-            //     res.entry(id)
-            //         .and_modify(|EndorsementInfo { in_pool, .. }| *in_pool = true)
-            //         .or_insert(EndorsementInfo {
-            //             id,
-            //             in_pool: true,
-            //             in_blocks: vec![],
-            //             is_final: false,
-            //             endorsement,
-            //         });
-            // }
-            Ok(res.0.values().cloned().collect())
+
+            let mut res: Map<EndorsementId, EndorsementInfo> = consensus_command_sender
+                .get_endorsements_by_id(mapped)
+                .await?
+                .0;
+
+            let pool_set = pool_command_sender.get_endorsement_ids();
+
+            pool_set.into_iter().for_each(|id| {
+                res.entry(id)
+                    .and_modify(|EndorsementInfo { in_pool, .. }| *in_pool = true);
+            });
+
+            Ok(res.values().cloned().collect())
         };
         Box::pin(closure())
     }
@@ -571,11 +559,10 @@ impl Endpoints for API<Public> {
         let cmd_sender = self.0.consensus_command_sender.clone();
         let cfg = self.0.consensus_config.clone();
         let api_cfg = self.0.api_settings;
-        let pool_command_sender = self.0.pool_command_sender.clone();
         let execution_controller = self.0.execution_controller.clone();
-        let compensation_millis = self.0.compensation_millis.clone();
+        let compensation_millis = self.0.compensation_millis;
         let selector_controller = self.0.selector_controller.clone();
-
+        let storage = self.0.storage.clone();
         let closure = async move || {
             let mut res = Vec::with_capacity(addresses.len());
 
@@ -606,43 +593,30 @@ impl Endpoints for API<Public> {
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
 
             let mut concurrent_getters = FuturesUnordered::new();
+
             for &address in addresses.iter() {
-                let mut pool_cmd_snd = pool_command_sender.clone();
                 let cmd_snd = cmd_sender.clone();
                 let exec_snd = execution_controller.clone();
+                let c_storage = storage.clone();
                 concurrent_getters.push(async move {
                     let blocks = cmd_snd
                         .get_block_ids_by_creator(address)
                         .await?
                         .into_keys()
                         .collect::<Set<BlockId>>();
-                    //TODO: https://github.com/massalabs/massa/issues/2866
-                    // let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
-                    let get_pool_ops = async { Ok((Map::default(), Storage::default())) };
-                    let get_consensus_ops = cmd_snd.get_operations_involving_address(address);
-                    let (get_pool_ops, get_consensus_ops): (
-                        Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError>,
-                        Result<(Map<OperationId, OperationSearchResult>, Storage), ConsensusError>,
-                    ) = tokio::join!(get_pool_ops, get_consensus_ops);
-                    let gathered: Set<OperationId> = get_pool_ops?
-                        .0
-                        .into_keys()
-                        .chain(get_consensus_ops?.0.into_keys())
-                        .collect();
+                    // TODO specify if operations/endorsements are in pool or consensus (follow up)
 
-                    //TODO: https://github.com/massalabs/massa/issues/2866
-                    //let get_pool_eds = pool_cmd_snd.get_endorsements_by_address(address);
-                    let get_pool_eds = async { Ok((Map::default(), Storage::default())) };
-                    let get_consensus_eds = cmd_snd.get_endorsements_by_address(address);
-                    let (get_pool_eds, get_consensus_eds): (
-                        Result<(Map<EndorsementId, WrappedEndorsement>, Storage), ConsensusError>,
-                        Result<(Map<EndorsementId, WrappedEndorsement>, Storage), ConsensusError>,
-                    ) = tokio::join!(get_pool_eds, get_consensus_eds);
-                    let gathered_ed: Set<EndorsementId> = get_pool_eds?
-                        .0
-                        .into_keys()
-                        .chain(get_consensus_eds?.0.into_keys())
-                        .collect();
+                    let operations = c_storage
+                        .get_operation_indexes()
+                        .read()
+                        .get_operations_created_by(&address);
+                    let gathered: Set<OperationId> = operations.into_iter().collect();
+
+                    let endorsements = c_storage
+                        .get_endorsement_indexes()
+                        .read()
+                        .get_endorsements_created_by(&address);
+                    let gathered_ed: Set<EndorsementId> = endorsements.into_iter().collect();
 
                     let balances = exec_snd.get_final_and_active_parallel_balance(vec![address]);
                     let balances_result = balances.first().unwrap();

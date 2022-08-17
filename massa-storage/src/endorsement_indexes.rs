@@ -74,7 +74,7 @@ impl EndorsementIndexes {
     ///
     /// Returns:
     /// - the endorsements created by the address
-    pub fn _get_endorsements_created_by(&self, address: &Address) -> Vec<EndorsementId> {
+    pub fn get_endorsements_created_by(&self, address: &Address) -> Vec<EndorsementId> {
         match self.index_by_creator.get(address) {
             Some(endorsements) => endorsements.iter().cloned().collect(),
             None => Vec::new(),

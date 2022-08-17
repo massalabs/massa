@@ -1657,6 +1657,7 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "massa_wallet",
  "serde 1.0.143",
  "thiserror",
  "tokio",
