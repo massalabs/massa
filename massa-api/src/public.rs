@@ -21,7 +21,7 @@ use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
 use massa_models::{
-    Amount, ModelsError, OperationSearchResult, WrappedEndorsement, WrappedOperation,
+    Amount, Block, ModelsError, OperationSearchResult, WrappedEndorsement, WrappedOperation,
 };
 use massa_pos_exports::SelectorController;
 use massa_serialization::{DeserializeError, Deserializer};
@@ -481,6 +481,30 @@ impl Endpoints for API<Public> {
                 })
             } else {
                 Ok(BlockInfo { id, content: None })
+            }
+        };
+        Box::pin(closure())
+    }
+
+    fn get_block_in_blockclique_by_slot(
+        &self,
+        slot: Slot,
+    ) -> BoxFuture<Result<Option<Block>, ApiError>> {
+        let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let closure = async move || {
+            let block_id = consensus_command_sender.get_blockclique_block_at_slot(slot)?;
+            if let Some(id) = block_id {
+                match consensus_command_sender.get_block_status(id).await? {
+                    Some(ExportBlockStatus::Active(block)) => Ok(Some(block)),
+                    Some(ExportBlockStatus::Incoming) => Ok(None),
+                    Some(ExportBlockStatus::WaitingForSlot) => Ok(None),
+                    Some(ExportBlockStatus::WaitingForDependencies) => Ok(None),
+                    Some(ExportBlockStatus::Discarded(_)) => Ok(None),
+                    Some(ExportBlockStatus::Final(block)) => Ok(Some(block)),
+                    None => Ok(None),
+                }
+            } else {
+                Ok(None)
             }
         };
         Box::pin(closure())

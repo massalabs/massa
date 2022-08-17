@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC",
-        "version": "TEST.13.0",
+        "version": "TEST.14.0",
         "description": "Massa OpenRPC spec",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -69,11 +69,11 @@
             ],
             "params": [
                 {
-                    "name": "ReadOnlyCall",
+                    "name": "ReadOnlyBytecodeExecution",
                     "schema": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/ReadOnlyCall"
+                            "$ref": "#/components/schemas/ReadOnlyBytecodeExecution"
                         }
                     }
                 }
@@ -110,9 +110,13 @@
                 }
             ],
             "result": {
-                "name": "No return",
-                "description": "No return.",
-                "schema": false
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/ExecuteReadOnlyResponse"
+                    }
+                },
+                "name": "ExecuteReadOnlyResponse(s)"
             },
             "name": "execute_read_only_call",
             "summary": "Call a function of a contract in a read only context",
@@ -161,13 +165,9 @@
             "params": [
                 {
                     "name": "blockId",
-                    "description": "Block IDs",
-                    "schema": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
+                    "description": "Block ID",
+                    "schema": false,
+                    "summary": "string",
                     "required": true
                 }
             ],
@@ -188,6 +188,34 @@
                     "description": "Massa public api"
                 }
             ],
+            "params": [
+                {
+                    "name": "slot",
+                    "description": "Slot of the block",
+                    "schema": {
+                        "type": "object",
+                        "$ref": "#/components/schemas/ExecutedAt"
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "$ref": "#/components/schemas/Block"
+                },
+                "name": "Block"
+            },
+            "name": "get_block_in_blockclique_by_slot",
+            "summary": "Get a block in the blockclique",
+            "description": "Get the block in the blockclique that is associated to the slot"
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
             "params": [],
             "result": {
                 "schema": {
@@ -200,7 +228,7 @@
             },
             "name": "get_cliques",
             "summary": "Get cliques",
-            "description": "Returns operations information associated to a given list of operations’ IDs."
+            "description": "Returns informations about cliques."
         },
         {
             "tags": [
@@ -449,7 +477,11 @@
                     "name": "privateKey",
                     "description": "The strings must be private keys",
                     "schema": {
-                        "type": "string"
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "description": "Private key"
+                        }
                     },
                     "required": true
                 }
@@ -459,7 +491,7 @@
                 "description": "No return.",
                 "schema": false
             },
-            "name": "node_add_staking_private_keys",
+            "name": "add_staking_secret_keys",
             "summary": "Add a vec of new private keys for the node to use to stake",
             "description": "Add a vec of new private keys for the node to use to stake."
         },
@@ -475,13 +507,14 @@
                 "schema": {
                     "type": "array",
                     "items": {
+                        "description": "address",
                         "type": "string"
                     }
                 },
                 "description": "The strings are addresses.",
                 "name": "Address(es)"
             },
-            "name": "node_get_staking_addresses",
+            "name": "get_staking_addresses",
             "summary": "Return hashset of staking addresses",
             "description": "Return hashset of staking addresses."
         },
@@ -559,6 +592,7 @@
                     "schema": {
                         "type": "array",
                         "items": {
+                            "description": "Ip address",
                             "type": "string"
                         }
                     },
@@ -583,11 +617,12 @@
             ],
             "params": [
                 {
-                    "name": "privateKey",
-                    "description": "The strings must be private keys",
+                    "name": "addresses",
+                    "description": "The strings must addresses",
                     "schema": {
                         "type": "array",
                         "items": {
+                            "description": "Address",
                             "type": "string"
                         }
                     },
@@ -599,7 +634,7 @@
                 "description": "No return.",
                 "schema": false
             },
-            "name": "node_remove_staking_addresses",
+            "name": "remove_staking_addresses",
             "summary": "Remove a vec of addresses used to stake",
             "description": "Remove a vec of addresses used to stake."
         },
@@ -615,7 +650,7 @@
                     "name": "nodeKey",
                     "description": "Byte array",
                     "schema": {
-                        "type": "string"
+                        "type": "array"
                     },
                     "required": true
                 }
@@ -643,7 +678,7 @@
                 "description": "No return.",
                 "schema": false
             },
-            "name": "node_stop",
+            "name": "stop_node",
             "summary": "Gracefully stop the node",
             "description": "Gracefully stop the node."
         },
@@ -661,6 +696,7 @@
                     "schema": {
                         "type": "array",
                         "items": {
+                            "description": "Ip address",
                             "type": "string"
                         }
                     },
@@ -690,6 +726,7 @@
                     "schema": {
                         "type": "array",
                         "items": {
+                            "description": "Ip address",
                             "type": "string"
                         }
                     },
@@ -719,6 +756,7 @@
                     "schema": {
                         "type": "array",
                         "items": {
+                            "description": "ip address",
                             "type": "string"
                         }
                     },
@@ -794,7 +832,7 @@
                 "additionalProperties": false
             },
             "ExecutedAt": {
-                "title": "ExecutedAt",
+                "title": "Slot",
                 "required": [
                     "period",
                     "thread"
@@ -813,12 +851,17 @@
             "OutputEvent": {
                 "title": "OutputEvent",
                 "required": [
-                    "id1"
+                    "context",
+                    "data"
                 ],
+                
                 "type": "object",
                 "properties": {
-                    "id1": {
-                        "$ref": "#/components/schemas/EventId"
+                    "context": {
+                        "$ref": "#/components/schemas/SCOEContext"
+                    },
+                    "data": {
+                        "type": "string"
                     }
                 },
                 "additionalProperties": false
@@ -861,6 +904,35 @@
                 },
                 "additionalProperties": false
             },
+            "ReadOnlyBytecodeExecution": {
+                "title": "ReadOnlyBytecodeExecution",
+                "description": "Read only bytecode execution",
+                "required": [
+                    "max_gas",
+                    "simulated_gas_price",
+                    "bytecode"
+                ],
+                "type": "object",
+                "properties": {
+                    "max_gas": {
+                        "description": "Max available gas",
+                        "type": "number"
+                    },
+                    "simulated_gas_price": {
+                        "description": "Gas price",
+                        "type": "number"
+                    },
+                    "bytecode": {
+                        "description": "Bytecode to execute",
+                        "type": "array"
+                    },
+                    "address": {
+                        "description": "caller's address",
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            },
             "ReadOnlyCall": {
                 "title": "ReadOnlyCall",
                 "description": "Read only call",
@@ -894,7 +966,7 @@
                         "type": "string"
                     },
                     "caller_address": {
-                        "$ref": "#/components/schemas/AddressInfo",
+                        "type": "string",
                         "description": "Caller's address, optional"
                     }
                 },
@@ -938,16 +1010,20 @@
                         "description": "Optional end slot\nWill use by default Slot(0,0)"
                     },
                     "emitter_address": {
-                        "$ref": "#/components/schemas/AddressInfo",
-                        "description": "Otional emitter address"
+                        "type": "string",
+                        "description": "Optional emitter address"
                     },
                     "original_caller_address": {
-                        "$ref": "#/components/schemas/AddressInfo",
+                        "type": "string",
                         "description": "Optional caller address"
                     },
                     "original_operation_id": {
                         "description": "Optional operation id",
                         "type": "string"
+                    },
+                    "candidate": {
+                        "description": "Optional filter to filter only candidate/final events",
+                        "type": "boolean"
                     }
                 },
                 "additionalProperties": false
@@ -1139,7 +1215,7 @@
                         "description": "Operations",
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/OperationInfo"
+                            "type": "string"
                         }
                     }
                 },
@@ -1213,12 +1289,25 @@
                 "description": "Endorsement",
                 "required": [
                     "content",
+                    "creator_public_key",
                     "signature"
                 ],
                 "type": "object",
                 "properties": {
                     "content": {
                         "$ref": "#/components/schemas/EndorsementContent"
+                    },
+                    "creator_public_key": {
+                        "type": "string"
+                    },
+                    "creator_address": {
+                        "type": "string"
+                    },
+                    "thread": {
+                        "type": "number"
+                    },
+                    "id": {
+                        "type": "string"
                     },
                     "signature": {
                         "type": "string"
@@ -1383,7 +1472,6 @@
                     "consensus_stats",
                     "current_cycle",
                     "current_time",
-                    "last_slot",
                     "network_stats",
                     "next_slot",
                     "node_id",
@@ -1409,7 +1497,7 @@
                         "type": "number"
                     },
                     "current_time": {
-                        "$ref": "#/components/schemas/MassaTime",
+                        "type": "number",
                         "description": "Time in milliseconds since 1970-01-01"
                     },
                     "last_slot": {
@@ -1582,12 +1670,16 @@
                         "type": "number"
                     },
                     "end_timestamp": {
-                        "$ref": "#/components/schemas/MassaTime",
+                        "type": "number",
                         "description": "(Only in tesnets)\nTime in milliseconds when the blockclique started."
                     },
                     "genesis_timestamp": {
-                        "$ref": "#/components/schemas/MassaTime",
+                        "type": "number",
                         "description": "Time in milliseconds when the blockclique started."
+                    },
+                    "max_block_size": {
+                        "type": "number",
+                        "description": "Maximum size (in bytes) of a block"
                     },
                     "operation_validity_periods": {
                         "description": "Maximum operation validity period count",
@@ -1610,7 +1702,7 @@
                         "type": "string"
                     },
                     "t0": {
-                        "$ref": "#/components/schemas/MassaTime",
+                        "type": "number",
                         "description": "Time between the periods in the same thread."
                     },
                     "thread_count": {
@@ -1761,7 +1853,7 @@
                 "description": "Datastore entry",
                 "type": "object",
                 "properties": {
-                    "active_value": {
+                    "candidate_value": {
                         "description": "",
                         "type": "string"
                     },
@@ -1870,10 +1962,6 @@
                     }
                 }
             },
-            "MassaTime": {
-                "description": "Time structure used everywhere.\r\nIn milliseconds since 01/01/1970.",
-                "type": "object"
-            },
             "Version": {
                 "description": "Application version, checked during handshakes",
                 "required": [
@@ -1919,7 +2007,7 @@
                 "additionalProperties": false
             },
             "AddressInfo": {
-                "title": "GraphInterval",
+                "title": "AddressInfo",
                 "required": [
                     "address",
                     "block_draws",
@@ -2052,7 +2140,7 @@
                 "description": "Datastore entry",
                 "type": "object",
                 "properties": {
-                    "active_value": {
+                    "candidate_value": {
                         "description": "",
                         "type": "string"
                     },

@@ -22,7 +22,7 @@ use massa_models::node::NodeId;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Set;
-use massa_models::{Address, BlockId, EndorsementId, Version};
+use massa_models::{Address, Block, BlockId, EndorsementId, Slot, Version};
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
@@ -231,6 +231,14 @@ pub trait Endpoints {
     /// Get information on a block given its hash.
     #[rpc(name = "get_block")]
     fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>>;
+
+    /// Get information on the block at a slot in the blockclique.
+    /// If there is no block at this slot a `None` is returned.
+    #[rpc(name = "get_block")]
+    fn get_block_in_blockclique_by_slot(
+        &self,
+        _: Slot,
+    ) -> BoxFuture<Result<Option<Block>, ApiError>>;
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from `<time_start>` (included) and to `<time_end>` (excluded) millisecond timestamp
