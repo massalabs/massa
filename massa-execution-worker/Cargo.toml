@@ -27,7 +27,7 @@ massa_pos_exports = { path = "../massa-pos-exports" }
 massa_final_state = { path = "../massa-final-state" }
 
 [dev-dependencies]
-serial_test = "0.8"
+serial_test = "0.9"
 tempfile = "3.2"
 massa_pos_worker = { path = "../massa-pos-worker" }
 

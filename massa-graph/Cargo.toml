@@ -25,7 +25,7 @@ massa_signature = { path = "../massa-signature" }
 massa_serialization = { path = "../massa-serialization"}
 
 [dev-dependencies]
-serial_test = "0.8"
+serial_test = "0.9"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
