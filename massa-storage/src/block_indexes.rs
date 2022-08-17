@@ -45,20 +45,14 @@ impl BlockIndexes {
         self.index_by_slot.remove(&slot);
     }
 
-    pub fn get_blocks_created_by(&self, address: &Address) -> Vec<WrappedBlock> {
+    pub fn get_blocks_created_by(&self, address: &Address) -> Vec<BlockId> {
         match self.index_by_creator.get(address) {
-            Some(ids) => ids
-                .iter()
-                .filter_map(|id| Some(self.blocks.get(id).unwrap().read().clone()))
-                .collect(),
-            _ => return Vec::default(),
+            Some(blocks) => blocks.iter().cloned().collect(),
+            None => Vec::new(),
         }
     }
 
-    pub fn get_block_by_slot(&self, slot: Slot) -> Option<WrappedBlock> {
-        match self.index_by_slot.get(&slot) {
-            Some(id) => Some(self.blocks.get(id).unwrap().read().clone()),
-            _ => return None,
-        }
+    pub fn get_block_by_slot(&self, slot: Slot) -> Option<&BlockId> {
+        self.index_by_slot.get(&slot)
     }
 }

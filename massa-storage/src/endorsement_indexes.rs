@@ -55,25 +55,17 @@ impl EndorsementIndexes {
         self.index_by_block.remove(block_id);
     }
 
-    pub fn _get_endorsements_created_by(&self, address: &Address) -> Vec<WrappedEndorsement> {
+    pub fn _get_endorsements_created_by(&self, address: &Address) -> Vec<EndorsementId> {
         match self.index_by_creator.get(address) {
-            Some(ids) => ids
-                .iter()
-                .filter_map(|id| self.endorsements.get(id))
-                .cloned()
-                .collect(),
-            _ => return Vec::default(),
+            Some(endorsements) => endorsements.iter().cloned().collect(),
+            None => Vec::new(),
         }
     }
 
-    pub fn _get_endorsements_in_block(&self, block_id: &BlockId) -> Vec<WrappedEndorsement> {
+    pub fn _get_endorsements_in_block(&self, block_id: &BlockId) -> Vec<EndorsementId> {
         match self.index_by_block.get(block_id) {
-            Some(ids) => ids
-                .iter()
-                .filter_map(|id| self.endorsements.get(id))
-                .cloned()
-                .collect(),
-            _ => return Vec::default(),
+            Some(endorsements) => endorsements.iter().cloned().collect(),
+            None => Vec::new(),
         }
     }
 }

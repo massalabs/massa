@@ -1,6 +1,4 @@
-use massa_models::{
-    prehash::Map, Address, BlockId, OperationId, OperationIds, Operations, WrappedOperation,
-};
+use massa_models::{prehash::Map, Address, BlockId, OperationId, OperationIds, WrappedOperation};
 
 /// Container for all operations and different indexes.
 /// Note: The structure can evolve and store more indexes.
@@ -54,25 +52,17 @@ impl OperationIndexes {
         self.index_by_block.remove(block_id);
     }
 
-    pub fn get_operations_created_by(&self, address: &Address) -> Operations {
+    pub fn get_operations_created_by(&self, address: &Address) -> Vec<OperationId> {
         match self.index_by_creator.get(address) {
-            Some(ids) => ids
-                .iter()
-                .filter_map(|id| self.operations.get(id))
-                .cloned()
-                .collect(),
-            _ => return Operations::default(),
+            Some(operations) => operations.iter().cloned().collect(),
+            None => Vec::new(),
         }
     }
 
-    pub fn get_operations_in_block(&self, block_id: &BlockId) -> Operations {
+    pub fn get_operations_in_block(&self, block_id: &BlockId) -> Vec<OperationId> {
         match self.index_by_block.get(block_id) {
-            Some(ids) => ids
-                .iter()
-                .filter_map(|id| self.operations.get(id))
-                .cloned()
-                .collect(),
-            _ => return Operations::default(),
+            Some(ids) => ids.iter().cloned().collect(),
+            None => Vec::new(),
         }
     }
 }

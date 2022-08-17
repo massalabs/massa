@@ -491,29 +491,23 @@ async fn test_get_involved_operations() {
             {
                 let indexes = storage.get_operation_indexes().read();
                 let res = indexes.get_operations_created_by(&address_a);
-                assert_eq!(
-                    res.iter().map(|op| op.id).collect::<Vec<_>>(),
-                    vec![op1_id, op3_id]
-                );
+                assert_eq!(res, vec![op1_id, op3_id]);
 
                 let res = indexes.get_operations_created_by(&address_b);
-                assert_eq!(
-                    res.iter().map(|op| op.id).collect::<Vec<_>>(),
-                    vec![op1_id, op2_id]
-                );
+                assert_eq!(res, vec![op1_id, op2_id]);
 
                 pool_controller.notify_final_cs_periods(&vec![1, 1]);
 
                 let res = indexes.get_operations_created_by(&address_a);
-                assert_eq!(res.iter().map(|op| op.id).collect::<Vec<_>>(), vec![op3_id]);
+                assert_eq!(res, vec![op3_id]);
 
                 let res = indexes.get_operations_created_by(&address_b);
-                assert_eq!(res.iter().map(|op| op.id).collect::<Vec<_>>(), vec![op2_id]);
+                assert_eq!(res, vec![op2_id]);
 
                 pool_controller.notify_final_cs_periods(&vec![2, 2]);
 
                 let res = indexes.get_operations_created_by(&address_a);
-                assert_eq!(res.iter().map(|op| op.id).collect::<Vec<_>>(), vec![op3_id]);
+                assert_eq!(res, vec![op3_id]);
 
                 let res = indexes.get_operations_created_by(&address_b);
                 assert!(res.is_empty());
@@ -608,7 +602,7 @@ async fn test_new_final_ops() {
                 let indexes = storage.get_operation_indexes().read();
                 let res = indexes.get_operations_created_by(&address_a);
                 assert_eq!(
-                    res.iter().map(|op| op.id).collect::<HashSet<_>>(),
+                    res.into_iter().collect::<HashSet<_>>(),
                     ops[4..]
                         .to_vec()
                         .iter()
