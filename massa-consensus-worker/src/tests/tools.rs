@@ -80,7 +80,7 @@ pub async fn validate_notpropagate_block(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id } => Some(block_id),
             _ => None,
         })
         .await;
@@ -98,7 +98,7 @@ pub async fn validate_notpropagate_block_in_list(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id } => Some(block_id),
             _ => None,
         })
         .await;
@@ -115,7 +115,7 @@ pub async fn validate_propagate_block_in_list(
 ) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id } => Some(block_id),
             _ => None,
         })
         .await;
@@ -198,7 +198,7 @@ pub async fn validate_propagate_block(
 ) {
     protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+            ProtocolCommand::IntegratedBlock { block_id } => {
                 if block_id == valid_hash {
                     return Some(());
                 }

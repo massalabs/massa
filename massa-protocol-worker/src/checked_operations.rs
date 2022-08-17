@@ -21,7 +21,7 @@ impl CheckedOperations {
         self.0.insert(prefix, *id).is_none()
     }
 
-    /// Get a set of [Set<OperationId>] matching with the givec `prefix`.
+    /// Get a operation id matching with the givec `prefix` or None if there is none.
     pub fn get(&self, prefix: &OperationPrefixId) -> Option<&OperationId> {
         self.0.get(prefix)
     }

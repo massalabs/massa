@@ -313,7 +313,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Integrate the block,
             // this should note the node as knowing about the endorsement.
             protocol_command_sender
-                .integrated_block(expected_block_id, Default::default(), vec![endorsement_id])
+                .integrated_block(expected_block_id)
                 .await
                 .unwrap();
 

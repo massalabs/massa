@@ -26,7 +26,10 @@ impl BlockIndexes {
         let id = block.id;
         let creator = block.creator_address;
         self.index_by_creator.entry(creator).or_default().insert(id);
-        self.index_by_slot.entry(block.content.header.content.slot).or_default().insert(block.id);
+        self.index_by_slot
+            .entry(block.content.header.content.slot)
+            .or_default()
+            .insert(block.id);
         self.blocks
             .entry(id)
             .or_insert(Arc::new(RwLock::new(block)));

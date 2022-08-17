@@ -917,7 +917,7 @@ impl WrappedOperation {
 /// Set of operation id's prefix
 pub type OperationPrefixIds = Set<OperationPrefixId>;
 
-/// Serializer for `Set<OperationId>`
+/// Serializer for `Vec<OperationId>`
 pub struct OperationIdsSerializer {
     u32_serializer: U32VarIntSerializer,
 }
@@ -957,7 +957,7 @@ impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
     ) -> Result<(), SerializeError> {
         let list_len: u32 = value.len().try_into().map_err(|_| {
             SerializeError::NumberTooBig(
-                "could not encode Set<OperationId> list length as u32".into(),
+                "could not encode Vec<OperationId> list length as u32".into(),
             )
         })?;
         self.u32_serializer.serialize(&list_len, buffer)?;
@@ -968,7 +968,7 @@ impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
     }
 }
 
-/// Deserializer for `Set<OperationId>`
+/// Deserializer for `Vec<OperationId>`
 pub struct OperationIdsDeserializer {
     length_deserializer: U32VarIntDeserializer,
     hash_deserializer: HashDeserializer,
@@ -1008,7 +1008,7 @@ impl Deserializer<Vec<OperationId>> for OperationIdsDeserializer {
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Vec<OperationId>, E> {
         context(
-            "Failed Set<OperationId> deserialization",
+            "Failed Vec<OperationId> deserialization",
             length_count(
                 context("Failed length deserialization", |input| {
                     self.length_deserializer.deserialize(input)

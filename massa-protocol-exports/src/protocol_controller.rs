@@ -78,10 +78,6 @@ pub enum ProtocolCommand {
     IntegratedBlock {
         /// block id
         block_id: BlockId,
-        /// operations ids in the block
-        operation_ids: Set<OperationId>,
-        /// endorsement ids in the block
-        endorsement_ids: Vec<EndorsementId>,
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
@@ -113,21 +109,12 @@ impl ProtocolCommandSender {
     ///
     /// # Arguments
     /// * hash : hash of the block header
-    pub async fn integrated_block(
-        &mut self,
-        block_id: BlockId,
-        operation_ids: Set<OperationId>,
-        endorsement_ids: Vec<EndorsementId>,
-    ) -> Result<(), ProtocolError> {
+    pub async fn integrated_block(&mut self, block_id: BlockId) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.integrated_block", {
             "block_id": block_id
         });
         self.0
-            .send(ProtocolCommand::IntegratedBlock {
-                block_id,
-                operation_ids,
-                endorsement_ids,
-            })
+            .send(ProtocolCommand::IntegratedBlock { block_id })
             .await
             .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()))
     }

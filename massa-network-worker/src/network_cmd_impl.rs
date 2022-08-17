@@ -351,7 +351,7 @@ pub async fn on_get_stats_cmd(
 pub async fn on_send_operations_cmd(
     worker: &mut NetworkWorker,
     to_node: NodeId,
-    operations: Set<OperationId>,
+    operations: Vec<OperationId>,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperations",

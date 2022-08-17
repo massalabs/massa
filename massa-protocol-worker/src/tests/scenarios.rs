@@ -248,16 +248,8 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 
             // 5. Propagate header.
             let op_ids = ref_block.content.operations.clone();
-            let endo_ids = ref_block
-                .content
-                .header
-                .content
-                .endorsements
-                .iter()
-                .map(|endo| endo.id)
-                .collect();
             protocol_command_sender
-                .integrated_block(ref_hash, op_ids.into_iter().collect(), endo_ids)
+                .integrated_block(ref_hash)
                 .await
                 .expect("Failed to ask for block.");
 

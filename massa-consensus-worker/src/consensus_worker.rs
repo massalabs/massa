@@ -730,13 +730,13 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
         println!("TEST6");
         // Propagate new blocks
-        for (block_id, (op_ids, endo_ids)) in self.block_db.get_blocks_to_propagate().into_iter() {
+        for (block_id, _) in self.block_db.get_blocks_to_propagate().into_iter() {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
                 "block_id": block_id
             });
             self.channels
                 .protocol_command_sender
-                .integrated_block(block_id, op_ids, endo_ids)
+                .integrated_block(block_id)
                 .await?;
         }
 

@@ -98,7 +98,7 @@ impl MockNetworkController {
     pub async fn send_operation_batch(
         &mut self,
         source_node_id: NodeId,
-        operation_ids: Set<OperationId>,
+        operation_ids: Vec<OperationId>,
     ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperationAnnouncements {
@@ -114,7 +114,7 @@ impl MockNetworkController {
     pub async fn send_ask_for_operation(
         &mut self,
         source_node_id: NodeId,
-        operation_ids: Set<OperationId>,
+        operation_ids: Vec<OperationId>,
     ) {
         self.network_event_tx
             .send(NetworkEvent::ReceiveAskForOperations {
