@@ -12,7 +12,7 @@ pub struct OperationIndexes {
     /// Structure mapping creators with the created operations
     index_by_creator: Map<Address, Set<OperationId>>,
     /// Structure mapping block ids with the operations
-    index_by_block: Map<BlockId, Vec<OperationId>>,
+    index_by_block: Map<BlockId, Set<OperationId>>,
 }
 
 impl OperationIndexes {
@@ -31,7 +31,7 @@ impl OperationIndexes {
     /// Remove a batch of operations, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:
     /// - operation_ids: the operation ids to remove
-    pub(crate) fn batch_remove(&mut self, operation_ids: Vec<OperationId>) {
+    pub(crate) fn batch_remove(&mut self, operation_ids: Set<OperationId>) {
         for id in operation_ids {
             let operation = self
                 .operations
@@ -46,14 +46,14 @@ impl OperationIndexes {
         }
     }
 
-    /// Link a vector of operations to a block. Should be used in case of the block is added to the storage
+    /// Link a set of operations to a block. Should be used in case of the block is added to the storage
     /// Arguments:
     /// - block_id: the block id to link the operations to
     /// - operation_ids: the operations to link to the block
     pub(crate) fn link_operations_with_block(
         &mut self,
         block_id: &BlockId,
-        operations: &Vec<OperationId>,
+        operations: &Set<OperationId>,
     ) {
         self.index_by_block
             .entry(*block_id)
@@ -61,7 +61,7 @@ impl OperationIndexes {
             .extend(operations);
     }
 
-    /// Unlink a vector of operations from a block. Should be used in case of the block is removed from the storage.
+    /// Unlink a set of operations from a block. Should be used in case of the block is removed from the storage.
     /// Arguments:
     /// - block_id: the block id to unlink the operations from
     pub(crate) fn unlink_operations_from_block(&mut self, block_id: &BlockId) {
@@ -74,10 +74,10 @@ impl OperationIndexes {
     ///
     /// Returns:
     /// - the operations created by the address
-    pub fn get_operations_created_by(&self, address: &Address) -> Vec<OperationId> {
+    pub fn get_operations_created_by(&self, address: &Address) -> Set<OperationId> {
         match self.index_by_creator.get(address) {
-            Some(operations) => operations.iter().cloned().collect(),
-            None => Vec::new(),
+            Some(operations) => operations.clone(),
+            None => Set::default(),
         }
     }
 
