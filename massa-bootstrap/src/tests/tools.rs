@@ -27,7 +27,7 @@ use massa_models::{
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
-use massa_pos_exports::{CycleInfo, PoSFinalState, ProductionStats};
+use massa_pos_exports::{CycleInfo, DeferredCredits, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
@@ -111,7 +111,7 @@ fn get_random_pos_state() -> PoSFinalState {
     }
     PoSFinalState {
         cycle_history,
-        deferred_credits,
+        deferred_credits: DeferredCredits(deferred_credits),
         selector: None,
     }
 }

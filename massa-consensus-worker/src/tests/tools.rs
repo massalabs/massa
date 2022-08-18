@@ -28,6 +28,7 @@ use massa_protocol_exports::ProtocolCommand;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use std::collections::VecDeque;
 use std::{collections::HashSet, future::Future, path::Path};
 use std::{
     str::FromStr,
@@ -657,7 +658,8 @@ pub async fn consensus_pool_test<F, V>(
         ..Default::default()
     };
     // launch consensus controller
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -749,7 +751,8 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (mut selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (mut selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -826,7 +829,8 @@ where
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (mut selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (mut selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -919,7 +923,8 @@ where
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (mut selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (mut selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(

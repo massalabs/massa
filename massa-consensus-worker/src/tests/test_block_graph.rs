@@ -25,7 +25,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey};
 use massa_storage::Storage;
 use serial_test::serial;
-use std::str::FromStr;
+use std::{collections::VecDeque, str::FromStr};
 use tempfile::NamedTempFile;
 use tracing::warn;
 
@@ -351,7 +351,8 @@ pub async fn test_get_ledger_at_parents() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (mut selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (mut selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let _block_graph = BlockGraph::new(
         GraphConfig::from(&cfg),
         Some(export_graph),
@@ -546,7 +547,8 @@ async fn test_clique_calculation() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (mut selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (mut selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let mut block_graph =
         BlockGraph::new(GraphConfig::from(&cfg), None, storage, selector_controller)
             .await
