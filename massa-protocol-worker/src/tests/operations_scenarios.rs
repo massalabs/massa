@@ -6,7 +6,7 @@ use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::constants::THREAD_COUNT;
 use massa_models::prehash::Map;
 use massa_models::{self, Address, Amount, Slot};
-use massa_models::{operation::{OperationId, OperationIds}, prehash::Set};
+use massa_models::{operation::OperationId, prehash::Set};
 use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};

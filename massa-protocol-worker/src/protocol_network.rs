@@ -227,7 +227,10 @@ impl ProtocolWorker {
     ) -> Result<(), ProtocolError> {
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
-            node_info.insert_known_ops(operation_ids.clone(), self.config.max_node_known_ops_size);
+            node_info.insert_known_ops(
+                operation_ids.iter().cloned().collect(),
+                self.config.max_node_known_ops_size,
+            );
         }
 
         match self.block_wishlist.get(&block_id) {
