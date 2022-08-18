@@ -16,11 +16,13 @@ use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
 use massa_models::Version;
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
+use massa_pos_exports::SelectorConfig;
+use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{str::FromStr, sync::Arc};
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 use tokio::sync::mpsc;
 
 lazy_static::lazy_static! {
@@ -156,6 +158,33 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
+    // start selector controllers
+    let (mut selector_manager1, selector_controller1) = start_selector_worker(
+        SelectorConfig {
+            max_draw_cache: 10,
+            initial_rolls_path: PathBuf::from_str("../massa-node/base_config/initial_rolls.json")
+                .unwrap(),
+            ..Default::default()
+        },
+        final_state.read().pos_state.cycle_history.clone(),
+    )
+    .expect("could not start selector1 controller");
+    let (mut selector_manager2, selector_controller2) = start_selector_worker(
+        SelectorConfig {
+            max_draw_cache: 10,
+            initial_rolls_path: PathBuf::from_str("../massa-node/base_config/initial_rolls.json")
+                .unwrap(),
+            ..Default::default()
+        },
+        final_state_client.read().pos_state.cycle_history.clone(),
+    )
+    .expect("could not start selector2 controller");
+
+    // check selection draw
+    let selection1 = selector_controller1.get_every_selection();
+    let selection2 = selector_controller2.get_every_selection();
+    assert_eq!(selection1, selection2, "PoS selections do not match");
+
     // check final states
     assert_eq_final_state(&final_state.read(), &final_state_client.read());
 
@@ -167,4 +196,8 @@ async fn test_bootstrap_server() {
         .stop()
         .await
         .expect("could not stop bootstrap server");
+
+    // stop selector controllers
+    selector_manager1.stop();
+    selector_manager2.stop();
 }

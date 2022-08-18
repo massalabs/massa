@@ -97,11 +97,11 @@ fn get_random_pos_state() -> PoSFinalState {
             production_stats,
         });
     }
-    let mut deferred_credits = BTreeMap::new();
+    let mut deferred_credits = DeferredCredits::default();
     for i in 0usize..rng.gen_range(3..6) {
         let mut credits = Map::default();
         credits.insert(get_random_address(), Amount::from_raw(42));
-        deferred_credits.insert(
+        deferred_credits.0.insert(
             Slot {
                 period: i as u64,
                 thread: 0,
@@ -111,7 +111,7 @@ fn get_random_pos_state() -> PoSFinalState {
     }
     PoSFinalState {
         cycle_history,
-        deferred_credits: DeferredCredits(deferred_credits),
+        deferred_credits,
         selector: None,
     }
 }

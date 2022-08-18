@@ -103,7 +103,6 @@ pub fn start_selector_worker(
     selector_config: SelectorConfig,
     cycles: VecDeque<CycleInfo>,
 ) -> PosResult<(Box<dyn SelectorManager>, Box<dyn SelectorController>)> {
-    println!("HELLO");
     let input_data = InputDataPtr::default();
     let cache = DrawCachePtr::default();
     let controller = SelectorControllerImpl {
@@ -156,6 +155,5 @@ fn get_initial_rolls(cfg: &SelectorConfig) -> PosResult<Map<Address, u64>> {
             rolls_per_cycle.len(),
         ));
     }
-    println!("THROUGH");
     Ok(rolls_per_cycle)
 }
