@@ -52,7 +52,7 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
-use std::{mem, path::PathBuf, sync::RwLock};
+use std::{mem, path::PathBuf, sync::RwLock, thread};
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
@@ -225,11 +225,15 @@ async fn launch(
     .expect("could not start protocol controller");
 
     // launch selector worker
-    //TODO: Add initial roll path
-    let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
-        max_draw_cache: SETTINGS.selector.max_draw_cache,
-        ..SelectorConfig::default()
-    });
+    // TODO: Add initial roll path
+    let (selector_manager, selector_controller) = start_selector_worker(
+        SelectorConfig {
+            max_draw_cache: SETTINGS.selector.max_draw_cache,
+            ..SelectorConfig::default()
+        },
+        final_state.read().pos_state.cycle_history.clone(),
+    )
+    .expect("could not start selector controller");
 
     // give the controller to final state in order for it to feed the cycles
     final_state

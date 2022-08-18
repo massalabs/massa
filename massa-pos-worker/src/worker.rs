@@ -1,11 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use std::collections::BTreeMap;
+use std::collections::VecDeque;
 use std::thread::JoinHandle;
 
 use massa_hash::Hash;
 use massa_models::prehash::Map;
 use massa_models::Address;
+use massa_pos_exports::CycleInfo;
 use massa_pos_exports::PosError::InvalidInitialRolls;
 use massa_pos_exports::PosResult;
 use massa_pos_exports::SelectorConfig;
@@ -42,24 +44,29 @@ impl SelectorThread {
     ///
     /// # Arguments
     /// * `input_data`: a copy of the input data interface to get incoming requests from
-    pub(crate) fn spawn(
+    pub(crate) fn init(
         input_data: InputDataPtr,
         cache: DrawCachePtr,
         initial_rolls: Vec<Map<Address, u64>>,
         cfg: SelectorConfig,
-    ) -> JoinHandle<PosResult<()>> {
-        std::thread::spawn(|| {
-            let this = Self {
-                input_data,
-                cache,
-                initial_seeds: generate_initial_seeds(&cfg),
-                cfg,
-                cycle_states: Default::default(),
-                initial_rolls,
-            };
+        bootstrap_cycles: VecDeque<CycleInfo>,
+    ) -> PosResult<JoinHandle<PosResult<()>>> {
+        let mut this = Self {
+            input_data,
+            cache,
+            initial_seeds: generate_initial_seeds(&cfg),
+            cfg,
+            cycle_states: Default::default(),
+            initial_rolls,
+        };
 
-            this.run()
-        })
+        for cycle_info in bootstrap_cycles {
+            if cycle_info.complete {
+                this.draws(cycle_info)?;
+            }
+        }
+
+        Ok(std::thread::spawn(move || this.run()))
     }
 
     /// Thread loop.
@@ -94,7 +101,8 @@ impl SelectorThread {
 /// * `selector_controller`: allows sending requests and notifications to the worker
 pub fn start_selector_worker(
     selector_config: SelectorConfig,
-) -> (Box<dyn SelectorManager>, Box<dyn SelectorController>) {
+    cycles: VecDeque<CycleInfo>,
+) -> PosResult<(Box<dyn SelectorManager>, Box<dyn SelectorController>)> {
     let input_data = InputDataPtr::default();
     let cache = DrawCachePtr::default();
     let controller = SelectorControllerImpl {
@@ -105,17 +113,18 @@ pub fn start_selector_worker(
     };
 
     // launch the selector thread
-    let thread_handle = SelectorThread::spawn(
+    let thread_handle = SelectorThread::init(
         input_data.clone(),
         cache,
         get_initial_rolls(&selector_config).unwrap(),
         selector_config,
-    );
+        cycles,
+    )?;
     let manager = SelectorManagerImpl {
         thread_handle: Some(thread_handle),
         input_data,
     };
-    (Box::new(manager), Box::new(controller))
+    Ok((Box::new(manager), Box::new(controller)))
 }
 
 /// Generates N seeds. The seeds should be used as the initial seeds between
