@@ -3,6 +3,8 @@
 //! This module exports generic traits representing interfaces for interacting
 //! with the PoS selector worker.
 
+use std::collections::VecDeque;
+
 use crate::CycleInfo;
 use crate::Selection;
 use anyhow::Result;
@@ -18,6 +20,13 @@ pub trait SelectorController: Send + Sync {
     /// * `cycle_info`: give or regive a cycle info for a background
     ///                 computation of the draws.
     fn feed_cycle(&self, cycle_info: CycleInfo);
+
+    /// Feed bootstrap cycles to the selector and wait for it to compute the selection
+    ///
+    /// # Arguments
+    /// * `cycle_info`: give or regive a cycle info for a background
+    ///                 computation of the draws.
+    fn feed_bootstrap_cycles(&self, cycles: VecDeque<CycleInfo>);
 
     /// Get [Selection] computed for a slot:
     /// # Arguments

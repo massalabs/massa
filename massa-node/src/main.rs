@@ -225,15 +225,17 @@ async fn launch(
     .expect("could not start protocol controller");
 
     // launch selector worker
-    // TODO: Add initial roll path
     let (selector_manager, selector_controller) = start_selector_worker(
         SelectorConfig {
             max_draw_cache: SETTINGS.selector.max_draw_cache,
+            initial_rolls_path: SETTINGS.selector.initial_rolls_path,
             ..SelectorConfig::default()
         },
         final_state.read().pos_state.cycle_history.clone(),
     )
     .expect("could not start selector controller");
+
+    let input = selector_manager.
 
     // give the controller to final state in order for it to feed the cycles
     final_state

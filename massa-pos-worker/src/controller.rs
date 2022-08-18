@@ -3,6 +3,8 @@
 //! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
 
+use std::collections::VecDeque;
+
 use anyhow::{bail, Result};
 use massa_models::{api::IndexedSlot, Address, Slot};
 
@@ -36,6 +38,22 @@ impl SelectorController for SelectorControllerImpl {
             .lock()
             .push_back(Command::CycleInfo(cycle_info));
         self.input_data.0.notify_one();
+    }
+
+    /// Feed bootstrap cycles to the selector and wait for it to compute the selection
+    ///
+    /// # Arguments
+    /// * `cycle_info`: give or regive a cycle info for a background
+    ///                 computation of the draws.
+    fn feed_bootstrap_cycles(&self, cycles: VecDeque<CycleInfo>) {
+        let mut lock = self.input_data.1.lock();
+        for cycle_info in cycles.into_iter().rev() {
+            if cycle_info.complete {
+                lock.push_back(Command::CycleInfo(cycle_info));
+            }
+        }
+        self.input_data.0.notify_one();
+        // wait for draws to complete here
     }
 
     /// Get [Selection] computed for a slot:

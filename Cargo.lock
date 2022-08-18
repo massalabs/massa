@@ -1708,6 +1708,7 @@ dependencies = [
  "massa_models",
  "massa_network_exports",
  "massa_pos_exports",
+ "massa_pos_worker",
  "massa_serialization",
  "massa_signature",
  "massa_time",
