@@ -34,6 +34,18 @@ impl BlockIndexes {
             .entry(block.content.header.content.slot)
             .or_default()
             .insert(block.id);
+        for id in block.content.operations.iter() {
+            self.index_by_op
+                .entry(*id)
+                .or_default()
+                .insert(block.id);
+        }
+        for endo in block.content.header.content.endorsements.iter() {
+            self.index_by_endorsement
+                .entry(endo.id)
+                .or_default()
+                .insert(block.id);
+        }
         self.blocks
             .entry(id)
             .or_insert(Arc::new(RwLock::new(block)));
@@ -43,16 +55,36 @@ impl BlockIndexes {
     /// Arguments:
     /// - block_id: the block id to remove
     pub(crate) fn remove(&mut self, block_id: &BlockId) {
-        let block = self
+        let stored_block = self
             .blocks
             .remove(block_id)
             .expect("removing absent object from storage");
-        let creator = block.read().creator_address;
-        let slot = block.read().content.header.content.slot;
-        let entry = self.index_by_creator.entry(creator).or_default();
-        entry.remove(block_id);
-        if entry.is_empty() {
+        let block = stored_block.read();
+        let creator = block.creator_address;
+        let slot = block.content.header.content.slot;
+        let creator_entry = self.index_by_creator.entry(creator).or_default();
+        creator_entry.remove(block_id);
+        if creator_entry.is_empty() {
             self.index_by_creator.remove(&creator);
+        }
+        let slot_entry = self.index_by_slot.entry(slot).or_default();
+        slot_entry.remove(block_id);
+        if slot_entry.is_empty() {
+            self.index_by_slot.remove(&slot);
+        }
+        for id in block.content.operations.iter() {
+            let op_entry = self.index_by_op.entry(*id).or_default();
+            op_entry.remove(block_id);
+            if op_entry.is_empty() {
+                self.index_by_op.remove(id);
+            }
+        }
+        for endo in block.content.header.content.endorsements.iter() {
+            let endo_entry = self.index_by_endorsement.entry(endo.id).or_default();
+            endo_entry.remove(block_id);
+            if endo_entry.is_empty() {
+                self.index_by_endorsement.remove(&endo.id);
+            }
         }
         self.index_by_slot.remove(&slot);
     }
