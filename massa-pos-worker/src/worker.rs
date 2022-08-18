@@ -62,7 +62,7 @@ impl SelectorThread {
 
         for cycle_info in bootstrap_cycles.into_iter().rev() {
             if cycle_info.complete {
-                this.draws(cycle_info).unwrap();
+                this.draws(cycle_info)?;
             }
         }
 
@@ -116,7 +116,7 @@ pub fn start_selector_worker(
     let thread_handle = SelectorThread::init(
         input_data.clone(),
         cache,
-        get_initial_rolls(&selector_config).unwrap(),
+        get_initial_rolls(&selector_config)?,
         selector_config,
         cycles,
     )?;
@@ -146,9 +146,9 @@ fn generate_initial_seeds(cfg: &SelectorConfig) -> Vec<Vec<u8>> {
 ///
 /// File path is `cfg.initial_rolls_path`
 fn get_initial_rolls(cfg: &SelectorConfig) -> PosResult<Map<Address, u64>> {
-    let rolls_per_cycle = serde_json::from_str::<Map<Address, u64>>(
-        &std::fs::read_to_string(&cfg.initial_rolls_path)?,
-    )?;
+    let rolls_per_cycle = serde_json::from_str::<Map<Address, u64>>(&std::fs::read_to_string(
+        &cfg.initial_rolls_path,
+    )?)?;
     if rolls_per_cycle.len() < cfg.lookback_cycles as usize {
         return Err(InvalidInitialRolls(
             cfg.lookback_cycles,
