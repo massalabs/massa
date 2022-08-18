@@ -655,28 +655,11 @@ impl Endpoints for API<Public> {
                 .collect()
         };
 
-        // get balances from execution
-        let final_active_parallel_balances = self
-            .0
-            .execution_controller
-            .get_final_and_active_parallel_balance(&addresses);
-        let final_active_sequential_balances = self
-            .0
-            .execution_controller
-            .get_final_and_active_sequential_balance(&addresses);
-
-        // get datastore keys from execution
-        let final_active_datastore_keys = self
-            .0
-            .execution_controller
-            .get_final_and_active_datastore_keys(&addresses);
-
-        // get roll infos from execution
-        let rolls_info: Vec<RollsInfo> = self.0.execution_controller.get_roll_infos(&addresses);
+        // get execution data (balances, rolls, datastore keys) for (final, active) states
+        let final_active_execution_info = self.0.execution_controller.get_address_infos(&addresses);
 
         // get draws and active roll info from selector
-        let selection_info: Vec<SelectionInfo> =
-            self.0.selector_controller.get_address_infos(&addresses);
+        let selection_info = self.0.selector_controller.get_address_infos(&addresses);
 
         // compile results
         let mut res = Vec::with_capacity(addresses.len());
@@ -685,10 +668,7 @@ impl Endpoints for API<Public> {
             created_blocks.into_iter(),
             created_operations.into_iter(),
             created_endorsements.into_iter(),
-            final_active_parallel_balances.into_iter(),
-            final_active_sequential_balances.into_iter(),
-            final_active_datastore_keys.into_iter(),
-            rolls_info.into_iter(),
+            final_active_execution_info.into_iter(),
             selection_info.into_iter()
         );
         for (
@@ -696,35 +676,31 @@ impl Endpoints for API<Public> {
             created_blocks,
             created_operations,
             created_endorsements,
-            final_active_parallel_balances,
-            final_active_seq_balances,
-            final_active_datastore_keys,
-            rolls_info,
+            final_active_execution_info,
+            selection_info,
         ) in iterator
         {
+            let final_execution_info = final_active_execution_info.0.unwrap_or_default();
+            let active_execution_info = final_active_execution_info.1.unwrap_or_default();
             res.push(AddressInfo {
                 // general address info
                 address,
                 thread: address.get_thread(self.0.consensus_config.thread_count),
 
-                // balances
-                final_parallel_balance: final_active_parallel_balances.0.unwrap_or_default(),
-                candidate_parallel_balance: final_active_parallel_balances.1.unwrap_or_default(),
-                final_sequential_balance: final_active_seq_balances.0.unwrap_or_default(),
-                candidate_sequential_balance: final_active_seq_balances.1.unwrap_or_default(),
+                // execution info
+                final_parallel_balance: final_execution_info.parallel_balance,
+                candidate_parallel_balance: active_execution_info.parallel_balance,
+                final_sequential_balance: final_execution_info.sequential_balance,
+                candidate_sequential_balance: active_execution_info.sequential_balance,
+                final_rolls: final_execution_info.roll_count,
+                candidate_rolls: active_execution_info.roll_count,
+                final_datastore_keys: final_execution_info.datastore_keys,
+                candidate_datastore_keys: active_execution_info.datastore_keys,
 
-                // datastore keys
-                final_datastore_keys: final_active_datastore_keys.0,
-                candidate_datastore_keys: final_active_datastore_keys.1,
-
-                // rolls
-                rolls: rolls_info,
-
-                // TODO block_draws,
-                // TODO endorsement_draws: HashSet::from_iter(endorsement_draws.into_iter()),
-
-                // production statistics
-                // TODO production_stats: state.production_stats,
+                // selector info
+                cycle_info: xx, // TODO vec[AddressCycleInfo { cycle: u64, complete: bool, active_rolls: u64, produced_blocks: u64, missed_blocks: u64, block_draws: vec![Slot], endorsement_draws: vec![IndexedSlot] }]
+                final_deferred_credits: yy, // TODO vec![ { slot, amount } ]
+                candidate_deferred_credits: yy, // TODO vec![ { slot, amount } ]
 
                 // created objects
                 created_blocks,
