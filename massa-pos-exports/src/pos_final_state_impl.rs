@@ -10,11 +10,6 @@ impl PoSFinalState {
     /// Used to give the selector controller to `PoSFinalState` when it has been created
     pub fn give_selector_controller(&mut self, selector: Box<dyn SelectorController>) {
         self.selector = Some(selector);
-        // Feed the bootstrap cycles to the selector after getting the handle
-        self.selector
-            .as_ref()
-            .unwrap()
-            .feed_bootstrap_cycles(self.cycle_history.clone());
     }
 
     /// Technical specification of apply_changes:

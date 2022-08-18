@@ -21,13 +21,6 @@ pub trait SelectorController: Send + Sync {
     ///                 computation of the draws.
     fn feed_cycle(&self, cycle_info: CycleInfo);
 
-    /// Feed bootstrap cycles to the selector and wait for it to compute the selection
-    ///
-    /// # Arguments
-    /// * `cycle_info`: give or regive a cycle info for a background
-    ///                 computation of the draws.
-    fn feed_bootstrap_cycles(&self, cycles: VecDeque<CycleInfo>);
-
     /// Get [Selection] computed for a slot:
     /// # Arguments
     /// * `slot`: target slot of the selection

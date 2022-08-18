@@ -235,8 +235,6 @@ async fn launch(
     )
     .expect("could not start selector controller");
 
-    let input = selector_manager.
-
     // give the controller to final state in order for it to feed the cycles
     final_state
         .write()

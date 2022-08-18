@@ -40,22 +40,6 @@ impl SelectorController for SelectorControllerImpl {
         self.input_data.0.notify_one();
     }
 
-    /// Feed bootstrap cycles to the selector and wait for it to compute the selection
-    ///
-    /// # Arguments
-    /// * `cycle_info`: give or regive a cycle info for a background
-    ///                 computation of the draws.
-    fn feed_bootstrap_cycles(&self, cycles: VecDeque<CycleInfo>) {
-        let mut lock = self.input_data.1.lock();
-        for cycle_info in cycles.into_iter().rev() {
-            if cycle_info.complete {
-                lock.push_back(Command::CycleInfo(cycle_info));
-            }
-        }
-        self.input_data.0.notify_one();
-        // wait for draws to complete here
-    }
-
     /// Get [Selection] computed for a slot:
     /// # Arguments
     /// * `slot`: target slot of the selection
