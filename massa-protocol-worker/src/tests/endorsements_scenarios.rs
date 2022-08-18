@@ -356,7 +356,6 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_get_block_results(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -387,7 +386,11 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 .send_ask_for_block(nodes[0].id, vec![(expected_block_id, Default::default())])
                 .await;
 
-            // TODO: rewrite
+            // Send the header,
+            // this should note the node as knowing about the endorsement.
+            network_controller
+                .send_header(nodes[0].id, block.content.header)
+                .await;
 
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it
@@ -410,7 +413,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                     let id = endorsements[0].id;
                     assert_eq!(id, endorsement_id);
                     assert_eq!(nodes[0].id, node);
-                    panic!("Unexpected propagated of endorsement.");
+                    panic!("Unexpected propagation of endorsement.");
                 }
                 None => {}
                 Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
