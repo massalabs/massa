@@ -6,10 +6,10 @@ use massa_consensus_exports::{
     ConsensusConfig,
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
+use massa_models::address::AddressState;
 use massa_models::api::{LedgerInfo, RollsInfo};
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
-use massa_models::{active_block::ActiveBlock, address::AddressState};
 use massa_models::{stats::ConsensusStats, OperationId};
 use massa_models::{Address, BlockId, Slot};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
@@ -486,17 +486,18 @@ impl ConsensusWorker {
                 Ok(())
             }
             ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx } => {
-                if response_tx
-                    .send(self.block_db.get_blockclique().into_iter().find(|id| {
-                        if let Some(block) = self.block_db.storage.retrieve_block(id) {
-                            let stored_block = block.read();
-                            stored_block.content.header.content.slot == slot
-                        } else {
-                            false
-                        }
-                    }))
-                    .is_err()
-                {
+                let block_indexes = self.block_db.storage.get_block_indexes().read();
+                let blocks = block_indexes.get_blocks_by_slot(slot);
+                let block = if let Some(stored_blocks) = blocks {
+                    self.block_db
+                        .get_blockclique()
+                        .intersection(stored_blocks)
+                        .next()
+                        .cloned()
+                } else {
+                    None
+                };
+                if response_tx.send(block).is_err() {
                     warn!("consensus: could not send get block clique block at slot response");
                 }
                 Ok(())
@@ -730,13 +731,13 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
         println!("TEST6");
         // Propagate new blocks
-        for (block_id, (op_ids, endo_ids)) in self.block_db.get_blocks_to_propagate().into_iter() {
+        for (block_id, _) in self.block_db.get_blocks_to_propagate().into_iter() {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
                 "block_id": block_id
             });
             self.channels
                 .protocol_command_sender
-                .integrated_block(block_id, op_ids, endo_ids)
+                .integrated_block(block_id)
                 .await?;
         }
 
@@ -757,7 +758,6 @@ impl ConsensusWorker {
         // get blockclique
         let blockclique_set = self.block_db.get_blockclique();
 
-        let local_storage = self.block_db.storage.clone_without_refs();
         // notify execution
         let final_blocks = new_final_block_ids
             .clone()

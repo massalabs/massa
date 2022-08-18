@@ -15,7 +15,6 @@ use massa_ledger_exports::get_address_from_key;
 use massa_logging::massa_trace;
 use massa_models::{Slot, Version};
 use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
-use massa_pos_exports::PoSBootstrapCursor;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -254,19 +253,22 @@ pub async fn send_final_state_stream(
     final_state: Arc<RwLock<FinalState>>,
     slot: Option<Slot>,
     last_async_message_id: Option<AsyncMessageId>,
-    last_pos_cursor: PoSBootstrapCursor,
+    last_cycle: Option<u64>,
+    last_credits_slot: Option<Slot>,
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     let mut old_key = last_key;
     let mut old_last_async_id = last_async_message_id;
-    let mut old_pos_cursor = last_pos_cursor;
+    let mut old_cycle = last_cycle;
+    let mut old_credits_slot = last_credits_slot;
     let mut old_slot = slot;
 
     loop {
         // Scope of the read in the final state
         let ledger_data;
         let async_pool_data;
-        let pos_state_data;
+        let pos_cycle_data;
+        let pos_credits_data;
         let final_state_changes;
         let current_slot;
         {
@@ -283,40 +285,54 @@ pub async fn send_final_state_stream(
                     })?;
             ledger_data = data;
 
-            let (pool_data, last_async_pool_id) = final_state_read
+            let (pool_data, new_last_async_pool_id) = final_state_read
                 .async_pool
                 .get_pool_part(old_last_async_id)?;
             async_pool_data = pool_data;
 
-            let (pos_data, new_pos_cursor) = final_state_read
+            let (cycle_data, new_last_cycle, cycle_completion) = final_state_read
                 .pos_state
-                .get_pos_state_part(old_pos_cursor)?;
-            pos_state_data = pos_data;
+                .get_cycle_history_part(old_cycle)?;
+            pos_cycle_data = cycle_data;
+
+            let (credits_data, new_last_credits_slot) = final_state_read
+                .pos_state
+                .get_deferred_credits_part(old_credits_slot)?;
+            pos_credits_data = credits_data;
 
             if let Some(slot) = old_slot && let Some(key) = &old_key && let Some(async_pool_id) = old_last_async_id && slot != final_state_read.slot {
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
                     get_address_from_key(key).ok_or_else(|| BootstrapError::GeneralError("Malformed key in slot changes".to_string()))?,
                     async_pool_id,
-                    new_pos_cursor.cycle,
+                    cycle_completion,
                 );
             } else {
                 final_state_changes = Ok(StateChanges::default());
             }
 
             // Assign value for next turn
-            if last_async_pool_id.is_some() || !async_pool_data.is_empty() {
-                old_last_async_id = last_async_pool_id;
-            }
             if new_last_key.is_some() || !ledger_data.is_empty() {
                 old_key = new_last_key;
             }
-            old_pos_cursor = new_pos_cursor;
+            if new_last_async_pool_id.is_some() || !async_pool_data.is_empty() {
+                old_last_async_id = new_last_async_pool_id;
+            }
+            if new_last_cycle.is_some() || !pos_cycle_data.is_empty() {
+                old_cycle = new_last_cycle;
+            }
+            if new_last_credits_slot.is_some() || !pos_credits_data.is_empty() {
+                old_credits_slot = new_last_credits_slot;
+            }
             old_slot = Some(final_state_read.slot);
             current_slot = final_state_read.slot;
         }
 
-        if !ledger_data.is_empty() || !async_pool_data.is_empty() || !pos_state_data.is_empty() {
+        if !ledger_data.is_empty()
+            || !async_pool_data.is_empty()
+            || !pos_cycle_data.is_empty()
+            || !pos_credits_data.is_empty()
+        {
             if let Ok(final_state_changes) = final_state_changes {
                 match tokio::time::timeout(
                     write_timeout,
@@ -324,7 +340,8 @@ pub async fn send_final_state_stream(
                         ledger_data,
                         slot: current_slot,
                         async_pool_part: async_pool_data,
-                        pos_state_part: pos_state_data,
+                        pos_cycle_part: pos_cycle_data,
+                        pos_credits_part: pos_credits_data,
                         final_state_changes,
                     }),
                 )
@@ -466,7 +483,8 @@ async fn manage_bootstrap(
                     last_key,
                     slot,
                     last_async_message_id,
-                    last_pos_cursor,
+                    last_cycle,
+                    last_credits_slot,
                 } => {
                     send_final_state_stream(
                         server,
@@ -474,7 +492,8 @@ async fn manage_bootstrap(
                         final_state.clone(),
                         slot,
                         last_async_message_id,
-                        last_pos_cursor,
+                        last_cycle,
+                        last_credits_slot,
                         write_timeout,
                     )
                     .await?;

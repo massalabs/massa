@@ -8,10 +8,9 @@ use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
     node::NodeId,
-    operation::{OperationIds, Operations},
     prehash::{BuildMap, Set},
     wrapped::{Id, Wrapped},
-    BlockId, BlockSerializer,
+    BlockId, BlockSerializer, OperationId, WrappedOperation,
 };
 use massa_models::{Block, WrappedBlock};
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply, NetworkEvent, ReplyForBlocksInfo};
@@ -224,7 +223,7 @@ impl ProtocolWorker {
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
-        operation_ids: OperationIds,
+        operation_ids: Vec<OperationId>,
     ) -> Result<(), ProtocolError> {
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
@@ -307,15 +306,15 @@ impl ProtocolWorker {
         &mut self,
         from_node_id: NodeId,
         block_id: BlockId,
-        operations: Operations,
+        operations: Vec<WrappedOperation>,
     ) -> Result<(), ProtocolError> {
         let (tx, rx) = oneshot::channel();
         self.note_operations_from_node(operations.clone(), &from_node_id, Some(tx))
             .await?;
         let _ = rx.await;
 
-        let wanted_operation_ids = match self.block_wishlist.get(&block_id) {
-            Some(AskForBlocksInfo::Operations(ids)) => ids,
+        let wanted_operation_ids: Set<OperationId> = match self.block_wishlist.get(&block_id) {
+            Some(AskForBlocksInfo::Operations(ids)) => ids.clone().into_iter().collect(),
             _ => return Ok(()),
         };
         let info = match self.checked_headers.get(&block_id) {
@@ -326,7 +325,7 @@ impl ProtocolWorker {
             }
         };
 
-        let mut received_ids: OperationIds = Default::default();
+        let mut received_ids: Set<OperationId> = Default::default();
         let mut full_op_size = info.operations_size;
 
         // Ban the node if:
@@ -344,7 +343,7 @@ impl ProtocolWorker {
                 return Ok(());
             }
         }
-        if wanted_operation_ids != &received_ids {
+        if wanted_operation_ids != received_ids {
             let _ = self.ban_node(&from_node_id).await;
             return Ok(());
         }

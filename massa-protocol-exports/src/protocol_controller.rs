@@ -4,7 +4,6 @@ use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
 use massa_models::{
-    operation::OperationIds,
     prehash::{Map, Set},
     Slot, WrappedBlock,
 };
@@ -79,10 +78,6 @@ pub enum ProtocolCommand {
     IntegratedBlock {
         /// block id
         block_id: BlockId,
-        /// operations ids in the block
-        operation_ids: OperationIds,
-        /// endorsement ids in the block
-        endorsement_ids: Vec<EndorsementId>,
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
@@ -94,9 +89,9 @@ pub enum ProtocolCommand {
         remove: Set<BlockId>,
     },
     /// Propagate operations (send batches)
-    /// note: OperationIds are replaced with OperationPrefixIds
+    /// note: Set<OperationId> are replaced with OperationPrefixIds
     ///       by the controller
-    PropagateOperations(OperationIds),
+    PropagateOperations(Set<OperationId>),
     /// Propagate endorsements
     PropagateEndorsements(Map<EndorsementId, WrappedEndorsement>),
 }
@@ -114,21 +109,12 @@ impl ProtocolCommandSender {
     ///
     /// # Arguments
     /// * hash : hash of the block header
-    pub async fn integrated_block(
-        &mut self,
-        block_id: BlockId,
-        operation_ids: Set<OperationId>,
-        endorsement_ids: Vec<EndorsementId>,
-    ) -> Result<(), ProtocolError> {
+    pub async fn integrated_block(&mut self, block_id: BlockId) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.integrated_block", {
             "block_id": block_id
         });
         self.0
-            .send(ProtocolCommand::IntegratedBlock {
-                block_id,
-                operation_ids,
-                endorsement_ids,
-            })
+            .send(ProtocolCommand::IntegratedBlock { block_id })
             .await
             .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()))
     }
@@ -166,7 +152,7 @@ impl ProtocolCommandSender {
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
     pub async fn propagate_operations(
         &mut self,
-        operation_ids: OperationIds,
+        operation_ids: Set<OperationId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operation_ids

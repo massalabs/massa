@@ -20,7 +20,10 @@ async fn test_thread_incompatibility() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -158,6 +161,7 @@ async fn test_thread_incompatibility() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -176,7 +180,10 @@ async fn test_grandpa_incompatibility() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -296,6 +303,7 @@ async fn test_grandpa_incompatibility() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

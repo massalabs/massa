@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::mock_protocol_controller::MockProtocolController;
-use crate::start_pool;
+use crate::{controller_impl::PoolControllerImpl, start_pool};
 use futures::Future;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
@@ -16,8 +16,8 @@ use std::str::FromStr;
 
 pub async fn pool_test<F, V>(cfg: &'static PoolConfig, test: F)
 where
-    F: FnOnce(MockProtocolController, Box<dyn PoolController>) -> V,
-    V: Future<Output = (MockProtocolController, Box<dyn PoolController>)>,
+    F: FnOnce(MockProtocolController, Box<dyn PoolController>, Storage) -> V,
+    V: Future<Output = (MockProtocolController, Box<dyn PoolController>, Storage)>,
 {
     let storage: Storage = Default::default();
 
@@ -25,10 +25,10 @@ where
         MockProtocolController::new();
 
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
-    let pool_controller = start_pool(*cfg, storage, execution_controller);
+    let pool_controller = start_pool(*cfg, storage.clone(), execution_controller);
 
-    let (_protocol_controller, _pool_controller) =
-        test(protocol_controller, Box::new(pool_controller)).await;
+    let (_protocol_controller, _pool_controller, storage) =
+        test(protocol_controller, Box::new(pool_controller), storage).await;
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {

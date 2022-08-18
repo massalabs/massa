@@ -8,11 +8,11 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
-    operation::{OperationIds, OperationPrefixId, Operations},
+    operation::OperationPrefixId,
     prehash::{BuildMap, Map, Set},
     BlockHeaderSerializer, BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader,
 };
-use massa_models::{EndorsementSerializer, OperationSerializer};
+use massa_models::{EndorsementSerializer, OperationSerializer, WrappedOperation};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolError, ProtocolEvent,
@@ -104,7 +104,7 @@ pub(crate) struct BlockInfo {
     pub(crate) endorsements: Map<EndorsementId, u32>,
     /// Operations contained in the block,
     /// if we've received them already, and none otherwise.
-    pub(crate) operations: Option<Set<OperationId>>,
+    pub(crate) operations: Option<Vec<OperationId>>,
     /// The header of the block.
     pub(crate) header: WrappedHeader,
     /// Full operations size in bytes
@@ -340,7 +340,7 @@ impl ProtocolWorker {
             "cmd": cmd
         });
         match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+            ProtocolCommand::IntegratedBlock { block_id } => {
                 massa_trace!(
                     "protocol.protocol_worker.process_command.integrated_block.begin",
                     { "block_id": block_id }
@@ -412,7 +412,7 @@ impl ProtocolWorker {
                     self.checked_operations.insert(id);
                 }
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: OperationIds = operation_ids
+                    let new_ops: Set<OperationId> = operation_ids
                         .iter()
                         .filter(|id| !node_info.knows_op(id))
                         .copied()
@@ -871,7 +871,7 @@ impl ProtocolWorker {
     /// - Valid signature
     pub(crate) async fn note_operations_from_node(
         &mut self,
-        operations: Operations,
+        operations: Vec<WrappedOperation>,
         source_node_id: &NodeId,
         done_signal: Option<oneshot::Sender<()>>,
     ) -> Result<(Vec<OperationId>, Map<OperationId, usize>), ProtocolError> {

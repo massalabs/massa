@@ -3,11 +3,11 @@
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
-    prehash::{Map, Set},
+    prehash::Set,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
     wrapped::WrappedContent,
-    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer,
-    OperationId, Slot, WrappedEndorsement, WrappedHeader,
+    Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot, WrappedEndorsement,
+    WrappedHeader,
 };
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
@@ -56,7 +56,7 @@ impl BlockFactoryWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the previous_slot parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get current absolute time
-        let mut now = MassaTime::compensated_now(self.cfg.clock_compensation_millis)
+        let now = MassaTime::compensated_now(self.cfg.clock_compensation_millis)
             .expect("could not get current time");
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
@@ -107,15 +107,13 @@ impl BlockFactoryWorker {
     /// # Return value
     /// Returns `true` if the instant was reached, otherwise `false` if there was an interruption.
     fn interruptible_wait_until(&self, duration: Instant) -> bool {
-        loop {
-            match self.factory_receiver.recv_deadline(duration) {
-                // message received => quit main loop
-                Ok(()) => return false,
-                // timeout => continue main loop
-                Err(mpsc::RecvTimeoutError::Timeout) => return true,
-                // channel disconnected (sender dropped) => quit main loop
-                Err(mpsc::RecvTimeoutError::Disconnected) => return false,
-            }
+        match self.factory_receiver.recv_deadline(duration) {
+            // message received => quit main loop
+            Ok(()) => false,
+            // timeout => continue main loop
+            Err(mpsc::RecvTimeoutError::Timeout) => true,
+            // channel disconnected (sender dropped) => quit main loop
+            Err(mpsc::RecvTimeoutError::Disconnected) => false,
         }
     }
 
@@ -184,8 +182,7 @@ impl BlockFactoryWorker {
         let global_operations_hash = Hash::compute_from(
             &op_ids
                 .iter()
-                .map(|op_id| *op_id.to_bytes())
-                .flatten()
+                .flat_map(|op_id| *op_id.to_bytes())
                 .collect::<Vec<u8>>(),
         );
 

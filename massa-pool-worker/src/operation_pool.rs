@@ -25,7 +25,7 @@ pub struct OperationPool {
     ops_per_expiration: BTreeSet<(Slot, PoolOperationCursor)>,
 
     /// storage instance
-    storage: Storage,
+    pub(crate) storage: Storage,
 
     /// execution controller
     execution_controller: Box<dyn ExecutionController>,

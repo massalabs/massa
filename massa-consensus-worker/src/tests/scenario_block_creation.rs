@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::{create_executesc, random_address_on_thread};
-use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
+use crate::tests::tools::{self, create_roll_transaction, create_transaction};
 use massa_consensus_exports::test_exports::{generate_ledger_file, generate_roll_counts_file};
 use massa_consensus_exports::ConsensusConfig;
 use massa_hash::Hash;
@@ -56,7 +56,10 @@ async fn test_genesis_block_creation() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
             let _genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -67,6 +70,7 @@ async fn test_genesis_block_creation() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -174,10 +178,11 @@ async fn test_block_creation_with_draw() {
     let operation_fee = 0;
     tools::consensus_without_pool_with_storage_test(
         cfg.clone(),
-        async move |storage,
+        async move |mut storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -186,7 +191,7 @@ async fn test_block_creation_with_draw() {
 
             // initial block: addr2 buys 1 roll
             let op1 = create_roll_transaction(&keypair_2, 1, true, 10, operation_fee);
-            storage.store_operation(op1.clone());
+            storage.store_operations(vec![op1.clone()]);
             let block = tools::create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
@@ -217,16 +222,14 @@ async fn test_block_creation_with_draw() {
             }
 
             // get draws for cycle 3 (lookback = cycle 0)
-            let draws: HashMap<_, _> = consensus_command_sender
-                .get_selection_draws(
-                    Slot::new(3 * cfg.periods_per_cycle, 0),
-                    Slot::new(4 * cfg.periods_per_cycle, 0),
-                )
-                .await
-                .unwrap()
-                .into_iter()
-                .map(|(s, (b, _e))| (s, b))
-                .collect();
+            let mut draws: HashMap<Slot, Address> = HashMap::default();
+            for i in (3 * cfg.periods_per_cycle)..(4 * cfg.periods_per_cycle) {
+                let slot = Slot::new(i, 0);
+                draws.insert(
+                    slot,
+                    selector_controller.get_selection(slot).unwrap().producer,
+                );
+            }
             let nb_address1_draws = draws.iter().filter(|(_, addr)| **addr == address_1).count();
             // fair coin test. See https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair
             // note: this is a statistical test. It may fail in rare occasions.
@@ -244,7 +247,7 @@ async fn test_block_creation_with_draw() {
                 // wait block propagation
                 let block_creator = protocol_controller
                     .wait_command(3500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                        ProtocolCommand::IntegratedBlock { block_id } => {
                             let block = storage
                                 .retrieve_block(&block_id)
                                 .expect(&format!("Block id : {} not found in storage", block_id));
@@ -271,6 +274,7 @@ async fn test_block_creation_with_draw() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -329,28 +333,21 @@ async fn test_interleaving_block_creation_with_reception() {
         async move |storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    selector_controller| {
             let mut parents = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            let draws: HashMap<_, _> = consensus_command_sender
-                .get_selection_draws(Slot::new(1, 0), Slot::new(11, 0))
-                .await
-                .unwrap()
-                .into_iter()
-                .map(|(s, (b, _e))| (s, b))
-                .collect();
-
-            sleep_until(
+            sleep_until(tokio::time::Instant::from_std(
                 cfg.genesis_timestamp
                     .saturating_add(cfg.t0)
                     .saturating_sub(150.into())
                     .estimate_instant(0)
                     .expect("could  not estimate instant for genesis timestamps"),
-            )
+            ))
             .await;
 
             // check 10 draws
@@ -360,13 +357,16 @@ async fn test_interleaving_block_creation_with_reception() {
             // and sent to the local node through protocol
             for i in 1..11 {
                 let cur_slot = Slot::new(i, 0);
-                let creator = draws.get(&cur_slot).expect("missing slot in drawss");
+                let creator = &selector_controller
+                    .get_selection(cur_slot)
+                    .expect("missing slot in drawss")
+                    .producer;
 
                 let block_id = if *creator == address_1 {
                     // wait block propagation
                     let (header, id) = protocol_controller
                         .wait_command(cfg.t0.saturating_add(300.into()), |cmd| match cmd {
-                            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                            ProtocolCommand::IntegratedBlock { block_id } => {
                                 let block = storage.retrieve_block(&block_id).expect(&format!(
                                     "Block id : {} not found in storage",
                                     block_id
@@ -411,6 +411,7 @@ async fn test_interleaving_block_creation_with_reception() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -472,81 +473,82 @@ async fn test_order_of_inclusion() {
     tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
-        None,
-        async move |mut pool_controller,
+        async move |pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
-                    storage| {
+                    storage,
+                    selector_controller| {
+            //TODO: Replace
             // wait for first slot
-            pool_controller
-                .wait_command(
-                    cfg.t0.saturating_mul(2).saturating_add(init_time),
-                    |cmd| match cmd {
-                        PoolCommand::UpdateCurrentSlot(s) => {
-                            if s == Slot::new(1, 0) {
-                                Some(())
-                            } else {
-                                None
-                            }
-                        }
-                        PoolCommand::GetEndorsements { response_tx, .. } => {
-                            response_tx.send(Vec::new()).unwrap();
-                            None
-                        }
-                        _ => None,
-                    },
-                )
-                .await
-                .expect("timeout while waiting for slot");
-
+            // pool_controller
+            //     .wait_command(
+            //         cfg.t0.saturating_mul(2).saturating_add(init_time),
+            //         |cmd| match cmd {
+            //             PoolCommand::UpdateCurrentSlot(s) => {
+            //                 if s == Slot::new(1, 0) {
+            //                     Some(())
+            //                 } else {
+            //                     None
+            //                 }
+            //             }
+            //             PoolCommand::GetEndorsements { response_tx, .. } => {
+            //                 response_tx.send(Vec::new()).unwrap();
+            //                 None
+            //             }
+            //             _ => None,
+            //         },
+            //     )
+            //     .await
+            //     .expect("timeout while waiting for slot");
+            //
             // respond to first pool batch command
-            pool_controller
-                .wait_command(300.into(), |cmd| match cmd {
-                    PoolCommand::GetOperationBatch { response_tx, .. } => {
-                        response_tx
-                            .send(vec![
-                                (op3.clone(), 50),
-                                (op2.clone(), 50),
-                                (op1.clone(), 50),
-                            ])
-                            .unwrap();
-                        Some(())
-                    }
-                    PoolCommand::GetEndorsements { response_tx, .. } => {
-                        response_tx.send(Vec::new()).unwrap();
-                        None
-                    }
-                    _ => None,
-                })
-                .await
-                .expect("timeout while waiting for 1st operation batch request");
+            // pool_controller
+            //     .wait_command(300.into(), |cmd| match cmd {
+            //         PoolCommand::GetOperationBatch { response_tx, .. } => {
+            //             response_tx
+            //                 .send(vec![
+            //                     (op3.clone(), 50),
+            //                     (op2.clone(), 50),
+            //                     (op1.clone(), 50),
+            //                 ])
+            //                 .unwrap();
+            //             Some(())
+            //         }
+            //         PoolCommand::GetEndorsements { response_tx, .. } => {
+            //             response_tx.send(Vec::new()).unwrap();
+            //             None
+            //         }
+            //         _ => None,
+            //     })
+            //     .await
+            //     .expect("timeout while waiting for 1st operation batch request");
 
-            // respond to second pool batch command
-            pool_controller
-                .wait_command(300.into(), |cmd| match cmd {
-                    PoolCommand::GetOperationBatch {
-                        response_tx,
-                        exclude,
-                        ..
-                    } => {
-                        assert!(!exclude.is_empty());
-                        response_tx.send(vec![]).unwrap();
-                        Some(())
-                    }
-                    PoolCommand::GetEndorsements { response_tx, .. } => {
-                        response_tx.send(Vec::new()).unwrap();
-                        None
-                    }
-                    _ => None,
-                })
-                .await
-                .expect("timeout while waiting for 2nd operation batch request");
+            // // respond to second pool batch command
+            // pool_controller
+            //     .wait_command(300.into(), |cmd| match cmd {
+            //         PoolCommand::GetOperationBatch {
+            //             response_tx,
+            //             exclude,
+            //             ..
+            //         } => {
+            //             assert!(!exclude.is_empty());
+            //             response_tx.send(vec![]).unwrap();
+            //             Some(())
+            //         }
+            //         PoolCommand::GetEndorsements { response_tx, .. } => {
+            //             response_tx.send(Vec::new()).unwrap();
+            //             None
+            //         }
+            //         _ => None,
+            //     })
+            //     .await
+            //     .expect("timeout while waiting for 2nd operation batch request");
 
             // wait for block
             let block = protocol_controller
                 .wait_command(300.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                    ProtocolCommand::IntegratedBlock { block_id } => {
                         let block = storage
                             .retrieve_block(&block_id)
                             .expect(&format!("Block id : {} not found in storage", block_id));
@@ -571,6 +573,7 @@ async fn test_order_of_inclusion() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -647,141 +650,146 @@ async fn test_block_filling() {
     tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
-        None,
-        async move |mut pool_controller,
+        async move |pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
-                    storage| {
+                    storage,
+                    selector_controller| {
             let op_size = 10;
 
             // wait for slot
-            let mut prev_blocks = Vec::new();
+            //let mut prev_blocks = Vec::new();
             for cur_slot in [Slot::new(1, 0), Slot::new(1, 1)] {
-                pool_controller
-                    .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
-                        PoolCommand::UpdateCurrentSlot(s) => {
-                            if s == cur_slot {
-                                Some(())
-                            } else {
-                                None
-                            }
-                        }
-                        _ => None,
-                    })
-                    .await
-                    .expect("timeout while waiting for slot");
-                // respond to pool batch command
-                pool_controller
-                    .wait_command(300.into(), |cmd| match cmd {
-                        PoolCommand::GetOperationBatch { response_tx, .. } => {
-                            response_tx.send(Default::default()).unwrap();
-                            Some(())
-                        }
-                        _ => None,
-                    })
-                    .await
-                    .expect("timeout while waiting for operation batch request");
-                // wait for block
-                let block = protocol_controller
-                    .wait_command(500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock { block_id, .. } => {
-                            let block = storage
-                                .retrieve_block(&block_id)
-                                .expect(&format!("Block id : {} not found in storage", block_id));
-                            let stored_block = block.read();
-                            Some(stored_block.clone())
-                        }
-                        _ => None,
-                    })
-                    .await
-                    .expect("timeout while waiting for block");
-                assert_eq!(block.content.header.content.slot, cur_slot);
-                prev_blocks.push(block.id);
+                //TODO: Replace
+                //     pool_controller
+                //         .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
+                //             PoolCommand::UpdateCurrentSlot(s) => {
+                //                 if s == cur_slot {
+                //                     Some(())
+                //                 } else {
+                //                     None
+                //                 }
+                //             }
+                //             _ => None,
+                //         })
+                //         .await
+                //         .expect("timeout while waiting for slot");
+                //     // respond to pool batch command
+                //     pool_controller
+                //         .wait_command(300.into(), |cmd| match cmd {
+                //             PoolCommand::GetOperationBatch { response_tx, .. } => {
+                //                 response_tx.send(Default::default()).unwrap();
+                //                 Some(())
+                //             }
+                //             _ => None,
+                //         })
+                //         .await
+                //         .expect("timeout while waiting for operation batch request");
+                //     // wait for block
+                //     let block = protocol_controller
+                //         .wait_command(500.into(), |cmd| match cmd {
+                //             ProtocolCommand::IntegratedBlock { block_id } => {
+                //                 let block = storage
+                //                     .retrieve_block(&block_id)
+                //                     .expect(&format!("Block id : {} not found in storage", block_id));
+                //                 let stored_block = block.read();
+                //                 Some(stored_block.clone())
+                //             }
+                //             _ => None,
+                //         })
+                //         .await
+                //         .expect("timeout while waiting for block");
+                //     assert_eq!(block.content.header.content.slot, cur_slot);
+                //     prev_blocks.push(block.id);
+                // }
             }
 
-            // wait for slot p2t0
-            pool_controller
-                .wait_command(cfg.t0, |cmd| match cmd {
-                    PoolCommand::UpdateCurrentSlot(s) => {
-                        if s == Slot::new(2, 0) {
-                            Some(())
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
-                })
-                .await
-                .expect("timeout while waiting for slot");
+            // // wait for slot p2t0
+            // pool_controller
+            //     .wait_command(cfg.t0, |cmd| match cmd {
+            //         PoolCommand::UpdateCurrentSlot(s) => {
+            //             if s == Slot::new(2, 0) {
+            //                 Some(())
+            //             } else {
+            //                 None
+            //             }
+            //         }
+            //         _ => None,
+            //     })
+            //     .await
+            //     .expect("timeout while waiting for slot");
 
-            // respond to endorsement command
-            let eds = pool_controller
-                .wait_command(300.into(), |cmd| match cmd {
-                    PoolCommand::GetEndorsements {
-                        target_slot,
-                        parent,
-                        creators,
-                        response_tx,
-                        ..
-                    } => {
-                        assert_eq!(Slot::new(1, 0), target_slot);
-                        assert_eq!(parent, prev_blocks[0]);
-                        let mut eds: Vec<WrappedEndorsement> = Vec::new();
-                        for (index, creator) in creators.iter().enumerate() {
-                            let ed = if *creator == address_a {
-                                create_endorsement(&keypair_a, target_slot, parent, index as u32)
-                            } else if *creator == address_b {
-                                create_endorsement(&keypair_b, target_slot, parent, index as u32)
-                            } else {
-                                panic!("invalid endorser choice");
-                            };
-                            eds.push(ed);
-                        }
-                        response_tx.send(eds.clone()).unwrap();
-                        Some(eds)
-                    }
-                    _ => None,
-                })
-                .await
-                .expect("timeout while waiting for endorsement request");
-            assert_eq!(eds.len() as u32, cfg.endorsement_count);
+            // // respond to endorsement command
+            // let eds = pool_controller
+            //     .wait_command(300.into(), |cmd| match cmd {
+            //         PoolCommand::GetEndorsements {
+            //             target_slot,
+            //             parent,
+            //             creators,
+            //             response_tx,
+            //             ..
+            //         } => {
+            //             assert_eq!(Slot::new(1, 0), target_slot);
+            //             assert_eq!(parent, prev_blocks[0]);
+            //             let mut eds: Vec<WrappedEndorsement> = Vec::new();
+            //             for (index, creator) in creators.iter().enumerate() {
+            //                 let ed = if *creator == address_a {
+            //                     create_endorsement(&keypair_a, target_slot, parent, index as u32)
+            //                 } else if *creator == address_b {
+            //                     create_endorsement(&keypair_b, target_slot, parent, index as u32)
+            //                 } else {
+            //                     panic!("invalid endorser choice");
+            //                 };
+            //                 eds.push(ed);
+            //             }
+            //             response_tx.send(eds.clone()).unwrap();
+            //             Some(eds)
+            //         }
+            //         _ => None,
+            //     })
+            //     .await
+            //     .expect("timeout while waiting for endorsement request");
+            // assert_eq!(eds.len() as u32, cfg.endorsement_count);
 
             // respond to first pool batch command
-            pool_controller
-                .wait_command(300.into(), |cmd| match cmd {
-                    PoolCommand::GetOperationBatch { response_tx, .. } => {
-                        response_tx
-                            .send(ops.iter().map(|op| (op.clone(), op_size)).collect())
-                            .unwrap();
-                        Some(())
-                    }
-                    _ => None,
-                })
-                .await
-                .expect("timeout while waiting for 1st operation batch request");
+            //TODO: Replace
+            // pool_controller
+            //     .wait_command(300.into(), |cmd| match cmd {
+            //         PoolCommand::GetOperationBatch { response_tx, .. } => {
+            //             response_tx
+            //                 .send(ops.iter().map(|op| (op.clone(), op_size)).collect())
+            //                 .unwrap();
+            //             Some(())
+            //         }
+            //         _ => None,
+            //     })
+            //     .await
+            //     .expect("timeout while waiting for 1st operation batch request");
 
             // respond to second pool batch command
-            pool_controller
-                .wait_command(300.into(), |cmd| match cmd {
-                    PoolCommand::GetOperationBatch {
-                        response_tx,
-                        exclude,
-                        ..
-                    } => {
-                        assert!(!exclude.is_empty());
-                        response_tx.send(vec![]).unwrap();
-                        Some(())
-                    }
-                    _ => None,
-                })
-                .await
-                .expect("timeout while waiting for 2nd operation batch request");
+            //TODO: Replace
+            // pool_controller
+            //     .wait_command(300.into(), |cmd| match cmd {
+            //         PoolCommand::GetOperationBatch {
+            //             response_tx,
+            //             exclude,
+            //             ..
+            //         } => {
+            //             assert!(!exclude.is_empty());
+            //             response_tx.send(vec![]).unwrap();
+            //             Some(())
+            //         }
+            //         _ => None,
+            //     })
+            //     .await
+            //     .expect("timeout while waiting for 2nd operation batch request");
 
+            let eds: Vec<WrappedEndorsement> = Vec::new();
             // wait for block
             let block = protocol_controller
                 .wait_command(500.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                    ProtocolCommand::IntegratedBlock { block_id } => {
                         let block = storage
                             .retrieve_block(&block_id)
                             .expect(&format!("Block id : {} not found in storage", block_id));
@@ -842,6 +850,7 @@ async fn test_block_filling() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

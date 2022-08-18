@@ -22,12 +22,11 @@ pub use endorsement::{
 };
 pub use error::ModelsError;
 pub use operation::{
-    Operation, OperationDeserializer, OperationId, OperationIdDeserializer, OperationIds,
+    Operation, OperationDeserializer, OperationId, OperationIdDeserializer,
     OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixId,
     OperationPrefixIdDeserializer, OperationPrefixIds, OperationPrefixIdsDeserializer,
     OperationPrefixIdsSerializer, OperationSerializer, OperationType, OperationTypeDeserializer,
-    OperationTypeSerializer, Operations, OperationsDeserializer, OperationsSerializer,
-    WrappedOperation,
+    OperationTypeSerializer, OperationsDeserializer, OperationsSerializer, WrappedOperation,
 };
 pub use serialization::{
     array_from_slice, u8_from_slice, BitVecDeserializer, BitVecSerializer, DeserializeMinBEInt,

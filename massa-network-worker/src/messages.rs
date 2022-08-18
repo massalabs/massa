@@ -7,12 +7,12 @@ use massa_models::{
     operation::OperationPrefixIds,
     operation::{
         OperationIdsDeserializer, OperationIdsSerializer, OperationPrefixIdsDeserializer,
-        OperationPrefixIdsSerializer, Operations, OperationsDeserializer, OperationsSerializer,
+        OperationPrefixIdsSerializer, OperationsDeserializer, OperationsSerializer,
     },
     wrapped::{WrappedDeserializer, WrappedSerializer},
     BlockHeader, BlockHeaderDeserializer, BlockId, Endorsement, EndorsementDeserializer,
     IpAddrDeserializer, IpAddrSerializer, Version, VersionDeserializer, VersionSerializer,
-    WrappedEndorsement, WrappedHeader,
+    WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use massa_network_exports::{AskForBlocksInfo, BlockInfoReply};
 use massa_serialization::{
@@ -68,7 +68,7 @@ pub enum Message {
     /// Someone ask for operations.
     AskForOperations(OperationPrefixIds),
     /// A list of operations
-    Operations(Operations),
+    Operations(Vec<WrappedOperation>),
     /// Endorsements
     Endorsements(Vec<WrappedEndorsement>),
 }

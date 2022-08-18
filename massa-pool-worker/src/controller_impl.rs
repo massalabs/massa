@@ -1,4 +1,4 @@
-use massa_models::{BlockId, EndorsementId, OperationId, Slot};
+use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedOperation};
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_storage::Storage;
 use std::sync::{Arc, RwLock};
@@ -6,7 +6,7 @@ use std::sync::{Arc, RwLock};
 use crate::{endorsement_pool::EndorsementPool, operation_pool::OperationPool};
 #[derive(Clone)]
 pub struct PoolControllerImpl {
-    pub(crate) config: PoolConfig,
+    pub(crate) _config: PoolConfig,
     pub(crate) operation_pool: Arc<RwLock<OperationPool>>,
     pub(crate) endorsement_pool: Arc<RwLock<EndorsementPool>>,
 }
@@ -64,5 +64,39 @@ impl PoolController for PoolControllerImpl {
     /// Allows cloning `Box<dyn PoolController>`,
     fn clone_box(&self) -> Box<dyn PoolController> {
         Box::new(self.clone())
+    }
+
+    /// Get respectivelly the number of operations and endorsements currently in pool
+    fn get_stats(&self) -> (usize, usize) {
+        (
+            self.operation_pool
+                .read()
+                .expect("could not r-lock operation pool")
+                .storage
+                .local_operation_len(),
+            self.endorsement_pool
+                .read()
+                .expect("could not r-lock endorsement pool")
+                .storage
+                .local_endorsement_len(),
+        )
+    }
+
+    /// Get the operation pool storage
+    fn get_operations_by_ids(&self, ids: &Set<OperationId>) -> Vec<WrappedOperation> {
+        self.operation_pool
+            .read()
+            .expect("could not r-lock operation pool")
+            .storage
+            .get_operations_by_ids(ids)
+    }
+
+    /// Get the endorsement pool storage
+    fn get_endorsement_ids(&self) -> Set<EndorsementId> {
+        self.endorsement_pool
+            .read()
+            .expect("could not r-lock operation pool")
+            .storage
+            .get_local_endorsement_ids()
     }
 }

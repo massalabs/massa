@@ -3,7 +3,7 @@
 use super::{config::POOL_CONFIG, tools::get_transaction};
 use crate::tests::tools::create_executesc;
 use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::OperationId;
 use massa_models::{Slot, WrappedOperation};
@@ -20,7 +20,7 @@ use tokio::time::sleep;
 async fn test_pool() {
     pool_test(
         &POOL_CONFIG,
-        async move |mut protocol_controller, mut pool_controller| {
+        async move |mut protocol_controller, mut pool_controller, storage| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
@@ -77,19 +77,14 @@ async fn test_pool() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 3;
-                    let res = pool_controller
-                        .notify_final_cs_periods(slot)
-                        .send_get_operations_announcement(
-                            target_slot,
-                            Set::<OperationId>::default(),
-                            max_count,
-                            10000,
-                        )
-                        .await
-                        .unwrap();
-                    assert!(res
+                    let (ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
+                    assert!(storage_ops
+                        .get_op_refs()
                         .iter()
-                        .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                        .map(|id| {
+                            let operation = storage_ops.retrieve_operation(id).unwrap();
+                            (operation.id, operation.serialized_data)
+                        })
                         .eq(thread_tx_lists[target_slot.thread as usize]
                             .iter()
                             .filter(|(_, r)| r.contains(&target_slot.period))
@@ -100,10 +95,8 @@ async fn test_pool() {
             // op ending before or at period 45 won't appear in the block due to incompatible validity range
             // we don't keep them as expected ops
             let final_period = 45u64;
-            pool_command_sender
-                .update_latest_final_periods(vec![final_period; POOL_CONFIG.thread_count as usize])
-                .await
-                .unwrap();
+            pool_controller
+                .notify_final_cs_periods(&vec![final_period; POOL_CONFIG.thread_count as usize]);
             for lst in thread_tx_lists.iter_mut() {
                 lst.retain(|(op, _)| op.content.expire_period > final_period);
             }
@@ -112,18 +105,14 @@ async fn test_pool() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
-                    let res = pool_command_sender
-                        .send_get_operations_announcement(
-                            target_slot,
-                            Set::<OperationId>::default(),
-                            max_count,
-                            10000,
-                        )
-                        .await
-                        .unwrap();
-                    assert!(res
+                    let (ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
+                    assert!(storage_ops
+                        .get_op_refs()
                         .iter()
-                        .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                        .map(|id| {
+                            let operation = storage_ops.retrieve_operation(id).unwrap();
+                            (operation.id, operation.serialized_data)
+                        })
                         .eq(thread_tx_lists[target_slot.thread as usize]
                             .iter()
                             .filter(|(_, r)| r.contains(&target_slot.period))
@@ -133,18 +122,16 @@ async fn test_pool() {
             }
             // Add transactions that should be ignored despite their high fees, due to them being too far in the future
             {
-                pool_command_sender
-                    .update_current_slot(Slot::new(10, 0))
-                    .await
-                    .unwrap();
+                pool_controller
+                    .notify_final_cs_periods(&vec![10; POOL_CONFIG.thread_count as usize]);
                 let fee = 1000;
                 let expire_period: u64 = 300;
                 let op = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
-                let mut ops = Map::default();
-                ops.insert(id, op.clone());
+                let mut ops = Storage::default();
+                ops.store_operations(vec![op.clone()]);
 
-                pool_command_sender.add_operations(ops).await.unwrap();
+                pool_controller.add_operations(ops);
 
                 if let Some(cmd) = protocol_controller
                     .wait_command(250.into(), op_filter)
@@ -152,18 +139,11 @@ async fn test_pool() {
                 {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
-                let res = pool_command_sender
-                    .send_get_operations_announcement(
-                        Slot::new(expire_period - 1, op.thread),
-                        Set::<OperationId>::default(),
-                        10,
-                        10000,
-                    )
-                    .await
-                    .unwrap();
-                assert!(res.is_empty());
+                let (ids, storage_ops) =
+                    pool_controller.get_block_operations(&Slot::new(expire_period - 1, op.thread));
+                assert!(ids.is_empty());
             }
-            (protocol_controller, pool_command_sender, pool_manager)
+            (protocol_controller, pool_controller, storage)
         },
     )
     .await;
@@ -174,7 +154,7 @@ async fn test_pool() {
 async fn test_pool_with_execute_sc() {
     pool_test(
         &POOL_CONFIG,
-        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+        async move |mut protocol_controller, mut pool_controller, storage| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
@@ -189,14 +169,11 @@ async fn test_pool_with_execute_sc() {
                 let op = create_executesc(expire_period, fee, 100, 1); // Only the fee determines the rentability
                 let id = op.verify_integrity().unwrap();
 
-                let mut ops = Map::default();
-                ops.insert(id, op.clone());
+                let mut ops = Storage::default();
+                ops.store_operations(vec![op.clone()]);
 
-                pool_command_sender
-                    .add_operations(ops.clone())
-                    .await
-                    .unwrap();
-
+                pool_controller.add_operations(ops.clone());
+                assert_eq!(ops.get_op_refs().len(), 0);
                 let newly_added = match protocol_controller
                     .wait_command(250.into(), op_filter)
                     .await
@@ -205,16 +182,11 @@ async fn test_pool_with_execute_sc() {
                     Some(_) => panic!("unexpected protocol command"),
                     None => panic!("unexpected timeout reached"),
                 };
-                assert_eq!(
-                    newly_added.iter().copied().collect::<Vec<_>>(),
-                    ops.keys().copied().collect::<Vec<_>>()
-                );
+                assert_eq!(newly_added.iter().copied().collect::<Vec<_>>(), vec![op.id]);
 
                 // duplicate
-                pool_command_sender
-                    .add_operations(ops.clone())
-                    .await
-                    .unwrap();
+                ops.store_operations(vec![op.clone()]);
+                pool_controller.add_operations(ops.clone());
 
                 if let Some(cmd) = protocol_controller
                     .wait_command(250.into(), op_filter)
@@ -228,7 +200,7 @@ async fn test_pool_with_execute_sc() {
             // sort from bigger fee to smaller and truncate
             for lst in thread_tx_lists.iter_mut() {
                 lst.reverse();
-                lst.truncate(POOL_CONFIG.settings.max_pool_size_per_thread as usize);
+                lst.truncate(POOL_CONFIG.max_operation_pool_size_per_thread as usize);
             }
 
             // checks ops are the expected ones for thread 0 and 1 and various periods
@@ -236,18 +208,14 @@ async fn test_pool_with_execute_sc() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 3;
-                    let res = pool_command_sender
-                        .send_get_operations_announcement(
-                            target_slot,
-                            Set::default(),
-                            max_count,
-                            10000,
-                        )
-                        .await
-                        .unwrap();
-                    assert!(res
+                    let (ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
+                    assert!(storage_ops
+                        .get_op_refs()
                         .iter()
-                        .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                        .map(|id| {
+                            let operation = storage_ops.retrieve_operation(id).unwrap();
+                            (operation.id, operation.serialized_data)
+                        })
                         .eq(thread_tx_lists[target_slot.thread as usize]
                             .iter()
                             .filter(|(_, r)| r.contains(&target_slot.period))
@@ -258,10 +226,8 @@ async fn test_pool_with_execute_sc() {
             // op ending before or at period 45 won't appear in the block due to incompatible validity range
             // we don't keep them as expected ops
             let final_period = 45u64;
-            pool_command_sender
-                .update_latest_final_periods(vec![final_period; POOL_CONFIG.thread_count as usize])
-                .await
-                .unwrap();
+            pool_controller
+                .notify_final_cs_periods(&vec![final_period; POOL_CONFIG.thread_count as usize]);
             for lst in thread_tx_lists.iter_mut() {
                 lst.retain(|(op, _)| op.content.expire_period > final_period);
             }
@@ -270,18 +236,14 @@ async fn test_pool_with_execute_sc() {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
-                    let res = pool_command_sender
-                        .send_get_operations_announcement(
-                            target_slot,
-                            Set::default(),
-                            max_count,
-                            10000,
-                        )
-                        .await
-                        .unwrap();
-                    assert!(res
+                    let (ids, storage_ops) = pool_controller.get_block_operations(&target_slot);
+                    assert!(storage_ops
+                        .get_op_refs()
                         .iter()
-                        .map(|(op, _)| (op.id, op.serialized_data.clone()))
+                        .map(|id| {
+                            let operation = storage_ops.retrieve_operation(id).unwrap();
+                            (operation.id, operation.serialized_data)
+                        })
                         .eq(thread_tx_lists[target_slot.thread as usize]
                             .iter()
                             .filter(|(_, r)| r.contains(&target_slot.period))
@@ -291,18 +253,16 @@ async fn test_pool_with_execute_sc() {
             }
             // Add transactions that should be ignored despite their high fees, due to them being too far in the future
             {
-                pool_command_sender
-                    .update_current_slot(Slot::new(10, 0))
-                    .await
-                    .unwrap();
+                pool_controller
+                    .notify_final_cs_periods(&vec![10; POOL_CONFIG.thread_count as usize]);
                 let fee = 1000;
                 let expire_period: u64 = 300;
                 let op = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
-                let mut ops = Map::default();
-                ops.insert(id, op.clone());
+                let mut ops = Storage::default();
+                ops.store_operations(vec![op.clone()]);
 
-                pool_command_sender.add_operations(ops).await.unwrap();
+                pool_controller.add_operations(ops);
 
                 if let Some(cmd) = protocol_controller
                     .wait_command(250.into(), op_filter)
@@ -310,18 +270,11 @@ async fn test_pool_with_execute_sc() {
                 {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
-                let res = pool_command_sender
-                    .send_get_operations_announcement(
-                        Slot::new(expire_period - 1, op.thread),
-                        Set::default(),
-                        10,
-                        10000,
-                    )
-                    .await
-                    .unwrap();
-                assert!(res.is_empty());
+                let (ids, storage_ops) =
+                    pool_controller.get_block_operations(&Slot::new(expire_period - 1, op.thread));
+                assert!(ids.is_empty());
             }
-            (protocol_controller, pool_command_sender, pool_manager)
+            (protocol_controller, pool_controller, storage)
         },
     )
     .await;
@@ -332,7 +285,7 @@ async fn test_pool_with_execute_sc() {
 async fn test_pool_with_protocol_events() {
     pool_test(
         &POOL_CONFIG,
-        async move |mut protocol_controller, pool_command_sender, pool_manager| {
+        async move |mut protocol_controller, pool_controller, storage| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
@@ -379,7 +332,7 @@ async fn test_pool_with_protocol_events() {
                 thread_tx_lists[op.thread as usize].push((id, op, start_period..=expire_period));
             }
 
-            (protocol_controller, pool_command_sender, pool_manager)
+            (protocol_controller, pool_controller, storage)
         },
     )
     .await;
@@ -390,7 +343,7 @@ async fn test_pool_with_protocol_events() {
 async fn test_pool_propagate_newly_added_endorsements() {
     pool_test(
         &POOL_CONFIG,
-        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+        async move |mut protocol_controller, pool_controller, storage| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
                 _ => None,
@@ -428,17 +381,11 @@ async fn test_pool_propagate_newly_added_endorsements() {
                 panic!("unexpected protocol command {:?}", cmd)
             };
 
-            let res = pool_command_sender
-                .get_endorsements(
-                    target_slot,
-                    endorsement.content.endorsed_block,
-                    vec![endorsement.creator_address],
-                )
-                .await
-                .unwrap();
-            assert_eq!(res.len(), 1);
-            assert_eq!(res[0].id, endorsement.id);
-            (protocol_controller, pool_command_sender, pool_manager)
+            let (ids, storage) = pool_controller
+                .get_block_endorsements(&endorsement.content.endorsed_block, &target_slot);
+            assert_eq!(ids.len(), 1);
+            assert_eq!(ids[0].unwrap(), endorsement.id);
+            (protocol_controller, pool_controller, storage)
         },
     )
     .await;
@@ -449,7 +396,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
 async fn test_pool_add_old_endorsements() {
     pool_test(
         &POOL_CONFIG,
-        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+        async move |mut protocol_controller, mut pool_controller, storage| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
                 _ => None,
@@ -460,10 +407,7 @@ async fn test_pool_add_old_endorsements() {
             let id = endorsement.id;
             endorsements.insert(id, endorsement.clone());
 
-            pool_command_sender
-                .update_latest_final_periods(vec![50, 50])
-                .await
-                .unwrap();
+            pool_controller.notify_final_cs_periods(&vec![50, 50]);
             sleep(Duration::from_millis(500)).await;
             protocol_controller
                 .received_endorsements(endorsements.clone())
@@ -476,7 +420,7 @@ async fn test_pool_add_old_endorsements() {
                 panic!("unexpected protocol command {:?}", cmd)
             };
 
-            (protocol_controller, pool_command_sender, pool_manager)
+            (protocol_controller, pool_controller, storage)
         },
     )
     .await;
@@ -506,16 +450,13 @@ async fn test_get_involved_operations() {
 
     pool_test(
         &POOL_CONFIG,
-        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+        async move |mut protocol_controller, mut pool_controller, storage| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
             };
 
-            pool_command_sender
-                .update_current_slot(Slot::new(1, 0))
-                .await
-                .unwrap();
+            pool_controller.notify_final_cs_periods(&vec![1]);
             let op1 = get_transaction_with_addresses(1, 1, &keypair_a, keypair_b.get_public_key());
             let op2 = get_transaction_with_addresses(2, 10, &keypair_b, keypair_b.get_public_key());
             let op3 =
@@ -547,84 +488,45 @@ async fn test_get_involved_operations() {
                 ops.keys().copied().collect::<HashSet<_>>()
             );
 
-            let res = pool_command_sender
-                .get_operations_involving_address(address_a)
-                .await
-                .unwrap();
-            assert_eq!(
-                res.keys().collect::<HashSet<_>>(),
-                vec![&op1_id, &op3_id].into_iter().collect::<HashSet<_>>()
-            );
+            {
+                let indexes = storage.get_operation_indexes().read();
+                let res = indexes.get_operations_created_by(&address_a);
+                assert_eq!(
+                    res.into_iter().collect::<Vec<OperationId>>(),
+                    vec![op1_id, op3_id]
+                );
 
-            let res = pool_command_sender
-                .get_operations_involving_address(address_b)
-                .await
-                .unwrap();
-            assert_eq!(
-                res.keys().collect::<HashSet<_>>(),
-                vec![&op1_id, &op2_id].into_iter().collect::<HashSet<_>>()
-            );
+                let res = indexes.get_operations_created_by(&address_b);
+                assert_eq!(
+                    res.into_iter().collect::<Vec<OperationId>>(),
+                    vec![op1_id, op2_id]
+                );
 
-            pool_command_sender
-                .update_latest_final_periods(vec![1, 1])
-                .await
-                .unwrap();
+                pool_controller.notify_final_cs_periods(&vec![1, 1]);
 
-            let res = pool_command_sender
-                .get_operations_involving_address(address_a)
-                .await
-                .unwrap();
-            assert_eq!(
-                res.keys().collect::<HashSet<_>>(),
-                vec![&op3_id].into_iter().collect::<HashSet<_>>()
-            );
+                let res = indexes.get_operations_created_by(&address_a);
+                assert_eq!(res.into_iter().collect::<Vec<OperationId>>(), vec![op3_id]);
 
-            let res = pool_command_sender
-                .get_operations_involving_address(address_b)
-                .await
-                .unwrap();
-            assert_eq!(
-                res.keys().collect::<HashSet<_>>(),
-                vec![&op2_id].into_iter().collect::<HashSet<_>>()
-            );
+                let res = indexes.get_operations_created_by(&address_b);
+                assert_eq!(res.into_iter().collect::<Vec<OperationId>>(), vec![op2_id]);
 
-            pool_command_sender
-                .update_latest_final_periods(vec![2, 2])
-                .await
-                .unwrap();
+                pool_controller.notify_final_cs_periods(&vec![2, 2]);
 
-            let res = pool_command_sender
-                .get_operations_involving_address(address_a)
-                .await
-                .unwrap();
-            assert_eq!(
-                res.keys().collect::<HashSet<_>>(),
-                vec![&op3_id].into_iter().collect::<HashSet<_>>()
-            );
+                let res = indexes.get_operations_created_by(&address_a);
+                assert_eq!(res.into_iter().collect::<Vec<OperationId>>(), vec![op3_id]);
 
-            let res = pool_command_sender
-                .get_operations_involving_address(address_b)
-                .await
-                .unwrap();
-            assert!(res.is_empty());
+                let res = indexes.get_operations_created_by(&address_b);
+                assert!(res.is_empty());
 
-            pool_command_sender
-                .update_latest_final_periods(vec![3, 3])
-                .await
-                .unwrap();
+                pool_controller.notify_final_cs_periods(&vec![3, 3]);
 
-            let res = pool_command_sender
-                .get_operations_involving_address(address_a)
-                .await
-                .unwrap();
-            assert!(res.is_empty());
+                let res = indexes.get_operations_created_by(&address_a);
+                assert!(res.is_empty());
 
-            let res = pool_command_sender
-                .get_operations_involving_address(address_b)
-                .await
-                .unwrap();
-            assert!(res.is_empty());
-            (protocol_controller, pool_command_sender, pool_manager)
+                let res = indexes.get_operations_created_by(&address_b);
+                assert!(res.is_empty());
+            }
+            (protocol_controller, pool_controller, storage)
         },
     )
     .await;
@@ -654,7 +556,7 @@ async fn test_new_final_ops() {
 
     pool_test(
         &POOL_CONFIG,
-        async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
+        async move |mut protocol_controller, mut pool_controller, storage| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
@@ -690,29 +592,30 @@ async fn test_new_final_ops() {
                 ops.iter().map(|op| op.id).collect::<HashSet<_>>()
             );
 
-            pool_command_sender
-                .final_operations(
-                    ops[..4]
+            pool_controller.notify_final_cs_periods(&vec![8]);
+
+            // pool_command_sender
+            //     .final_operations(
+            //         ops[..4]
+            //             .to_vec()
+            //             .iter()
+            //             .map(|op| (op.id, (8u64, 0u8)))
+            //             .collect::<Map<OperationId, (u64, u8)>>(),
+            //     )
+            //     .await
+            //     .unwrap();
+            {
+                let indexes = storage.get_operation_indexes().read();
+                let res = indexes.get_operations_created_by(&address_a);
+                assert_eq!(
+                    res.into_iter().collect::<HashSet<_>>(),
+                    ops[4..]
                         .to_vec()
                         .iter()
-                        .map(|op| (op.id, (8u64, 0u8)))
-                        .collect::<Map<OperationId, (u64, u8)>>(),
-                )
-                .await
-                .unwrap();
-
-            let res = pool_command_sender
-                .get_operations_involving_address(address_a)
-                .await
-                .unwrap();
-            assert_eq!(
-                res.keys().copied().collect::<HashSet<_>>(),
-                ops[4..]
-                    .to_vec()
-                    .iter()
-                    .map(|op| op.id)
-                    .collect::<HashSet<_>>()
-            );
+                        .map(|op| op.id)
+                        .collect::<HashSet<_>>()
+                );
+            }
 
             // try to add ops 0 to 3 to pool
             protocol_controller
@@ -736,7 +639,7 @@ async fn test_new_final_ops() {
                 Some(_) => panic!("unexpected protocol command"),
                 None => {}
             };
-            (protocol_controller, pool_command_sender, pool_manager)
+            (protocol_controller, pool_controller, storage)
         },
     )
     .await;

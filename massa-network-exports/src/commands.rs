@@ -18,7 +18,7 @@
 //!    +-------------->|                |           Forward to Protocol
 //!    |               +--------------->|           Forward to Network, then Node
 //!    |               |                #
-//!    |               |                #           Propagate the batch of OperationIds through the network
+//!    |               |                #           Propagate the batch of Vec<OperationId> through the network
 //! ```
 //!
 //! When receiving an operation batch from the network, the `NodeWorker` will
@@ -71,11 +71,8 @@
 
 use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
-    composite::PubkeySig,
-    node::NodeId,
-    operation::{OperationIds, OperationPrefixIds, Operations},
-    stats::NetworkStats,
-    BlockId, WrappedEndorsement, WrappedHeader,
+    composite::PubkeySig, node::NodeId, operation::OperationPrefixIds, prehash::Set,
+    stats::NetworkStats, BlockId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::IpAddr};
@@ -95,7 +92,7 @@ pub enum NodeCommand {
     /// Close the node worker.
     Close(ConnectionClosureReason),
     /// Send full Operations (send to a node that previously asked for)
-    SendOperations(OperationIds),
+    SendOperations(Vec<OperationId>),
     /// Send a batch of operation ids
     SendOperationAnnouncements(OperationPrefixIds),
     /// Ask for a set of operations
@@ -121,7 +118,7 @@ pub enum NodeEventType {
     /// Node we are connected sent info on a list of blocks.
     ReceivedReplyForBlocks(Vec<(BlockId, BlockInfoReply)>),
     /// Received full operations.
-    ReceivedOperations(Operations),
+    ReceivedOperations(Vec<WrappedOperation>),
     /// Received an operation id batch announcing new operations
     ReceivedOperationAnnouncements(OperationPrefixIds),
     /// Receive a list of wanted operations
@@ -142,16 +139,16 @@ pub enum AskForBlocksInfo {
     #[default]
     Info,
     /// The actual operations are required.
-    Operations(OperationIds),
+    Operations(Vec<OperationId>),
 }
 
 /// Reply with the info about a block.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReplyForBlocksInfo {
     /// The info about the block is required(list of operations ids).
-    Info(OperationIds),
+    Info(Vec<OperationId>),
     /// The actual operations required.
-    Operations(OperationIds),
+    Operations(Vec<OperationId>),
     /// Block not found
     NotFound,
 }
@@ -215,7 +212,7 @@ pub enum NetworkCommand {
         /// to node id
         node: NodeId,
         /// operations
-        operations: OperationIds,
+        operations: Vec<OperationId>,
     },
     /// Send operation ids batch to a node
     SendOperationAnnouncements {
@@ -241,9 +238,9 @@ pub enum NetworkCommand {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BlockInfoReply {
     /// The info about the block is required(list of operations ids).
-    Info(OperationIds),
+    Info(Vec<OperationId>),
     /// The actual operations required.
-    Operations(Operations),
+    Operations(Vec<WrappedOperation>),
     /// Block not found
     NotFound,
 }
@@ -282,7 +279,7 @@ pub enum NetworkEvent {
         /// node id
         node: NodeId,
         /// operations
-        operations: Operations,
+        operations: Vec<WrappedOperation>,
     },
     /// Receive a list of `OperationId`
     ReceivedOperationAnnouncements {

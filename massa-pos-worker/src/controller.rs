@@ -80,7 +80,7 @@ impl SelectorController for SelectorControllerImpl {
             {
                 if selection.producer == *address {
                     slot_producers.push(slot);
-                } else if let Some(index) = selection.endorsments.iter().position(|e| e == address)
+                } else if let Some(index) = selection.endorsements.iter().position(|e| e == address)
                 {
                     slot_endorsers.push(IndexedSlot { slot, index });
                 }

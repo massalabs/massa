@@ -43,10 +43,11 @@ async fn test_operations_check() {
 
     consensus_without_pool_with_storage_test(
         cfg.clone(),
-        async move |storage,
+        async move |mut storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -55,7 +56,7 @@ async fn test_operations_check() {
 
             // Valid block A sending 5 from addr1 to addr2 + reward 1 to addr1
             let operation_1 = create_transaction(&keypair_1, address_2, 5, 5, 1);
-            storage.store_operation(operation_1.clone());
+            storage.store_operations(vec![operation_1.clone()]);
             let block_a = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
@@ -80,7 +81,7 @@ async fn test_operations_check() {
 
             // receive block b with invalid operation (not enough coins)
             let operation_2 = create_transaction(&keypair_2, address_1, 10, 8, 1);
-            storage.store_operation(operation_2.clone());
+            storage.store_operations(vec![operation_2.clone()]);
             let block_2b = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 1),
@@ -127,6 +128,7 @@ async fn test_operations_check() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )
@@ -154,10 +156,11 @@ async fn test_execution_check() {
 
     consensus_without_pool_with_storage_test(
         cfg.clone(),
-        async move |storage,
+        async move |mut storage,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    selector_controller| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -166,7 +169,7 @@ async fn test_execution_check() {
 
             // Valid block A executing some bytecode and spending 2 coins.
             let operation_1 = create_executesc(&keypair_1, 5, 5, Default::default(), 1, 2, 1);
-            storage.store_operation(operation_1.clone());
+            storage.store_operations(vec![operation_1.clone()]);
             let block_a = create_block_with_operations(
                 &cfg,
                 Slot::new(1, 0),
@@ -193,6 +196,7 @@ async fn test_execution_check() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

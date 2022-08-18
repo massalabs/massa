@@ -53,21 +53,21 @@ async fn test_get_selection_draws_high_end_slot() {
     cfg.staking_keys_path = staking_keys_file.path().to_path_buf();
     consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            let draws = consensus_command_sender
-                .get_selection_draws(Slot::new(1, 0), Slot::new(2, 0))
-                .await;
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    selector_controller| {
+            let draws = selector_controller.get_selection(Slot::new(1, 0));
             assert!(draws.is_ok());
 
             // Too high end selection should return an error.
-            let too_high_draws = consensus_command_sender
-                .get_selection_draws(Slot::new(1, 0), Slot::new(200, 0))
-                .await;
+            let too_high_draws = selector_controller.get_selection(Slot::new(200, 0));
             assert!(too_high_draws.is_err());
             (
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

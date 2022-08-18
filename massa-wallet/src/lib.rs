@@ -3,6 +3,7 @@
 //! Keypair management
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(map_try_insert)]
 
 pub use error::WalletError;
 
@@ -72,36 +73,37 @@ impl Wallet {
         }
     }
 
-    /// Adds a new keypair to wallet, if it was missing
-    /// returns corresponding address
-    pub fn add_keypair(&mut self, key: KeyPair) -> Result<Address, WalletError> {
-        if !self
-            .keys
-            .iter()
-            .any(|(_, file_key)| file_key.to_bytes() == key.to_bytes())
-        {
-            let ad = Address::from_public_key(&key.get_public_key());
-            self.keys.insert(ad, key);
-            self.save()?;
-            Ok(ad)
-        } else {
-            // key already in wallet
-            Ok(*self
-                .keys
-                .iter()
-                .find(|(_, file_key)| file_key.to_bytes() == key.to_bytes())
-                .unwrap()
-                .0)
+    /// Adds a list of keypairs to the wallet, returns their addresses.
+    /// The wallet file is updated.
+    pub fn add_keypairs(&mut self, keys: Vec<KeyPair>) -> Result<Vec<Address>, WalletError> {
+        let mut changed = false;
+        let mut addrs = Vec::with_capacity(keys.len());
+        for key in keys {
+            let addr = Address::from_public_key(&key.get_public_key());
+            if self.keys.try_insert(addr, key).is_ok() {
+                changed = true;
+            }
+            addrs.push(addr);
         }
+        if changed {
+            self.save()?;
+        }
+        Ok(addrs)
     }
 
-    /// Remove a wallet entry (keys and address) given the address
-    /// The file is overwritten
-    pub fn remove_address(&mut self, address: &Address) -> Result<(), WalletError> {
-        self.keys
-            .remove(address)
-            .ok_or(WalletError::MissingKeyError(*address))?;
-        self.save()
+    /// Removes wallet entries given a list of addresses. Missing entries are ignored.
+    /// The wallet file is updated.
+    pub fn remove_addresses(&mut self, addresses: &Vec<Address>) -> Result<(), WalletError> {
+        let mut changed = false;
+        for address in addresses {
+            if self.keys.remove(address).is_some() {
+                changed = true;
+            }
+        }
+        if changed {
+            self.save()?;
+        }
+        Ok(())
     }
 
     /// Finds the keypair associated with given address

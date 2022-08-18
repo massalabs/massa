@@ -1776,7 +1776,7 @@ impl BlockGraph {
             .selector_controller
             .get_selection(parent_in_own_thread.slot)
         {
-            Ok(sel) => sel.endorsments,
+            Ok(sel) => sel.endorsements,
             Err(_) => return Ok(EndorsementsCheckOutcome::WaitForSlot),
         };
         for endorsement in header.content.endorsements.iter() {

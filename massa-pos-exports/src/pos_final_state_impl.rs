@@ -44,7 +44,8 @@ impl PoSFinalState {
                     cycle,
                     ..Default::default()
                 });
-                while self.cycle_history.len() as u64 > POS_SAVED_CYCLES + 1 {
+                // add 1 for the current cycle and 1 for bootstrap safety
+                while self.cycle_history.len() as u64 > POS_SAVED_CYCLES + 2 {
                     self.cycle_history.pop_front();
                 }
             }
@@ -66,8 +67,10 @@ impl PoSFinalState {
 
         // extent deferred_credits with changes.deferred_credits
         // remove executed credits from the map
-        self.deferred_credits.extend(changes.deferred_credits);
         self.deferred_credits
+            .nested_extend(changes.deferred_credits);
+        self.deferred_credits
+            .0
             .retain(|&credit_slot, _| credit_slot >= slot);
 
         // feed the cycle if it is complete
@@ -93,7 +96,11 @@ impl PoSFinalState {
 
     /// Retrives every deferred credit of the given slot
     pub fn get_deferred_credits_at(&self, slot: &Slot) -> Map<Address, Amount> {
-        self.deferred_credits.get(slot).cloned().unwrap_or_default()
+        self.deferred_credits
+            .0
+            .get(slot)
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Retrives the productions statistics of the last final cycle

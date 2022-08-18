@@ -80,12 +80,12 @@ async fn test_inter_cycle_batch_finalization() {
     consensus_pool_test_with_storage(
         cfg.clone(),
         None,
-        None,
         async move |pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
-                    storage| {
+                    mut storage,
+                    selector_controller| {
             // wait for consensus warmup time
             tokio::time::sleep(warmup_time.to_duration()).await;
 
@@ -140,7 +140,7 @@ async fn test_inter_cycle_batch_finalization() {
             // create and send B4
             tokio::time::sleep(t0.to_duration()).await;
             let roll_sell = create_roll_sell(&staking_key, 1, 4, 0);
-            storage.store_operation(roll_sell.clone());
+            storage.store_operations(vec![roll_sell.clone()]);
             let b4_block = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(4, 0),
@@ -183,6 +183,7 @@ async fn test_inter_cycle_batch_finalization() {
                 protocol_controller,
                 consensus_command_sender,
                 consensus_event_receiver,
+                selector_controller,
             )
         },
     )

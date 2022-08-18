@@ -311,6 +311,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             // Send the header,
             // this should note the node as knowing about the endorsement.
+
             network_controller
                 .send_header(nodes[0].id, block.content.header)
                 .await;
