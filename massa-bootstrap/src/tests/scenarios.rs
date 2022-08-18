@@ -159,17 +159,19 @@ async fn test_bootstrap_server() {
     );
 
     // start selector controllers
-    let (mut selector_manager1, selector_controller1) = start_selector_worker(
+    let mut server_cycles = final_state.read().pos_state.cycle_history.clone();
+    server_cycles.pop_back();
+    let (mut server_selector_manager, server_selector_controller) = start_selector_worker(
         SelectorConfig {
             max_draw_cache: 10,
             initial_rolls_path: PathBuf::from_str("../massa-node/base_config/initial_rolls.json")
                 .unwrap(),
             ..Default::default()
         },
-        final_state.read().pos_state.cycle_history.clone(),
+        server_cycles,
     )
-    .expect("could not start selector1 controller");
-    let (mut selector_manager2, selector_controller2) = start_selector_worker(
+    .expect("could not start server selector controller");
+    let (mut client_selector_manager, client_selector_controller) = start_selector_worker(
         SelectorConfig {
             max_draw_cache: 10,
             initial_rolls_path: PathBuf::from_str("../massa-node/base_config/initial_rolls.json")
@@ -178,12 +180,12 @@ async fn test_bootstrap_server() {
         },
         final_state_client.read().pos_state.cycle_history.clone(),
     )
-    .expect("could not start selector2 controller");
+    .expect("could not start client selector controller");
 
     // check selection draw
-    let selection1 = selector_controller1.get_every_selection();
-    let selection2 = selector_controller2.get_every_selection();
-    assert_eq!(selection1, selection2, "PoS selections do not match");
+    let server_selection = server_selector_controller.get_every_selection();
+    let client_selection = client_selector_controller.get_every_selection();
+    assert_eq!(server_selection, client_selection, "PoS selections do not match");
 
     // check final states
     assert_eq_final_state(&final_state.read(), &final_state_client.read());
@@ -198,6 +200,6 @@ async fn test_bootstrap_server() {
         .expect("could not stop bootstrap server");
 
     // stop selector controllers
-    selector_manager1.stop();
-    selector_manager2.stop();
+    server_selector_manager.stop();
+    client_selector_manager.stop();
 }
