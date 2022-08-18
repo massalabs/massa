@@ -861,24 +861,25 @@ impl ExecutionState {
         if let Some((block_id, block_store)) = opt_block {
             // Retrieve the block from storage
             let stored_block = block_store
-                .retrieve_block(&block_id)
+                .read_blocks()
+                .get(&block_id)
                 .expect("Missing block in storage.")
-                .read()
                 .clone();
 
             // gather all operations
-            let operations = block_store.with_operations(
-                &stored_block
+            let operations = {
+                let ops = block_store.read_operations();
+                stored_block
                     .content
                     .operations
                     .into_iter()
-                    .collect::<Vec<_>>(),
-                |ops| {
-                    ops.iter()
-                        .map(|opt_op| opt_op.expect("block operation absent from storage").clone())
-                        .collect::<Vec<_>>()
-                },
-            );
+                    .map(|op_id| {
+                        ops.get(&op_id)
+                            .expect("block operation absent from storage")
+                            .clone()
+                    })
+                    .collect::<Vec<_>>()
+            };
 
             // gather all available endorsement creators and target blocks
             let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =
@@ -890,17 +891,20 @@ impl ExecutionState {
                     .iter()
                     .map(|endo| (endo.creator_address, endo.content.endorsed_block))
                     .unzip();
+
             // deduce endorsement target block creators
-            let endorsement_target_creators = endorsement_targets
-                .into_iter()
-                .map(|b_id| {
-                    block_store
-                        .retrieve_block(&b_id)
-                        .expect("endorsed block absent from storage")
-                        .read()
-                        .creator_address
-                })
-                .collect::<Vec<_>>();
+            let endorsement_target_creators = {
+                let blocks = block_store.read_blocks();
+                endorsement_targets
+                    .into_iter()
+                    .map(|b_id| {
+                        blocks
+                            .get(&b_id)
+                            .expect("endorsed block absent from storage")
+                            .creator_address
+                    })
+                    .collect::<Vec<_>>()
+            };
 
             // Set remaining block gas
             let mut remaining_block_gas = self.config.max_gas_per_block;

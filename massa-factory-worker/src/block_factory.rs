@@ -12,6 +12,7 @@ use massa_models::{
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use std::{
+    convert::identity,
     sync::{mpsc, Arc, RwLock},
     thread,
     time::Instant,
@@ -174,6 +175,20 @@ impl BlockFactoryWorker {
             &same_thread_parent_id,
             &Slot::new(same_thread_parent_period, slot.thread),
         );
+        //TODO: Do we want ot populate only with endorsement id in the future ?
+        let endorsements: Vec<WrappedEndorsement> = {
+            let endo_read = endo_storage.read_endorsements();
+            endorsements_ids
+                .into_iter()
+                .filter_map(identity)
+                .map(|endo_id| {
+                    endo_read
+                        .get(&endo_id)
+                        .expect("could not retrieve endorsement")
+                        .clone()
+                })
+                .collect()
+        };
         block_storage.extend(endo_storage);
 
         // gather operations and compute global operations hash
@@ -185,17 +200,6 @@ impl BlockFactoryWorker {
                 .flat_map(|op_id| *op_id.to_bytes())
                 .collect::<Vec<u8>>(),
         );
-
-        //TODO: Do we want ot populate only with endorsement id in the future ?
-        let endorsements: Vec<WrappedEndorsement> = endorsements_ids
-            .iter()
-            .filter(|x| x.is_some())
-            .map(|endo_id| {
-                block_storage
-                    .retrieve_endorsement(&endo_id.unwrap())
-                    .expect("could not retrieve endorsement")
-            })
-            .collect();
 
         // create header
         let header: WrappedHeader = BlockHeader::new_wrapped::<BlockHeaderSerializer, BlockId>(
@@ -234,7 +238,7 @@ impl BlockFactoryWorker {
         // send full block to consensus
         self.channels
             .consensus
-            .send_block((block_id, block_storage));
+            .send_block(block_id, slot, block_storage);
     }
 
     /// main run loop of the block creator thread

@@ -50,6 +50,11 @@ impl OperationPool {
         }
     }
 
+    // Get the number of stored elements
+    pub fn len(&self) -> usize {
+        self.ops_per_expiration.len()
+    }
+
     /// notify of new final slot
     pub fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         // update internal final slot counter
@@ -101,13 +106,15 @@ impl OperationPool {
         let mut removed = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
 
         // add items to pool
-        ops_storage.with_operations(&items, |op_refs| {
-            op_refs.iter().zip(items.iter()).for_each(|(op_ref, id)| {
-                let op = op_ref
+        {
+            let ops = ops_storage.read_operations();
+            for op_id in items {
+                let op = ops
+                    .get(&op_id)
                     .expect("attempting to add operation to pool, but it is absent from storage");
                 let op_validity = op.get_validity_range(self.config.operation_validity_periods);
                 if !self.is_operation_relevant(op.thread, &op_validity) {
-                    return;
+                    continue;
                 }
                 let key = build_cursor(op);
                 // thread index won't panic because it was checked at op production or deserialization
@@ -121,14 +128,13 @@ impl OperationPool {
                             self.config.operation_validity_periods,
                             self.config.roll_price,
                         ));
-                        added.insert(*id);
+                        added.insert(op_id);
                     }
                 }
-            });
-        });
+            }
+        }
 
         // prune excess operations
-
         self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
             while ops.len() > self.config.max_operation_pool_size_per_thread {
                 // the unrap below won't panic because the loop condition tests for non-emptines of self.operations

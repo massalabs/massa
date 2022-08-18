@@ -284,6 +284,12 @@ impl Endpoints for API<Public> {
                 network_command_sender.get_network_stats(),
                 network_command_sender.get_peers()
             );
+
+            let pool_stats = (
+                pool_command_sender.get_operation_count(),
+                pool_command_sender.get_endorsement_count(),
+            );
+
             Ok(NodeStatus {
                 node_id,
                 node_ip: network_config.routable_ip,
@@ -304,7 +310,7 @@ impl Endpoints for API<Public> {
                     .get_next_slot(consensus_settings.thread_count)?,
                 consensus_stats: consensus_stats?,
                 network_stats: network_stats?,
-                pool_stats: pool_command_sender.get_stats(),
+                pool_stats,
                 config,
                 current_cycle: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))

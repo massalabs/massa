@@ -1,3 +1,5 @@
+use std::collections::hash_map;
+
 use massa_models::{
     prehash::{Map, Set},
     Address, BlockId, EndorsementId, WrappedEndorsement,
@@ -8,41 +10,24 @@ use massa_models::{
 #[derive(Default)]
 pub struct EndorsementIndexes {
     /// Endorsements structure container
-    pub(crate) endorsements: Map<EndorsementId, WrappedEndorsement>,
+    endorsements: Map<EndorsementId, WrappedEndorsement>,
     /// Structure mapping creators with the created endorsements
     index_by_creator: Map<Address, Set<EndorsementId>>,
-    /// Structure mapping block ids with the endorsements
-    index_by_block: Map<BlockId, Set<EndorsementId>>,
+    /// Structure mapping endorsement IDs to their containing blocks
+    index_to_block: Map<EndorsementId, Set<BlockId>>,
 }
 
 impl EndorsementIndexes {
-    /// Insert a batch of endorsements and populate the indexes.
+    /// Insert an endorsement and populate the indexes.
     /// Arguments:
-    /// - endorsements: the endorsements to insert
-    pub(crate) fn batch_insert(&mut self, endorsements: Vec<WrappedEndorsement>) {
-        for endorsement in endorsements {
-            let id = endorsement.id;
-            let creator = endorsement.creator_address;
-            self.endorsements.entry(id).or_insert(endorsement);
-            self.index_by_creator.entry(creator).or_default().insert(id);
-        }
-    }
-
-    /// Remove a batch of endorsements, remove from the indexes and made some clean-up in indexes if necessary.
-    /// Arguments:
-    /// - endorsement_ids: the endorsement ids to remove
-    pub(crate) fn batch_remove(&mut self, endorsement_ids: Vec<EndorsementId>) {
-        for id in endorsement_ids {
-            let endorsement = self
-                .endorsements
-                .remove(&id)
-                .expect("removing absent object from storage");
-            let creator = endorsement.creator_address;
-            let entry = self.index_by_creator.entry(creator).or_default();
-            entry.remove(&id);
-            if entry.is_empty() {
-                self.index_by_creator.remove(&creator);
-            }
+    /// - endorsement: the endorsement to insert
+    pub(crate) fn insert(&mut self, endorsement: WrappedEndorsement) {
+        if let Ok(e) = self.endorsements.try_insert(endorsement.id, endorsement) {
+            // update creator index
+            self.index_by_creator
+                .entry(e.creator_address)
+                .or_default()
+                .insert(e.id);
         }
     }
 
@@ -50,22 +35,64 @@ impl EndorsementIndexes {
     /// Arguments:
     /// - block_id: the block id to link the endorsements to
     /// - endorsement_ids: the endorsements to link to the block
-    pub(crate) fn link_endorsements_with_block(
+    pub(crate) fn link_block(&mut self, block_id: &BlockId, endorsement_ids: &Vec<EndorsementId>) {
+        for endorsement_id in endorsement_ids {
+            // update to-block index
+            self.index_to_block
+                .entry(*endorsement_id)
+                .or_default()
+                .insert(*block_id);
+        }
+    }
+
+    /// Unlinks a block from the endorsements. Should be used when a block is removed from storage.
+    /// Arguments:
+    /// - block_id: the block id to unlink the endorsements from
+    /// - endorsement_ids: the endorsements to unlink from the block
+    pub(crate) fn unlink_block(
         &mut self,
         block_id: &BlockId,
         endorsement_ids: &Vec<EndorsementId>,
     ) {
-        self.index_by_block
-            .entry(*block_id)
-            .or_default()
-            .extend(endorsement_ids);
+        for endorsement_id in endorsement_ids {
+            if let hash_map::Entry::Occupied(mut occ) = self.index_to_block.entry(*endorsement_id) {
+                occ.get_mut().remove(block_id);
+                if occ.get().is_empty() {
+                    occ.remove();
+                }
+            }
+        }
     }
 
-    /// Unlink a vector of endorsements from a block. Should be used in case of the block is removed from the storage.
+    /// Remove a endorsement, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:
-    /// - block_id: the block id to unlink the endorsements from
-    pub(crate) fn unlink_endorsements_from_block(&mut self, block_id: &BlockId) {
-        self.index_by_block.remove(block_id);
+    /// - endorsement_id: the endorsement id to remove
+    pub(crate) fn remove(&mut self, endorsement_id: &EndorsementId) -> Option<WrappedEndorsement> {
+        // update to-block index
+        self.index_to_block.remove(endorsement_id);
+
+        if let Some(e) = self.endorsements.remove(endorsement_id) {
+            // update creator index
+            self.index_by_creator
+                .entry(e.creator_address)
+                .and_modify(|s| {
+                    s.remove(&e.id);
+                });
+
+            return Some(e);
+        }
+
+        None
+    }
+
+    /// Gets a reference to a stored endorsement, if any.
+    pub fn get(&self, id: &EndorsementId) -> Option<&WrappedEndorsement> {
+        self.endorsements.get(id)
+    }
+
+    /// Checks whether an endorsement exists in global storage.
+    pub fn contains(&self, id: &EndorsementId) -> bool {
+        self.endorsements.contains_key(id)
     }
 
     /// Get endorsements created by an address
@@ -73,24 +100,18 @@ impl EndorsementIndexes {
     /// - address: the address to get the endorsements created by
     ///
     /// Returns:
-    /// - the endorsements created by the address
-    pub fn get_endorsements_created_by(&self, address: &Address) -> Vec<EndorsementId> {
-        match self.index_by_creator.get(address) {
-            Some(endorsements) => endorsements.iter().cloned().collect(),
-            None => Vec::new(),
-        }
+    /// - optional reference to a set of endorsements created by that address
+    pub fn get_endorsements_created_by(&self, address: &Address) -> Option<&Set<EndorsementId>> {
+        self.index_by_creator.get(address)
     }
 
-    /// Get endorsements by the id of the block they are contained in
+    /// Get the blocks that contain a given endorsement
     /// Arguments:
-    /// - block_id: the id of the block to get the endorsements from
+    /// - endorsement_id: the id of the endorsement
     ///
     /// Returns:
-    /// - the endorsements contained in the block
-    pub fn _get_endorsements_in_block(&self, block_id: &BlockId) -> Vec<EndorsementId> {
-        match self.index_by_block.get(block_id) {
-            Some(endorsements) => endorsements.iter().cloned().collect(),
-            None => Vec::new(),
-        }
+    /// - an optional reference to a set of block IDs containing the endorsement
+    pub fn get_containing_blocks(&self, endorsement_id: &EndorsementId) -> Option<&Set<BlockId>> {
+        self.index_to_block.get(endorsement_id)
     }
 }

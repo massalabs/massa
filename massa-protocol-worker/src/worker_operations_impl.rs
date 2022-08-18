@@ -194,7 +194,7 @@ impl ProtocolWorker {
 
     /// Process the reception of a batch of asked operations, that means that
     /// we have already sent a batch of ids in the network, notifying that we already
-    /// have those operations. Ask pool for the operations.
+    /// have those operations.
     ///
     /// See also `on_operation_results_from_pool`
     pub(crate) async fn on_asked_operations_received(
@@ -208,10 +208,14 @@ impl ProtocolWorker {
                 req_operation_ids.insert(*op_id);
             }
         }
-        let found = self.storage.find_operations(req_operation_ids);
-        if !found.is_empty() {
+        {
+            // retain only the ones we already have
+            let ops = self.storage.read_operations();
+            req_operation_ids.retain(|op_id| ops.contains(op_id));
+        };
+        if !req_operation_ids.is_empty() {
             self.network_command_sender
-                .send_operations(node_id, found.into_iter().collect())
+                .send_operations(node_id, req_operation_ids.into_iter().collect())
                 .await?;
         }
         Ok(())

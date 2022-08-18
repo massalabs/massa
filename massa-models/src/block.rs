@@ -397,53 +397,9 @@ impl WrappedBlock {
         Ok(self.content.operations.contains(&op.id))
     }
 
-    /// retrieves a mapping of addresses to the list of operation IDs they are involved with in terms of ledger
-    pub fn involved_addresses(
-        &self,
-        operation_set: &Map<OperationId, WrappedOperation>,
-    ) -> Result<Map<Address, Set<OperationId>>, ModelsError> {
-        let mut addresses_to_operations: Map<Address, Set<OperationId>> =
-            Map::<Address, Set<OperationId>>::default();
-        operation_set
-            .iter()
-            .try_for_each::<_, Result<(), ModelsError>>(|(op_id, op)| {
-                let addrs = op.get_ledger_involved_addresses();
-                for ad in addrs.into_iter() {
-                    if let Some(entry) = addresses_to_operations.get_mut(&ad) {
-                        entry.insert(*op_id);
-                    } else {
-                        let mut set = Set::<OperationId>::default();
-                        set.insert(*op_id);
-                        addresses_to_operations.insert(ad, set);
-                    }
-                }
-                Ok(())
-            })?;
-        Ok(addresses_to_operations)
-    }
-
-    /// returns the set of addresses mapped the the endorsements they are involved in
-    pub fn addresses_to_endorsements(
-        &self,
-    ) -> Result<Map<Address, Set<EndorsementId>>, ModelsError> {
-        let mut res: Map<Address, Set<EndorsementId>> = Map::default();
-        self.content
-            .header
-            .content
-            .endorsements
-            .iter()
-            .try_for_each::<_, Result<(), ModelsError>>(|e| {
-                let address = Address::from_public_key(&e.creator_public_key);
-                if let Some(old) = res.get_mut(&address) {
-                    old.insert(e.id);
-                } else {
-                    let mut set = Set::<EndorsementId>::default();
-                    set.insert(e.id);
-                    res.insert(address, set);
-                }
-                Ok(())
-            })?;
-        Ok(res)
+    /// returns the fitness of the block
+    pub fn get_fitness(&self) -> u64 {
+        self.content.header.get_fitness()
     }
 }
 
@@ -489,6 +445,13 @@ pub struct BlockHeader {
 
 /// wrapped header
 pub type WrappedHeader = Wrapped<BlockHeader, BlockId>;
+
+impl WrappedHeader {
+    /// gets the header fitness
+    pub fn get_fitness(&self) -> u64 {
+        (self.content.endorsements.len() as u64) + 1
+    }
+}
 
 impl WrappedContent for BlockHeader {}
 

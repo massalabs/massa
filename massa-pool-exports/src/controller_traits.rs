@@ -24,15 +24,11 @@ pub trait PoolController: Send + Sync {
         target_slot: &Slot,
     ) -> (Vec<Option<EndorsementId>>, Storage);
 
-    /// Return a tuple with respectivelly the operation count and the endorsement
-    /// count.
-    fn get_stats(&self) -> (usize, usize);
+    /// Get the number of endorsements in the pool
+    fn get_endorsement_count(&self) -> usize;
 
-    /// Get a list of operations by ids contained in the pool.
-    fn get_operations_by_ids(&self, ids: &Set<OperationId>) -> Vec<WrappedOperation>;
-
-    /// Get the set of endorsement's ids contained in the pool.
-    fn get_endorsement_ids(&self) -> Set<EndorsementId>;
+    /// Get the number of operations in the pool
+    fn get_operation_count(&self) -> usize;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.

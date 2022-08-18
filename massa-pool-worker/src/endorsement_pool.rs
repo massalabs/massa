@@ -10,20 +10,20 @@ use std::collections::{BTreeSet, HashMap};
 
 pub struct EndorsementPool {
     /// config
-    pub config: PoolConfig,
+    config: PoolConfig,
 
     /// endorsement hashmap indexed by target slot and target block ID for fast access (slot, index, block_id)
-    pub endorsements: HashMap<(Slot, u32, BlockId), EndorsementId>,
+    endorsements: HashMap<(Slot, u32, BlockId), EndorsementId>,
 
     /// endorsements sorted by increasing target slot for pruning
     /// indexed by thread, then BTreeSet<(target_slot, index, target_block)>
-    pub endorsements_sorted: Vec<BTreeSet<(Slot, u32, BlockId)>>,
+    endorsements_sorted: Vec<BTreeSet<(Slot, u32, BlockId)>>,
 
     /// storage
-    pub storage: Storage,
+    storage: Storage,
 
     /// last consensus final periods, per thread
-    pub last_cs_final_periods: Vec<u64>,
+    last_cs_final_periods: Vec<u64>,
 }
 
 impl EndorsementPool {
@@ -35,6 +35,11 @@ impl EndorsementPool {
             config,
             storage,
         }
+    }
+
+    // Get the number of stored elements
+    pub fn len(&self) -> usize {
+        self.endorsements.len()
     }
 
     /// notify of new final CS periods
@@ -73,40 +78,38 @@ impl EndorsementPool {
         let mut removed = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
 
         // add items to pool
-        endorsement_storage.with_endorsements(&items, |endo_refs| {
-            endo_refs
-                .iter()
-                .zip(items.iter())
-                .for_each(|(endo_ref, _id)| {
-                    let endo = endo_ref.expect(
-                        "attempting to add endorsement to pool, but it is absent from storage",
-                    );
+        {
+            let endo_store = endorsement_storage.read_endorsements();
+            for endo_id in items {
+                let endo = endo_store
+                    .get(&endo_id)
+                    .expect("attempting to add endorsement to pool, but it is absent from storage");
 
-                    if endo.content.slot.period
-                        < self.last_cs_final_periods[endo.content.slot.thread as usize]
-                    {
-                        // endorsement expired: ignore
-                        return;
-                    }
+                if endo.content.slot.period
+                    < self.last_cs_final_periods[endo.content.slot.thread as usize]
+                {
+                    // endorsement expired: ignore
+                    continue;
+                }
 
-                    let key = (
-                        endo.content.slot,
-                        endo.content.index,
-                        endo.content.endorsed_block,
-                    );
-                    match self.endorsements.entry(key) {
-                        std::collections::hash_map::Entry::Occupied(_) => {
-                            // we already have an endorsement for this slot: ignore
-                            return;
-                        }
-                        std::collections::hash_map::Entry::Vacant(vac) => {
-                            vac.insert(endo.id);
-                        }
+                let key = (
+                    endo.content.slot,
+                    endo.content.index,
+                    endo.content.endorsed_block,
+                );
+                match self.endorsements.entry(key) {
+                    std::collections::hash_map::Entry::Occupied(_) => {
+                        // we already have an endorsement for this slot: ignore
+                        continue;
                     }
-                    self.endorsements_sorted[endo.content.slot.thread as usize].insert(key);
-                    added.insert(endo.id);
-                });
-        });
+                    std::collections::hash_map::Entry::Vacant(vac) => {
+                        vac.insert(endo.id);
+                    }
+                }
+                self.endorsements_sorted[endo.content.slot.thread as usize].insert(key);
+                added.insert(endo.id);
+            }
+        }
 
         // prune excess endorsements
         for thread in 0..self.config.thread_count {

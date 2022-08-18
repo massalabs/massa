@@ -11,6 +11,7 @@ use massa_models::{
     BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
 };
 use massa_network_exports::NetworkEventReceiver;
+use massa_storage::Storage;
 use serde::Serialize;
 use std::collections::VecDeque;
 use tokio::{
@@ -21,18 +22,16 @@ use tracing::debug;
 
 /// Possible types of events that can happen.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
-        /// corresponding block
-        block: WrappedBlock,
-        /// the slot
+        /// block ID
+        block_id: BlockId,
+        /// block slot
         slot: Slot,
-        /// operations in the block by (index, validity end period)
-        operation_set: Map<OperationId, usize>,
-        /// endorsements in the block with index
-        endorsement_ids: Map<EndorsementId, u32>,
+        /// storage instance containing the block and its dependencies (except the parents)
+        storage: Storage,
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
@@ -72,12 +71,14 @@ pub type BlocksResults =
     Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
         /// block id
         block_id: BlockId,
+        /// block storage
+        storage: Storage,
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
@@ -108,13 +109,18 @@ impl ProtocolCommandSender {
     /// Sends the order to propagate the header of a block
     ///
     /// # Arguments
-    /// * hash : hash of the block header
-    pub async fn integrated_block(&mut self, block_id: BlockId) -> Result<(), ProtocolError> {
+    /// * block_id : ID of the block
+    /// * storage: Storage instance containing references to the block and all its dependencies
+    pub async fn integrated_block(
+        &mut self,
+        block_id: BlockId,
+        storage: Storage,
+    ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.integrated_block", {
             "block_id": block_id
         });
         self.0
-            .send(ProtocolCommand::IntegratedBlock { block_id })
+            .send(ProtocolCommand::IntegratedBlock { block_id, storage })
             .await
             .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()))
     }

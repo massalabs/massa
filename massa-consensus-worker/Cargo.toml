@@ -36,6 +36,7 @@ massa_serialization = { path = "../massa-serialization"}
 massa_hash = { path = "../massa-hash" }
 massa_signature = { path = "../massa-signature" }
 massa_cipher = { path = "../massa-cipher" }
+massa_storage = { path = "../massa-storage" }
 num = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 futures = "0.3"

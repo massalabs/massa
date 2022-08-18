@@ -17,27 +17,12 @@ pub struct ActiveBlock {
     /// one `HashMap<Block id, period>` per thread (blocks that need to be kept)
     /// Children reference that block as a parent
     pub children: Vec<Map<BlockId, u64>>,
-    /// dependencies required for validity check
-    pub dependencies: Set<BlockId>,
     /// Blocks id that have this block as an ancestor
     pub descendants: Set<BlockId>,
     /// for example has its fitness reached the given threshold
     pub is_final: bool,
-    /// index in the block, end of validity period
-    pub operation_set: Map<OperationId, usize>,
-    /// IDs of the endorsements to index in block
-    pub endorsement_ids: Map<EndorsementId, u32>,
-    /// Maps addresses to operations id they are involved in
-    pub addresses_to_operations: Map<Address, Set<OperationId>>,
-    /// Maps addresses to endorsements id they are involved in
-    pub addresses_to_endorsements: Map<Address, Set<EndorsementId>>,
     /// Slot of the block.
     pub slot: Slot,
-}
-
-impl ActiveBlock {
-    /// Computes the fitness of the block
-    pub fn fitness(&self) -> u64 {
-        1 + self.endorsement_ids.len() as u64
-    }
+    /// Fitness
+    pub fitness: u64,
 }

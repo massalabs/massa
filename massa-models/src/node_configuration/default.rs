@@ -170,6 +170,8 @@ pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = 10_000_000;
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
+/// Max size of the printed error
+pub const MAX_BOOTSTRAP_ERROR_LENGTH: u32 = 10000;
 
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)

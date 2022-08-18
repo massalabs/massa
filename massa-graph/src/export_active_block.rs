@@ -6,8 +6,8 @@ use massa_models::{
     prehash::{Map, Set},
     rolls::{RollUpdateDeserializer, RollUpdateSerializer},
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    AddressDeserializer, Block, BlockDeserializer, BlockId, OperationId, WrappedBlock,
-    WrappedOperation,
+    AddressDeserializer, Block, BlockDeserializer, BlockId, EndorsementId, Operation,
+    OperationDeserializer, OperationId, WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
@@ -32,93 +32,99 @@ use std::ops::Bound::Included;
 pub struct ExportActiveBlock {
     /// The block.
     pub block: WrappedBlock,
-    /// The Id of the block.
-    pub block_id: BlockId,
+    /// The operations.
+    pub operations: Vec<WrappedOperation>,
     /// one `(block id, period)` per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
-    /// one `HashMap<Block id, period>` per thread (blocks that need to be kept)
-    /// Children reference that block as a parent
-    pub children: Vec<Map<BlockId, u64>>,
-    /// dependencies required for validity check
-    pub dependencies: Set<BlockId>,
     /// for example has its fitness reached the given threshold
     pub is_final: bool,
 }
 
 impl ExportActiveBlock {
-    /// try conversion from active block to export active block
-    pub fn try_from_active_block(a_block: &ActiveBlock, storage: Storage) -> Result<Self> {
-        let block = storage.retrieve_block(&a_block.block_id).ok_or_else(|| {
-            GraphError::MissingBlock(format!(
-                "missing block ExportActiveBlock::try_from_active_block: {}",
-                a_block.block_id
-            ))
-        })?;
-        let stored_block = block.read();
-        Ok(ExportActiveBlock {
-            block: stored_block.clone(),
-            block_id: a_block.block_id,
+    /// conversion from active block to export active block
+    pub fn from_active_block(a_block: &ActiveBlock, storage: &Storage) -> Self {
+        // get block
+        let block = storage
+            .read_blocks()
+            .get(&a_block.block_id)
+            .expect("active block missing in storage")
+            .clone();
+
+        // get ops
+        let operations = {
+            let read_ops = storage.read_operations();
+            block
+                .content
+                .operations
+                .iter()
+                .map(|op_id| {
+                    read_ops
+                        .get(op_id)
+                        .expect("active block operation missing in storage")
+                        .clone()
+                })
+                .collect()
+        };
+
+        // TODO if we deciede that endorsements are separate, also gather endorsements here
+
+        ExportActiveBlock {
+            operations,
             parents: a_block.parents.clone(),
-            children: a_block.children.clone(),
-            dependencies: a_block.dependencies.clone(),
             is_final: a_block.is_final,
-        })
+            block,
+        }
     }
 
-    pub fn to_active_block(&self, storage: &Storage) -> Result<ActiveBlock> {
-        //TODO export full objects (block, ops, endorsements) loaded from storage
-        let operation_set = self
-            .block
-            .content
-            .operations
-            .iter()
-            .enumerate()
-            .map(|(idx, &op_id)| {
-                let operation =
-                    storage
-                        .retrieve_operation(&op_id)
-                        .ok_or(GraphError::MissingOperation(format!(
-                            "The operation {} is missing.",
-                            op_id
-                        )))?;
-                Ok((op_id, (idx, operation)))
-            })
-            .collect::<Result<Map<OperationId, (usize, WrappedOperation)>>>()?;
+    /// consuming conversion from ExportActiveBlock to ActiveBlock
+    pub fn to_active_block(
+        self,
+        ref_storage: &Storage,
+        thread_count: u8,
+    ) -> Result<(ActiveBlock, Storage), GraphError> {
+        // create resulting storage
+        let mut storage = ref_storage.clone_without_refs();
 
-        let endorsement_ids = self
-            .block
-            .content
-            .header
-            .content
-            .endorsements
-            .iter()
-            .map(|endo| (endo.id, endo.content.index))
-            .collect();
+        // add operations to storage and claim refs
+        storage.store_operations(self.operations);
 
-        let addresses_to_operations = self.block.involved_addresses(
-            &operation_set
+        // check that the block operations match the stored ones
+        if storage.get_op_refs()
+            != &self
+                .block
+                .content
+                .operations
                 .iter()
-                .map(|(&id, (_, operation))| (id, operation.clone()))
-                .collect(),
-        )?;
-        let addresses_to_endorsements = self.block.addresses_to_endorsements()?;
-        Ok(ActiveBlock {
+                .cloned()
+                .collect::<Set<_>>()
+        {
+            return Err(GraphError::MissingOperation(
+                "operation list mismatch on active block conversion".into(),
+            ));
+        }
+
+        // add endorsements to storage and claim refs
+        // TODO change if we decide that endorsements are stored separately
+        storage.store_endorsements(self.block.content.header.content.endorsements.clone());
+
+        // Note: the block's parents are not claimed in the block's storage here but on graph inclusion
+
+        // create ActiveBlock
+        let active_block = ActiveBlock {
             creator_address: self.block.creator_address,
-            block_id: self.block_id,
+            block_id: self.block.id,
             parents: self.parents.clone(),
-            children: self.children.clone(),
-            dependencies: self.dependencies.clone(),
+            children: vec![Map::default(); thread_count as usize], // will be computed once the full graph is available
             descendants: Default::default(), // will be computed once the full graph is available
             is_final: self.is_final,
-            operation_set: operation_set
-                .into_iter()
-                .map(|(id, (idx, _))| (id, idx))
-                .collect(),
-            endorsement_ids,
-            addresses_to_operations,
-            addresses_to_endorsements,
             slot: self.block.content.header.content.slot,
-        })
+            fitness: self.block.get_fitness(),
+        };
+
+        // add block to storage and claim ref
+        storage.store_block(self.block);
+
+        Ok((active_block, storage))
     }
 }
 
@@ -127,9 +133,7 @@ impl ExportActiveBlock {
 pub struct ExportActiveBlockSerializer {
     wrapped_serializer: WrappedSerializer,
     period_serializer: U64VarIntSerializer,
-    length_serializer: U32VarIntSerializer,
-    ledger_change_serializer: LedgerChangeSerializer,
-    roll_update_serializer: RollUpdateSerializer,
+    operation_count_serializer: U32VarIntSerializer,
 }
 
 impl ExportActiveBlockSerializer {
@@ -138,9 +142,7 @@ impl ExportActiveBlockSerializer {
         ExportActiveBlockSerializer {
             wrapped_serializer: WrappedSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
-            length_serializer: U32VarIntSerializer::new(),
-            ledger_change_serializer: LedgerChangeSerializer::new(),
-            roll_update_serializer: RollUpdateSerializer::new(),
+            operation_count_serializer: U32VarIntSerializer::new(),
         }
     }
 }
@@ -151,46 +153,35 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
         value: &ExportActiveBlock,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        buffer.push(if value.is_final { 1 } else { 0 });
+        // block
         self.wrapped_serializer.serialize(&value.block, buffer)?;
-        // note: there should be none if slot period=0
-        buffer.push(if value.parents.is_empty() { 0 } else { 1 });
+
+        // operations
+        self.operation_count_serializer.serialize(
+            &value
+                .operations
+                .len()
+                .try_into()
+                .map_err(|_| SerializeError::NumberTooBig("Too many operations".to_string()))?,
+            buffer,
+        )?;
+        for op in &value.operations {
+            self.wrapped_serializer.serialize(op, buffer)?;
+        }
+
+        // parents with periods
+        // note: there should be no parents for genesis blocks
+        buffer.push(if value.parents.is_empty() { 0u8 } else { 1u8 });
         for (hash, period) in value.parents.iter() {
             buffer.extend(hash.0.to_bytes());
             self.period_serializer.serialize(period, buffer)?;
         }
+
+        // finality
+        buffer.push(if value.is_final { 1u8 } else { 0u8 });
+
         // Todo aurelien : virer
-        self.length_serializer.serialize(
-            &value
-                .children
-                .len()
-                .try_into()
-                .map_err(|_| SerializeError::NumberTooBig("Too many children".to_string()))?,
-            buffer,
-        )?;
-        for map in value.children.iter() {
-            self.length_serializer.serialize(
-                &map.len().try_into().map_err(|_| {
-                    SerializeError::NumberTooBig("Too block in children map".to_string())
-                })?,
-                buffer,
-            )?;
-            for (hash, period) in map.iter() {
-                buffer.extend(hash.0.to_bytes());
-                self.period_serializer.serialize(period, buffer)?;
-            }
-        }
-        self.length_serializer.serialize(
-            &value
-                .dependencies
-                .len()
-                .try_into()
-                .map_err(|_| SerializeError::NumberTooBig("Too many dependencies".to_string()))?,
-            buffer,
-        )?;
-        for dep in value.dependencies.iter() {
-            buffer.extend(dep.0.to_bytes());
-        }
+
         Ok(())
     }
 }
@@ -198,17 +189,10 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
 /// Basic deserializer of `ExportActiveBlock`
 pub struct ExportActiveBlockDeserializer {
     wrapped_block_deserializer: WrappedDeserializer<Block, BlockDeserializer>,
+    wrapped_operation_deserializer: WrappedDeserializer<Operation, OperationDeserializer>,
     hash_deserializer: HashDeserializer,
     period_deserializer: U64VarIntDeserializer,
-    children_length_deserializer: U32VarIntDeserializer,
-    map_length_deserializer: U32VarIntDeserializer,
-    dependencies_length_deserializer: U32VarIntDeserializer,
-    block_ledger_changes_length_deserializer: U32VarIntDeserializer,
-    ledger_change_deserializer: LedgerChangeDeserializer,
-    address_deserializer: AddressDeserializer,
-    roll_updates_length_deserializer: U32VarIntDeserializer,
-    roll_update_deserializer: RollUpdateDeserializer,
-    production_events_deserializer: U32VarIntDeserializer,
+    operation_count_serializer: U32VarIntDeserializer,
     thread_count: u8,
 }
 
@@ -218,12 +202,10 @@ impl ExportActiveBlockDeserializer {
     pub fn new(
         thread_count: u8,
         endorsement_count: u32,
-        max_bootstrap_children: u32,
-        max_bootstrap_deps: u32,
-        max_bootstrap_pos_entries: u32,
         max_operations_per_block: u32,
-        max_ledger_changes_per_slot: u32,
-        max_production_events_per_block: u32,
+        max_datastore_value_length: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u32,
     ) -> Self {
         ExportActiveBlockDeserializer {
             wrapped_block_deserializer: WrappedDeserializer::new(BlockDeserializer::new(
@@ -231,35 +213,17 @@ impl ExportActiveBlockDeserializer {
                 max_operations_per_block,
                 endorsement_count,
             )),
+            wrapped_operation_deserializer: WrappedDeserializer::new(OperationDeserializer::new(
+                max_datastore_value_length,
+                max_function_name_length,
+                max_parameters_size,
+            )),
+            operation_count_serializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(max_operations_per_block),
+            ),
             hash_deserializer: HashDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
-            children_length_deserializer: U32VarIntDeserializer::new(
-                Included(0),
-                Included(thread_count as u32),
-            ),
-            map_length_deserializer: U32VarIntDeserializer::new(
-                Included(0),
-                Included(max_bootstrap_children),
-            ),
-            dependencies_length_deserializer: U32VarIntDeserializer::new(
-                Included(0),
-                Included(max_bootstrap_deps),
-            ),
-            block_ledger_changes_length_deserializer: U32VarIntDeserializer::new(
-                Included(0),
-                Included(max_ledger_changes_per_slot),
-            ),
-            ledger_change_deserializer: LedgerChangeDeserializer::new(),
-            address_deserializer: AddressDeserializer::new(),
-            roll_updates_length_deserializer: U32VarIntDeserializer::new(
-                Included(0),
-                Included(max_bootstrap_pos_entries),
-            ),
-            roll_update_deserializer: RollUpdateDeserializer::new(),
-            production_events_deserializer: U32VarIntDeserializer::new(
-                Included(0),
-                Included(max_production_events_per_block),
-            ),
             thread_count,
         }
     }
@@ -350,13 +314,23 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
         context(
             "Failed ExportActiveBlock deserialization",
             tuple((
-                context(
-                    "Failed is_final deserialization",
-                    alt((value(true, tag(&[1])), value(false, tag(&[0])))),
-                ),
+                // block
                 context("Failed block deserialization", |input| {
                     self.wrapped_block_deserializer.deserialize(input)
                 }),
+                // operations
+                context(
+                    "Failed operations deserialization",
+                    length_count(
+                        context("Failed operation count deserialization", |input| {
+                            self.operation_count_serializer.deserialize(input)
+                        }),
+                        context("Failed operation deserialization", |input| {
+                            self.wrapped_operation_deserializer.deserialize(input)
+                        }),
+                    ),
+                ),
+                // parents
                 context(
                     "Failed parents deserialization",
                     alt((
@@ -379,57 +353,19 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
                         ),
                     )),
                 ),
+                // finality
                 context(
-                    "Failed children deserialization",
-                    length_count(
-                        context("Failed length deserialization", |input| {
-                            self.children_length_deserializer.deserialize(input)
-                        }),
-                        length_count(
-                            context("Failed length deserialization", |input| {
-                                self.map_length_deserializer.deserialize(input)
-                            }),
-                            tuple((
-                                context("Failed block_id deserialization", |input| {
-                                    self.hash_deserializer
-                                        .deserialize(input)
-                                        .map(|(rest, hash)| (rest, BlockId(hash)))
-                                }),
-                                context("Failed period deserialization", |input| {
-                                    self.period_deserializer.deserialize(input)
-                                }),
-                            )),
-                        ),
-                    ),
-                ),
-                context(
-                    "Failed dependencies deserialization",
-                    length_count(
-                        context("Failed length deserialization", |input| {
-                            self.dependencies_length_deserializer.deserialize(input)
-                        }),
-                        context("Failed block_id deserialization", |input| {
-                            self.hash_deserializer
-                                .deserialize(input)
-                                .map(|(rest, hash)| (rest, BlockId(hash)))
-                        }),
-                    ),
+                    "Failed is_final deserialization",
+                    alt((value(true, tag(&[1])), value(false, tag(&[0])))),
                 ),
             )),
         )
-        .map(
-            |(is_final, block, parents, children, dependencies)| ExportActiveBlock {
-                is_final,
-                block_id: block.id,
-                block,
-                parents,
-                children: children
-                    .into_iter()
-                    .map(|map| map.into_iter().collect())
-                    .collect(),
-                dependencies: dependencies.into_iter().collect(),
-            },
-        )
+        .map(|(block, operations, parents, is_final)| ExportActiveBlock {
+            block,
+            operations,
+            parents,
+            is_final,
+        })
         .parse(buffer)
     }
 }

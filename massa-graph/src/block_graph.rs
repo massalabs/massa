@@ -38,8 +38,6 @@ enum HeaderOrBlock {
     Block {
         id: BlockId,
         slot: Slot,
-        ops: Map<OperationId, usize>,
-        endorsements: Map<EndorsementId, u32>,
         storage: Storage,
     },
 }
@@ -198,16 +196,14 @@ impl<'a> BlockGraphExport {
                 }
                 BlockStatus::Active { a_block, storage } => {
                     if filter(&a_block.slot) {
-                        let stored_block = storage
-                            .retrieve_block(hash)
-                            .ok_or_else(|| {
+                        let stored_block =
+                            storage.read_blocks().get(hash).cloned().ok_or_else(|| {
                                 GraphError::MissingBlock(format!(
                                     "missing block in BlockGraphExport::extract_from: {}",
                                     hash
                                 ))
-                            })?
-                            .read()
-                            .clone();
+                            })?;
+
                         export.active_blocks.insert(
                             *hash,
                             ExportCompiledBlock {
@@ -275,11 +271,11 @@ pub struct BlockGraph {
     best_parents: Vec<(BlockId, u64)>,
     /// Incompatibility graph: maps a block id to the block ids it is incompatible with
     /// One entry per Active Block
-    pub gi_head: Map<BlockId, Set<BlockId>>,
+    gi_head: Map<BlockId, Set<BlockId>>,
     /// All the cliques
     max_cliques: Vec<Clique>,
     /// Blocks that need to be propagated
-    to_propagate: Map<BlockId, (Set<OperationId>, Vec<EndorsementId>)>,
+    to_propagate: Map<BlockId, Storage>,
     /// List of block ids we think are attack attempts
     attack_attempts: Vec<BlockId>,
     /// Newly final blocks
@@ -287,9 +283,9 @@ pub struct BlockGraph {
     /// Newly stale block mapped to creator and slot
     new_stale_blocks: Map<BlockId, (Address, Slot)>,
     /// Shared storage,
-    pub storage: Storage,
+    storage: Storage,
     /// Selector controller
-    pub selector_controller: Box<dyn SelectorController>,
+    selector_controller: Box<dyn SelectorController>,
 }
 
 /// Possible output of a header check
@@ -299,12 +295,12 @@ enum HeaderCheckOutcome {
     Proceed {
         /// one (parent block id, parent's period) per thread
         parents_hash_period: Vec<(BlockId, u64)>,
-        /// blocks that header depends on
-        dependencies: Set<BlockId>,
         /// blocks that header is incompatible with
         incompatibilities: Set<BlockId>,
         /// number of incompatibilities that are inherited from the parents
         inherited_incompatibilities_count: usize,
+        /// fitness
+        fitness: u64,
     },
     /// there is something wrong with that header
     Discard(DiscardReason),
@@ -391,18 +387,11 @@ impl BlockGraph {
                         creator_address: block.creator_address,
                         parents: Vec::new(),
                         children: vec![Map::default(); cfg.thread_count as usize],
-                        dependencies: Set::<BlockId>::default(),
-                        descendants: Set::<BlockId>::default(),
+                        descendants: Default::default(),
                         is_final: true,
-                        operation_set: Default::default(),
-                        endorsement_ids: Default::default(),
-                        addresses_to_operations: Map::with_capacity_and_hasher(
-                            0,
-                            BuildMap::default(),
-                        ),
                         block_id,
-                        addresses_to_endorsements: Default::default(),
                         slot: block.content.header.content.slot,
+                        fitness: block.get_fitness(),
                     }),
                     storage,
                 },
@@ -410,45 +399,63 @@ impl BlockGraph {
         }
 
         massa_trace!("consensus.block_graph.new", {});
-        if let Some(boot_graph) = init {
+        if let Some(BootstrapableGraph { final_blocks }) = init {
+            // load final blocks
+            let final_blocks: Vec<(ActiveBlock, Storage)> = final_blocks
+                .into_iter()
+                .map(|export_b| export_b.to_active_block(&storage, cfg.thread_count))
+                .collect::<Result<_, GraphError>>()?;
+
+            // compute latest_final_blocks_periods
+            let mut latest_final_blocks_periods: Vec<(BlockId, u64)> =
+                genesis_block_ids.iter().map(|id| (*id, 0u64)).collect();
+            for (b, _) in &final_blocks {
+                if let Some(v) = latest_final_blocks_periods.get_mut(b.slot.thread as usize) {
+                    if b.slot.period > v.1 {
+                        *v = (b.block_id, b.slot.period);
+                    }
+                }
+            }
+
+            // generate graph
             let mut res_graph = BlockGraph {
                 cfg: cfg.clone(),
                 sequence_counter: 0,
                 genesis_hashes: genesis_block_ids,
-                active_index: boot_graph.active_blocks.keys().copied().collect(),
-                block_statuses: boot_graph
-                    .active_blocks
-                    .into_iter()
-                    .map(|(b_id, exported_active_block)| {
-                        let mut block_storage = storage.clone_without_refs();
-                        //TODO export/import full block
-                        block_storage.store_block(exported_active_block.block.clone());
-                        Ok((
-                            b_id,
-                            BlockStatus::Active {
-                                a_block: Box::new(exported_active_block.to_active_block(&storage)?),
-                                storage: block_storage,
-                            },
-                        ))
-                    })
-                    .collect::<Result<_>>()?,
+                active_index: final_blocks.iter().map(|(b, _)| b.block_id).collect(),
                 incoming_index: Default::default(),
                 waiting_for_slot_index: Default::default(),
                 waiting_for_dependencies_index: Default::default(),
                 discarded_index: Default::default(),
-                latest_final_blocks_periods: boot_graph.latest_final_blocks_periods,
-                best_parents: boot_graph.best_parents,
-                gi_head: boot_graph.gi_head,
-                max_cliques: boot_graph.max_cliques,
+                best_parents: latest_final_blocks_periods.clone(),
+                latest_final_blocks_periods,
+                gi_head: Default::default(),
+                max_cliques: vec![Clique {
+                    block_ids: Set::<BlockId>::default(),
+                    fitness: 0,
+                    is_blockclique: true,
+                }],
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 new_final_blocks: Default::default(),
                 new_stale_blocks: Default::default(),
                 storage,
                 selector_controller,
+                block_statuses: final_blocks
+                    .into_iter()
+                    .map(|(b, s)| {
+                        Ok((
+                            b.block_id,
+                            BlockStatus::Active {
+                                a_block: Box::new(b),
+                                storage: s,
+                            },
+                        ))
+                    })
+                    .collect::<Result<_>>()?,
             };
-            // manage block storage
-            // TODO manage storage of block operations and endorsements separately !!!
+
+            // claim parent refs
             for (b_id, block_status) in res_graph.block_statuses.iter_mut() {
                 if let BlockStatus::Active {
                     a_block,
@@ -459,6 +466,7 @@ impl BlockGraph {
                     let n_claimed_parents = block_storage
                         .claim_block_refs(&a_block.parents.iter().map(|(p_id, _)| *p_id).collect())
                         .len();
+
                     if !a_block.is_final {
                         // note: parents of final blocks will be missing, that's ok, but it shouldn't be the case for non-finals
                         if n_claimed_parents != cfg.thread_count as usize {
@@ -469,19 +477,31 @@ impl BlockGraph {
                     }
                 }
             }
-            // compute block descendants
-            let active_blocks_map: Map<BlockId, Vec<BlockId>> = res_graph
+
+            // list active block parents
+            let active_blocks_map: Map<BlockId, (Slot, Vec<BlockId>)> = res_graph
                 .block_statuses
                 .iter()
                 .filter_map(|(h, s)| {
                     if let BlockStatus::Active { a_block: a, .. } = s {
-                        Some((*h, a.parents.iter().map(|(ph, _)| *ph).collect()))
-                    } else {
-                        None
+                        return Some((*h, (a.slot, a.parents.iter().map(|(ph, _)| *ph).collect())));
                     }
+                    None
                 })
                 .collect();
-            for (b_hash, b_parents) in active_blocks_map.into_iter() {
+            // deduce children and descendants
+            for (b_id, (b_slot, b_parents)) in active_blocks_map.into_iter() {
+                // deduce children
+                for parent_id in &b_parents {
+                    if let Some(BlockStatus::Active {
+                        a_block: parent, ..
+                    }) = res_graph.block_statuses.get_mut(parent_id)
+                    {
+                        parent.children[b_slot.thread as usize].insert(b_id, b_slot.period);
+                    }
+                }
+
+                // deduce descendants
                 let mut ancestors: VecDeque<BlockId> = b_parents.into_iter().collect();
                 let mut visited: Set<BlockId> = Default::default();
                 while let Some(ancestor_h) = ancestors.pop_back() {
@@ -491,7 +511,7 @@ impl BlockGraph {
                     if let Some(BlockStatus::Active { a_block: ab, .. }) =
                         res_graph.block_statuses.get_mut(&ancestor_h)
                     {
-                        ab.descendants.insert(b_hash);
+                        ab.descendants.insert(b_id);
                         for (ancestor_parent_h, _) in ab.parents.iter() {
                             ancestors.push_front(*ancestor_parent_h);
                         }
@@ -531,7 +551,6 @@ impl BlockGraph {
     /// export full graph in a bootstrap compatible version
     pub fn export_bootstrap_graph(&self) -> Result<BootstrapableGraph> {
         let mut required_final_blocks: Set<_> = self.list_required_active_blocks()?;
-        // TODO export endorsements and ops separately !
         required_final_blocks.retain(|b_id| {
             if let Some(BlockStatus::Active { a_block, .. }) = self.block_statuses.get(b_id) {
                 if a_block.is_final {
@@ -541,45 +560,11 @@ impl BlockGraph {
             }
             false
         });
-        let mut active_blocks: Map<BlockId, ExportActiveBlock> =
-            Map::with_capacity_and_hasher(required_final_blocks.len(), BuildMap::default());
+        let mut final_blocks: Vec<ExportActiveBlock> =
+            Vec::with_capacity(required_final_blocks.len());
         for b_id in &required_final_blocks {
             if let Some(BlockStatus::Active { a_block, storage }) = self.block_statuses.get(b_id) {
-                let stored_block = storage
-                    .retrieve_block(b_id)
-                    .ok_or_else(|| {
-                        GraphError::MissingBlock(format!(
-                            "missing block in export_bootstrap_graph: {}",
-                            b_id
-                        ))
-                    })?
-                    .read()
-                    .clone();
-                active_blocks.insert(
-                    *b_id,
-                    ExportActiveBlock {
-                        block: stored_block,
-                        block_id: *b_id,
-                        parents: a_block.parents.clone(),
-                        children: a_block
-                            .children
-                            .iter()
-                            .map(|thread_children| {
-                                thread_children
-                                    .iter()
-                                    .filter_map(|(child_id, child_period)| {
-                                        if !required_final_blocks.contains(child_id) {
-                                            return None;
-                                        }
-                                        Some((*child_id, *child_period))
-                                    })
-                                    .collect()
-                            })
-                            .collect(),
-                        dependencies: a_block.dependencies.clone(),
-                        is_final: a_block.is_final,
-                    },
-                );
+                final_blocks.push(ExportActiveBlock::from_active_block(a_block, storage));
             } else {
                 return Err(GraphError::ContainerInconsistency(format!(
                     "block {} was expected to be active but wasn't on bootstrap graph export",
@@ -588,13 +573,7 @@ impl BlockGraph {
             }
         }
 
-        Ok(BootstrapableGraph {
-            active_blocks,
-            best_parents: self.latest_final_blocks_periods.clone(),
-            latest_final_blocks_periods: self.latest_final_blocks_periods.clone(),
-            gi_head: self.gi_head.clone(),
-            max_cliques: self.max_cliques.clone(),
-        })
+        Ok(BootstrapableGraph { final_blocks })
     }
 
     /// Gets latest final blocks (hash, period) for each thread.
@@ -637,60 +616,6 @@ impl BlockGraph {
             .collect()
     }
 
-    /// get operation info by involved address
-    pub fn get_operations_involving_address(
-        &self,
-        address: &Address,
-    ) -> Result<(Map<OperationId, OperationSearchResult>, Storage)> {
-        let mut res: Map<OperationId, OperationSearchResult> = Default::default();
-        let mut storage: Storage = self.storage.clone_without_refs();
-        for b_id in self.active_index.iter() {
-            if let Some(BlockStatus::Active {
-                a_block: active_block,
-                ..
-            }) = self.block_statuses.get(b_id)
-            {
-                if let Some(ops) = active_block.addresses_to_operations.get(address) {
-                    for op_id in ops.iter() {
-                        let idx = active_block.operation_set.get(op_id).ok_or_else(|| {
-                            GraphError::ContainerInconsistency(format!(
-                                "op {} should be here",
-                                op_id
-                            ))
-                        })?;
-                        let operation = self.storage.retrieve_operation(op_id).ok_or(
-                            GraphError::MissingOperation(format!(
-                                "The operation {} is not in the storage.",
-                                op_id
-                            )),
-                        )?;
-                        let search = OperationSearchResult {
-                            op: operation,
-                            in_pool: false,
-                            in_blocks: vec![(*b_id, (*idx, active_block.is_final))]
-                                .into_iter()
-                                .collect(),
-                            status: OperationSearchResultStatus::InBlock(
-                                OperationSearchResultBlockStatus::Active,
-                            ),
-                        };
-                        if let Some(old_search) = res.get_mut(op_id) {
-                            old_search.extend(&search);
-                        } else {
-                            res.insert(*op_id, search);
-                        }
-                        if res.len() >= self.cfg.max_item_return_count {
-                            storage.claim_operation_refs(&res.keys().cloned().collect());
-                            return Ok((res, storage));
-                        }
-                    }
-                }
-            }
-        }
-        storage.claim_operation_refs(&res.keys().cloned().collect());
-        Ok((res, storage))
-    }
-
     /// Gets whole compiled block corresponding to given hash, if it is active.
     ///
     /// # Argument
@@ -714,16 +639,17 @@ impl BlockGraph {
                 a_block: active_block,
                 storage,
             } => {
-                let stored_block = storage
-                    .retrieve_block(block_id)
-                    .ok_or_else(|| {
-                        GraphError::MissingBlock(format!(
-                            "missing block in get_export_block_status: {}",
-                            block_id
-                        ))
-                    })?
-                    .read()
-                    .clone();
+                let stored_block =
+                    storage
+                        .read_blocks()
+                        .get(block_id)
+                        .cloned()
+                        .ok_or_else(|| {
+                            GraphError::MissingBlock(format!(
+                                "missing block in get_export_block_status: {}",
+                                block_id
+                            ))
+                        })?;
                 if active_block.is_final {
                     ExportBlockStatus::Final(stored_block.content)
                 } else {
@@ -733,67 +659,6 @@ impl BlockGraph {
             BlockStatus::Discarded { reason, .. } => ExportBlockStatus::Discarded(reason.clone()),
         };
         Ok(Some(export))
-    }
-
-    /// Retrieves operations from operation Ids
-    pub fn get_operations(
-        &self,
-        operation_ids: Set<OperationId>,
-    ) -> Result<(Map<OperationId, OperationSearchResult>, Storage)> {
-        // The search result.
-        let mut res: Map<OperationId, OperationSearchResult> = Default::default();
-        // For each operation id we are searching for.
-        for op_id in operation_ids.into_iter() {
-            // The operation is fetched from the storage.
-            let mut operation = None;
-
-            // The active blocks in which the operation is found.
-            let mut in_blocks: Map<BlockId, (usize, bool)> = Default::default();
-
-            for block_id in self.active_index.iter() {
-                if let Some(BlockStatus::Active {
-                    a_block: active_block,
-                    storage,
-                }) = self.block_statuses.get(block_id)
-                {
-                    // If the operation is found in the active block.
-                    if let Some(idx) = active_block.operation_set.get(&op_id) {
-                        // If this is the first time we encounter the operation as present in an active block.
-                        if operation.is_none() {
-                            let stored_operation =
-                                storage.retrieve_operation(&op_id).ok_or_else(|| {
-                                    GraphError::MissingBlock(format!(
-                                        "missing operation in get_operations: {}",
-                                        block_id
-                                    ))
-                                })?;
-
-                            // Clone the operation.
-                            operation = Some(stored_operation);
-                        }
-                        in_blocks.insert(*block_id, (*idx, active_block.is_final));
-                    }
-                }
-            }
-
-            if let Some(op) = operation {
-                let result = OperationSearchResult {
-                    op,
-                    in_pool: false,
-                    in_blocks,
-                    status: OperationSearchResultStatus::InBlock(
-                        OperationSearchResultBlockStatus::Active,
-                    ),
-                };
-                res.insert(op_id, result);
-            }
-        }
-
-        // get storage refs
-        let mut storage = self.storage.clone_without_refs();
-        storage.claim_operation_refs(&res.keys().cloned().collect());
-
-        Ok((res, storage))
     }
 
     /// signal new slot
@@ -881,8 +746,6 @@ impl BlockGraph {
         &mut self,
         block_id: BlockId,
         slot: Slot,
-        operation_set: Map<OperationId, usize>,
-        endorsement_ids: Map<EndorsementId, u32>,
         current_slot: Option<Slot>,
         storage: Storage,
     ) -> Result<()> {
@@ -899,8 +762,6 @@ impl BlockGraph {
                 vac.insert(BlockStatus::Incoming(HeaderOrBlock::Block {
                     id: block_id,
                     slot,
-                    endorsements: endorsement_ids,
-                    ops: operation_set,
                     storage,
                 }));
                 self.incoming_index.insert(block_id);
@@ -917,8 +778,6 @@ impl BlockGraph {
                     *header_or_block = HeaderOrBlock::Block {
                         id: block_id,
                         slot,
-                        ops: operation_set,
-                        endorsements: endorsement_ids,
                         storage,
                     };
                 }
@@ -935,8 +794,6 @@ impl BlockGraph {
                     *header_or_block = HeaderOrBlock::Block {
                         id: block_id,
                         slot,
-                        ops: operation_set,
-                        endorsements: endorsement_ids,
                         storage,
                     };
                     // promote in dependencies
@@ -983,17 +840,13 @@ impl BlockGraph {
         massa_trace!("consensus.block_graph.process", { "block_id": block_id });
         // control all the waiting states and try to get a valid block
         let (
-            valid_block_addresses_to_operations,
-            valid_block_addresses_to_endorsements,
             valid_block_creator,
             valid_block_slot,
             valid_block_parents_hash_period,
-            valid_block_deps,
             valid_block_incomp,
             valid_block_inherited_incomp_count,
-            valid_block_operation_set,
-            valid_block_endorsement_ids,
             valid_block_storage,
+            valid_block_fitness,
         ) = match self.block_statuses.get(&block_id) {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
@@ -1122,17 +975,13 @@ impl BlockGraph {
                 massa_trace!("consensus.block_graph.process.incoming_block", {
                     "block_id": block_id
                 });
-                let (slot, operation_set, endorsement_ids, storage) =
+                let (slot, storage) =
                     if let Some(BlockStatus::Incoming(HeaderOrBlock::Block {
-                        slot,
-                        ops: operation_set,
-                        endorsements: endorsement_ids,
-                        storage,
-                        ..
+                        slot, storage, ..
                     })) = self.block_statuses.remove(&block_id)
                     {
                         self.incoming_index.remove(&block_id);
-                        (slot, operation_set, endorsement_ids, storage)
+                        (slot, storage)
                     } else {
                         return Err(GraphError::ContainerInconsistency(format!(
                             "inconsistency inside block statuses removing incoming block {}",
@@ -1141,50 +990,30 @@ impl BlockGraph {
                     };
 
                 let stored_block = storage
-                    .retrieve_block(&block_id)
-                    .expect("incoming block not found in storage")
-                    .read()
-                    .clone();
+                    .read_blocks()
+                    .get(&block_id)
+                    .cloned()
+                    .expect("incoming block not found in storage");
 
                 match self.check_header(&block_id, &stored_block.content.header, current_slot)? {
                     HeaderCheckOutcome::Proceed {
                         parents_hash_period,
-                        dependencies,
                         incompatibilities,
                         inherited_incompatibilities_count,
+                        fitness,
                     } => {
                         // block is valid: remove it from Incoming and return it
                         massa_trace!("consensus.block_graph.process.incoming_block.valid", {
                             "block_id": block_id
                         });
                         (
-                            stored_block.involved_addresses(
-                                &operation_set
-                                    .iter()
-                                    .map(|(&op_id, _)| {
-                                        let operation = self
-                                            .storage
-                                            .retrieve_operation(&op_id)
-                                            .ok_or_else(|| {
-                                                GraphError::MissingOperation(format!(
-                                        "missing operation in processing incoming block: {}",
-                                        op_id
-                                    ))
-                                            })?;
-                                        Ok((op_id, operation))
-                                    })
-                                    .collect::<Result<Map<OperationId, WrappedOperation>>>()?,
-                            )?,
-                            stored_block.addresses_to_endorsements()?,
                             stored_block.content.header.creator_public_key,
                             slot,
                             parents_hash_period,
-                            dependencies,
                             incompatibilities,
                             inherited_incompatibilities_count,
-                            operation_set,
-                            endorsement_ids,
                             storage,
+                            fitness,
                         )
                     }
                     HeaderCheckOutcome::WaitForDependencies(dependencies) => {
@@ -1195,8 +1024,6 @@ impl BlockGraph {
                                 header_or_block: HeaderOrBlock::Block {
                                     id: block_id,
                                     slot,
-                                    ops: operation_set,
-                                    endorsements: endorsement_ids,
                                     storage,
                                 },
                                 unsatisfied_dependencies: dependencies,
@@ -1220,8 +1047,6 @@ impl BlockGraph {
                             BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
                                 id: block_id,
                                 slot,
-                                ops: operation_set,
-                                endorsements: endorsement_ids,
                                 storage,
                             }),
                         );
@@ -1336,31 +1161,18 @@ impl BlockGraph {
             valid_block_parents_hash_period,
             valid_block_creator,
             valid_block_slot,
-            valid_block_deps,
             valid_block_incomp,
             valid_block_inherited_incomp_count,
-            valid_block_operation_set,
-            valid_block_endorsement_ids,
-            valid_block_addresses_to_operations,
-            valid_block_addresses_to_endorsements,
+            valid_block_fitness,
             valid_block_storage,
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
-        if let Some(BlockStatus::Active {
-            a_block: active, ..
-        }) = self.block_statuses.get(&block_id)
-        {
+        if let Some(BlockStatus::Active { a_block, storage }) = self.block_statuses.get(&block_id) {
             massa_trace!("consensus.block_graph.process.is_active", {
                 "block_id": block_id
             });
-            self.to_propagate.insert(
-                block_id,
-                (
-                    active.operation_set.keys().copied().collect(),
-                    active.endorsement_ids.keys().copied().collect(),
-                ),
-            );
+            self.to_propagate.insert(block_id, storage.clone());
             for itm_block_id in self.waiting_for_dependencies_index.iter() {
                 if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -1455,7 +1267,6 @@ impl BlockGraph {
             "block_id": block_id
         });
         let mut parents: Vec<(BlockId, u64)> = Vec::with_capacity(self.cfg.thread_count as usize);
-        let mut deps = Set::<BlockId>::default();
         let mut incomp = Set::<BlockId>::default();
         let mut missing_deps = Set::<BlockId>::default();
         let creator_addr = header.creator_address;
@@ -1516,7 +1327,6 @@ impl BlockGraph {
 
         // list parents and ensure they are present
         let parent_set: Set<BlockId> = header.content.parents.iter().copied().collect();
-        deps.extend(&parent_set);
         for parent_thread in 0u8..self.cfg.thread_count {
             let parent_hash = header.content.parents[parent_thread as usize];
             match self.block_statuses.get(&parent_hash) {
@@ -1604,7 +1414,6 @@ impl BlockGraph {
                         continue;
                     }
                     let gp_h = parent.parents[gp_i as usize].0;
-                    deps.insert(gp_h);
                     match self.block_statuses.get(&gp_h) {
                         // this grandpa is discarded
                         Some(BlockStatus::Discarded { reason, .. }) => {
@@ -1623,20 +1432,11 @@ impl BlockGraph {
                                 gp_max_slots[gp_i as usize] = gp.slot.period;
                             }
                         }
-                        // this grandpa is missing or queued
-                        _ => {
-                            if self.genesis_hashes.contains(&gp_h) {
-                                // forbid depending on discarded genesis block
-                                return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
-                            }
-                            missing_deps.insert(gp_h);
-                        }
+                        // this grandpa is missing, assume stale
+                        _ => return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale)),
                     }
                 }
             }
-        }
-        if !missing_deps.is_empty() {
-            return Ok(HeaderCheckOutcome::WaitForDependencies(missing_deps));
         }
 
         // get parent in own thread
@@ -1690,17 +1490,19 @@ impl BlockGraph {
                 }
 
                 let parent_id = {
-                    let block = self
-                        .storage
-                        .retrieve_block(&cur_b.block_id)
+                    self.storage
+                        .read_blocks()
+                        .get(&cur_b.block_id)
                         .ok_or_else(|| {
                             GraphError::MissingBlock(format!(
                                 "missing block in grandpa incomp test: {}",
                                 cur_b.block_id
                             ))
-                        })?;
-                    let stored_block = block.read();
-                    stored_block.content.header.content.parents[header.content.slot.thread as usize]
+                        })?
+                        .content
+                        .header
+                        .content
+                        .parents[header.content.slot.thread as usize]
                 };
 
                 // check if the parent in tauB has a strictly lower period number than B's parent in tauB
@@ -1757,9 +1559,9 @@ impl BlockGraph {
 
         Ok(HeaderCheckOutcome::Proceed {
             parents_hash_period: parents,
-            dependencies: deps,
             incompatibilities: incomp,
             inherited_incompatibilities_count: inherited_incomp_count,
+            fitness: header.get_fitness(),
         })
     }
 
@@ -1871,13 +1673,9 @@ impl BlockGraph {
         parents_hash_period: Vec<(BlockId, u64)>,
         add_block_creator: PublicKey,
         add_block_slot: Slot,
-        deps: Set<BlockId>,
         incomp: Set<BlockId>,
         inherited_incomp_count: usize,
-        operation_set: Map<OperationId, usize>,
-        endorsement_ids: Map<EndorsementId, u32>,
-        addresses_to_operations: Map<Address, Set<OperationId>>,
-        addresses_to_endorsements: Map<Address, Set<EndorsementId>>,
+        fitness: u64,
         mut storage: Storage,
     ) -> Result<()> {
         massa_trace!("consensus.block_graph.add_block_to_graph", {
@@ -1895,16 +1693,12 @@ impl BlockGraph {
                 a_block: Box::new(ActiveBlock {
                     creator_address: Address::from_public_key(&add_block_creator),
                     parents: parents_hash_period.clone(),
-                    dependencies: deps,
                     descendants: Set::<BlockId>::default(),
                     block_id: add_block_id,
                     children: vec![Default::default(); self.cfg.thread_count as usize],
                     is_final: false,
-                    operation_set,
-                    endorsement_ids,
-                    addresses_to_operations,
-                    addresses_to_endorsements,
                     slot: add_block_slot,
+                    fitness,
                 }),
                 storage,
             },
@@ -2025,7 +1819,7 @@ impl BlockGraph {
                         .checked_add(
                             BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
                                 .ok_or_else(|| GraphError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h)))?
-                                .0.fitness(),
+                                .0.fitness,
                         )
                         .ok_or(GraphError::FitnessOverflow)?;
                     sum_hash -=
@@ -2124,7 +1918,7 @@ impl BlockGraph {
                 }
 
                 // remove from cliques
-                let stale_block_fitness = active_block.fitness();
+                let stale_block_fitness = active_block.fitness;
                 self.max_cliques.iter_mut().for_each(|c| {
                     if c.block_ids.remove(&stale_block_hash) {
                         c.fitness -= stale_block_fitness;
@@ -2235,7 +2029,7 @@ impl BlockGraph {
                                 if let Some(BlockStatus::Active { a_block: ab, .. }) =
                                     self.block_statuses.get(h)
                                 {
-                                    return ab.fitness();
+                                    return ab.fitness;
                                 }
                                 0
                             })
@@ -2276,7 +2070,7 @@ impl BlockGraph {
                 });
                 final_block.is_final = true;
                 // remove from cliques
-                let final_block_fitness = final_block.fitness();
+                let final_block_fitness = final_block.fitness;
                 self.max_cliques.iter_mut().for_each(|c| {
                     if c.block_ids.remove(&final_block_hash) {
                         c.fitness -= final_block_fitness;
@@ -2333,7 +2127,7 @@ impl BlockGraph {
                     || self.best_parents.iter().any(|(b, _p)| b == block_id)
                     || latest_final_blocks.contains(block_id)
                 {
-                    retain_active.extend(active_block.dependencies.clone());
+                    retain_active.extend(active_block.parents.iter().map(|(p, _)| *p));
                     retain_active.insert(*block_id);
                 }
             }
@@ -2461,16 +2255,21 @@ impl BlockGraph {
             .copied()
             .collect();
         for discard_active_h in to_remove {
-            let block = self
-                .storage
-                .retrieve_block(&discard_active_h)
-                .ok_or_else(|| {
+            let block_slot;
+            let block_creator;
+            let block_parents;
+            {
+                let read_blocks = self.storage.read_blocks();
+                let block = read_blocks.get(&discard_active_h).ok_or_else(|| {
                     GraphError::MissingBlock(format!(
                         "missing block when removing unused final active blocks: {}",
                         discard_active_h
                     ))
                 })?;
-            let stored_block = block.read();
+                block_slot = block.content.header.content.slot;
+                block_creator = block.creator_address;
+                block_parents = block.content.header.content.parents.clone();
+            };
 
             let discarded_active = if let Some(BlockStatus::Active {
                 a_block: discarded_active,
@@ -2501,9 +2300,9 @@ impl BlockGraph {
             self.block_statuses.insert(
                 discard_active_h,
                 BlockStatus::Discarded {
-                    slot: stored_block.content.header.content.slot,
-                    creator: stored_block.creator_address,
-                    parents: stored_block.content.header.content.parents.clone(),
+                    slot: block_slot,
+                    creator: block_creator,
+                    parents: block_parents,
                     reason: DiscardReason::Final,
                     sequence_number: BlockGraph::new_sequence_number(&mut self.sequence_counter),
                 },
@@ -2678,14 +2477,14 @@ impl BlockGraph {
                     HeaderOrBlock::Header(h) => h,
                     HeaderOrBlock::Block { id: block_id, .. } => self
                         .storage
-                        .retrieve_block(&block_id)
+                        .read_blocks()
+                        .get(&block_id)
                         .ok_or_else(|| {
                             GraphError::MissingBlock(format!(
                                 "missing block when pruning waiting for deps: {}",
                                 block_id
                             ))
                         })?
-                        .read()
                         .content
                         .header
                         .clone(),
@@ -2852,9 +2651,7 @@ impl BlockGraph {
 
     /// Get the block id's to be propagated.
     /// Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_blocks_to_propagate(
-        &mut self,
-    ) -> Map<BlockId, (Set<OperationId>, Vec<EndorsementId>)> {
+    pub fn get_blocks_to_propagate(&mut self) -> Map<BlockId, Storage> {
         mem::take(&mut self.to_propagate)
     }
 
@@ -2874,101 +2671,5 @@ impl BlockGraph {
     /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_new_stale_blocks(&mut self) -> Map<BlockId, (Address, Slot)> {
         mem::take(&mut self.new_stale_blocks)
-    }
-
-    /// endorsement info by involved address
-    pub fn get_endorsement_by_address(
-        &self,
-        address: Address,
-    ) -> Result<(Map<EndorsementId, WrappedEndorsement>, Storage)> {
-        let mut res: Map<EndorsementId, WrappedEndorsement> = Default::default();
-        let mut storage = self.storage.clone_without_refs();
-        for b_id in self.active_index.iter() {
-            if let Some(BlockStatus::Active {
-                a_block: ab,
-                storage: b_store,
-            }) = self.block_statuses.get(b_id)
-            {
-                if let Some(eds) = ab.addresses_to_endorsements.get(&address) {
-                    let block = b_store.retrieve_block(b_id).ok_or_else(|| {
-                        GraphError::MissingBlock(format!(
-                            "missing block when getting endorsement by address: {}",
-                            b_id
-                        ))
-                    })?;
-                    let endorsements = block.read().content.header.content.endorsements.clone();
-                    for e in endorsements {
-                        let id = e.id;
-                        if eds.contains(&id) {
-                            res.insert(id, e);
-                        }
-                    }
-                }
-            }
-        }
-        storage.claim_endorsement_refs(&res.keys().cloned().collect());
-        Ok((res, storage))
-    }
-
-    /// endorsement info by id
-    pub fn get_endorsement_by_id(
-        &self,
-        endorsements: Set<EndorsementId>,
-    ) -> Result<(Map<EndorsementId, EndorsementInfo>, Storage)> {
-        // iterate on active (final and non-final) blocks
-        let mut res = Map::default();
-        let mut storage = self.storage.clone_without_refs();
-        let mut endorsed_blocks = Set::<BlockId>::default();
-        let mut endorsed_ops = Set::<OperationId>::default();
-        for block_id in self.active_index.iter() {
-            if let Some(BlockStatus::Active {
-                a_block: ab,
-                storage: b_store,
-            }) = self.block_statuses.get(block_id)
-            {
-                let block = b_store.retrieve_block(block_id).ok_or_else(|| {
-                    GraphError::MissingBlock(format!(
-                        "missing block when getting endorsement by id: {}",
-                        block_id
-                    ))
-                })?;
-                let stored_block = block.read();
-                // list blocks with wanted endorsements
-                if endorsements
-                    .intersection(&ab.endorsement_ids.keys().copied().collect())
-                    .collect::<HashSet<_>>()
-                    .is_empty()
-                {
-                    for e in stored_block.content.header.content.endorsements.iter() {
-                        let id = e.id;
-                        if endorsements.contains(&id) {
-                            res.entry(id)
-                                .and_modify(|EndorsementInfo { in_blocks, .. }| {
-                                    in_blocks.push(*block_id)
-                                })
-                                .or_insert(EndorsementInfo {
-                                    id,
-                                    in_pool: false,
-                                    in_blocks: vec![*block_id],
-                                    is_final: ab.is_final,
-                                    endorsement: e.clone(),
-                                });
-                            endorsed_blocks.insert(*block_id);
-                            endorsed_ops.extend(
-                                stored_block
-                                    .content
-                                    .operations
-                                    .iter()
-                                    .map(|wrapped_op| wrapped_op),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        storage.claim_endorsement_refs(&res.keys().cloned().collect());
-        storage.claim_block_refs(&endorsed_blocks);
-        storage.claim_operation_refs(&endorsed_ops);
-        Ok((res, storage))
     }
 }

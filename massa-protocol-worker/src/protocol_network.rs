@@ -166,8 +166,8 @@ impl ProtocolWorker {
         };
         let mut all_blocks_info = vec![];
         for (hash, info_wanted) in &list {
-            let operations_ids = match self.storage.retrieve_block(hash) {
-                Some(wrapped_block) => wrapped_block.read().content.operations.clone(),
+            let operations_ids = match self.storage.read_blocks().get(hash) {
+                Some(wrapped_block) => wrapped_block.content.operations.clone(),
                 None => {
                     // let the node know we don't have the block.
                     all_blocks_info.push((*hash, ReplyForBlocksInfo::NotFound));
@@ -247,23 +247,25 @@ impl ProtocolWorker {
             // Add the ops of info.
             info.operations = Some(operation_ids.clone());
 
-            let missing_operations = operation_ids
-                .into_iter()
-                .filter(|op| {
-                    // Filter missing operations returning true if not found and compute
-                    // the sum of operation bytes size
-                    if let Some(operation_id) = self.checked_operations.get(&op.into_prefix()) {
-                        let op = self
-                            .storage
-                            .retrieve_operation(operation_id)
-                            .expect("unexpected checked operation not in storage");
-                        info.operations_size =
-                            info.operations_size.saturating_add(op.serialized_size());
-                        return false;
-                    }
-                    true
-                })
-                .collect();
+            let missing_operations = {
+                let ops = self.storage.read_operations();
+                operation_ids
+                    .into_iter()
+                    .filter(|op| {
+                        // Filter missing operations returning true if not found and compute
+                        // the sum of operation bytes size
+                        if let Some(operation_id) = self.checked_operations.get(&op.into_prefix()) {
+                            let op = ops
+                                .get(operation_id)
+                                .expect("unexpected checked operation not in storage");
+                            info.operations_size =
+                                info.operations_size.saturating_add(op.serialized_size());
+                            return false;
+                        }
+                        true
+                    })
+                    .collect()
+            };
 
             if info.operations_size > self.config.max_serialized_operations_size_per_block {
                 let _ = self.ban_node(&from_node_id).await;
@@ -344,7 +346,6 @@ impl ProtocolWorker {
         }
 
         // Re-constitute block.
-        let endorsement_ids = info.endorsements.clone();
         let block = Block {
             header: info.header.clone(),
             operations: info.operations.clone().unwrap(),
@@ -355,29 +356,35 @@ impl ProtocolWorker {
             .serialize(&block, &mut content_serialized)
             .unwrap();
 
-        let wrapped: WrappedBlock = Wrapped {
+        // wrap block
+        let wrapped_block: WrappedBlock = Wrapped {
             signature: info.header.signature,
             creator_public_key: info.header.creator_public_key,
             creator_address: info.header.creator_address,
             thread: info.header.thread,
-            id: BlockId::new(info.header.id.hash()),
+            id: block_id,
             content: block,
             serialized_data: content_serialized,
         };
 
+        // create block storage (without parents)
+        let mut block_storage = self.storage.clone_without_refs();
+
+        // add block to local storage and claim ref
+        block_storage.store_block(wrapped_block);
+
+        // add operations to local storage and claim ref
+        block_storage.store_operations(operations);
+
+        // add endorsements to local storage and claim ref
+        // TODO change this if we make endorsements separate from block header
+        block_storage.store_endorsements(info.header.content.endorsements.clone());
+
         // Send to graph
         self.send_protocol_event(ProtocolEvent::ReceivedBlock {
-            block: wrapped,
             slot: info.header.content.slot,
-            operation_set: info
-                .operations
-                .clone()
-                .unwrap()
-                .into_iter()
-                .enumerate()
-                .map(|(idx, op_id)| (op_id, idx))
-                .collect(),
-            endorsement_ids,
+            block_id,
+            storage: block_storage,
         })
         .await;
 

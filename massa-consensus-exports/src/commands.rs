@@ -37,29 +37,8 @@ pub enum ConsensusCommand {
         /// response channel
         response_tx: oneshot::Sender<Map<Address, AddressState>>,
     },
-    /// Get some information on operation by involved addresses
-    GetRecentOperations {
-        /// wanted address
-        address: Address,
-        /// response channel
-        response_tx: oneshot::Sender<(Map<OperationId, OperationSearchResult>, Storage)>,
-    },
-    /// Get some information on operations by operation ids
-    GetOperations {
-        /// wanted ids
-        operation_ids: Set<OperationId>,
-        /// response channel
-        response_tx: oneshot::Sender<(Map<OperationId, OperationSearchResult>, Storage)>,
-    },
     /// get current stats on consensus
     GetStats(oneshot::Sender<ConsensusStats>),
-    /// Get block id and status by block creator address
-    GetBlockIdsByCreator {
-        /// wanted address
-        address: Address,
-        /// response channel
-        response_tx: oneshot::Sender<Map<BlockId, Status>>,
-    },
     /// Get a block at a given slot in a blockclique
     GetBlockcliqueBlockAtSlot {
         /// wanted slot
@@ -76,24 +55,12 @@ pub enum ConsensusCommand {
     SendBlock {
         /// block id
         block_id: BlockId,
+        /// block slot
+        slot: Slot,
         /// All the objects for the block
         block_storage: Storage,
         /// response channel
         response_tx: oneshot::Sender<()>,
-    },
-    /// Get Endorsements by involved addresses
-    GetEndorsementsByAddress {
-        /// wanted address
-        address: Address,
-        /// response channel
-        response_tx: oneshot::Sender<(Map<EndorsementId, WrappedEndorsement>, Storage)>,
-    },
-    /// get endorsements by id
-    GetEndorsementsById {
-        /// Wanted endorsement ids
-        endorsements: Set<EndorsementId>,
-        /// response channel
-        response_tx: oneshot::Sender<(Map<EndorsementId, EndorsementInfo>, Storage)>,
     },
     /// Get cliques
     GetCliques(oneshot::Sender<Vec<Clique>>),
