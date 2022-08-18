@@ -292,11 +292,7 @@ impl Storage {
     /// Get a (mutable) reference to a stored block.
     pub fn retrieve_block(&self, block_id: &BlockId) -> Option<Arc<RwLock<WrappedBlock>>> {
         massa_trace!("storage.storage.retrieve_block", { "block_id": block_id });
-        self.blocks
-            .read()
-            .blocks
-            .get(block_id)
-            .map(|block| Arc::clone(block))
+        self.blocks.read().blocks.get(block_id).map(Arc::clone)
     }
 
     /// Claim operation references.
@@ -538,6 +534,53 @@ impl Storage {
     /// Get the block indexes to fetch blocks by indexes
     pub fn get_block_indexes(&self) -> &Arc<RwLock<BlockIndexes>> {
         &self.blocks
+    }
+
+    /// Get all local operations
+    pub fn get_operations_by_ids(&self, ids: &Set<OperationId>) -> Vec<WrappedOperation> {
+        let operations = self.operations.read();
+        self.local_used_ops
+            .iter()
+            .filter(|id| ids.contains(id))
+            .map(|id| {
+                operations
+                    .operations
+                    .get(id)
+                    .expect("unexpected not found operation in storage")
+            })
+            .cloned()
+            .collect()
+    }
+
+    /// Return found endorsements by ids
+    pub fn get_endorsements_by_ids(&self, ids: &Set<EndorsementId>) -> Vec<WrappedEndorsement> {
+        let endorsements = self.endorsements.read();
+        self.local_used_endorsements
+            .iter()
+            .filter(|id| ids.contains(id))
+            .map(|id| {
+                endorsements
+                    .endorsements
+                    .get(id)
+                    .expect("unexpected not found endorsement in storage")
+            })
+            .cloned()
+            .collect()
+    }
+
+    /// Return the local endorsement ids
+    pub fn get_local_endorsement_ids(&self) -> Set<EndorsementId> {
+        self.local_used_endorsements.clone()
+    }
+
+    /// Get local operation set len
+    pub fn local_operation_len(&self) -> usize {
+        self.local_used_ops.len()
+    }
+
+    /// Get local endorsement set len
+    pub fn local_endorsement_len(&self) -> usize {
+        self.local_used_endorsements.len()
     }
 }
 

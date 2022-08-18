@@ -758,7 +758,6 @@ impl ConsensusWorker {
         // get blockclique
         let blockclique_set = self.block_db.get_blockclique();
 
-        let local_storage = self.block_db.storage.clone_without_refs();
         // notify execution
         let final_blocks = new_final_block_ids
             .clone()

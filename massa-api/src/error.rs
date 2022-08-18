@@ -8,6 +8,7 @@ use massa_models::ModelsError;
 use massa_network_exports::NetworkError;
 use massa_pool_exports::PoolError;
 use massa_time::TimeError;
+use massa_wallet::WalletError;
 use thiserror::Error;
 
 #[non_exhaustive]
@@ -33,6 +34,8 @@ pub enum ApiError {
     ModelsError(#[from] ModelsError),
     /// time error: {0}
     TimeError(#[from] TimeError),
+    /// wallet error: {0}
+    WalletError(#[from] WalletError),
     /// not found
     NotFound,
     /// inconsistency: {0}
