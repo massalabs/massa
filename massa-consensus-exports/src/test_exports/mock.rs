@@ -17,7 +17,7 @@ pub struct MockConsensusController {
 
 impl MockConsensusController {
     /// Create a new mock consensus controller.
-    pub fn new() -> (Self, ConsensusCommandSender, ConsensusEventReceiver) {
+    pub fn new_with_receiver() -> (Self, ConsensusCommandSender, ConsensusEventReceiver) {
         let (consensus_command_tx, consensus_command_rx) =
             mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
         let (consensus_event_tx, consensus_event_rx) =

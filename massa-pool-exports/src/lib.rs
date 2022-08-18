@@ -16,5 +16,6 @@ pub use controller_traits::PoolController;
 pub use error::PoolError;
 pub use types::PoolOperationCursor;
 
-#[cfg(feature = "testing")]
-pub mod tests;
+// TODO: Readd
+/// #[cfg(feature = "testing")]
+pub mod test_exports;

@@ -30,4 +30,4 @@ serial_test = "0.9"
 
 [features]
 sandbox = []
-testing = ["massa_factory_exports/testing"]
+testing = ["massa_factory_exports/testing", "massa_pos_exports/testing", "massa_pool_exports/testing"]
