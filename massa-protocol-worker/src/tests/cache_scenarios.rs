@@ -2,7 +2,7 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::{protocol_test, protocol_test_with_storage};
+use super::tools::protocol_test_with_storage;
 use massa_models::constants::THREAD_COUNT;
 use massa_models::{self, Address, Slot};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommand, ReplyForBlocksInfo};
@@ -76,6 +76,7 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
                 .pop()
                 .unwrap();
 
+            assert_eq!(block_id, block.id);
             if let ReplyForBlocksInfo::Operations(ops) = info {
                 assert!(ops.contains(&operation.id));
                 assert_eq!(ops.len(), 1);
