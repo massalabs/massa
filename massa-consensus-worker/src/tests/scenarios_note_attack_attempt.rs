@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::VecDeque;
+
 use super::tools::*;
 use super::{
     mock_pool_controller::MockPoolController, mock_protocol_controller::MockProtocolController,
@@ -36,7 +38,8 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let pool_controller = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     // launch consensus controller
@@ -97,7 +100,8 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     let storage: Storage = Default::default();
     // launch consensus controller

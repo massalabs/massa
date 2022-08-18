@@ -17,7 +17,7 @@ use massa_time::MassaTime;
 use num::rational::Ratio;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use serial_test::serial;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::str::FromStr;
 
 use crate::{
@@ -534,7 +534,8 @@ async fn test_roll_block_creation() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -818,7 +819,8 @@ async fn test_roll_deactivation() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         ..Default::default()
     };
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
 
     // launch consensus controller

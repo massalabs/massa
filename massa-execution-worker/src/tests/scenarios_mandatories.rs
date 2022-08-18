@@ -25,7 +25,7 @@ use parking_lot::RwLock;
 use serial_test::serial;
 use std::{
     cmp::Reverse,
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, VecDeque},
     str::FromStr,
     sync::Arc,
     time::Duration,
@@ -73,7 +73,8 @@ fn test_execution_shutdown() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let (mut manager, _) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state,
@@ -90,7 +91,8 @@ fn test_sending_command() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state,
@@ -108,7 +110,8 @@ fn test_sending_read_only_execution_command() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state,
@@ -152,7 +155,8 @@ fn test_nested_call_gas_usage() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let (mut manager, controller) =
         start_execution_worker(exec_cfg, sample_state, storage.clone(), selector_controller);
     // get random keypair
@@ -260,7 +264,8 @@ fn send_and_receive_async_message() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let (mut manager, controller) =
         start_execution_worker(exec_cfg, sample_state, storage.clone(), selector_controller);
     // get random keypair
@@ -314,7 +319,8 @@ fn generate_events() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) = start_selector_worker(selector_config);
+    let (_selector_manager, selector_controller) =
+        start_selector_worker(selector_config, VecDeque::new()).unwrap();
     let (mut manager, controller) =
         start_execution_worker(exec_cfg, sample_state, storage.clone(), selector_controller);
 
