@@ -1,6 +1,6 @@
 use massa_models::{
     operation::{OperationId, OperationPrefixId},
-    prehash::Map,
+    prehash::{Map, Set},
 };
 
 /// The structure store the previously checked operations.
@@ -27,8 +27,8 @@ impl CheckedOperations {
     }
 
     /// Clear the content of the adapter.
-    pub fn clear(&mut self) {
-        self.0.clear()
+    pub fn clear(&mut self) -> Set<OperationId> {
+        self.0.drain().map(|(_, id)| id).collect()
     }
 
     /// Returns the number of prefix keys in the adapter.

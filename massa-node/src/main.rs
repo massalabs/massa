@@ -227,21 +227,6 @@ async fn launch(
         .await
         .expect("could not start network controller");
 
-    // launch protocol controller
-    let (
-        protocol_command_sender,
-        protocol_event_receiver,
-        _protocol_pool_event_receiver,
-        protocol_manager,
-    ) = start_protocol_controller(
-        SETTINGS.protocol.into(),
-        network_command_sender.clone(),
-        network_event_receiver,
-        shared_storage.clone(),
-    )
-    .await
-    .expect("could not start protocol controller");
-
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
         max_draw_cache: SETTINGS.selector.max_draw_cache,
@@ -298,6 +283,18 @@ async fn launch(
     let pool_controller = start_pool(pool_config, &shared_storage, execution_controller.clone());
     let pool_manager: Box<dyn PoolController> = Box::new(pool_controller.clone());
 
+    // launch protocol controller
+    let (protocol_command_sender, protocol_event_receiver, protocol_manager) =
+        start_protocol_controller(
+            SETTINGS.protocol.into(),
+            network_command_sender.clone(),
+            network_event_receiver,
+            pool_controller.clone(),
+            shared_storage.clone(),
+        )
+        .await
+        .expect("could not start protocol controller");
+
     // init consensus configuration
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
@@ -308,7 +305,7 @@ async fn launch(
                 execution_controller: execution_controller.clone(),
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
-                pool_command_sender: pool_manager.clone(),
+                pool_command_sender: pool_controller.clone(),
                 selector_controller: selector_controller.clone(),
             },
             bootstrap_state.graph,
@@ -395,7 +392,7 @@ async fn launch(
         consensus_manager,
         execution_manager,
         selector_manager,
-        pool_manager,
+        pool_controller,
         protocol_manager,
         network_manager,
         factory_manager,

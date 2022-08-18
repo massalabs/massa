@@ -7,17 +7,12 @@ use massa_models::{
     prehash::{Map, Set},
     Slot,
 };
-use massa_models::{
-    BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,
-};
+use massa_models::{BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader};
 use massa_network_exports::NetworkEventReceiver;
 use massa_storage::Storage;
 use serde::Serialize;
 use std::collections::VecDeque;
-use tokio::{
-    sync::{mpsc, oneshot},
-    task::JoinHandle,
-};
+use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::debug;
 
 /// Possible types of events that can happen.
@@ -30,7 +25,7 @@ pub enum ProtocolEvent {
         block_id: BlockId,
         /// block slot
         slot: Slot,
-        /// storage instance containing the block and its dependencies (except the parents)
+        /// storage containing endorsements and operations
         storage: Storage,
     },
     /// A block header with a valid signature has been received.
@@ -39,24 +34,6 @@ pub enum ProtocolEvent {
         block_id: BlockId,
         /// The header
         header: WrappedHeader,
-    },
-}
-/// Possible types of pool events that can happen.
-#[derive(Debug)]
-pub enum ProtocolPoolEvent {
-    /// Operations were received
-    ReceivedOperations {
-        /// the operations
-        operations: Map<OperationId, WrappedOperation>,
-        /// whether or not to signal the end of processing the batch.
-        done_signal: Option<oneshot::Sender<()>>,
-    },
-    /// Endorsements were received
-    ReceivedEndorsements {
-        /// the endorsements
-        endorsements: Map<EndorsementId, WrappedEndorsement>,
-        /// whether or not to propagate endorsements
-        propagate: bool,
     },
 }
 
@@ -210,36 +187,6 @@ impl ProtocolEventReceiver {
         while let Some(evt) = self.0.recv().await {
             debug!(
                 "after receiving event from ProtocolEventReceiver.0 in protocol_controller drain"
-            );
-            remaining_events.push_back(evt);
-        }
-        remaining_events
-    }
-}
-
-/// Protocol pool event receiver
-pub struct ProtocolPoolEventReceiver(pub mpsc::Receiver<ProtocolPoolEvent>);
-
-impl ProtocolPoolEventReceiver {
-    /// Receives the next `ProtocolPoolEvent`
-    /// None is returned when all Sender halves have dropped,
-    /// indicating that no further values can be sent on the channel
-    pub async fn wait_event(&mut self) -> Result<ProtocolPoolEvent, ProtocolError> {
-        massa_trace!("protocol.pool_event_receiver.wait_event", {});
-        self.0.recv().await.ok_or_else(|| {
-            ProtocolError::ChannelError(
-                "DefaultProtocolController wait_pool_event channel recv failed".into(),
-            )
-        })
-    }
-
-    /// drains remaining events and returns them in a `VecDeque`
-    /// note: events are sorted from oldest to newest
-    pub async fn drain(mut self) -> VecDeque<ProtocolPoolEvent> {
-        let mut remaining_events: VecDeque<ProtocolPoolEvent> = VecDeque::new();
-        while let Some(evt) = self.0.recv().await {
-            debug!(
-                "after receiving event from ProtocolPoolEventReceiver.0 in protocol_controller drain"
             );
             remaining_events.push_back(evt);
         }

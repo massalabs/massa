@@ -17,7 +17,6 @@ tracing = "0.1"
 itertools = "0.10"
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_execution_exports = { path = "../massa-execution-exports" }
 massa_graph = { path = "../massa-graph" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }

@@ -14,10 +14,10 @@ use massa_models::{
 };
 use massa_models::{EndorsementSerializer, OperationSerializer, WrappedOperation};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommandSender, NetworkEventReceiver};
+use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolError, ProtocolEvent,
-    ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent,
-    ProtocolPoolEventReceiver,
+    ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager,
 };
 
 use massa_storage::Storage;
@@ -26,7 +26,6 @@ use std::collections::{HashMap, HashSet};
 use tokio::{
     sync::mpsc,
     sync::mpsc::error::SendTimeoutError,
-    sync::oneshot,
     time::{sleep, sleep_until, Instant, Sleep},
 };
 use tracing::{debug, error, info, warn};
@@ -47,12 +46,12 @@ pub async fn start_protocol_controller(
     config: ProtocolConfig,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
+    pool_controller: Box<dyn PoolController>,
     storage: Storage,
 ) -> Result<
     (
         ProtocolCommandSender,
         ProtocolEventReceiver,
-        ProtocolPoolEventReceiver,
         ProtocolManager,
     ),
     ProtocolError,
@@ -61,8 +60,6 @@ pub async fn start_protocol_controller(
 
     // launch worker
     let (controller_event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
-    let (controller_pool_event_tx, pool_event_rx) =
-        mpsc::channel::<ProtocolPoolEvent>(CHANNEL_SIZE);
     let (command_tx, controller_command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
     let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let join_handle = tokio::spawn(async move {
@@ -72,10 +69,10 @@ pub async fn start_protocol_controller(
                 network_command_sender,
                 network_event_receiver,
                 controller_event_tx,
-                controller_pool_event_tx,
                 controller_command_rx,
                 controller_manager_rx,
             },
+            pool_controller,
             storage,
         )
         .run_loop()
@@ -95,7 +92,6 @@ pub async fn start_protocol_controller(
     Ok((
         ProtocolCommandSender(command_tx),
         ProtocolEventReceiver(event_rx),
-        ProtocolPoolEventReceiver(pool_event_rx),
         ProtocolManager::new(join_handle, manager_tx),
     ))
 }
@@ -135,7 +131,7 @@ pub struct ProtocolWorker {
     /// Channel to send protocol events to the controller.
     controller_event_tx: mpsc::Sender<ProtocolEvent>,
     /// Channel to send protocol pool events to the controller.
-    controller_pool_event_tx: mpsc::Sender<ProtocolPoolEvent>,
+    pool_controller: Box<dyn PoolController>,
     /// Channel receiving commands from the controller.
     controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// Channel to send management commands to the controller.
@@ -167,8 +163,6 @@ pub struct ProtocolWorkerChannels {
     pub network_event_receiver: NetworkEventReceiver,
     /// protocol event sender
     pub controller_event_tx: mpsc::Sender<ProtocolEvent>,
-    /// protocol pool event sender
-    pub controller_pool_event_tx: mpsc::Sender<ProtocolPoolEvent>,
     /// protocol command receiver
     pub controller_command_rx: mpsc::Receiver<ProtocolCommand>,
     /// protocol management command receiver
@@ -190,10 +184,10 @@ impl ProtocolWorker {
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
-            controller_pool_event_tx,
             controller_command_rx,
             controller_manager_rx,
         }: ProtocolWorkerChannels,
+        pool_controller: Box<dyn PoolController>,
         storage: Storage,
     ) -> ProtocolWorker {
         ProtocolWorker {
@@ -201,7 +195,7 @@ impl ProtocolWorker {
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
-            controller_pool_event_tx,
+            pool_controller,
             controller_command_rx,
             controller_manager_rx,
             active_nodes: Default::default(),
@@ -232,28 +226,6 @@ impl ProtocolWorker {
             }
             Err(SendTimeoutError::Timeout(event)) => {
                 warn!("Failed to send ProtocolEvent due to timeout: {:?}.", event);
-            }
-        }
-    }
-
-    pub(crate) async fn send_protocol_pool_event(&self, event: ProtocolPoolEvent) {
-        let result = self
-            .controller_pool_event_tx
-            .send_timeout(event, self.config.max_send_wait.to_duration())
-            .await;
-        match result {
-            Ok(()) => {}
-            Err(SendTimeoutError::Closed(event)) => {
-                warn!(
-                    "Failed to send ProtocolPoolEvent due to channel closure: {:?}.",
-                    event
-                );
-            }
-            Err(SendTimeoutError::Timeout(event)) => {
-                warn!(
-                    "Failed to send ProtocolPoolEvent due to timeout: {:?}.",
-                    event
-                );
             }
         }
     }
@@ -753,10 +725,11 @@ impl ProtocolWorker {
             return Ok(Some((block_id, block_info.endorsements.clone(), false)));
         }
 
-        let (endorsement_ids, endorsements_reused) = match self
-            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
-            .await
-        {
+        let (endorsement_ids, endorsements_reused) = match self.note_endorsements_from_node(
+            header.content.endorsements.clone(),
+            source_node_id,
+            false,
+        ) {
             Err(_) => {
                 warn!(
                     "node {} sent us a header containing critically incorrect endorsements",
@@ -842,14 +815,16 @@ impl ProtocolWorker {
     /// Prune `checked_endorsements` if it is too large
     fn prune_checked_endorsements(&mut self) {
         if self.checked_endorsements.len() > self.config.max_known_endorsements_size {
-            self.checked_endorsements.clear();
+            let ids = self.checked_endorsements.drain();
+            self.storage.drop_endorsement_refs(&ids.collect());
         }
     }
 
     /// Prune `checked_operations` if it has grown too large.
     fn prune_checked_operations(&mut self) {
         if self.checked_operations.len() > self.config.max_known_ops_size {
-            self.checked_operations.clear();
+            let ids = self.checked_operations.clear();
+            self.storage.drop_operation_refs(&ids);
         }
     }
 
@@ -871,11 +846,10 @@ impl ProtocolWorker {
     ///
     /// Checks performed:
     /// - Valid signature
-    pub(crate) async fn note_operations_from_node(
+    pub(crate) fn note_operations_from_node(
         &mut self,
         operations: Vec<WrappedOperation>,
         source_node_id: &NodeId,
-        done_signal: Option<oneshot::Sender<()>>,
     ) -> Result<(Vec<OperationId>, Map<OperationId, usize>), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
         let length = operations.len();
@@ -888,7 +862,7 @@ impl ProtocolWorker {
             received_ids.insert(operation_id, idx);
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(&operation_id) {
-                // check signature
+                // check signature if the operation wasn't in `checked_operation`
                 operation
                     .verify_signature(OperationSerializer::new(), &operation.creator_public_key)?;
 
@@ -905,15 +879,15 @@ impl ProtocolWorker {
         }
 
         if !new_operations.is_empty() {
-            // Add to pool, propagate when received outside of a header.
-            self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedOperations {
-                operations: new_operations,
-                done_signal,
-            })
-            .await;
-
             // prune checked operations cache
             self.prune_checked_operations();
+
+            // Store operation, claim locally
+            let mut ops = self.storage.clone_without_refs();
+            ops.store_operations(new_operations.into_values().collect());
+
+            // Add to pool, propagate when received outside of a header.
+            self.pool_controller.add_operations(ops);
         }
 
         Ok((seen_ops, received_ids))
@@ -928,7 +902,7 @@ impl ProtocolWorker {
     ///
     /// Checks performed:
     /// - Valid signature.
-    pub(crate) async fn note_endorsements_from_node(
+    pub(crate) fn note_endorsements_from_node(
         &mut self,
         endorsements: Vec<WrappedEndorsement>,
         source_node_id: &NodeId,
@@ -966,15 +940,16 @@ impl ProtocolWorker {
             );
         }
 
-        if !new_endorsements.is_empty() {
+        if !new_endorsements.is_empty() && propagate {
             self.prune_checked_endorsements();
 
+            let mut endorsements = self.storage.clone_without_refs();
+            endorsements.store_endorsements(new_endorsements.into_values().collect());
+            self.storage
+                .claim_endorsement_refs(endorsements.get_local_endorsement_ids());
+
             // Add to pool, propagate if required
-            self.send_protocol_pool_event(ProtocolPoolEvent::ReceivedEndorsements {
-                endorsements: new_endorsements,
-                propagate,
-            })
-            .await;
+            self.pool_controller.add_endorsements(endorsements);
         }
 
         Ok((endorsement_ids, contains_duplicates))
