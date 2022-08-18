@@ -72,13 +72,15 @@ fn get_random_ledger_entry() -> LedgerEntry {
 }
 
 /// generates random PoS cycles info
-fn get_random_pos_cycles_info() -> (Map<Address, u64>, Map<Address, ProductionStats>, BitVec<u8>) {
+fn get_random_pos_cycles_info(
+    r_limit: u64,
+) -> (Map<Address, u64>, Map<Address, ProductionStats>, BitVec<u8>) {
     let mut rng = rand::thread_rng();
     let mut roll_counts = Map::default();
     let mut production_stats = Map::default();
     let mut rng_seed: BitVec<u8> = BitVec::default();
 
-    for i in 0u64..rng.gen_range(10..20) {
+    for i in 0u64..r_limit {
         roll_counts.insert(get_random_address(), i);
         production_stats.insert(
             get_random_address(),
@@ -93,13 +95,12 @@ fn get_random_pos_cycles_info() -> (Map<Address, u64>, Map<Address, ProductionSt
 }
 
 /// generates random PoS deferred credits
-fn get_random_deferred_credits() -> DeferredCredits {
-    let mut rng = rand::thread_rng();
+fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
     let mut deferred_credits = DeferredCredits::default();
 
-    for i in 0u64..rng.gen_range(10..20) {
+    for i in 0u64..r_limit {
         let mut credits = Map::default();
-        for j in 0u64..rng.gen_range(10..20) {
+        for j in 0u64..r_limit {
             credits.insert(get_random_address(), Amount::from_raw(j));
         }
         deferred_credits.0.insert(
@@ -117,8 +118,10 @@ fn get_random_deferred_credits() -> DeferredCredits {
 fn get_random_pos_state() -> PoSFinalState {
     let mut rng = rand::thread_rng();
     let mut cycle_history = VecDeque::new();
-    for i in 0usize..rng.gen_range(4..8) {
-        let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info();
+    let r_limit: u64 = rng.gen_range(20..30);
+    println!("R_LIMIT = {}", r_limit);
+    for i in 0u64..r_limit {
+        let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
         cycle_history.push_front(CycleInfo {
             cycle: i as u64,
             roll_counts,
@@ -127,7 +130,7 @@ fn get_random_pos_state() -> PoSFinalState {
             production_stats,
         });
     }
-    let deferred_credits = get_random_deferred_credits();
+    let deferred_credits = get_random_deferred_credits(r_limit);
     PoSFinalState {
         cycle_history,
         deferred_credits,
@@ -161,15 +164,6 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
         get_random_pos_state(),
         ExecutedOps::default(),
     )
-}
-
-pub fn get_random_final_state_changes(final_state: &FinalState) {
-    let mut rng = rand::thread_rng();
-
-    for _ in 0..rng.gen_range(10..20) {
-        let nbr = rng.gen_range(0..final_state.pos_state.cycle_history.len());
-        let value = final_state.pos_state.cycle_history.get(nbr);
-    }
 }
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {

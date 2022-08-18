@@ -16,7 +16,7 @@ use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
 use massa_models::Version;
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
-use massa_pos_exports::SelectorConfig;
+use massa_pos_exports::{test_exports::assert_eq_pos_selection, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -158,9 +158,13 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
+    // check final states
+    assert_eq_final_state(&final_state.read(), &final_state_client.read());
+
     // start selector controllers
     let mut server_cycles = final_state.read().pos_state.cycle_history.clone();
     server_cycles.pop_back();
+    let client_cycles = final_state_client.read().pos_state.cycle_history.clone();
     let (mut server_selector_manager, server_selector_controller) = start_selector_worker(
         SelectorConfig {
             max_draw_cache: 10,
@@ -178,17 +182,14 @@ async fn test_bootstrap_server() {
                 .unwrap(),
             ..Default::default()
         },
-        final_state_client.read().pos_state.cycle_history.clone(),
+        client_cycles,
     )
     .expect("could not start client selector controller");
 
     // check selection draw
     let server_selection = server_selector_controller.get_every_selection();
     let client_selection = client_selector_controller.get_every_selection();
-    assert_eq!(server_selection, client_selection, "PoS selections do not match");
-
-    // check final states
-    assert_eq_final_state(&final_state.read(), &final_state_client.read());
+    assert_eq_pos_selection(&server_selection, &client_selection);
 
     // check states
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
