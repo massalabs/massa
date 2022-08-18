@@ -86,7 +86,6 @@ impl BlockIndexes {
                 self.index_by_endorsement.remove(&endo.id);
             }
         }
-        self.index_by_slot.remove(&slot);
     }
 
     /// Get the block ids created by an address.
