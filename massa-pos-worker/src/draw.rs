@@ -25,7 +25,7 @@ impl SelectorThread {
     fn get_params_from_finals(&mut self, cycle_info: &CycleInfo) -> PosResult<DrawParameters> {
         let cumulated_func = match self.cycle_states.get(&(cycle_info.cycle - 1)) {
             Some(cumulated_func) => cumulated_func.clone(),
-            _ => return Err(CycleUnavailable(cycle_info.cycle)),
+            _ => return Err(CycleUnavailable(cycle_info.cycle - 1)),
         };
         self.cycle_states
             .insert(cycle_info.cycle, cumulate_sum(&cycle_info.roll_counts));
@@ -39,11 +39,12 @@ impl SelectorThread {
 
     /// Compute a seed from the initial rools.
     fn get_params_from_initials(&mut self, cycle_info: &CycleInfo) -> PosResult<DrawParameters> {
-        let init_rolls = match self.initial_rolls.get(cycle_info.cycle as usize) {
-            Some(init_rolls) => init_rolls,
-            _ => return Err(InitCycleUnavailable),
-        };
-        let cumulated_func = cumulate_sum(init_rolls);
+        // let init_rolls = match self.initial_rolls.get(cycle_info.cycle as usize) {
+        //     Some(init_rolls) => init_rolls,
+        //     _ => return Err(InitCycleUnavailable),
+        // };
+        // NOTE: getting the cumulated sum of the initial rolls straight might be wrong
+        let cumulated_func = cumulate_sum(&self.initial_rolls);
         self.cycle_states
             .insert(cycle_info.cycle, cumulated_func.clone());
         let seed = match self.initial_seeds.get(cycle_info.cycle as usize) {

@@ -3,7 +3,7 @@
 //! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, HashMap};
 
 use anyhow::{bail, Result};
 use massa_models::{api::IndexedSlot, Address, Slot};
@@ -53,6 +53,11 @@ impl SelectorController for SelectorControllerImpl {
             Some(selection) => Ok(selection.clone()),
             None => bail!("error: selection not found for slot {}", slot),
         }
+    }
+
+    /// Get every [Selection] computed
+    fn get_every_selection(&self) -> BTreeMap<u64, HashMap<Slot, Selection>> {
+        self.cache.read().clone()
     }
 
     /// Get [Address] of the selected block producer for a given slot

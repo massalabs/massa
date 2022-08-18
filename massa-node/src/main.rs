@@ -228,7 +228,7 @@ async fn launch(
     let (selector_manager, selector_controller) = start_selector_worker(
         SelectorConfig {
             max_draw_cache: SETTINGS.selector.max_draw_cache,
-            initial_rolls_path: SETTINGS.selector.initial_rolls_path,
+            initial_rolls_path: SETTINGS.selector.initial_rolls_path.clone(),
             ..SelectorConfig::default()
         },
         final_state.read().pos_state.cycle_history.clone(),

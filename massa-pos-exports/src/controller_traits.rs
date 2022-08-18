@@ -3,7 +3,8 @@
 //! This module exports generic traits representing interfaces for interacting
 //! with the PoS selector worker.
 
-use std::collections::VecDeque;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use crate::CycleInfo;
 use crate::Selection;
@@ -25,6 +26,9 @@ pub trait SelectorController: Send + Sync {
     /// # Arguments
     /// * `slot`: target slot of the selection
     fn get_selection(&self, slot: Slot) -> Result<Selection>;
+
+    /// Get every [Selection] computed
+    fn get_every_selection(&self) -> BTreeMap<u64, HashMap<Slot, Selection>> ;
 
     /// Return a list of slots where `address` has been choosen to produce a
     /// block and a list where he is choosen for the endorsements.

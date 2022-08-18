@@ -720,7 +720,7 @@ impl Deserializer<Map<Address, Amount>> for CreditDeserializer {
 }
 
 /// Selections of endorsements and producer
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Selection {
     /// Choosen endorsements
     pub endorsements: Vec<Address>,
