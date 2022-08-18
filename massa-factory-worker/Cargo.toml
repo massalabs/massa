@@ -26,10 +26,8 @@ massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
 
 [dev-dependencies]
-# custom modules with testing enabled
-massa_factory_exports = { path = "../massa-factory-exports", features = [
-    "testing",
-] }
+serial_test = "0.9"
 
 [features]
 sandbox = []
+testing = ["massa_factory_exports/testing"]

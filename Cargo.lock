@@ -1878,6 +1878,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "serde 1.0.143",
  "serde_json",
+ "serial_test 0.9.0",
  "tracing",
 ]
 
@@ -2229,6 +2230,7 @@ dependencies = [
  "serde 1.0.143",
  "serde_json",
  "serde_qs",
+ "tempfile",
  "thiserror",
 ]
 
