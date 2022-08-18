@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use massa_models::{
     prehash::{Map, Set},
-    Address, BlockId, Slot, WrappedBlock,
+    Address, BlockId, EndorsementId, OperationId, Slot, WrappedBlock,
 };
 use parking_lot::RwLock;
 
@@ -16,6 +16,10 @@ pub struct BlockIndexes {
     index_by_creator: Map<Address, Set<BlockId>>,
     /// Structure mapping slot with their block id
     index_by_slot: HashMap<Slot, Set<BlockId>>,
+    /// Structure mapping operation id with ids of blocks they are contained in
+    index_by_op: Map<OperationId, Set<BlockId>>,
+    /// Structure mapping endorsement id with ids of blocks they are contained in
+    index_by_endorsement: Map<EndorsementId, Set<BlockId>>,
 }
 
 impl BlockIndexes {
@@ -59,10 +63,10 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - the block ids created by the address
-    pub fn get_blocks_created_by(&self, address: &Address) -> Vec<BlockId> {
+    pub fn get_blocks_created_by(&self, address: &Address) -> Set<BlockId> {
         match self.index_by_creator.get(address) {
-            Some(blocks) => blocks.iter().cloned().collect(),
-            None => Vec::new(),
+            Some(ids) => ids.clone(),
+            None => Set::default(),
         }
     }
 
@@ -74,5 +78,31 @@ impl BlockIndexes {
     /// - the block id of the block at the slot if exists, None otherwise
     pub fn get_blocks_by_slot(&self, slot: Slot) -> Option<&Set<BlockId>> {
         self.index_by_slot.get(&slot)
+    }
+
+    /// Get a list of block id containing an operation.
+    /// Arguments:
+    /// - operation_id: the operation id to get the block id of
+    ///
+    /// Returns:
+    /// - the list of block id containing the operation
+    pub fn get_blocks_by_op(&self, operation_id: &OperationId) -> Set<BlockId> {
+        match self.index_by_op.get(operation_id) {
+            Some(blocks) => blocks.clone(),
+            None => Set::default(),
+        }
+    }
+
+    /// Get a list of block id containing an endorsement.
+    /// Arguments:
+    /// - endorsement_id: the endorsement id to get the block id of
+    ///
+    /// Returns:
+    /// - the list of block id containing the endorsement
+    pub fn get_blocks_by_endorsement(&self, endorsement_id: &EndorsementId) -> Set<BlockId> {
+        match self.index_by_endorsement.get(endorsement_id) {
+            Some(blocks) => blocks.clone(),
+            None => Set::default(),
+        }
     }
 }
