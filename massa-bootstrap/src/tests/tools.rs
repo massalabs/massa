@@ -71,24 +71,54 @@ fn get_random_ledger_entry() -> LedgerEntry {
     }
 }
 
-/// generates a random pos final state
+/// generates random PoS cycles info
+fn get_random_pos_cycles_info() -> (Map<Address, u64>, Map<Address, ProductionStats>, BitVec<u8>) {
+    let mut rng = rand::thread_rng();
+    let mut roll_counts = Map::default();
+    let mut production_stats = Map::default();
+    let mut rng_seed: BitVec<u8> = BitVec::default();
+
+    for i in 0u64..rng.gen_range(10..20) {
+        roll_counts.insert(get_random_address(), i);
+        production_stats.insert(
+            get_random_address(),
+            ProductionStats {
+                block_success_count: i * 3,
+                block_failure_count: i,
+            },
+        );
+        rng_seed.push(rng.gen_range(0..2) == 1);
+    }
+    (roll_counts, production_stats, rng_seed)
+}
+
+/// generates random PoS deferred credits
+fn get_random_deferred_credits() -> DeferredCredits {
+    let mut rng = rand::thread_rng();
+    let mut deferred_credits = DeferredCredits::default();
+
+    for i in 0u64..rng.gen_range(10..20) {
+        let mut credits = Map::default();
+        for j in 0u64..rng.gen_range(10..20) {
+            credits.insert(get_random_address(), Amount::from_raw(j));
+        }
+        deferred_credits.0.insert(
+            Slot {
+                period: i,
+                thread: 0,
+            },
+            credits,
+        );
+    }
+    deferred_credits
+}
+
+/// generates a random PoS final state
 fn get_random_pos_state() -> PoSFinalState {
     let mut rng = rand::thread_rng();
     let mut cycle_history = VecDeque::new();
-    for i in 0usize..rng.gen_range(3..6) {
-        let mut roll_counts = Map::default();
-        let mut production_stats = Map::default();
-        for j in 0usize..rng.gen_range(8..16) {
-            roll_counts.insert(get_random_address(), j as u64);
-            production_stats.insert(
-                get_random_address(),
-                ProductionStats {
-                    block_success_count: (j * 3) as u64,
-                    block_failure_count: j as u64,
-                },
-            );
-        }
-        let rng_seed: BitVec<u8> = BitVec::try_from_vec([0, 1, 2].to_vec()).unwrap();
+    for i in 0usize..rng.gen_range(4..8) {
+        let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info();
         cycle_history.push_front(CycleInfo {
             cycle: i as u64,
             roll_counts,
@@ -97,18 +127,7 @@ fn get_random_pos_state() -> PoSFinalState {
             production_stats,
         });
     }
-    let mut deferred_credits = DeferredCredits::default();
-    for i in 0usize..rng.gen_range(3..6) {
-        let mut credits = Map::default();
-        credits.insert(get_random_address(), Amount::from_raw(42));
-        deferred_credits.0.insert(
-            Slot {
-                period: i as u64,
-                thread: 0,
-            },
-            credits,
-        );
-    }
+    let deferred_credits = get_random_deferred_credits();
     PoSFinalState {
         cycle_history,
         deferred_credits,
@@ -140,9 +159,17 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
         async_pool,
         VecDeque::new(),
         get_random_pos_state(),
-        // PoSFinalState::default(),
         ExecutedOps::default(),
     )
+}
+
+pub fn get_random_final_state_changes(final_state: &FinalState) {
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..rng.gen_range(10..20) {
+        let nbr = rng.gen_range(0..final_state.pos_state.cycle_history.len());
+        let value = final_state.pos_state.cycle_history.get(nbr);
+    }
 }
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
