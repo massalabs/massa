@@ -45,7 +45,7 @@ pub trait ExecutionController: Send + Sync {
     /// * `(final_balance, active_balance)`
     fn get_final_and_active_parallel_balance(
         &self,
-        addresses: Vec<Address>,
+        addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)>;
 
     /// Get the final and active values of sequential balances.
@@ -54,7 +54,7 @@ pub trait ExecutionController: Send + Sync {
     /// * `(final_balance, active_balance)`
     fn get_final_and_active_sequential_balance(
         &self,
-        addresses: Vec<Address>,
+        addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)>;
 
     /// Get a copy of a single datastore entry with its final and active values
@@ -73,8 +73,8 @@ pub trait ExecutionController: Send + Sync {
     /// A vector containing all the keys
     fn get_final_and_active_datastore_keys(
         &self,
-        addr: &Address,
-    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>);
+        addresses: &[Address],
+    ) -> Vec<(BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>)>;
 
     /// Returns for a given cycle the stakers taken into account
     /// by the selector. That correspond to the roll_counts in `cycle - 1`.

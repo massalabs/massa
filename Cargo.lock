@@ -1642,6 +1642,7 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "futures 0.3.23",
+ "itertools",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",

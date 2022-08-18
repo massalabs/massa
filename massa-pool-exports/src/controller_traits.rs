@@ -30,6 +30,12 @@ pub trait PoolController: Send + Sync {
     /// Get the number of operations in the pool
     fn get_operation_count(&self) -> usize;
 
+    /// Check if the pool contains a list of endorsements. Returns one boolean per item.
+    fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool>;
+
+    /// Check if the pool contains a list of operations. Returns one boolean per item.
+    fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool>;
+
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.
     fn clone_box(&self) -> Box<dyn PoolController>;

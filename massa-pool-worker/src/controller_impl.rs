@@ -81,4 +81,22 @@ impl PoolController for PoolControllerImpl {
             .expect("could not r-lock operation pool")
             .len()
     }
+
+    /// Check if the pool contains a list of endorsements. Returns one boolean per item.
+    fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool> {
+        let lck = self
+            .endorsement_pool
+            .read()
+            .expect("could not r-lock endorsement pool");
+        endorsements.iter().map(|id| lck.contains(id)).collect()
+    }
+
+    /// Check if the pool contains a list of operations. Returns one boolean per item.
+    fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
+        let lck = self
+            .operation_pool
+            .read()
+            .expect("could not r-lock operation pool");
+        operations.iter().map(|id| lck.contains(id)).collect()
+    }
 }

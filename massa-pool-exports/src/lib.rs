@@ -14,7 +14,6 @@ mod types;
 pub use config::PoolConfig;
 pub use controller_traits::PoolController;
 pub use error::PoolError;
-pub use types::PoolOperationCursor;
 
 #[cfg(feature = "testing")]
 pub mod tests;

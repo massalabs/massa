@@ -26,6 +26,7 @@ use massa_models::{
 use massa_pos_exports::SelectorController;
 use massa_serialization::{DeserializeError, Deserializer};
 
+use itertools::izip;
 use massa_models::{
     api::{
         AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
@@ -46,6 +47,7 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::collections::{BTreeSet, HashSet};
+use std::convert::identity;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -354,62 +356,58 @@ impl Endpoints for API<Public> {
         &self,
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
-        let api_cfg = self.0.api_settings;
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let pool_command_sender = self.0.pool_command_sender.clone();
+        // get the operations and the list of blocks that contain them from storage
+        let storage_info: Vec<(WrappedOperation, Set<BlockId>)> = {
+            let read_ops = self.0.storage.read_operations();
+            ops.iter()
+                .filter_map(|id| {
+                    read_ops.get(id).cloned().map(|op| {
+                        (
+                            op,
+                            read_ops
+                                .get_containing_blocks(id)
+                                .cloned()
+                                .unwrap_or_default(),
+                        )
+                    })
+                })
+                .collect()
+        };
+
+        // keep only the ops found in storage
+        let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
+
+        // ask pool whether it carries the operations
+        let in_pool = self.0.pool_command_sender.contains_operations(&ops);
+
+        // ask execution for the operation statuses
+        let execution_statuses = self.0.execution_controller.get_operation_statuses(&ops);
+
+        let api_cfg = self.0.api_settings.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
 
-            let operation_ids: Set<OperationId> = ops.iter().cloned().collect();
-
-            // ask pool and consensus
-            let pool_res = pool_command_sender.get_operations_by_ids(&operation_ids);
-            let consensus_res = consensus_command_sender
-                .get_operations(operation_ids)
-                .await?;
-            let mut res: Map<OperationId, OperationInfo> = Map::with_capacity_and_hasher(
-                pool_res.len() + consensus_res.0.len(),
-                BuildMap::default(),
+            // gather all values into a vector of OperationInfo instances
+            let mut res: Vec<OperationInfo> = Vec::with_capacity(ops.len());
+            let zipped_iterator = ops.into_iter().zip(
+                storage_info
+                    .into_iter()
+                    .zip(in_pool.into_iter().zip(execution_statuses.into_iter())),
             );
-
-            // add pool info
-            res.extend(pool_res.into_iter().map(|operation| {
-                (
-                    operation.id,
-                    OperationInfo {
-                        id: operation.id,
-                        operation,
-                        in_pool: true,
-                        in_blocks: Vec::new(),
-                        is_final: false,
-                    },
-                )
-            }));
-
-            // add consensus info
-            consensus_res.0.into_iter().for_each(|(op_id, search_new)| {
-                let search_new = OperationInfo {
-                    id: op_id,
-                    in_pool: search_new.in_pool,
-                    in_blocks: search_new.in_blocks.keys().copied().collect(),
-                    is_final: search_new
-                        .in_blocks
-                        .iter()
-                        .any(|(_, (_, is_final))| *is_final),
-                    operation: search_new.op,
-                };
-                res.entry(op_id)
-                    .and_modify(|search_old| search_old.extend(&search_new))
-                    .or_insert(search_new);
-            });
+            for (id, ((operation, in_blocks), (in_pool, exec_status))) in zipped_iterator {
+                res.push(OperationInfo {
+                    id,
+                    operation,
+                    in_pool,
+                    in_blocks: in_blocks.into_iter().collect(),
+                    is_final: exec_status.is_final,
+                });
+            }
 
             // return values in the right order
-            Ok(ops
-                .into_iter()
-                .filter_map(|op_id| res.remove(&op_id))
-                .collect())
+            Ok(res)
         };
         Box::pin(closure())
     }
@@ -418,28 +416,58 @@ impl Endpoints for API<Public> {
         &self,
         eds: Vec<EndorsementId>,
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
-        let api_cfg = self.0.api_settings;
-        let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let pool_command_sender = self.0.pool_command_sender.clone();
+        // get the endorsements and the list of blocks that contain them from storage
+        let storage_info: Vec<(WrappedEndorsement, Set<BlockId>)> = {
+            let read_endos = self.0.storage.read_endorsements();
+            eds.iter()
+                .filter_map(|id| {
+                    read_endos.get(id).cloned().map(|ed| {
+                        (
+                            ed,
+                            read_endos
+                                .get_containing_blocks(id)
+                                .cloned()
+                                .unwrap_or_default(),
+                        )
+                    })
+                })
+                .collect()
+        };
+
+        // keep only the ops found in storage
+        let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
+
+        // ask pool whether it carries the operations
+        let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
+
+        // ask execution for the endorsement statuses
+        let execution_statuses = self.0.execution_controller.get_endorsement_statuses(&eds);
+
+        let api_cfg = self.0.api_settings.clone();
         let closure = async move || {
             if eds.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
-            let mapped: Set<EndorsementId> = eds.into_iter().collect();
 
-            let mut res: Map<EndorsementId, EndorsementInfo> = consensus_command_sender
-                .get_endorsements_by_id(mapped)
-                .await?
-                .0;
+            // gather all values into a vector of EndorsementInfo instances
+            let mut res: Vec<EndorsementInfo> = Vec::with_capacity(eds.len());
+            let zipped_iterator = eds.into_iter().zip(
+                storage_info
+                    .into_iter()
+                    .zip(in_pool.into_iter().zip(execution_statuses.into_iter())),
+            );
+            for (id, ((endorsement, in_blocks), (in_pool, exec_status))) in zipped_iterator {
+                res.push(EndorsementInfo {
+                    id,
+                    endorsement,
+                    in_pool,
+                    in_blocks: in_blocks.into_iter().collect(),
+                    is_final: exec_status.is_final,
+                });
+            }
 
-            let pool_set = pool_command_sender.get_endorsement_ids();
-
-            pool_set.into_iter().for_each(|id| {
-                res.entry(id)
-                    .and_modify(|EndorsementInfo { in_pool, .. }| *in_pool = true);
-            });
-
-            Ok(res.values().cloned().collect())
+            // return values in the right order
+            Ok(res)
         };
         Box::pin(closure())
     }
@@ -588,167 +616,124 @@ impl Endpoints for API<Public> {
         &self,
         addresses: Vec<Address>,
     ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
-        let cmd_sender = self.0.consensus_command_sender.clone();
-        let cfg = self.0.consensus_config.clone();
-        let api_cfg = self.0.api_settings;
-        let execution_controller = self.0.execution_controller.clone();
-        let compensation_millis = self.0.compensation_millis;
-        let selector_controller = self.0.selector_controller.clone();
-        let storage = self.0.storage.clone();
-        let closure = async move || {
-            let mut res = Vec::with_capacity(addresses.len());
-
-            // check for address length
-            if addresses.len() as u64 > api_cfg.max_arguments {
-                return Err(ApiError::TooManyArguments("too many arguments".into()));
-            }
-
-            // roll and balance info
-            let mut states = cmd_sender
-                .get_addresses_info(addresses.iter().copied().collect())
-                .await?;
-
-            // operations block and endorsement info
-            let mut operations: Map<Address, Set<OperationId>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut blocks: Map<Address, Set<BlockId>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut endorsements: Map<Address, Set<EndorsementId>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut final_balance_info: Map<Address, Option<Amount>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut candidate_balance_info: Map<Address, Option<Amount>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut final_datastore_keys: Map<Address, BTreeSet<Vec<u8>>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut candidate_datastore_keys: Map<Address, BTreeSet<Vec<u8>>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-
-            let mut concurrent_getters = FuturesUnordered::new();
-
-            for &address in addresses.iter() {
-                let cmd_snd = cmd_sender.clone();
-                let exec_snd = execution_controller.clone();
-                let c_storage = storage.clone();
-                concurrent_getters.push(async move {
-                    let blocks = cmd_snd
-                        .get_block_ids_by_creator(address)
-                        .await?
-                        .into_keys()
-                        .collect::<Set<BlockId>>();
-                    // TODO specify if operations/endorsements are in pool or consensus (follow up)
-
-                    let operations = c_storage
-                        .get_operation_indexes()
-                        .read()
-                        .get_operations_created_by(&address);
-                    let gathered: Set<OperationId> = operations.into_iter().collect();
-
-                    let endorsements = c_storage
-                        .get_endorsement_indexes()
-                        .read()
-                        .get_endorsements_created_by(&address);
-                    let gathered_ed: Set<EndorsementId> = endorsements.into_iter().collect();
-
-                    let balances = exec_snd.get_final_and_active_parallel_balance(vec![address]);
-                    let balances_result = balances.first().unwrap();
-                    let (final_keys, candidate_keys) =
-                        exec_snd.get_final_and_active_datastore_keys(&address);
-
-                    Result::<
-                        (
-                            Address,
-                            Set<BlockId>,
-                            Set<OperationId>,
-                            Set<EndorsementId>,
-                            Option<Amount>,
-                            Option<Amount>,
-                            BTreeSet<Vec<u8>>,
-                            BTreeSet<Vec<u8>>,
-                        ),
-                        ApiError,
-                    >::Ok((
-                        address,
-                        blocks,
-                        gathered,
-                        gathered_ed,
-                        balances_result.0,
-                        balances_result.1,
-                        final_keys,
-                        candidate_keys,
-                    ))
-                });
-            }
-            while let Some(res) = concurrent_getters.next().await {
-                let (
-                    addr,
-                    block_set,
-                    operation_set,
-                    endorsement_set,
-                    final_balance,
-                    candidate_balance,
-                    final_keys,
-                    candidate_keys,
-                ) = res?;
-                blocks.insert(addr, block_set);
-                operations.insert(addr, operation_set);
-                endorsements.insert(addr, endorsement_set);
-                final_balance_info.insert(addr, final_balance);
-                candidate_balance_info.insert(addr, candidate_balance);
-                final_datastore_keys.insert(addr, final_keys);
-                candidate_datastore_keys.insert(addr, candidate_keys);
-            }
-
-            let curr_slot = get_latest_block_slot_at_timestamp(
-                cfg.thread_count,
-                cfg.t0,
-                cfg.genesis_timestamp,
-                MassaTime::compensated_now(compensation_millis)?,
-            )?
-            .unwrap_or_else(|| Slot::new(0, 0));
-
-            let end_slot = Slot::new(
-                curr_slot.period + api_cfg.draw_lookahead_period_count,
-                curr_slot.thread,
-            );
-
-            // compile everything per address
-            for address in addresses.into_iter() {
-                let state = states.remove(&address).ok_or(ApiError::NotFound)?;
-                let (block_draws, endorsement_draws) =
-                    selector_controller.get_address_selections(&address, curr_slot, end_slot);
-
-                res.push(AddressInfo {
-                    address,
-                    thread: address.get_thread(cfg.thread_count),
-                    ledger_info: state.ledger_info,
-                    rolls: state.rolls,
-                    block_draws: HashSet::from_iter(block_draws.into_iter()),
-                    endorsement_draws: HashSet::from_iter(endorsement_draws.into_iter()),
-                    blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
-                    involved_in_endorsements: endorsements
-                        .remove(&address)
-                        .ok_or(ApiError::NotFound)?,
-                    involved_in_operations: operations
-                        .remove(&address)
-                        .ok_or(ApiError::NotFound)?,
-                    production_stats: state.production_stats,
-                    final_balance_info: final_balance_info
-                        .remove(&address)
-                        .ok_or(ApiError::NotFound)?,
-                    candidate_balance_info: candidate_balance_info
-                        .remove(&address)
-                        .ok_or(ApiError::NotFound)?,
-                    final_datastore_keys: final_datastore_keys
-                        .remove(&address)
-                        .ok_or(ApiError::NotFound)?,
-                    candidate_datastore_keys: candidate_datastore_keys
-                        .remove(&address)
-                        .ok_or(ApiError::NotFound)?,
+        // get info from storage about which blocks the addresses have created
+        let created_blocks: Vec<Set<BlockId>> = {
+            let lck = self.0.storage.read_blocks();
+            addresses
+                .iter()
+                .map(|id| {
+                    lck.get_blocks_created_by(address)
+                        .cloned()
+                        .unwrap_or_default()
                 })
-            }
-            Ok(res)
+                .collect()
         };
+
+        // get info from storage about which operations the addresses have created
+        let created_operations: Vec<Set<OperationId>> = {
+            let lck = self.0.storage.read_operations();
+            addresses
+                .iter()
+                .map(|id| {
+                    lck.get_operations_created_by(address)
+                        .cloned()
+                        .unwrap_or_default()
+                })
+                .collect()
+        };
+
+        // get info from storage about which endorsements the addresses have created
+        let created_endorsements: Vec<Set<EndorsementId>> = {
+            let lck = self.0.storage.read_endorsements();
+            addresses
+                .iter()
+                .map(|id| {
+                    lck.get_endorsements_created_by(address)
+                        .cloned()
+                        .unwrap_or_default()
+                })
+                .collect()
+        };
+
+        // get balances from execution
+        let final_active_parallel_balances = self
+            .0
+            .execution_controller
+            .get_final_and_active_parallel_balance(&addresses);
+        let final_active_sequential_balances = self
+            .0
+            .execution_controller
+            .get_final_and_active_sequential_balance(&addresses);
+
+        // get datastore keys from execution
+        let final_active_datastore_keys = self
+            .0
+            .execution_controller
+            .get_final_and_active_datastore_keys(&addresses);
+
+        // get roll infos from execution
+        let rolls_info: Vec<RollsInfo> = self.0.execution_controller.get_roll_infos(&addresses);
+
+        // get draws and active roll info from selector
+        let selection_info: Vec<SelectionInfo> =
+            self.0.selector_controller.get_address_infos(&addresses);
+
+        // compile results
+        let mut res = Vec::with_capacity(addresses.len());
+        let iterator = izip!(
+            addresses.into_iter(),
+            created_blocks.into_iter(),
+            created_operations.into_iter(),
+            created_endorsements.into_iter(),
+            final_active_parallel_balances.into_iter(),
+            final_active_sequential_balances.into_iter(),
+            final_active_datastore_keys.into_iter(),
+            rolls_info.into_iter(),
+            selection_info.into_iter()
+        );
+        for (
+            address,
+            created_blocks,
+            created_operations,
+            created_endorsements,
+            final_active_parallel_balances,
+            final_active_seq_balances,
+            final_active_datastore_keys,
+            rolls_info,
+        ) in iterator
+        {
+            res.push(AddressInfo {
+                // general address info
+                address,
+                thread: address.get_thread(self.0.consensus_config.thread_count),
+
+                // balances
+                final_parallel_balance: final_active_parallel_balances.0.unwrap_or_default(),
+                candidate_parallel_balance: final_active_parallel_balances.1.unwrap_or_default(),
+                final_sequential_balance: final_active_seq_balances.0.unwrap_or_default(),
+                candidate_sequential_balance: final_active_seq_balances.1.unwrap_or_default(),
+
+                // datastore keys
+                final_datastore_keys: final_active_datastore_keys.0,
+                candidate_datastore_keys: final_active_datastore_keys.1,
+
+                // rolls
+                rolls: rolls_info,
+
+                // TODO block_draws,
+                // TODO endorsement_draws: HashSet::from_iter(endorsement_draws.into_iter()),
+
+                // production statistics
+                // TODO production_stats: state.production_stats,
+
+                // created objects
+                created_blocks,
+                created_endorsements,
+                created_operations,
+            });
+        }
+
+        let closure = async move || Ok(res);
         Box::pin(closure())
     }
 

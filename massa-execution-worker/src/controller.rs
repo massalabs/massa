@@ -101,12 +101,12 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * `(final_balance, active_balance)`
     fn get_final_and_active_parallel_balance(
         &self,
-        addresses: Vec<Address>,
+        addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
         let lock = self.execution_state.read();
         let mut result = Vec::with_capacity(addresses.len());
         for addr in addresses {
-            result.push(lock.get_final_and_active_parallel_balance(&addr));
+            result.push(lock.get_final_and_active_parallel_balance(addr));
         }
         result
     }
@@ -117,12 +117,12 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * `(final_balance, active_balance)`
     fn get_final_and_active_sequential_balance(
         &self,
-        addresses: Vec<Address>,
+        addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
         let lock = self.execution_state.read();
         let mut result = Vec::with_capacity(addresses.len());
         for addr in addresses {
-            result.push(lock.get_final_and_active_sequential_balance(&addr));
+            result.push(lock.get_final_and_active_sequential_balance(addr));
         }
         result
     }
@@ -130,13 +130,13 @@ impl ExecutionController for ExecutionControllerImpl {
     /// Get a copy of a single datastore entry with its final and active values
     ///
     /// # Return value
-    /// * `(final_data_entry, active_data_entry)`
+    /// * `Vec<(final_data_entry, active_data_entry)>`
     fn get_final_and_active_data_entry(
         &self,
         input: Vec<(Address, Vec<u8>)>,
     ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
         let lock = self.execution_state.read();
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(input.len());
         for (addr, key) in input {
             result.push(lock.get_final_and_active_data_entry(&addr, &key));
         }
@@ -146,14 +146,16 @@ impl ExecutionController for ExecutionControllerImpl {
     /// Get every datastore key of the given address.
     ///
     /// # Returns
-    /// A vector containing all the keys
+    /// A vector containing all the (final, active) keys
     fn get_final_and_active_datastore_keys(
         &self,
-        addr: &Address,
-    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
-        self.execution_state
-            .read()
-            .get_final_and_active_datastore_keys(addr)
+        addresses: &[Address],
+    ) -> Vec<(BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>)> {
+        let lock = self.execution_state.read();
+        addresses
+            .iter()
+            .map(|addr| lock.get_final_and_active_datastore_keys(addr))
+            .collect()
     }
 
     /// Return the final rolls distribution for the given `cycle`
