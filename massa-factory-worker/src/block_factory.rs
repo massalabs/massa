@@ -24,7 +24,6 @@ pub(crate) struct BlockFactoryWorker {
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
     factory_receiver: mpsc::Receiver<()>,
-    block_serializer: BlockSerializer,
 }
 
 impl BlockFactoryWorker {
@@ -44,7 +43,6 @@ impl BlockFactoryWorker {
                     wallet,
                     channels,
                     factory_receiver,
-                    block_serializer: BlockSerializer::new(),
                 };
                 this.run();
             })
@@ -119,11 +117,11 @@ impl BlockFactoryWorker {
 
     /// Process a slot: produce a block at that slot if one of the managed keys is drawn.
     fn process_slot(&mut self, slot: Slot) {
-        println!("TEST1");
         // get block producer address for that slot
         let block_producer_addr = match self.channels.selector.get_producer(slot) {
             Ok(addr) => addr,
             Err(err) => {
+                println!("TEST IN");
                 warn!(
                     "block factory could not get selector draws for slot {}: {}",
                     slot, err
@@ -131,7 +129,6 @@ impl BlockFactoryWorker {
                 return;
             }
         };
-        println!("TEST2");
 
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read().expect("could not lock wallet");
@@ -142,15 +139,13 @@ impl BlockFactoryWorker {
                 // the selected block producer is not managed locally => quit
                 None => return,
             };
-
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self
             .channels
             .consensus
             .get_best_parents()
             .expect("Couldn't get best parents"); // Vec<(parent_id, parent_period)>
-
-        // generate the local storage object
+                                                  // generate the local storage object
         let mut block_storage = self.channels.storage.clone_without_refs();
 
         // claim block parents in local storage
@@ -234,9 +229,19 @@ impl BlockFactoryWorker {
         );
 
         // send full block to consensus
-        self.channels
+        match self
+            .channels
             .consensus
-            .send_block((block_id, block_storage));
+            .send_block((block_id, block_storage))
+        {
+            Ok(()) => (),
+            Err(err) => {
+                warn!(
+                    "block factory could not send block {} to consensus: {}",
+                    block_id, err
+                );
+            }
+        }
     }
 
     /// main run loop of the block creator thread
@@ -244,7 +249,7 @@ impl BlockFactoryWorker {
         let mut prev_slot = None;
         loop {
             // get next slot
-            let (slot, block_instant) = dbg!(self.get_next_slot(prev_slot));
+            let (slot, block_instant) = self.get_next_slot(prev_slot);
 
             // wait until slot
             if !self.interruptible_wait_until(block_instant) {

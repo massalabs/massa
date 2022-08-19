@@ -13,7 +13,7 @@ use crate::{
 /// We will receive the commands in this mock and accept callback functions depending of the command in `wait_command`.
 /// We will also send the events that can be received by listening to the `ConsensusEventReceiver`.
 pub struct MockConsensusController {
-    consensus_command_rx: mpsc::Receiver<ConsensusCommand>,
+    pub consensus_command_rx: mpsc::Receiver<ConsensusCommand>,
     consensus_event_tx: mpsc::Sender<ConsensusEvent>,
 }
 

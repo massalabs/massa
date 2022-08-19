@@ -11,6 +11,7 @@ use massa_models::{api::IndexedSlot, Address, Slot};
 use crate::{CycleInfo, Selection, SelectorController};
 
 /// All events that can be sent by the selector to your callbacks.
+#[derive(Debug)]
 pub enum MockSelectorControllerMessage {
     /// Feed a new cycle info to the selector
     FeedCycle {
