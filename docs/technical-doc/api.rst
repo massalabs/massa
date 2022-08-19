@@ -59,6 +59,7 @@ slot, timestamp), clique count, connected nodes count.
         "end_timespan": Number,// stats time interval, millis since 1970-01-01
         "final_block_count": Number,
         "final_operation_count": Number,
+        "staker_count": Number,
         "stale_block_count": Number,
         "start_timespan": // stats time interval, millis since 1970-01-01
     },
