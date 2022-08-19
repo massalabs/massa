@@ -106,8 +106,8 @@ impl BlockFactoryWorker {
     ///
     /// # Return value
     /// Returns `true` if the instant was reached, otherwise `false` if there was an interruption.
-    fn interruptible_wait_until(&self, duration: Instant) -> bool {
-        match self.factory_receiver.recv_deadline(duration) {
+    fn interruptible_wait_until(&self, deadline: Instant) -> bool {
+        match self.factory_receiver.recv_deadline(deadline) {
             // message received => quit main loop
             Ok(()) => false,
             // timeout => continue main loop
@@ -119,6 +119,7 @@ impl BlockFactoryWorker {
 
     /// Process a slot: produce a block at that slot if one of the managed keys is drawn.
     fn process_slot(&mut self, slot: Slot) {
+        println!("TEST1");
         // get block producer address for that slot
         let block_producer_addr = match self.channels.selector.get_producer(slot) {
             Ok(addr) => addr,
@@ -130,6 +131,7 @@ impl BlockFactoryWorker {
                 return;
             }
         };
+        println!("TEST2");
 
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read().expect("could not lock wallet");
@@ -242,7 +244,7 @@ impl BlockFactoryWorker {
         let mut prev_slot = None;
         loop {
             // get next slot
-            let (slot, block_instant) = self.get_next_slot(prev_slot);
+            let (slot, block_instant) = dbg!(self.get_next_slot(prev_slot));
 
             // wait until slot
             if !self.interruptible_wait_until(block_instant) {

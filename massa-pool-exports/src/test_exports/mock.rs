@@ -5,7 +5,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use massa_models::{BlockId, EndorsementId, Slot, OperationId, prehash::Set, WrappedOperation};
+use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedOperation};
 use massa_storage::Storage;
 
 use crate::PoolController;
@@ -44,26 +44,25 @@ pub enum MockPoolControllerMessage {
     /// Get endorsement ids
     GetEndorsementIds {
         /// Response channel
-        response_tx: mpsc::Sender<Set<EndorsementId>>,        
+        response_tx: mpsc::Sender<Set<EndorsementId>>,
     },
     /// Get operations by ids
     GetOperationsByIds {
         /// Ids to fetch
         ids: Set<OperationId>,
         /// Response channel
-        response_tx: mpsc::Sender<Vec<WrappedOperation>>
+        response_tx: mpsc::Sender<Vec<WrappedOperation>>,
     },
     /// Get stats of the pool
     GetStats {
         /// Response channel
-        response_tx: mpsc::Sender<(usize, usize)>
+        response_tx: mpsc::Sender<(usize, usize)>,
     },
     /// Notify that periods became final
     NotifyFinalCsPeriods {
         /// Periods that are final
-        periods: Vec<u64>        
-    }
-
+        periods: Vec<u64>,
+    },
 }
 
 /// A mocked pool controller that will intercept calls on its methods
@@ -127,7 +126,10 @@ impl PoolController for MockPoolController {
         self.0
             .lock()
             .unwrap()
-            .send(MockPoolControllerMessage::GetBlockOperations { slot: *slot, response_tx })
+            .send(MockPoolControllerMessage::GetBlockOperations {
+                slot: *slot,
+                response_tx,
+            })
             .unwrap();
         response_rx.recv().unwrap()
     }
@@ -147,7 +149,10 @@ impl PoolController for MockPoolController {
         self.0
             .lock()
             .unwrap()
-            .send(MockPoolControllerMessage::GetOperationsByIds { ids: ids.clone(), response_tx })
+            .send(MockPoolControllerMessage::GetOperationsByIds {
+                ids: ids.clone(),
+                response_tx,
+            })
             .unwrap();
         response_rx.recv().unwrap()
     }
@@ -164,10 +169,12 @@ impl PoolController for MockPoolController {
 
     fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]) {
         self.0
-        .lock()
-        .unwrap()
-        .send(MockPoolControllerMessage::NotifyFinalCsPeriods { periods: final_cs_periods.to_vec() })
-        .unwrap();
+            .lock()
+            .unwrap()
+            .send(MockPoolControllerMessage::NotifyFinalCsPeriods {
+                periods: final_cs_periods.to_vec(),
+            })
+            .unwrap();
     }
 
     fn clone_box(&self) -> Box<dyn PoolController> {
