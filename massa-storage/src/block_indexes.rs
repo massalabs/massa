@@ -1,4 +1,4 @@
-use std::{collections::HashMap, collections::hash_map, sync::Arc};
+use std::{collections::hash_map, collections::HashMap, sync::Arc};
 
 use massa_models::{
     prehash::{Map, Set},
@@ -44,7 +44,9 @@ impl BlockIndexes {
     pub(crate) fn remove(&mut self, block_id: &BlockId) -> Option<WrappedBlock> {
         if let Some(b) = self.blocks.remove(block_id) {
             // update creator index
-            if let hash_map::Entry::Occupied(mut occ) = self.index_by_creator.entry(b.creator_address) {
+            if let hash_map::Entry::Occupied(mut occ) =
+                self.index_by_creator.entry(b.creator_address)
+            {
                 occ.get_mut().remove(&b.id);
                 if occ.get().is_empty() {
                     occ.remove();
@@ -52,7 +54,9 @@ impl BlockIndexes {
             }
 
             // update slot index
-            if let hash_map::Entry::Occupied(mut occ) = self.index_by_slot.entry(b.content.header.content.slot) {
+            if let hash_map::Entry::Occupied(mut occ) =
+                self.index_by_slot.entry(b.content.header.content.slot)
+            {
                 occ.get_mut().remove(&b.id);
                 if occ.get().is_empty() {
                     occ.remove();

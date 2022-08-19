@@ -73,7 +73,9 @@ impl EndorsementIndexes {
 
         if let Some(e) = self.endorsements.remove(endorsement_id) {
             // update creator index
-            if let hash_map::Entry::Occupied(mut occ) = self.index_by_creator.entry(e.creator_address) {
+            if let hash_map::Entry::Occupied(mut occ) =
+                self.index_by_creator.entry(e.creator_address)
+            {
                 occ.get_mut().remove(&e.id);
                 if occ.get().is_empty() {
                     occ.remove();

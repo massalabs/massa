@@ -69,7 +69,9 @@ impl OperationIndexes {
 
         if let Some(o) = self.operations.remove(operation_id) {
             // update creator index
-            if let hash_map::Entry::Occupied(mut occ) = self.index_by_creator.entry(o.creator_address) {
+            if let hash_map::Entry::Occupied(mut occ) =
+                self.index_by_creator.entry(o.creator_address)
+            {
                 occ.get_mut().remove(&o.id);
                 if occ.get().is_empty() {
                     occ.remove();
