@@ -17,19 +17,6 @@ pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
         s1.deferred_credits.0, s2.deferred_credits.0,
         "PoS deferred_credits mismatching"
     );
-    for (a, b) in s1_cleared.iter().zip(s2.cycle_history.iter()) {
-        assert_eq!(a.roll_counts.len(), b.roll_counts.len());
-        for item in a.roll_counts.iter() {
-            assert_eq!(
-                item,
-                b.roll_counts.get_key_value(item.0).unwrap(),
-                "ASSERT SHOULD NEVER FAIL"
-            );
-        }
-        for (a1, b1) in a.roll_counts.iter().zip(b.roll_counts.iter()) {
-            assert_eq!(a1, b1, "roll_counts order differs");
-        }
-    }
 }
 
 /// Compare two PoS Selections
