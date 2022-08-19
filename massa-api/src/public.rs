@@ -11,8 +11,8 @@ use massa_execution_exports::{
 };
 use massa_graph::{DiscardReason, ExportBlockStatus};
 use massa_models::api::{
-    DatastoreEntryInput, DatastoreEntryOutput, OperationInput, ReadOnlyBytecodeExecution,
-    ReadOnlyCall,
+    BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
+    ReadOnlyBytecodeExecution, ReadOnlyCall,
 };
 use massa_models::constants::default::{
     MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
@@ -26,7 +26,7 @@ use massa_models::{
 use massa_pos_exports::SelectorController;
 use massa_serialization::{DeserializeError, Deserializer};
 
-use itertools::izip;
+use itertools::{izip, Itertools};
 use massa_models::{
     api::{
         AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
@@ -380,14 +380,37 @@ impl Endpoints for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
-        // ask execution for the operation execution statuses
-        let execution_statuses = self.0.execution_controller.get_operation_statuses(&ops);
-
         let api_cfg = self.0.api_settings.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
+
+            // check finality by cross-referencing Consensus and looking for final blocks that contain the op
+            let is_final: Vec<bool> = {
+                let involved_blocks: Vec<BlockId> = storage_info
+                    .iter()
+                    .flat_map(|(_op, bs)| bs.iter())
+                    .unique()
+                    .cloned()
+                    .collect();
+                let involved_block_statuses = self
+                    .0
+                    .consensus_command_sender
+                    .get_block_statuses(&involved_blocks)
+                    .await?;
+                let block_statuses: Map<BlockId, BlockGraphStatus> = involved_blocks
+                    .into_iter()
+                    .zip(involved_block_statuses.into_iter())
+                    .collect();
+                storage_info
+                    .iter()
+                    .map(|(_op, bs)| {
+                        bs.iter()
+                            .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
+                    })
+                    .collect()
+            };
 
             // gather all values into a vector of OperationInfo instances
             let mut res: Vec<OperationInfo> = Vec::with_capacity(ops.len());
@@ -395,15 +418,15 @@ impl Endpoints for API<Public> {
                 ops.into_iter(),
                 storage_info.into_iter(),
                 in_pool.into_iter(),
-                execution_statuses.into_iter()
+                is_final.into_iter()
             );
-            for (id, (operation, in_blocks), in_pool, execution_status) in zipped_iterator {
+            for (id, (operation, in_blocks), in_pool, is_final) in zipped_iterator {
                 res.push(OperationInfo {
                     id,
                     operation,
                     in_pool,
+                    is_final,
                     in_blocks: in_blocks.into_iter().collect(),
-                    execution_status,
                 });
             }
 
@@ -447,18 +470,46 @@ impl Endpoints for API<Public> {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
 
+            // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
+            let is_final: Vec<bool> = {
+                let involved_blocks: Vec<BlockId> = storage_info
+                    .iter()
+                    .flat_map(|(_ed, bs)| bs.iter())
+                    .unique()
+                    .cloned()
+                    .collect();
+                let involved_block_statuses = self
+                    .0
+                    .consensus_command_sender
+                    .get_block_statuses(&involved_blocks)
+                    .await?;
+                let block_statuses: Map<BlockId, BlockGraphStatus> = involved_blocks
+                    .into_iter()
+                    .zip(involved_block_statuses.into_iter())
+                    .collect();
+                storage_info
+                    .iter()
+                    .map(|(_ed, bs)| {
+                        bs.iter()
+                            .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
+                    })
+                    .collect()
+            };
+
             // gather all values into a vector of EndorsementInfo instances
             let mut res: Vec<EndorsementInfo> = Vec::with_capacity(eds.len());
             let zipped_iterator = izip!(
                 eds.into_iter(),
                 storage_info.into_iter(),
                 in_pool.into_iter(),
+                is_final.into_iter()
             );
-            for (id, (endorsement, in_blocks), in_pool) in zipped_iterator {
+            for (id, (endorsement, in_blocks), in_pool, is_final) in zipped_iterator {
                 res.push(EndorsementInfo {
                     id,
                     endorsement,
                     in_pool,
+                    is_final,
                     in_blocks: in_blocks.into_iter().collect(),
                 });
             }
@@ -473,36 +524,36 @@ impl Endpoints for API<Public> {
     /// only active blocks are returned
     fn get_block(&self, id: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let storage = self.0.storage.clone_without_refs();
         let closure = async move || {
-            let cliques = consensus_command_sender.get_cliques().await?;
-            let blockclique = cliques
-                .iter()
-                .find(|clique| clique.is_blockclique)
-                .ok_or_else(|| ApiError::InconsistencyError("Missing block clique".to_string()))?;
+            let block = match storage.read_blocks().get(&id).cloned() {
+                Some(b) => b.content,
+                None => return Ok(BlockInfo { id, content: None }),
+            };
 
-            if let Some((block, is_final)) =
-                match consensus_command_sender.get_block_status(id).await? {
-                    Some(ExportBlockStatus::Active(block)) => Some((block, false)),
-                    Some(ExportBlockStatus::Incoming) => None,
-                    Some(ExportBlockStatus::WaitingForSlot) => None,
-                    Some(ExportBlockStatus::WaitingForDependencies) => None,
-                    Some(ExportBlockStatus::Discarded(_)) => None, // TODO: get block if stale
-                    Some(ExportBlockStatus::Final(block)) => Some((block, true)),
-                    None => None,
-                }
-            {
-                Ok(BlockInfo {
-                    id,
-                    content: Some(BlockInfoContent {
-                        is_final,
-                        is_stale: false,
-                        is_in_blockclique: blockclique.block_ids.contains(&id),
-                        block,
-                    }),
-                })
-            } else {
-                Ok(BlockInfo { id, content: None })
-            }
+            let graph_status = consensus_command_sender
+                .get_block_statuses(&vec![id])
+                .await?
+                .into_iter()
+                .next()
+                .expect("expected get_block_statuses to return one element");
+
+            let is_final = (graph_status == BlockGraphStatus::Final);
+            let is_in_blockclique = (graph_status == BlockGraphStatus::ActiveInBlockclique);
+            let is_candidate = (graph_status == BlockGraphStatus::ActiveInBlockclique
+                || graph_status == BlockGraphStatus::ActiveInAlternativeCliques);
+            let is_discarded = (graph_status == BlockGraphStatus::Discarded);
+
+            Ok(BlockInfo {
+                id,
+                content: Some(BlockInfoContent {
+                    is_final,
+                    is_in_blockclique,
+                    is_candidate,
+                    is_discarded,
+                    block,
+                }),
+            })
         };
         Box::pin(closure())
     }
@@ -512,21 +563,17 @@ impl Endpoints for API<Public> {
         slot: Slot,
     ) -> BoxFuture<Result<Option<Block>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let storage = self.0.storage.clone_without_refs();
         let closure = async move || {
-            let block_id = consensus_command_sender.get_blockclique_block_at_slot(slot)?;
-            if let Some(id) = block_id {
-                match consensus_command_sender.get_block_status(id).await? {
-                    Some(ExportBlockStatus::Active(block)) => Ok(Some(block)),
-                    Some(ExportBlockStatus::Incoming) => Ok(None),
-                    Some(ExportBlockStatus::WaitingForSlot) => Ok(None),
-                    Some(ExportBlockStatus::WaitingForDependencies) => Ok(None),
-                    Some(ExportBlockStatus::Discarded(_)) => Ok(None),
-                    Some(ExportBlockStatus::Final(block)) => Ok(Some(block)),
-                    None => Ok(None),
-                }
-            } else {
-                Ok(None)
-            }
+            let block_id = match consensus_command_sender.get_blockclique_block_at_slot(slot)? {
+                Some(id) => id,
+                None => return Ok(None),
+            };
+            let res = storage
+                .read_blocks()
+                .get(&block_id)
+                .map(|b| b.content.clone());
+            Ok(res)
         };
         Box::pin(closure())
     }

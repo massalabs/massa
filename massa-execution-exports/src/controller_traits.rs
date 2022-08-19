@@ -7,7 +7,6 @@ use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_models::api::EventFilter;
 use massa_models::execution::ExecutionAddressInfo;
-use massa_models::execution::ExecutionStatus;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
 use massa_models::prehash::Set;
@@ -105,9 +104,6 @@ pub trait ExecutionController: Send + Sync {
 
     /// List which operations inside the provided list were not executed
     fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId>;
-
-    /// Gets the statuses of a list of operations
-    fn get_operation_statuses(&self, ops: &[OperationId]) -> Vec<ExecutionStatus>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

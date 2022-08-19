@@ -19,7 +19,6 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
-use massa_models::execution::ExecutionStatus;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
@@ -1082,37 +1081,6 @@ impl ExecutionState {
 
         // return the execution output
         Ok(context_guard!(self).settle_slot())
-    }
-
-    /// Gets the statuses of a list of operations
-    pub fn get_operation_statuses(&self, ops: &[OperationId]) -> Vec<ExecutionStatus> {
-        // search in active history
-        let mut res = Vec::with_capacity(ops.len());
-        let history = self.active_history.read();
-        let mut final_lock = None;
-        for op_id in ops {
-            // check in recent historu
-            match history.fetch_executed_op(op_id) {
-                HistorySearchResult::Present(_) => {
-                    // operation was executed in recent history
-                    res.push(ExecutionStatus::ExecutedAsCandidate);
-                }
-                _ => {
-                    // operation was not found in recent history: check in final state
-                    // here we lazily lock the final state only if needed and then reuse the lock
-                    if final_lock
-                        .get_or_insert_with(|| self.final_state.read())
-                        .executed_ops
-                        .contains(op_id)
-                    {
-                        res.push(ExecutionStatus::ExecutedAsFinal);
-                    } else {
-                        res.push(ExecutionStatus::NotFound);
-                    }
-                }
-            }
-        }
-        res
     }
 
     /// Gets a parallel balance both at the latest final and active executed slots

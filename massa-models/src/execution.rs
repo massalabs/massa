@@ -6,27 +6,6 @@ use std::{
 use crate::{output_event::SCOutputEvent, Amount, Slot};
 use serde::{Deserialize, Serialize};
 
-/// Execution status of an element
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
-pub enum ExecutionStatus {
-    /// executed as a candidate object
-    ExecutedAsCandidate,
-    /// executed as a final object
-    ExecutedAsFinal,
-    /// not found among executed objects
-    NotFound,
-}
-
-impl std::fmt::Display for ExecutionStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ExecutionStatus::ExecutedAsCandidate => writeln!(f, "(executed as candidate)"),
-            ExecutionStatus::ExecutedAsFinal => writeln!(f, "(executed as final)"),
-            ExecutionStatus::NotFound => writeln!(f, "(not listed as executed)"),
-        }
-    }
-}
-
 /// Execution info about an address
 pub struct ExecutionAddressInfo {
     /// parallel balance of the address

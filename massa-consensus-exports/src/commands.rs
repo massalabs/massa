@@ -2,6 +2,7 @@
 
 //! Contains definitions of commands used by the controller
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
+use massa_models::api::BlockGraphStatus;
 use massa_models::prehash::{Map, Set};
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
@@ -21,12 +22,12 @@ pub enum ConsensusCommand {
         /// response channel
         response_tx: oneshot::Sender<BlockGraphExport>,
     },
-    /// Returns through a channel full block and status with specified hash.
-    GetBlockStatus {
-        /// wanted block id
-        block_id: BlockId,
+    /// Returns through a channel the graph statuses of a batch of blocks
+    GetBlockStatuses {
+        /// wanted block IDs
+        ids: Vec<BlockId>,
         /// response channel
-        response_tx: oneshot::Sender<Option<ExportBlockStatus>>,
+        response_tx: oneshot::Sender<Vec<BlockGraphStatus>>,
     },
     /// Returns the bootstrap state
     GetBootstrapState(oneshot::Sender<BootstrapableGraph>),

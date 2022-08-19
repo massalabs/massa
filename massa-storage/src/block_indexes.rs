@@ -93,7 +93,7 @@ impl BlockIndexes {
     ///
     /// Returns:
     /// - the block id of the block at the slot if exists, None otherwise
-    pub fn get_blocks_by_slot(&self, slot: Slot) -> Option<&Set<BlockId>> {
-        self.index_by_slot.get(&slot)
+    pub fn get_blocks_by_slot(&self, slot: &Slot) -> Option<&Set<BlockId>> {
+        self.index_by_slot.get(slot)
     }
 }

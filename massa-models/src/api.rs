@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::AddressCycleProductionStats;
-use crate::execution::ExecutionStatus;
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
 use crate::prehash::Set;
@@ -110,46 +109,49 @@ pub struct OperationInfo {
     /// the operation appears in `in_blocks`
     /// if it appears in multiple blocks, these blocks are in different cliques
     pub in_blocks: Vec<BlockId>,
-    /// execution status of the operation
-    pub execution_status: ExecutionStatus,
+    /// true if the operation is final (for example in a final block)
+    pub is_final: bool,
     /// the operation itself
     pub operation: WrappedOperation,
-}
-
-impl OperationInfo {
-    /// extend an operation info with another one
-    /// There is not check to see if the id and operation are indeed the same
-    pub fn extend(&mut self, other: &OperationInfo) {
-        self.in_pool = self.in_pool || other.in_pool;
-        self.in_blocks.extend(other.in_blocks.iter());
-        self.execution_status = match (&self.execution_status, &other.execution_status) {
-            (ExecutionStatus::ExecutedAsFinal, _) => ExecutionStatus::ExecutedAsFinal,
-            (_, ExecutionStatus::ExecutedAsFinal) => ExecutionStatus::ExecutedAsFinal,
-            (ExecutionStatus::NotFound, v) => *v,
-            (v, ExecutionStatus::NotFound) => *v,
-            (ExecutionStatus::ExecutedAsCandidate, ExecutionStatus::ExecutedAsCandidate) => {
-                ExecutionStatus::ExecutedAsCandidate
-            }
-        }
-    }
 }
 
 impl std::fmt::Display for OperationInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
-            "Operation's ID: {}{}{}",
+            "Operation {}{}{}",
             self.id,
-            display_if_true(self.in_pool, "in pool"),
-            self.execution_status
+            display_if_true(self.in_pool, " (in pool)"),
+            display_if_true(self.is_final, " (final)")
         )?;
-        writeln!(f, "Block's ID")?;
+        writeln!(f, "In blocks:")?;
         for block_id in &self.in_blocks {
             writeln!(f, "\t- {}", block_id)?;
         }
         writeln!(f, "{}", self.operation)?;
         Ok(())
     }
+}
+
+/// Block status within the graph
+#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
+pub enum BlockGraphStatus {
+    /// received but not yet graph-processed
+    Incoming,
+    /// waiting for its slot
+    WaitingForSlot,
+    /// waiting for a missing dependency
+    WaitingForDependencies,
+    /// active in alternative cliques
+    ActiveInAlternativeCliques,
+    /// active in blockclique
+    ActiveInBlockclique,
+    /// forever applies
+    Final,
+    /// discarded for any reason
+    Discarded,
+    /// not found in graph
+    NotFound,
 }
 
 /// Current Parallel balance ledger info
@@ -383,28 +385,33 @@ impl std::fmt::Display for CompactAddressInfo {
 /// All you wanna know about an endorsement
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EndorsementInfo {
-    /// the id
+    /// id
     pub id: EndorsementId,
-    /// true is the endorsement is still in pool
+    /// true if endorsement is still in pool
     pub in_pool: bool,
-    /// endorsements included in these blocks
+    /// the endorsement appears in `in_blocks`
+    /// if it appears in multiple blocks, these blocks are in different cliques
     pub in_blocks: Vec<BlockId>,
-    /// The full endorsement
+    /// true if the endorsement is final (for example in a final block)
+    pub is_final: bool,
+    /// the endorsmeent itself
     pub endorsement: WrappedEndorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Endorsement id: {}", self.id)?;
-        display_if_true(self.in_pool, "in pool");
         writeln!(
             f,
-            "In blocks: {}",
-            self.in_blocks
-                .iter()
-                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+            "Endorsement {}{}{}",
+            self.id,
+            display_if_true(self.in_pool, " (in pool)"),
+            display_if_true(self.is_final, " (final)")
         )?;
-        writeln!(f, "Endorsement: {}", self.endorsement)?;
+        writeln!(f, "In blocks:")?;
+        for block_id in &self.in_blocks {
+            writeln!(f, "\t- {}", block_id)?;
+        }
+        writeln!(f, "{}", self.endorsement)?;
         Ok(())
     }
 }
@@ -423,10 +430,12 @@ pub struct BlockInfo {
 pub struct BlockInfoContent {
     /// true if final
     pub is_final: bool,
-    /// true if incompatible with a final block
-    pub is_stale: bool,
-    /// true if in the greatest clique
+    /// true if in the greatest clique (and not final)
     pub is_in_blockclique: bool,
+    /// true if candidate (active any clique but not final)
+    pub is_candidate: bool,
+    /// true if discarded
+    pub is_discarded: bool,
     /// block
     pub block: Block,
 }
@@ -436,11 +445,12 @@ impl std::fmt::Display for BlockInfo {
         if let Some(content) = &self.content {
             writeln!(
                 f,
-                "Block's ID: {}{}{}{}",
+                "Block's ID: {}{}{}{}{}",
                 self.id,
-                display_if_true(content.is_final, "final"),
-                display_if_true(content.is_stale, "stale"),
-                display_if_true(content.is_in_blockclique, "in blockclique"),
+                display_if_true(content.is_final, " (final)"),
+                display_if_true(content.is_candidate, " (candidate)"),
+                display_if_true(content.is_in_blockclique, " (blockclique)"),
+                display_if_true(content.is_discarded, " (discarded)"),
             )?;
             writeln!(f, "Block: {}", content.block)?;
         } else {

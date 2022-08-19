@@ -5,7 +5,7 @@ use massa_consensus_exports::{
     settings::ConsensusWorkerChannels,
     ConsensusConfig,
 };
-use massa_graph::{BlockGraph, BlockGraphExport};
+use massa_graph::{error::GraphError, BlockGraph, BlockGraphExport};
 use massa_models::address::AddressState;
 use massa_models::api::{LedgerInfo, RollsInfo};
 use massa_models::prehash::{BuildMap, Map, Set};
@@ -370,20 +370,18 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
-            // return full block and status with specified hash
-            ConsensusCommand::GetBlockStatus {
-                block_id,
-                response_tx,
-            } => {
+            // gets the graph status of a batch of blocks
+            ConsensusCommand::GetBlockStatuses { ids, response_tx } => {
                 massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_block_status",
+                    "consensus.consensus_worker.process_consensus_command.get_block_statuses",
                     {}
                 );
-                if response_tx
-                    .send(self.block_db.get_export_block_status(&block_id)?)
-                    .is_err()
-                {
-                    warn!("consensus: could not send GetBlock Status answer");
+                let res: Vec<_> = ids
+                    .iter()
+                    .map(|id| self.block_db.get_block_status(id))
+                    .collect();
+                if response_tx.send(res).is_err() {
+                    warn!("consensus: could not send get_block_statuses answer");
                 }
                 Ok(())
             }
@@ -445,17 +443,8 @@ impl ConsensusWorker {
                 Ok(())
             }
             ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx } => {
-                let blocks = self.storage.read_blocks().get_blocks_by_slot(slot).cloned();
-                let block = if let Some(stored_blocks) = blocks {
-                    self.block_db
-                        .get_blockclique()
-                        .intersection(&stored_blocks)
-                        .next()
-                        .cloned()
-                } else {
-                    None
-                };
-                if response_tx.send(block).is_err() {
+                let res = self.block_db.get_blockclique_block_at_slot(&slot);
+                if response_tx.send(res).is_err() {
                     warn!("consensus: could not send get block clique block at slot response");
                 }
                 Ok(())

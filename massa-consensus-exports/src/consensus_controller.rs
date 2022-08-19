@@ -1,6 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
+use massa_models::api::BlockGraphStatus;
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{Address, BlockId, OperationSearchResult, Slot, WrappedEndorsement};
@@ -79,30 +80,30 @@ impl ConsensusCommandSender {
         })
     }
 
-    /// Gets the whole block and its status corresponding to given hash.
+    /// Gets the graph statuses of a batch of blocks.
     ///
     /// # Arguments
-    /// * hash: hash corresponding to the block we want.
-    pub async fn get_block_status(
+    /// * ids: array of block IDs
+    pub async fn get_block_statuses(
         &self,
-        block_id: BlockId,
-    ) -> Result<Option<ExportBlockStatus>, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<Option<ExportBlockStatus>>();
-        massa_trace!("consensus.consensus_controller.get_active_block", {});
+        ids: &[BlockId],
+    ) -> Result<Vec<BlockGraphStatus>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<Vec<BlockGraphStatus>>();
+        massa_trace!("consensus.consensus_controller.get_block_statuses", {});
         self.0
-            .send(ConsensusCommand::GetBlockStatus {
-                block_id,
+            .send(ConsensusCommand::GetBlockStatuses {
+                ids: ids.iter().cloned().collect(),
                 response_tx,
             })
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(
-                    "send error consensus command get_block_status".to_string(),
+                    "send error consensus command get_block_statuses".to_string(),
                 )
             })?;
         response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(
-                "consensus command get_block_status response read error".to_string(),
+                "consensus command get_block_statuses response read error".to_string(),
             )
         })
     }

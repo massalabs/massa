@@ -10,7 +10,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_models::api::EventFilter;
-use massa_models::execution::{ExecutionAddressInfo, ExecutionStatus};
+use massa_models::execution::ExecutionAddressInfo;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, Amount, OperationId};
@@ -189,11 +189,6 @@ impl ExecutionController for ExecutionControllerImpl {
                 (final_info, active_info)
             })
             .collect()
-    }
-
-    /// Gets the statuses of a list of operations
-    fn get_operation_statuses(&self, ops: &[OperationId]) -> Vec<ExecutionStatus> {
-        self.execution_state.read().get_operation_statuses(ops)
     }
 
     /// Return the final rolls distribution for the given `cycle`

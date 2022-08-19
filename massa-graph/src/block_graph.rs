@@ -10,7 +10,10 @@ use crate::{
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    active_block::ActiveBlock, api::EndorsementInfo, clique::Clique, wrapped::WrappedContent,
+    active_block::ActiveBlock,
+    api::{BlockGraphStatus, EndorsementInfo},
+    clique::Clique,
+    wrapped::WrappedContent,
     WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
 use massa_models::{
@@ -624,41 +627,33 @@ impl BlockGraph {
         BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
     }
 
-    /// get export version of a block
-    pub fn get_export_block_status(&self, block_id: &BlockId) -> Result<Option<ExportBlockStatus>> {
-        // TODO also export endorsements and ops separately
-        let block_status = match self.block_statuses.get(block_id) {
-            None => return Ok(None),
-            Some(block_status) => block_status,
-        };
-        let export = match block_status {
-            BlockStatus::Incoming(_) => ExportBlockStatus::Incoming,
-            BlockStatus::WaitingForSlot(_) => ExportBlockStatus::WaitingForSlot,
-            BlockStatus::WaitingForDependencies { .. } => ExportBlockStatus::WaitingForDependencies,
-            BlockStatus::Active {
-                a_block: active_block,
-                storage,
-            } => {
-                let stored_block =
-                    storage
-                        .read_blocks()
-                        .get(block_id)
-                        .cloned()
-                        .ok_or_else(|| {
-                            GraphError::MissingBlock(format!(
-                                "missing block in get_export_block_status: {}",
-                                block_id
-                            ))
-                        })?;
-                if active_block.is_final {
-                    ExportBlockStatus::Final(stored_block.content)
+    /// get block graph status
+    pub fn get_block_status(&self, block_id: &BlockId) -> BlockGraphStatus {
+        match self.block_statuses.get(block_id) {
+            None => BlockGraphStatus::NotFound,
+            Some(BlockStatus::Active { a_block, .. }) => {
+                if a_block.is_final {
+                    BlockGraphStatus::Final
+                } else if self
+                    .max_cliques
+                    .iter()
+                    .find(|clique| clique.is_blockclique)
+                    .expect("blockclique absent")
+                    .block_ids
+                    .contains(block_id)
+                {
+                    BlockGraphStatus::ActiveInBlockclique
                 } else {
-                    ExportBlockStatus::Active(stored_block.content)
+                    BlockGraphStatus::ActiveInAlternativeCliques
                 }
             }
-            BlockStatus::Discarded { reason, .. } => ExportBlockStatus::Discarded(reason.clone()),
-        };
-        Ok(Some(export))
+            Some(BlockStatus::Discarded { .. }) => BlockGraphStatus::Discarded,
+            Some(BlockStatus::Incoming(_)) => BlockGraphStatus::Incoming,
+            Some(BlockStatus::WaitingForDependencies { .. }) => {
+                BlockGraphStatus::WaitingForDependencies
+            }
+            Some(BlockStatus::WaitingForSlot(_)) => BlockGraphStatus::WaitingForSlot,
+        }
     }
 
     /// signal new slot
@@ -2633,6 +2628,25 @@ impl BlockGraph {
             .enumerate()
             .find(|(_, c)| c.is_blockclique)
             .map_or_else(Set::<BlockId>::default, |(_, v)| v.block_ids.clone())
+    }
+
+    /// get the blockclique block ID at a given slot, if any
+    pub fn get_blockclique_block_at_slot(&self, slot: &Slot) -> Option<BlockId> {
+        if let Some(blocks_at_slot) = self.storage.read_blocks().get_blocks_by_slot(slot) {
+            blocks_at_slot
+                .intersection(
+                    &self
+                        .max_cliques
+                        .iter()
+                        .find(|c| c.is_blockclique)
+                        .expect("expected one clique to be the blockclique")
+                        .block_ids,
+                )
+                .next()
+                .cloned()
+        } else {
+            None
+        }
     }
 
     /// Clones all stored final blocks, not only the still-useful ones
