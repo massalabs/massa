@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use massa_models::constants::{ENDORSEMENT_COUNT, MAX_BLOCK_SIZE, MAX_GAS_PER_BLOCK, ROLL_PRICE};
 
 use crate::PoolConfig;

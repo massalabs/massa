@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use massa_models::constants::CHANNEL_SIZE;
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};

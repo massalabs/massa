@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use crate::FactoryConfig;
 use massa_time::MassaTime;
 

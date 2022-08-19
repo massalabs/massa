@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use std::sync::{
     mpsc::{self, Receiver},
     Arc, Mutex,
@@ -6,7 +8,7 @@ use std::sync::{
 use anyhow::Result;
 use massa_models::{api::IndexedSlot, Address, Slot};
 
-use crate::{CycleInfo, SelectorController, Selection};
+use crate::{CycleInfo, Selection, SelectorController};
 
 /// All events that can be sent by the selector to your callbacks.
 pub enum MockSelectorControllerMessage {
@@ -40,7 +42,7 @@ pub enum MockSelectorControllerMessage {
         slot: Slot,
         /// Receiver to send the result to
         response_tx: mpsc::Sender<Result<Selection>>,
-    }
+    },
 }
 
 /// Mock implementation of the SelectorController trait.
@@ -98,10 +100,7 @@ impl SelectorController for MockSelectorController {
         self.0
             .lock()
             .unwrap()
-            .send(MockSelectorControllerMessage::GetProducer {
-                slot,
-                response_tx,
-            })
+            .send(MockSelectorControllerMessage::GetProducer { slot, response_tx })
             .unwrap();
         response_rx.recv().unwrap()
     }
@@ -111,10 +110,7 @@ impl SelectorController for MockSelectorController {
         self.0
             .lock()
             .unwrap()
-            .send(MockSelectorControllerMessage::GetSelection {
-                slot,
-                response_tx,
-            })
+            .send(MockSelectorControllerMessage::GetSelection { slot, response_tx })
             .unwrap();
         response_rx.recv().unwrap()
     }

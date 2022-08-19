@@ -13,7 +13,8 @@ use massa_wallet::test_exports::create_test_wallet;
 #[serial]
 fn basic_creation() {
     let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
-    let (consensus_controller, consensus_command_sender, consensus_event_receiver) = MockConsensusController::new_with_receiver();
+    let (consensus_controller, consensus_command_sender, consensus_event_receiver) =
+        MockConsensusController::new_with_receiver();
     let storage = Storage::default();
     start_factory(
         FactoryConfig::default(),
@@ -21,8 +22,7 @@ fn basic_creation() {
         FactoryChannels {
             selector: selector_controller,
             consensus: consensus_command_sender,
-            pool: 
-            storage
+            pool: storage,
         },
     );
 }
