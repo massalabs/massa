@@ -10,7 +10,7 @@ use massa_factory_exports::{
 };
 use massa_models::{
     constants::ENDORSEMENT_COUNT, prehash::Map, test_exports::get_next_slot_instant, Address,
-    BlockId, Endorsement, Slot, WrappedOperation,
+    BlockId, Slot, WrappedOperation, WrappedEndorsement,
 };
 use massa_pool_exports::test_exports::{MockPoolController, MockPoolControllerMessage};
 use massa_pos_exports::{
@@ -87,7 +87,7 @@ impl TestFactory {
     pub fn get_next_created_block(
         &mut self,
         operations: Option<Vec<WrappedOperation>>,
-        endorsements: Option<Vec<Endorsement>>,
+        endorsements: Option<Vec<WrappedEndorsement>>,
     ) -> (BlockId, Storage) {
         let now = MassaTime::now().expect("could not get current time");
         let next_slot_instant = get_next_slot_instant(
@@ -95,10 +95,10 @@ impl TestFactory {
             self.factory_config.thread_count,
             self.factory_config.t0,
         );
-        sleep(dbg!(next_slot_instant
+        sleep(next_slot_instant
             .checked_sub(now)
             .unwrap()
-            .to_duration()));
+            .to_duration());
         let producer_address = Address::from_public_key(&self.keypair.get_public_key());
         loop {
             match self
@@ -151,7 +151,13 @@ impl TestFactory {
                 slot: _,
                 response_tx,
             } => {
-                response_tx.send((vec![], Storage::default())).unwrap();
+                if let Some(endorsements) = endorsements {
+                    let ids = endorsements.iter().map(|endo| Some(endo.id)).collect();
+                    self.storage.store_endorsements(endorsements);
+                    response_tx.send((ids, self.storage.clone())).unwrap();
+                } else {
+                    response_tx.send((vec![], Storage::default())).unwrap();
+                }
             }
             _ => panic!("unexpected message"),
         }
@@ -166,9 +172,8 @@ impl TestFactory {
             } => {
                 if let Some(operations) = operations {
                     let ids = operations.iter().map(|op| op.id).collect();
-                    let mut storage = Storage::default();
-                    storage.store_operations(operations);
-                    response_tx.send((ids, storage)).unwrap();
+                    self.storage.store_operations(operations);
+                    response_tx.send((ids, self.storage.clone())).unwrap();
                 } else {
                     response_tx.send((vec![], Storage::default())).unwrap();
                 }

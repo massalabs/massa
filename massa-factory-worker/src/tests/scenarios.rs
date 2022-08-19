@@ -37,4 +37,5 @@ fn basic_creation_with_operation() {
     for op_id in block.read().content.operations.iter() {
         storage.retrieve_operation(&op_id).unwrap();
     }
+    assert_eq!(block.read().content.operations.len(), 1);
 }
