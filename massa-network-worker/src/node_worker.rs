@@ -19,6 +19,7 @@ use massa_network_exports::{
 };
 use massa_serialization::{SerializeError, Serializer, U32VarIntSerializer};
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use tokio::{
     sync::mpsc,
     sync::mpsc::{
@@ -58,6 +59,38 @@ pub enum ToSend {
     Header(BlockId),
     ReplyForBlocksInfo(Vec<(BlockId, ReplyForBlocksInfo)>),
     Operations(Vec<OperationId>),
+}
+
+async fn send_data(
+    socket_writer: &mut WriteBinder,
+    node_id: NodeId,
+    write_timeout: MassaTime,
+    data: &[u8],
+) -> Result<(), NetworkError> {
+    match timeout(write_timeout.to_duration(), socket_writer.send(&data)).await {
+        Err(_err) => {
+            massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout", {
+                "node": node_id,
+            });
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "node data writing timed out",
+            )
+            .into());
+        }
+        Ok(Err(err)) => {
+            massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.error", {
+                "node": node_id, "err":  format!("{}", err),
+            });
+            return Err(err);
+        }
+        Ok(Ok(id)) => {
+            massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.ok", {
+                "node": node_id, "msg_id": id,
+            })
+        }
+    }
+    Ok(())
 }
 
 impl NodeWorker {
@@ -160,49 +193,51 @@ impl NodeWorker {
                                 res
                             }
                             ToSend::ReplyForBlocksInfo(reply_list) => {
-                                let mut res: Vec<u8> = Vec::new();
-                                u32_serializer.serialize(
-                                    &u32::from(MessageTypeId::ReplyForBlocks),
-                                    &mut res,
-                                )?;
-                                u32_serializer.serialize(
-                                    &reply_list.len().try_into().map_err(|_| {
-                                        NetworkError::GeneralProtocolError(
-                                            "ReplyForBlocksInfo list too long".to_string(),
-                                        )
-                                    })?,
-                                    &mut res,
-                                )?;
-                                for (hash, info) in reply_list {
-                                    res.extend(hash.to_bytes());
-                                    match info {
-                                        ReplyForBlocksInfo::Info(op_ids) => {
-                                            u32_serializer.serialize(
-                                                &u32::from(BlockInfoType::Info),
-                                                &mut res,
-                                            )?;
-                                            let op_ids_serializer = OperationIdsSerializer::new();
-                                            op_ids_serializer.serialize(&op_ids, &mut res)?;
-                                        }
-                                        ReplyForBlocksInfo::Operations(operation_ids) => {
-                                            u32_serializer.serialize(
-                                                &u32::from(BlockInfoType::Operations),
-                                                &mut res,
-                                            )?;
-                                            u32_serializer.serialize(
-                                                &u32::from(operation_ids.len() as u32),
-                                                &mut res,
-                                            )?;
-                                            let wrapped_operation_serializer =
-                                                WrappedSerializer::new();
-                                            let ops: Vec<OperationId> =
-                                                operation_ids.into_iter().collect();
-                                            storage.with_operations(&ops, |operations| {
-                                                for operation in operations {
-                                                    match operation {
+                                for replies in
+                                    reply_list.chunks(MAX_ASK_BLOCKS_PER_MESSAGE as usize)
+                                {
+                                    let mut res: Vec<u8> = Vec::new();
+                                    u32_serializer.serialize(
+                                        &u32::from(MessageTypeId::ReplyForBlocks),
+                                        &mut res,
+                                    )?;
+                                    u32_serializer.serialize(
+                                        &reply_list.len().try_into().map_err(|_| {
+                                            NetworkError::GeneralProtocolError(
+                                                "ReplyForBlocksInfo list too long".to_string(),
+                                            )
+                                        })?,
+                                        &mut res,
+                                    )?;
+                                    for (hash, info) in replies {
+                                        res.extend(hash.to_bytes());
+                                        match info {
+                                            ReplyForBlocksInfo::Info(op_ids) => {
+                                                u32_serializer.serialize(
+                                                    &u32::from(BlockInfoType::Info),
+                                                    &mut res,
+                                                )?;
+                                                let op_ids_serializer =
+                                                    OperationIdsSerializer::new();
+                                                op_ids_serializer.serialize(&op_ids, &mut res)?;
+                                            }
+                                            ReplyForBlocksInfo::Operations(operation_ids) => {
+                                                u32_serializer.serialize(
+                                                    &u32::from(BlockInfoType::Operations),
+                                                    &mut res,
+                                                )?;
+                                                u32_serializer.serialize(
+                                                    &u32::from(operation_ids.len() as u32),
+                                                    &mut res,
+                                                )?;
+                                                let wrapped_operation_serializer =
+                                                    WrappedSerializer::new();
+                                                let op_store = storage.read_operations();
+                                                for operation_id in &operation_ids {
+                                                    match op_store.get(operation_id) {
                                                         Some(operation) => {
                                                             wrapped_operation_serializer
-                                                                .serialize(*operation, &mut res)?;
+                                                                .serialize(operation, &mut res)?;
                                                         }
                                                         None => {
                                                             return Err(
@@ -211,18 +246,27 @@ impl NodeWorker {
                                                         }
                                                     }
                                                 }
-                                                Ok(())
-                                            })?;
+                                            }
+                                            ReplyForBlocksInfo::NotFound => {
+                                                u32_serializer.serialize(
+                                                    &u32::from(BlockInfoType::NotFound),
+                                                    &mut res,
+                                                )?;
+                                            }
                                         }
-                                        ReplyForBlocksInfo::NotFound => {
-                                            u32_serializer.serialize(
-                                                &u32::from(BlockInfoType::NotFound),
-                                                &mut res,
-                                            )?;
+                                        if let Err(err) = send_data(
+                                            &mut socket_writer,
+                                            node_id_copy,
+                                            write_timeout,
+                                            &res,
+                                        )
+                                        .await
+                                        {
+                                            return Err(err);
                                         }
                                     }
                                 }
-                                res
+                                continue;
                             }
                             ToSend::Header(block_id) => {
                                 // Construct the message,
@@ -269,30 +313,11 @@ impl NodeWorker {
                                 res
                             }
                         };
-                        match timeout(write_timeout.to_duration(), socket_writer.send(&bytes_vec))
-                            .await
+                        if let Err(err) =
+                            send_data(&mut socket_writer, node_id_copy, write_timeout, &bytes_vec)
+                                .await
                         {
-                            Err(_err) => {
-                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout", {
-                                    "node": node_id_copy,
-                                });
-                                return Err(std::io::Error::new(
-                                    std::io::ErrorKind::TimedOut,
-                                    "node data writing timed out",
-                                )
-                                .into());
-                            }
-                            Ok(Err(err)) => {
-                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.error", {
-                                    "node": node_id_copy, "err":  format!("{}", err),
-                                });
-                                return Err(err);
-                            }
-                            Ok(Ok(id)) => {
-                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.ok", {
-                                    "node": node_id_copy, "msg_id": id,
-                                })
-                            }
+                            return Err(err);
                         }
                     }
                     None => {
