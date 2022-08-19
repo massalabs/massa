@@ -73,12 +73,12 @@ impl EndorsementIndexes {
 
         if let Some(e) = self.endorsements.remove(endorsement_id) {
             // update creator index
-            self.index_by_creator
-                .entry(e.creator_address)
-                .and_modify(|s| {
-                    s.remove(&e.id);
-                });
-
+            if let hash_map::Entry::Occupied(mut occ) = self.index_by_creator.entry(e.creator_address) {
+                occ.get_mut().remove(&e.id);
+                if occ.get().is_empty() {
+                    occ.remove();
+                }
+            }
             return Some(e);
         }
 
