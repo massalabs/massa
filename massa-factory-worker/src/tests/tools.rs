@@ -24,6 +24,10 @@ use massa_time::MassaTime;
 use crate::start_factory;
 use massa_wallet::test_exports::create_test_wallet;
 
+/// This structure store all informations and links to creates tests for the factory.
+/// The factory will ask that to the the pool, consensus and factory and then will send the block to the consensus.
+/// You can use the method `new` to build all the mocks and make the connections
+/// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
 pub struct TestFactory {
     consensus_controller: MockConsensusController,
     pool_receiver: Receiver<MockPoolControllerMessage>,
@@ -36,6 +40,12 @@ pub struct TestFactory {
 }
 
 impl TestFactory {
+    /// Initialize a new factory and all mocks with default data
+    /// Arguments:
+    /// - `keypair`: this keypair will be the one added to the wallet that will be used to produce all blocks
+    /// 
+    /// Returns
+    /// - `TestFactory`: the structure that will be used to manage the tests
     pub fn new(default_keypair: &KeyPair) -> TestFactory {
         let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
         let (consensus_controller, consensus_command_sender, _consensus_event_receiver) =
@@ -84,6 +94,12 @@ impl TestFactory {
         }
     }
 
+    /// This functions wait until it's time to create the next block to be sync with the factory.
+    /// It will answers to all the asks of the factory with mocks and data you provide as parameters.
+    /// 
+    /// Arguments:
+    /// - `operations`: Optional list of operations to include in the block
+    /// - `endorsements`: Optional list of endorsements to include in the block
     pub fn get_next_created_block(
         &mut self,
         operations: Option<Vec<WrappedOperation>>,

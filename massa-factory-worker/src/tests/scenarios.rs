@@ -7,6 +7,7 @@ use massa_signature::KeyPair;
 
 use super::TestFactory;
 
+/// Creates a basic empty block with the factory.
 #[test]
 #[serial_test::serial]
 fn basic_creation() {
@@ -19,6 +20,7 @@ fn basic_creation() {
     );
 }
 
+/// Creates a block with a roll buy operation in it.
 #[test]
 #[serial_test::serial]
 fn basic_creation_with_operation() {
