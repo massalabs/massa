@@ -676,7 +676,7 @@ impl Endpoints for API<Public> {
             created_blocks,
             created_operations,
             created_endorsements,
-            (final_ledger_info, candidate_ledger_info),
+            (final_execution_info, candidate_execution_info),
             selection_info,
         ) in iterator
         {
@@ -685,9 +685,9 @@ impl Endpoints for API<Public> {
                 address,
                 thread: address.get_thread(self.0.consensus_config.thread_count),
 
-                // ledger info
-                final_ledger_info,
-                candidate_ledger_info,
+                // execution info
+                final_execution_info,
+                candidate_execution_info,
 
                 // selector info
                 cycle_info: xx, // TODO vec[AddressCycleInfo { cycle: u64, complete: bool, active_rolls: u64, produced_blocks: u64, missed_blocks: u64, block_draws: vec![Slot], endorsement_draws: vec![IndexedSlot] }]

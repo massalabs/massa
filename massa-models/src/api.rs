@@ -201,7 +201,7 @@ impl std::fmt::Display for RollsInfo {
 pub struct AddressInfo {
     /// the address
     pub address: Address,
-    /// the thread it is in
+    /// the thread the address belongs to
     pub thread: u8,
     /// parallel balance info
     pub ledger_info: LedgerInfo,
