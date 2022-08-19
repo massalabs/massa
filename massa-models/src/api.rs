@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::AddressCycleProductionStats;
+use crate::execution::ExecutionStatus;
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
 use crate::prehash::Set;
@@ -109,8 +110,8 @@ pub struct OperationInfo {
     /// the operation appears in `in_blocks`
     /// if it appears in multiple blocks, these blocks are in different cliques
     pub in_blocks: Vec<BlockId>,
-    /// true if the operation is final (for example in a final block)
-    pub is_final: bool,
+    /// execution status of the operation
+    pub execution_status: ExecutionStatus,
     /// the operation itself
     pub operation: WrappedOperation,
 }
@@ -121,7 +122,15 @@ impl OperationInfo {
     pub fn extend(&mut self, other: &OperationInfo) {
         self.in_pool = self.in_pool || other.in_pool;
         self.in_blocks.extend(other.in_blocks.iter());
-        self.is_final = self.is_final || other.is_final;
+        self.execution_status = match (&self.execution_status, &other.execution_status) {
+            (ExecutionStatus::ExecutedAsFinal, _) => ExecutionStatus::ExecutedAsFinal,
+            (_, ExecutionStatus::ExecutedAsFinal) => ExecutionStatus::ExecutedAsFinal,
+            (ExecutionStatus::NotFound, v) => *v,
+            (v, ExecutionStatus::NotFound) => *v,
+            (ExecutionStatus::ExecutedAsCandidate, ExecutionStatus::ExecutedAsCandidate) => {
+                ExecutionStatus::ExecutedAsCandidate
+            }
+        }
     }
 }
 
@@ -132,7 +141,7 @@ impl std::fmt::Display for OperationInfo {
             "Operation's ID: {}{}{}",
             self.id,
             display_if_true(self.in_pool, "in pool"),
-            display_if_true(self.is_final, "final")
+            self.execution_status
         )?;
         writeln!(f, "Block's ID")?;
         for block_id in &self.in_blocks {
@@ -380,8 +389,6 @@ pub struct EndorsementInfo {
     pub in_pool: bool,
     /// endorsements included in these blocks
     pub in_blocks: Vec<BlockId>,
-    /// true included in a final block
-    pub is_final: bool,
     /// The full endorsement
     pub endorsement: WrappedEndorsement,
 }
@@ -389,7 +396,6 @@ pub struct EndorsementInfo {
 impl std::fmt::Display for EndorsementInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Endorsement id: {}", self.id)?;
-        display_if_true(self.is_final, "final");
         display_if_true(self.in_pool, "in pool");
         writeln!(
             f,

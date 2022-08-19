@@ -10,6 +10,7 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_models::api::EventFilter;
+use massa_models::execution::{ExecutionAddressInfo, ExecutionStatus};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, Amount, OperationId};
@@ -156,6 +157,43 @@ impl ExecutionController for ExecutionControllerImpl {
             .iter()
             .map(|addr| lock.get_final_and_active_datastore_keys(addr))
             .collect()
+    }
+
+    /// Get final and candidate information about addresses
+    fn get_final_active_address_infos(
+        &self,
+        addresses: &[Address],
+    ) -> Vec<(ExecutionAddressInfo, ExecutionAddressInfo)> {
+        let lock = self.execution_state.read();
+        addresses
+            .iter()
+            .map(|addr| {
+                let (final_par_bal, active_par_bal) =
+                    lock.get_final_and_active_parallel_balance(addr);
+                let (final_seq_bal, active_seq_bal) =
+                    lock.get_final_and_active_sequential_balance(addr);
+                let (final_rolls, active_rolls) = lock.get_final_and_active_rolls(addr);
+                let (final_keys, active_keys) = lock.get_final_and_active_datastore_keys(addr);
+                let final_info = ExecutionAddressInfo {
+                    parallel_balance: final_par_bal.unwrap_or_default(),
+                    sequential_balance: final_seq_bal.unwrap_or_default(),
+                    roll_count: final_rolls,
+                    datastore_keys: final_keys,
+                };
+                let active_info = ExecutionAddressInfo {
+                    parallel_balance: active_par_bal.unwrap_or_default(),
+                    sequential_balance: active_seq_bal.unwrap_or_default(),
+                    roll_count: active_rolls,
+                    datastore_keys: active_keys,
+                };
+                (final_info, active_info)
+            })
+            .collect()
+    }
+
+    /// Gets the statuses of a list of operations
+    fn get_operation_statuses(&self, ops: &[OperationId]) -> Vec<ExecutionStatus> {
+        self.execution_state.read().get_operation_statuses(ops)
     }
 
     /// Return the final rolls distribution for the given `cycle`

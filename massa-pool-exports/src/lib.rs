@@ -9,7 +9,6 @@
 mod config;
 mod controller_traits;
 mod error;
-mod types;
 
 pub use config::PoolConfig;
 pub use controller_traits::PoolController;

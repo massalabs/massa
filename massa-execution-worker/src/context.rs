@@ -762,8 +762,8 @@ impl ExecutionContext {
     }
 
     /// Check if an operation was previously executed (to prevent reuse)
-    pub fn is_op_executed(&self, op_id: &OperationId, thread: u8) -> bool {
-        self.speculative_executed_ops.is_op_executed(op_id, thread)
+    pub fn is_op_executed(&self, op_id: &OperationId) -> bool {
+        self.speculative_executed_ops.is_op_executed(op_id)
     }
 
     /// Insert an executed operation.

@@ -6,6 +6,8 @@ use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_models::api::EventFilter;
+use massa_models::execution::ExecutionAddressInfo;
+use massa_models::execution::ExecutionStatus;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
 use massa_models::prehash::Set;
@@ -76,8 +78,14 @@ pub trait ExecutionController: Send + Sync {
         addresses: &[Address],
     ) -> Vec<(BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>)>;
 
+    /// Get final and candidate information about addresses
+    fn get_final_active_address_infos(
+        &self,
+        addresses: &[Address],
+    ) -> Vec<(ExecutionAddressInfo, ExecutionAddressInfo)>;
+
     /// Returns for a given cycle the stakers taken into account
-    /// by the selector. That correspond to the roll_counts in `cycle - 1`.
+    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
     ///
     /// By default it returns an empty map.
     fn get_cycle_rolls(&self, cycle: u64) -> Map<Address, u64>;
@@ -97,6 +105,9 @@ pub trait ExecutionController: Send + Sync {
 
     /// List which operations inside the provided list were not executed
     fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId>;
+
+    /// Gets the statuses of a list of operations
+    fn get_operation_statuses(&self, ops: &[OperationId]) -> Vec<ExecutionStatus>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

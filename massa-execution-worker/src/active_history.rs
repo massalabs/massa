@@ -22,11 +22,8 @@ impl ActiveHistory {
     /// Lazily query (from end to beginning) the active list of executed ops to check if an op was executed.
     ///
     /// Returns a `HistorySearchResult`.
-    pub fn fetch_executed_op(&self, op_id: &OperationId, thread: u8) -> HistorySearchResult<()> {
+    pub fn fetch_executed_op(&self, op_id: &OperationId) -> HistorySearchResult<()> {
         for history_element in self.0.iter().rev() {
-            if history_element.slot.thread != thread {
-                continue;
-            }
             if history_element.state_changes.executed_ops.contains(op_id) {
                 return HistorySearchResult::Present(());
             }
@@ -206,21 +203,5 @@ impl ActiveHistory {
             }
         }
         stats
-    }
-
-    /// Retrieve the production statistics of `addr` as they are in the last element of the history.
-    ///
-    /// # Arguments
-    /// * `addr`:  address to fetch the production stats from
-    #[allow(dead_code)]
-    pub fn outdated_fetch_production_stats_for(&self, addr: &Address) -> Option<ProductionStats> {
-        self.0.back().and_then(|output| {
-            output
-                .state_changes
-                .roll_state_changes
-                .production_stats
-                .get(addr)
-                .cloned()
-        })
     }
 }

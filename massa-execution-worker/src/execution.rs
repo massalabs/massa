@@ -19,6 +19,7 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::api::EventFilter;
+use massa_models::execution::ExecutionStatus;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
@@ -298,7 +299,7 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             // ignore the operation if it was already executed
-            if context.is_op_executed(&operation_id, operation.thread) {
+            if context.is_op_executed(&operation_id) {
                 return Err(ExecutionError::InlcudeOperationError(
                     "operation was executed previously".to_string(),
                 ));
@@ -1083,6 +1084,37 @@ impl ExecutionState {
         Ok(context_guard!(self).settle_slot())
     }
 
+    /// Gets the statuses of a list of operations
+    pub fn get_operation_statuses(&self, ops: &[OperationId]) -> Vec<ExecutionStatus> {
+        // search in active history
+        let mut res = Vec::with_capacity(ops.len());
+        let history = self.active_history.read();
+        let mut final_lock = None;
+        for op_id in ops {
+            // check in recent historu
+            match history.fetch_executed_op(op_id) {
+                HistorySearchResult::Present(_) => {
+                    // operation was executed in recent history
+                    res.push(ExecutionStatus::ExecutedAsCandidate);
+                }
+                _ => {
+                    // operation was not found in recent history: check in final state
+                    // here we lazily lock the final state only if needed and then reuse the lock
+                    if final_lock
+                        .get_or_insert_with(|| self.final_state.read())
+                        .executed_ops
+                        .contains(op_id)
+                    {
+                        res.push(ExecutionStatus::ExecutedAsFinal);
+                    } else {
+                        res.push(ExecutionStatus::NotFound);
+                    }
+                }
+            }
+        }
+        res
+    }
+
     /// Gets a parallel balance both at the latest final and active executed slots
     pub fn get_final_and_active_parallel_balance(
         &self,
@@ -1119,6 +1151,17 @@ impl ExecutionState {
                 HistorySearchResult::Absent => None,
             },
         )
+    }
+
+    /// Gets roll counts both at the latest final and active executed slots
+    pub fn get_final_and_active_rolls(&self, address: &Address) -> (u64, u64) {
+        let final_rolls = self.final_state.read().pos_state.get_rolls_for(address);
+        let active_rolls = self
+            .active_history
+            .read()
+            .fetch_roll_count(address)
+            .unwrap_or(final_rolls);
+        (final_rolls, active_rolls)
     }
 
     /// Gets a data entry both at the latest final and active executed slots
@@ -1182,6 +1225,25 @@ impl ExecutionState {
         (final_keys, candidate_keys)
     }
 
+    /// Returns for a given cycle the stakers taken into account
+    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
+    ///
+    /// By default it returns an empty map.
+    pub fn get_cycle_rolls(&self, mut cycle: u64) -> Map<Address, u64> {
+        let final_state = self.final_state.read();
+        cycle = match cycle.checked_sub(3) {
+            Some(c) => c,
+            _ => return Map::default(),
+        };
+        // TODO do not iterate here, go directly to the right element because they are sequentially ordered
+        for cycle_info in final_state.pos_state.cycle_history.iter() {
+            if cycle_info.cycle == cycle {
+                return cycle_info.roll_counts.clone();
+            }
+        }
+        Map::default()
+    }
+
     /// Gets execution events optionally filtered by:
     /// * start slot
     /// * end slot
@@ -1215,25 +1277,6 @@ impl ExecutionState {
                 )
                 .collect(),
         }
-    }
-
-    /// Returns for a given cycle the stakers taken into account
-    /// by the selector. That correspond to the roll_counts in `cycle - 1`.
-    ///
-    /// By default it returns an empty map.
-    pub fn get_cycle_rolls(&self, mut cycle: u64) -> Map<Address, u64> {
-        let final_state = self.final_state.read();
-        cycle = match cycle.checked_sub(1) {
-            Some(c) => c,
-            _ => return Map::default(),
-        };
-        // TODO do not iterate here, go directly to the right element because they are sequentially ordered
-        for cycle_info in final_state.pos_state.cycle_history.iter() {
-            if cycle_info.cycle == cycle {
-                return cycle_info.roll_counts.clone();
-            }
-        }
-        Map::default()
     }
 
     /// List which operations inside the provided list were not executed

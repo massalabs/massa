@@ -380,7 +380,7 @@ impl Endpoints for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
-        // ask execution for the operation statuses
+        // ask execution for the operation execution statuses
         let execution_statuses = self.0.execution_controller.get_operation_statuses(&ops);
 
         let api_cfg = self.0.api_settings.clone();
@@ -391,18 +391,19 @@ impl Endpoints for API<Public> {
 
             // gather all values into a vector of OperationInfo instances
             let mut res: Vec<OperationInfo> = Vec::with_capacity(ops.len());
-            let zipped_iterator = ops.into_iter().zip(
-                storage_info
-                    .into_iter()
-                    .zip(in_pool.into_iter().zip(execution_statuses.into_iter())),
+            let zipped_iterator = izip!(
+                ops.into_iter(),
+                storage_info.into_iter(),
+                in_pool.into_iter(),
+                execution_statuses.into_iter()
             );
-            for (id, ((operation, in_blocks), (in_pool, exec_status))) in zipped_iterator {
+            for (id, (operation, in_blocks), in_pool, execution_status) in zipped_iterator {
                 res.push(OperationInfo {
                     id,
                     operation,
                     in_pool,
                     in_blocks: in_blocks.into_iter().collect(),
-                    is_final: exec_status.is_final,
+                    execution_status,
                 });
             }
 
@@ -440,9 +441,6 @@ impl Endpoints for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
 
-        // ask execution for the endorsement statuses
-        let execution_statuses = self.0.execution_controller.get_endorsement_statuses(&eds);
-
         let api_cfg = self.0.api_settings.clone();
         let closure = async move || {
             if eds.len() as u64 > api_cfg.max_arguments {
@@ -451,18 +449,17 @@ impl Endpoints for API<Public> {
 
             // gather all values into a vector of EndorsementInfo instances
             let mut res: Vec<EndorsementInfo> = Vec::with_capacity(eds.len());
-            let zipped_iterator = eds.into_iter().zip(
-                storage_info
-                    .into_iter()
-                    .zip(in_pool.into_iter().zip(execution_statuses.into_iter())),
+            let zipped_iterator = izip!(
+                eds.into_iter(),
+                storage_info.into_iter(),
+                in_pool.into_iter(),
             );
-            for (id, ((endorsement, in_blocks), (in_pool, exec_status))) in zipped_iterator {
+            for (id, (endorsement, in_blocks), in_pool) in zipped_iterator {
                 res.push(EndorsementInfo {
                     id,
                     endorsement,
                     in_pool,
                     in_blocks: in_blocks.into_iter().collect(),
-                    is_final: exec_status.is_final,
                 });
             }
 
@@ -621,7 +618,7 @@ impl Endpoints for API<Public> {
             let lck = self.0.storage.read_blocks();
             addresses
                 .iter()
-                .map(|id| {
+                .map(|address| {
                     lck.get_blocks_created_by(address)
                         .cloned()
                         .unwrap_or_default()
@@ -634,7 +631,7 @@ impl Endpoints for API<Public> {
             let lck = self.0.storage.read_operations();
             addresses
                 .iter()
-                .map(|id| {
+                .map(|address| {
                     lck.get_operations_created_by(address)
                         .cloned()
                         .unwrap_or_default()
@@ -647,7 +644,7 @@ impl Endpoints for API<Public> {
             let lck = self.0.storage.read_endorsements();
             addresses
                 .iter()
-                .map(|id| {
+                .map(|address| {
                     lck.get_endorsements_created_by(address)
                         .cloned()
                         .unwrap_or_default()
@@ -656,7 +653,10 @@ impl Endpoints for API<Public> {
         };
 
         // get execution data (balances, rolls, datastore keys) for (final, active) states
-        let final_active_execution_info = self.0.execution_controller.get_address_infos(&addresses);
+        let final_active_execution_info = self
+            .0
+            .execution_controller
+            .get_final_active_address_infos(&addresses);
 
         // get draws and active roll info from selector
         let selection_info = self.0.selector_controller.get_address_infos(&addresses);
@@ -676,26 +676,18 @@ impl Endpoints for API<Public> {
             created_blocks,
             created_operations,
             created_endorsements,
-            final_active_execution_info,
+            (final_ledger_info, candidate_ledger_info),
             selection_info,
         ) in iterator
         {
-            let final_execution_info = final_active_execution_info.0.unwrap_or_default();
-            let active_execution_info = final_active_execution_info.1.unwrap_or_default();
             res.push(AddressInfo {
                 // general address info
                 address,
                 thread: address.get_thread(self.0.consensus_config.thread_count),
 
-                // execution info
-                final_parallel_balance: final_execution_info.parallel_balance,
-                candidate_parallel_balance: active_execution_info.parallel_balance,
-                final_sequential_balance: final_execution_info.sequential_balance,
-                candidate_sequential_balance: active_execution_info.sequential_balance,
-                final_rolls: final_execution_info.roll_count,
-                candidate_rolls: active_execution_info.roll_count,
-                final_datastore_keys: final_execution_info.datastore_keys,
-                candidate_datastore_keys: active_execution_info.datastore_keys,
+                // ledger info
+                final_ledger_info,
+                candidate_ledger_info,
 
                 // selector info
                 cycle_info: xx, // TODO vec[AddressCycleInfo { cycle: u64, complete: bool, active_rolls: u64, produced_blocks: u64, missed_blocks: u64, block_draws: vec![Slot], endorsement_draws: vec![IndexedSlot] }]

@@ -153,10 +153,6 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn get_cycle_rolls(&self, _cycle: u64) -> Map<Address, u64> {
-        Map::default()
-    }
-
     fn unexecuted_ops_among(&self, _ops: &Set<OperationId>, _thread: u8) -> Set<OperationId> {
         Set::default()
     }
