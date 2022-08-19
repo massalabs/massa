@@ -29,10 +29,6 @@ pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
         for (a1, b1) in a.roll_counts.iter().zip(b.roll_counts.iter()) {
             assert_eq!(a1, b1, "roll_counts order differs");
         }
-        assert_eq!(a.production_stats.len(), b.production_stats.len());
-        for (a2, b2) in a.production_stats.iter().zip(b.production_stats.iter()) {
-            assert_eq!(a2, b2, "production_stats order differs");
-        }
     }
 }
 

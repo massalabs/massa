@@ -1,10 +1,10 @@
 use massa_hash::Hash;
-use massa_models::{prehash::Map, Address, Slot};
+use massa_models::{Address, Slot};
 use massa_pos_exports::{CycleInfo, PosError::*, PosResult, Selection};
 use rand::{distributions::Uniform, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 use crate::worker::SelectorThread;
 
@@ -186,7 +186,7 @@ impl SelectorThread {
 /// Compute the cumulative distribution function. It will be used in the
 /// `perform` function for the selection's probability related to the number
 /// of rolls by address.
-fn cumulate_sum(roll_counts: &Map<Address, u64>) -> Vec<(u64, Address)> {
+fn cumulate_sum(roll_counts: &BTreeMap<Address, u64>) -> Vec<(u64, Address)> {
     let mut cumulated_func_cursor = 0;
     let mut cumulated_func = Vec::with_capacity(roll_counts.len());
     for (addr, &n_rolls) in roll_counts.iter() {

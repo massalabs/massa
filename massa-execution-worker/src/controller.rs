@@ -16,7 +16,7 @@ use massa_models::{Address, Amount, OperationId};
 use massa_models::{BlockId, Slot};
 use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 use tracing::info;
 
@@ -157,7 +157,7 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// Return the final rolls distribution for the given `cycle`
-    fn get_cycle_rolls(&self, cycle: u64) -> Map<Address, u64> {
+    fn get_cycle_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
         self.execution_state.read().get_cycle_rolls(cycle)
     }
 

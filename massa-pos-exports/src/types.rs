@@ -341,7 +341,7 @@ pub struct CycleInfo {
     /// whether the cycle is complete (all slots final)
     pub complete: bool,
     /// number of rolls each staking address has
-    pub roll_counts: Map<Address, u64>,
+    pub roll_counts: BTreeMap<Address, u64>,
     /// random seed bits of all slots in the cycle so far
     pub rng_seed: BitVec<u8>,
     /// Per-address production statistics

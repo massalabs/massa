@@ -27,7 +27,7 @@ use massa_pos_exports::SelectorController;
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::{collections::HashMap, sync::Arc};
 use tracing::debug;
 
@@ -1217,11 +1217,11 @@ impl ExecutionState {
     /// by the selector. That correspond to the roll_counts in `cycle - 1`.
     ///
     /// By default it returns an empty map.
-    pub fn get_cycle_rolls(&self, mut cycle: u64) -> Map<Address, u64> {
+    pub fn get_cycle_rolls(&self, mut cycle: u64) -> BTreeMap<Address, u64> {
         let final_state = self.final_state.read();
         cycle = match cycle.checked_sub(1) {
             Some(c) => c,
-            _ => return Map::default(),
+            _ => return BTreeMap::default(),
         };
         // TODO do not iterate here, go directly to the right element because they are sequentially ordered
         for cycle_info in final_state.pos_state.cycle_history.iter() {
@@ -1229,7 +1229,7 @@ impl ExecutionState {
                 return cycle_info.roll_counts.clone();
             }
         }
-        Map::default()
+        BTreeMap::default()
     }
 
     /// List which operations inside the provided list were not executed

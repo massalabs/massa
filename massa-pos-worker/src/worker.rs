@@ -5,7 +5,6 @@ use std::collections::VecDeque;
 use std::thread::JoinHandle;
 
 use massa_hash::Hash;
-use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_pos_exports::CycleInfo;
 use massa_pos_exports::PosError::InvalidInitialRolls;
@@ -28,7 +27,7 @@ pub(crate) struct SelectorThread {
     /// Configuration
     pub(crate) cfg: SelectorConfig,
     /// Initial rolls from initial rolls file
-    pub(crate) initial_rolls: Map<Address, u64>,
+    pub(crate) initial_rolls: BTreeMap<Address, u64>,
     /// Initial seeds: they are lightweight, we always keep them
     /// the seed for cycle -N is obtained by hashing N times the value
     /// `ConsensusConfig.initial_draw_seed` the seeds are indexed from -1 to -N
@@ -47,7 +46,7 @@ impl SelectorThread {
     pub(crate) fn init(
         input_data: InputDataPtr,
         cache: DrawCachePtr,
-        initial_rolls: Map<Address, u64>,
+        initial_rolls: BTreeMap<Address, u64>,
         cfg: SelectorConfig,
         bootstrap_cycles: VecDeque<CycleInfo>,
     ) -> PosResult<JoinHandle<PosResult<()>>> {
@@ -145,10 +144,10 @@ fn generate_initial_seeds(cfg: &SelectorConfig) -> Vec<Vec<u8>> {
 /// the cycle < `cfg.loopback_cycle`
 ///
 /// File path is `cfg.initial_rolls_path`
-fn get_initial_rolls(cfg: &SelectorConfig) -> PosResult<Map<Address, u64>> {
-    let rolls_per_cycle = serde_json::from_str::<Map<Address, u64>>(&std::fs::read_to_string(
-        &cfg.initial_rolls_path,
-    )?)?;
+fn get_initial_rolls(cfg: &SelectorConfig) -> PosResult<BTreeMap<Address, u64>> {
+    let rolls_per_cycle = serde_json::from_str::<BTreeMap<Address, u64>>(
+        &std::fs::read_to_string(&cfg.initial_rolls_path)?,
+    )?;
     if rolls_per_cycle.len() < cfg.lookback_cycles as usize {
         return Err(InvalidInitialRolls(
             cfg.lookback_cycles,
