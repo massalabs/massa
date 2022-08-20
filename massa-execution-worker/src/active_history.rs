@@ -3,7 +3,6 @@ use massa_ledger_exports::{
     LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::{prehash::Map, Address, Amount, OperationId, Slot};
-use massa_pos_exports::ProductionStats;
 use std::collections::{BTreeMap, VecDeque};
 
 #[derive(Default)]
@@ -16,6 +15,18 @@ pub enum HistorySearchResult<T> {
     Present(T),
     Absent,
     NoInfo,
+}
+
+/// Result of the search for a slot index in history
+pub enum SlotIndexPosition {
+    /// out of bounds in the past
+    Past,
+    /// out of bounds in the future
+    Future,
+    /// found in history at a the given index
+    Found(usize),
+    /// history is empty
+    NoHistory,
 }
 
 impl ActiveHistory {
@@ -183,25 +194,84 @@ impl ActiveHistory {
             .collect()
     }
 
-    /// Retrieve the production statistics of every address as they are in the last element of the history.
-    pub fn fetch_production_stats(&self) -> Map<Address, ProductionStats> {
-        let mut stats: Map<Address, ProductionStats> = Map::default();
-        for output in self.0.iter() {
-            if !output.slot.last_of_a_cycle() {
-                break;
+    /// Gets the index of a slot in history
+    pub fn get_slot_index(&self, slot: &Slot, thread_count: u8) -> SlotIndexPosition {
+        let first_slot = match self.0.front() {
+            Some(itm) => &itm.slot,
+            None => return SlotIndexPosition::NoHistory,
+        };
+        if slot < first_slot {
+            return SlotIndexPosition::Past; // too old
+        }
+        let index: usize = match slot.slots_since(first_slot, thread_count) {
+            Err(_) => return SlotIndexPosition::Future, // overflow
+            Ok(d) => {
+                match d.try_into() {
+                    Ok(d) => d,
+                    Err(_) => return SlotIndexPosition::Future, // usize overflow
+                }
             }
-            for (addr, s) in output
-                .state_changes
-                .roll_state_changes
-                .production_stats
-                .iter()
-            {
-                stats
-                    .entry(*addr)
-                    .or_insert_with(ProductionStats::default)
-                    .chain(s);
+        };
+        if index >= self.0.len() {
+            // in the future
+            return SlotIndexPosition::Future;
+        }
+        SlotIndexPosition::Found(index)
+    }
+
+    /// Find the history range of a cycle
+    ///
+    /// # Return value
+    ///
+    /// Tuple with the following elements:
+    /// * a range of indices
+    /// * a boolean indicating that the cycle overflows before the beginning of history
+    /// * a boolean indicating that the cycle overflows after the end of history
+    pub fn find_cycle_indices(
+        &self,
+        cycle: u64,
+        periods_per_cycle: u64,
+        thread_count: u8,
+    ) -> (std::ops::Range<usize>, bool, bool) {
+        // Get first and last slots indices of cycle in history. We consider overflows as "Future"
+        let first_index = Slot::new_first_of_cycle(cycle, periods_per_cycle).map_or_else(
+            |_e| SlotIndexPosition::Future,
+            |s| self.get_slot_index(&s, thread_count),
+        );
+        let last_index = Slot::new_last_of_cycle(cycle, periods_per_cycle, thread_count)
+            .map_or_else(
+                |_e| SlotIndexPosition::Future,
+                |s| self.get_slot_index(&s, thread_count),
+            );
+
+        match (first_index, last_index) {
+            // history is empty
+            (SlotIndexPosition::NoHistory, _) => (0..0, true, true),
+            (_, SlotIndexPosition::NoHistory) => (0..0, true, true),
+
+            // cycle starts in the future
+            (SlotIndexPosition::Future, _) => (0..0, false, true),
+
+            // cycle ends before history starts
+            (_, SlotIndexPosition::Past) => (0..0, true, false),
+
+            // the history is stricly icluded within the cycle
+            (SlotIndexPosition::Past, SlotIndexPosition::Future) => (0..self.0.len(), true, true),
+
+            // cycle begins before and ends during history
+            (SlotIndexPosition::Past, SlotIndexPosition::Found(idx)) => {
+                (0..idx.saturating_add(1), true, false)
+            }
+
+            // cycle starts during the history and ends after the end of history
+            (SlotIndexPosition::Found(idx), SlotIndexPosition::Future) => {
+                (idx..self.0.len(), false, true)
+            }
+
+            // cycle starts and ends during active history
+            (SlotIndexPosition::Found(idx1), SlotIndexPosition::Found(idx2)) => {
+                (idx1..idx2.saturating_add(1), false, false)
             }
         }
-        stats
     }
 }

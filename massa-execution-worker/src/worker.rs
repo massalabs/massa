@@ -295,7 +295,7 @@ impl ExecutionThread {
         exec_state.clear_history();
 
         // execute slot
-        let exec_out = exec_state.execute_slot(slot, exec_target);
+        let exec_out = exec_state.execute_slot(slot, exec_target, &self.selector);
 
         // apply execution output to final state
         exec_state.apply_final_execution_output(exec_out);
@@ -337,7 +337,7 @@ impl ExecutionThread {
         };
 
         // execute the slot
-        let exec_out = exec_state.execute_slot(slot, exec_target);
+        let exec_out = exec_state.execute_slot(slot, exec_target, &self.selector);
 
         // apply execution output to active state
         exec_state.apply_active_execution_output(exec_out);
@@ -588,7 +588,6 @@ impl ExecutionThread {
 /// # parameters
 /// * `config`: execution configuration
 /// * `final_state`: a thread-safe shared access to the final state for reading and writing
-/// * `storage`: A shared storage between all modules to have shared data.
 ///
 /// # Returns
 /// A pair `(execution_manager, execution_controller)` where:
@@ -597,16 +596,12 @@ impl ExecutionThread {
 pub fn start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc<RwLock<FinalState>>,
-    storage: Storage,
     selector: Box<dyn SelectorController>,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
-    let state_selector = selector.clone();
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
-        storage,
-        state_selector,
     )));
 
     // define the input data interface

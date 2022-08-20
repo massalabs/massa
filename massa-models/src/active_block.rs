@@ -1,6 +1,6 @@
 use crate::{
     prehash::{Map, Set},
-    Address, BlockId, EndorsementId, OperationId, Slot,
+    Address, BlockId, Slot,
 };
 
 use serde::{Deserialize, Serialize};

@@ -25,7 +25,6 @@ pub(crate) struct BlockFactoryWorker {
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
     factory_receiver: mpsc::Receiver<()>,
-    block_serializer: BlockSerializer,
 }
 
 impl BlockFactoryWorker {
@@ -45,7 +44,6 @@ impl BlockFactoryWorker {
                     wallet,
                     channels,
                     factory_receiver,
-                    block_serializer: BlockSerializer::new(),
                 };
                 this.run();
             })
@@ -209,7 +207,7 @@ impl BlockFactoryWorker {
                 operation_merkle_root: global_operations_hash,
                 endorsements,
             },
-            BlockHeaderSerializer::new(),
+            BlockHeaderSerializer::new(), // TODO reuse self.block_header_serializer
             block_producer_keypair,
         )
         .expect("error while producing block header");
@@ -220,7 +218,7 @@ impl BlockFactoryWorker {
                 header,
                 operations: op_ids.into_iter().collect(),
             },
-            BlockSerializer::new(),
+            BlockSerializer::new(), // TODO reuse self.block_serializer
             block_producer_keypair,
         )
         .expect("error while producing block");
@@ -236,9 +234,14 @@ impl BlockFactoryWorker {
         );
 
         // send full block to consensus
-        self.channels
+        if self
+            .channels
             .consensus
-            .send_block(block_id, slot, block_storage);
+            .send_block(block_id, slot, block_storage)
+            .is_err()
+        {
+            warn!("could not send produced block to consensus: channel error");
+        }
     }
 
     /// main run loop of the block creator thread

@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use std::collections::BTreeMap;
+use std::sync::mpsc;
 use std::thread::JoinHandle;
 
 use massa_hash::Hash;
@@ -14,13 +15,13 @@ use massa_pos_exports::SelectorManager;
 
 use crate::controller::SelectorControllerImpl;
 use crate::controller::SelectorManagerImpl;
-use crate::{Command, DrawCachePtr, InputDataPtr};
+use crate::{Command, DrawCachePtr};
 
 /// Structure gathering all elements needed by the selector thread
 #[allow(dead_code)]
 pub(crate) struct SelectorThread {
     // A copy of the input data allowing access to incoming requests
-    pub(crate) input_data: InputDataPtr,
+    pub(crate) input_mpsc: mpsc::Receiver<Command>,
     /// Cache of computed endorsements
     pub(crate) cache: DrawCachePtr,
     /// Configuration
@@ -40,17 +41,15 @@ impl SelectorThread {
     /// Creates the `SelectorThread` structure to gather all data and references
     /// needed by the selector worker thread.
     ///
-    /// # Arguments
-    /// * `input_data`: a copy of the input data interface to get incoming requests from
     pub(crate) fn spawn(
-        input_data: InputDataPtr,
+        input_mpsc: mpsc::Receiver<Command>,
         cache: DrawCachePtr,
         initial_rolls: Vec<Map<Address, u64>>,
         cfg: SelectorConfig,
     ) -> JoinHandle<PosResult<()>> {
         std::thread::spawn(|| {
             let this = Self {
-                input_data,
+                input_mpsc,
                 cache,
                 initial_seeds: generate_initial_seeds(&cfg),
                 cfg,
@@ -67,19 +66,18 @@ impl SelectorThread {
     /// While a `Stop` command isn't sent, pop `input_data` and compute
     /// draws for future cycle.
     fn run(mut self) -> PosResult<()> {
-        loop {
-            let cycle_info = {
-                let mut data = self.input_data.1.lock();
-                loop {
-                    match data.pop_front() {
-                        Some(Command::CycleInfo(cycle_info)) => break cycle_info,
-                        Some(Command::Stop) => return Ok(()),
-                        None => self.input_data.0.wait(&mut data),
-                    }
+        while let Ok(command) = self.input_mpsc.recv() {
+            match command {
+                // feed cycle
+                Command::CycleInfo(cycle_info) => {
+                    self.draws(cycle_info)?;
                 }
-            };
-            self.draws(cycle_info)?;
+
+                // stop
+                Command::Stop => return Ok(()),
+            }
         }
+        Ok(())
     }
 }
 
@@ -95,10 +93,11 @@ impl SelectorThread {
 pub fn start_selector_worker(
     selector_config: SelectorConfig,
 ) -> (Box<dyn SelectorManager>, Box<dyn SelectorController>) {
-    let input_data = InputDataPtr::default();
     let cache = DrawCachePtr::default();
+    let (input_mpsc_tx, input_mpsc_rx) = mpsc::channel();
+
     let controller = SelectorControllerImpl {
-        input_data: input_data.clone(),
+        input_mpsc: input_mpsc_tx.clone(),
         cache: cache.clone(),
         periods_per_cycle: selector_config.periods_per_cycle,
         thread_count: selector_config.thread_count,
@@ -106,14 +105,14 @@ pub fn start_selector_worker(
 
     // launch the selector thread
     let thread_handle = SelectorThread::spawn(
-        input_data.clone(),
+        input_mpsc_rx,
         cache,
         get_initial_rolls(&selector_config).unwrap(),
         selector_config,
     );
     let manager = SelectorManagerImpl {
         thread_handle: Some(thread_handle),
-        input_data,
+        input_mpsc: input_mpsc_tx,
     };
     (Box::new(manager), Box::new(controller))
 }

@@ -2,14 +2,12 @@
 
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
-use massa_models::{
-    constants::{default::POS_SELL_CYCLES, PERIODS_PER_CYCLE, ROLL_PRICE},
-    prehash::Map,
-    Address, Amount, BlockId, Slot,
-};
-use massa_pos_exports::{PoSChanges, ProductionStats, SelectorController};
+use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::{prehash::Map, Address, Amount, BlockId, Slot};
+use massa_pos_exports::{PoSChanges, ProductionStats};
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry::Occupied;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use crate::active_history::ActiveHistory;
@@ -24,9 +22,6 @@ pub(crate) struct SpeculativeRollState {
     /// Slots should be consecutive, newest at the back.
     active_history: Arc<RwLock<ActiveHistory>>,
 
-    /// Selector used to feed_cycle and get_selection
-    selector: Box<dyn SelectorController>,
-
     /// List of changes to the state after settling roll sell/buy
     added_changes: PoSChanges,
 }
@@ -35,17 +30,14 @@ impl SpeculativeRollState {
     /// Creates a new `SpeculativeRollState`
     ///
     /// # Arguments
-    /// * `selector`: PoS draws selector controller
     /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
-        selector: Box<dyn SelectorController>,
     ) -> Self {
         SpeculativeRollState {
             final_state,
             active_history,
-            selector,
             added_changes: PoSChanges::default(),
         }
     }
@@ -96,6 +88,9 @@ impl SpeculativeRollState {
         seller_addr: &Address,
         slot: Slot,
         roll_count: u64,
+        periods_per_cycle: u64,
+        thread_count: u8,
+        roll_price: Amount,
     ) -> Result<(), ExecutionError> {
         // take a read lock on the final state
         let final_lock = self.final_state.read();
@@ -120,19 +115,29 @@ impl SpeculativeRollState {
             )));
         }
 
+        let cur_cycle = slot.get_cycle(periods_per_cycle);
+
         // remove the rolls
         *owned_count = owned_count.saturating_sub(roll_count);
+
+        // compute deferred credit slot
+        let target_slot = Slot::new_last_of_cycle(
+            cur_cycle
+                .checked_add(3)
+                .expect("unexpected cycle overflow in try_sell_rolls"),
+            periods_per_cycle,
+            thread_count,
+        )
+        .expect("unexepected slot overflot in try_sell_rolls");
 
         // add deferred reimbursement corresponding to the sold rolls value
         let credit = self
             .added_changes
             .deferred_credits
             .0
-            .entry(Slot::new_last_of_cycle(
-                slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
-            ))
+            .entry(target_slot)
             .or_insert_with(Map::default);
-        credit.insert(*seller_addr, ROLL_PRICE.saturating_mul_u64(roll_count));
+        credit.insert(*seller_addr, roll_price.saturating_mul_u64(roll_count));
 
         Ok(())
     }
@@ -168,21 +173,43 @@ impl SpeculativeRollState {
     ///
     /// # Arguments:
     /// `slot`: the final slot of the cycle to compute
-    pub fn settle_production_stats(&mut self, slot: Slot) {
-        let production_stats = self.get_production_stats();
+    pub fn settle_production_stats(
+        &mut self,
+        slot: &Slot,
+        periods_per_cycle: u64,
+        thread_count: u8,
+        roll_price: Amount,
+    ) {
+        let cycle = slot.get_cycle(periods_per_cycle);
+
+        let (production_stats, full) =
+            self.get_production_stats_at_cycle(cycle, periods_per_cycle, thread_count, slot);
+        if !full {
+            panic!(
+                "production stats were not fully ready when settle_production_stats was executed"
+            )
+        }
+
+        let target_slot = Slot::new_last_of_cycle(
+            cycle
+                .checked_add(3)
+                .expect("unexpected cycle overflow in settle_production_stats"),
+            periods_per_cycle,
+            thread_count,
+        )
+        .expect("unexpected slot overflow in settle_production_stats");
+
         let credits = self
             .added_changes
             .deferred_credits
             .0
-            .entry(Slot::new_last_of_cycle(
-                slot.get_cycle(PERIODS_PER_CYCLE) + POS_SELL_CYCLES,
-            ))
+            .entry(target_slot)
             .or_insert_with(Map::default);
+
         for (addr, stats) in production_stats {
             if !stats.satisfying() {
                 if let Occupied(mut entry) = self.added_changes.roll_changes.entry(addr) {
-                    // checking overflow for the sake of it
-                    if let Some(amount) = ROLL_PRICE.checked_mul_u64(*entry.get()) {
+                    if let Some(amount) = roll_price.checked_mul_u64(*entry.get()) {
                         credits.insert(addr, amount);
                     }
                     *entry.get_mut() = 0;
@@ -191,52 +218,243 @@ impl SpeculativeRollState {
         }
     }
 
-    /// Get the production statistics of the current cycle.
-    ///
-    /// It accumulates final > active > current changes in this order.
-    fn get_production_stats(&self) -> Map<Address, ProductionStats> {
-        let mut stats = self
-            .final_state
-            .read()
-            .pos_state
-            .get_production_stats()
-            .unwrap_or_default();
-        for (addr, s) in self.active_history.read().fetch_production_stats() {
-            stats
-                .entry(addr)
-                .or_insert_with(ProductionStats::default)
-                .chain(&s);
+    /// Get deferred credits of an address starting from a given slot
+    pub fn get_address_deferred_credits(
+        &self,
+        address: &Address,
+        min_slot: Slot,
+    ) -> BTreeMap<Slot, Amount> {
+        let mut res: HashMap<Slot, Amount> = HashMap::default();
+
+        // get added values
+        for (slot, addr_amount) in self.added_changes.deferred_credits.0.range(min_slot..) {
+            if let Some(amount) = addr_amount.get(address) {
+                let _ = res.try_insert(*slot, *amount);
+            };
         }
-        for (addr, s) in self.added_changes.production_stats.iter() {
-            stats
-                .entry(*addr)
-                .or_insert_with(ProductionStats::default)
-                .chain(s);
+
+        // get values from active history, backwards
+        {
+            let hist = self.active_history.read();
+            for hist_item in hist.0.iter().rev() {
+                for (slot, addr_amount) in hist_item
+                    .state_changes
+                    .roll_state_changes
+                    .deferred_credits
+                    .0
+                    .range(min_slot..)
+                {
+                    if let Some(amount) = addr_amount.get(address) {
+                        let _ = res.try_insert(*slot, *amount);
+                    };
+                }
+            }
         }
-        stats
+
+        // get values from final state
+        {
+            let final_state = self.final_state.read();
+            for (slot, addr_amount) in final_state.pos_state.deferred_credits.0.range(min_slot..) {
+                if let Some(amount) = addr_amount.get(address) {
+                    let _ = res.try_insert(*slot, *amount);
+                };
+            }
+        }
+
+        res.into_iter().filter(|(_s, v)| !v.is_zero()).collect()
+    }
+
+    /// Get the production statistics for a given address at a given cycle.
+    pub fn get_address_cycle_infos(
+        &self,
+        address: &Address,
+        periods_per_cycle: u64,
+        cur_slot: Slot,
+    ) -> Vec<ExecutionAddressCycleInfo> {
+        let mut res: Vec<ExecutionAddressCycleInfo> = Vec::new();
+
+        // lock final state
+        let final_state = self.final_state.read();
+
+        // add finals
+        final_state.pos_state.cycle_history.iter().for_each(|c| {
+            let mut cur_item = ExecutionAddressCycleInfo {
+                cycle: c.cycle,
+                is_final: c.complete,
+                ok_count: 0,
+                nok_count: 0,
+                active_rolls: None, // will be filled afterwards
+            };
+            if let Some(prod_stats) = c.production_stats.get(address) {
+                cur_item.ok_count = prod_stats.block_success_count;
+                cur_item.nok_count = prod_stats.block_failure_count;
+            }
+            res.push(cur_item);
+        });
+
+        // add active history
+        // note that a last cycle might overlap between final and active histories
+        {
+            let hist = self.active_history.read();
+            for hist_elt in &hist.0 {
+                let hist_cycle = hist_elt.slot.get_cycle(periods_per_cycle);
+
+                // insert a new item if necessary
+                if !res.last().map(|v| v.cycle == hist_cycle).unwrap_or(false) {
+                    res.push(ExecutionAddressCycleInfo {
+                        cycle: hist_cycle,
+                        is_final: false,
+                        ok_count: 0,
+                        nok_count: 0,
+                        active_rolls: None, // will be filled afterwards
+                    });
+                }
+
+                // accumulate active stats
+                if let Some(stats) = hist_elt
+                    .state_changes
+                    .roll_state_changes
+                    .production_stats
+                    .get(address)
+                {
+                    let cur_item = res
+                        .last_mut()
+                        .expect("last item of the result should exist here");
+                    cur_item.ok_count = cur_item.ok_count.saturating_add(stats.block_success_count);
+                    cur_item.nok_count =
+                        cur_item.nok_count.saturating_add(stats.block_failure_count);
+                }
+            }
+        }
+
+        // take into account added changes
+        {
+            // get current cycle
+            let cur_cycle = cur_slot.get_cycle(periods_per_cycle);
+
+            // insert a new item if necessary
+            if !res.last().map(|v| v.cycle == cur_cycle).unwrap_or(false) {
+                res.push(ExecutionAddressCycleInfo {
+                    cycle: cur_cycle,
+                    is_final: false,
+                    ok_count: 0,
+                    nok_count: 0,
+                    active_rolls: None, // will be filled afterwards
+                });
+            }
+
+            // accumulate added stats
+            if let Some(stats) = self.added_changes.production_stats.get(address) {
+                let cur_item = res
+                    .last_mut()
+                    .expect("last item of the result should exist here");
+                cur_item.ok_count = cur_item.ok_count.saturating_add(stats.block_success_count);
+                cur_item.nok_count = cur_item.nok_count.saturating_add(stats.block_failure_count);
+            }
+        }
+
+        // add active roll counts
+        for itm in res.iter_mut() {
+            itm.active_rolls = final_state
+                .pos_state
+                .get_address_active_rolls(address, itm.cycle);
+        }
+
+        res
+    }
+
+    /// Get the production statistics for a given cycle.
+    /// Returns a 2nd boolean result indicating whether the cycle was fetched fully and successfully, or just partially.
+    pub fn get_production_stats_at_cycle(
+        &self,
+        cycle: u64,
+        periods_per_cycle: u64,
+        thread_count: u8,
+        cur_slot: &Slot,
+    ) -> (Map<Address, ProductionStats>, bool) {
+        let mut accumulated_stats: Map<Address, ProductionStats> = Default::default();
+
+        // search in added stats
+        if cur_slot.get_cycle(periods_per_cycle) == cycle {
+            for (addr, stats) in &self.added_changes.production_stats {
+                accumulated_stats
+                    .entry(*addr)
+                    .and_modify(|cur| cur.chain(stats))
+                    .or_insert_with(|| stats.clone());
+            }
+        }
+
+        // search in active history
+        let global_overflow;
+        {
+            let hist = self.active_history.read();
+            let (range, underflow, overflow) =
+                hist.find_cycle_indices(cycle, periods_per_cycle, thread_count);
+            global_overflow = overflow;
+            for idx in range {
+                for (addr, stats) in &hist.0[idx]
+                    .state_changes
+                    .roll_state_changes
+                    .production_stats
+                {
+                    accumulated_stats
+                        .entry(*addr)
+                        .and_modify(|cur| cur.chain(stats))
+                        .or_insert_with(|| stats.clone());
+                }
+            }
+            if !underflow {
+                // no need to search in finals
+                return (accumulated_stats, !overflow);
+            }
+        }
+
+        // acccumulate final state
+        let final_state = self.final_state.read();
+        if let Some(final_stats) = final_state.pos_state.get_all_production_stats(cycle) {
+            for (addr, stats) in final_stats {
+                accumulated_stats
+                    .entry(*addr)
+                    .and_modify(|cur| cur.chain(stats))
+                    .or_insert_with(|| stats.clone());
+            }
+            (accumulated_stats, !global_overflow)
+        } else {
+            (accumulated_stats, false)
+        }
     }
 
     /// Get the deferred credits of `slot`.
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    pub fn get_deferred_credits(&mut self, slot: Slot) -> Map<Address, Amount> {
+    pub fn get_deferred_credits(&mut self, slot: &Slot) -> Map<Address, Amount> {
         // NOTE:
         // There is no need to sum the credits for similar entries between
         // the final state and the active history.
         // Credits come from cycle C-3 so there will never be similar entries.
         // Even in the case of final credits being removed because of active slashing
         // we want the active value to override the final one in this function.
+
+        // get final deferred credits
         let mut credits = self
             .final_state
             .read()
             .pos_state
-            .get_deferred_credits_at(&slot);
+            .get_deferred_credits_at(slot);
+
+        // fetch active history deferred credits
         credits.extend(
             self.active_history
                 .read()
-                .fetch_all_deferred_credits_at(&slot),
+                .fetch_all_deferred_credits_at(slot),
         );
+
+        // added deferred credits
+        if let Some(creds) = self.added_changes.deferred_credits.0.get(slot) {
+            credits.extend(creds.clone());
+        }
+
         credits
     }
 }

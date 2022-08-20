@@ -17,7 +17,7 @@ pub trait SelectorController: Send + Sync {
     /// # Arguments
     /// * `cycle_info`: give or regive a cycle info for a background
     ///                 computation of the draws.
-    fn feed_cycle(&self, cycle_info: CycleInfo);
+    fn feed_cycle(&self, cycle_info: CycleInfo) -> Result<()>;
 
     /// Get [Selection] computed for a slot:
     /// # Arguments

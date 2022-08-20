@@ -16,7 +16,6 @@ mod operation_indexes;
 
 use block_indexes::BlockIndexes;
 use endorsement_indexes::EndorsementIndexes;
-use massa_logging::massa_trace;
 use massa_models::prehash::{BuildMap, Map, PreHashed, Set};
 use massa_models::wrapped::Id;
 use massa_models::{

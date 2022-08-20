@@ -10,9 +10,9 @@ mod worker;
 use massa_models::Slot;
 use massa_pos_exports::{CycleInfo, Selection};
 
-use parking_lot::{Condvar, Mutex, RwLock};
+use parking_lot::RwLock;
 use std::{
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{BTreeMap, HashMap},
     sync::Arc,
 };
 
@@ -25,14 +25,6 @@ pub(crate) enum Command {
     /// of the command queue)
     Stop,
 }
-
-/// Same structure pointer that will be used by the selector controller and his
-/// thread.
-///
-/// - `CycleInfo`: stores the new CycleInfo declared by massa (in the
-///     Execution module) and will be used to compute the draws in background.
-/// - `Stop`: break the thread loop.
-pub(crate) type InputDataPtr = Arc<(Condvar, Mutex<VecDeque<Command>>)>;
 
 /// Structure of the shared pointer to the computed draws.
 pub(crate) type DrawCachePtr = Arc<RwLock<BTreeMap<u64, HashMap<Slot, Selection>>>>;

@@ -1,38 +1,7 @@
-use std::{
-    collections::{BTreeSet, VecDeque},
-    fmt::Display,
-};
+use std::{collections::VecDeque, fmt::Display};
 
-use crate::{output_event::SCOutputEvent, Amount, Slot};
+use crate::{output_event::SCOutputEvent, Slot};
 use serde::{Deserialize, Serialize};
-
-/// Execution info about an address
-pub struct ExecutionAddressInfo {
-    /// parallel balance of the address
-    pub parallel_balance: Amount,
-    /// sequential balance of the address
-    pub sequential_balance: Amount,
-    /// number of rolls the address has
-    pub roll_count: u64,
-    /// datastore keys of the address
-    pub datastore_keys: BTreeSet<Vec<u8>>,
-}
-
-impl std::fmt::Display for ExecutionAddressInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "parallel balance: {}", self.parallel_balance)?;
-        writeln!(f, "sequential balance: {}", self.sequential_balance)?;
-        writeln!(f, "roll count: {}", self.roll_count)?;
-        writeln!(f, "datastore keys:")?;
-        for k in &self.datastore_keys {
-            match String::from_utf8(k.clone()) {
-                Ok(v) => writeln!(f, "\t`{}`", v)?,
-                Err(_) => writeln!(f, "\t(non-UTF8)")?,
-            }
-        }
-        Ok(())
-    }
-}
 
 /// The result of the read-only execution.
 #[derive(Clone, Debug, Deserialize, Serialize)]

@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use bitvec::prelude::*;
 use massa_models::{
+    api::IndexedSlot,
     constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
     prehash::Map,
     Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, BitVecDeserializer,
@@ -27,10 +28,21 @@ use std::ops::Bound::{Excluded, Included, Unbounded};
 
 use crate::SelectorController;
 
+/// Selector info about an address
+#[derive(Default)]
+pub struct SelectorAddressInfo {
+    /// Number of active rolls
+    pub active_rolls: u64,
+    /// Next block draws
+    pub next_block_draws: Vec<Slot>,
+    /// Next endorsement draws
+    pub next_endorsement_draws: Vec<IndexedSlot>,
+}
+
 /// Final state of PoS
 #[derive(Default)]
 pub struct PoSFinalState {
-    /// contiguous cycle history. Front = newest.
+    /// contiguous cycle history. Back = newest.
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
     pub deferred_credits: DeferredCredits,

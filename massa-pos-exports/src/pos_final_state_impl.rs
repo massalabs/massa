@@ -1,7 +1,7 @@
 use massa_models::{
     constants::{default::POS_SAVED_CYCLES, PERIODS_PER_CYCLE},
     prehash::Map,
-    Address, Amount, Slot,
+    Address, Amount, Slot, THREAD_COUNT,
 };
 
 use crate::{CycleInfo, PoSChanges, PoSFinalState, ProductionStats, SelectorController};
@@ -77,21 +77,39 @@ impl PoSFinalState {
         // if slot S was the last of cycle C:
         // set complete=true for cycle C in the history
         // notify the PoSDrawer for cycle C+3
-        if slot.last_of_a_cycle() {
+        if slot.is_last_of_cycle(PERIODS_PER_CYCLE, THREAD_COUNT) {
             current.complete = true;
             self.selector
                 .as_ref()
                 .expect("critical: SelectorController is missing from PoSFinalState")
-                .feed_cycle(current.clone());
+                .feed_cycle(current.clone())
+                .expect(
+                    "critical: could not feed complete cycle too SelectorController: channel down",
+                );
         }
     }
 
-    /// Retrieves the amount of rolls a given address has
+    /// Retrieves the amount of rolls a given address has at the latest cycle
     pub fn get_rolls_for(&self, addr: &Address) -> u64 {
         self.cycle_history
             .back()
             .and_then(|info| info.roll_counts.get(addr).cloned())
             .unwrap_or_default()
+    }
+
+    /// Retrieves the amount of rolls a given address has at a given cycle
+    pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
+        // get lookback cycle index
+        let lookback_cycle = cycle.saturating_sub(3);
+        let lookback_index = match self.get_cycle_index(lookback_cycle) {
+            Some(idx) => idx,
+            None => return None,
+        };
+        // get rolls
+        self.cycle_history[lookback_index]
+            .roll_counts
+            .get(addr)
+            .cloned()
     }
 
     /// Retrives every deferred credit of the given slot
@@ -103,10 +121,28 @@ impl PoSFinalState {
             .unwrap_or_default()
     }
 
-    /// Retrives the productions statistics of the last final cycle
-    pub fn get_production_stats(&self) -> Option<Map<Address, ProductionStats>> {
-        self.cycle_history
-            .back()
-            .map(|info| info.production_stats.clone())
+    /// Retrives the productions statistics for all addresses on a given cycle
+    pub fn get_all_production_stats(&self, cycle: u64) -> Option<&Map<Address, ProductionStats>> {
+        self.get_cycle_index(cycle)
+            .and_then(|idx| Some(&self.cycle_history[idx].production_stats))
+    }
+
+    /// Gets the index of a cycle in history
+    pub fn get_cycle_index(&self, cycle: u64) -> Option<usize> {
+        let first_cycle = match self.cycle_history.front() {
+            Some(c) => c.cycle,
+            None => return None, // history empty
+        };
+        if cycle < first_cycle {
+            return None; // in the past
+        }
+        let index: usize = match (cycle - first_cycle).try_into() {
+            Ok(v) => v,
+            Err(_) => return None, // usize overflow
+        };
+        if index >= self.cycle_history.len() {
+            return None; // in the future
+        }
+        Some(index)
     }
 }

@@ -1,16 +1,13 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
+use massa_graph::{BlockGraphExport, BootstrapableGraph};
 use massa_models::api::BlockGraphStatus;
-use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
-use massa_models::{Address, BlockId, OperationSearchResult, Slot, WrappedEndorsement};
+use massa_models::{BlockId, Slot};
 use massa_protocol_exports::ProtocolEventReceiver;
 use massa_storage::Storage;
-
 use std::collections::VecDeque;
 
-use massa_models::prehash::{Map, Set};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,

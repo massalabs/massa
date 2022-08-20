@@ -2,10 +2,10 @@
 
 use crate::constants::BLOCK_ID_SIZE_BYTES;
 use crate::node_configuration::THREAD_COUNT;
-use crate::prehash::{Map, PreHashed, Set};
+use crate::prehash::PreHashed;
 use crate::wrapped::{Id, Wrapped, WrappedContent, WrappedDeserializer, WrappedSerializer};
 use crate::{
-    Address, Endorsement, EndorsementDeserializer, EndorsementId, ModelsError, OperationId,
+    Address, Endorsement, EndorsementDeserializer, ModelsError, OperationId,
     OperationIdsDeserializer, OperationIdsSerializer, Slot, SlotDeserializer, SlotSerializer,
     WrappedEndorsement, WrappedOperation,
 };

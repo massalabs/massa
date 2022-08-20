@@ -1,10 +1,9 @@
-use std::{collections::hash_map, collections::HashMap, sync::Arc};
+use std::{collections::hash_map, collections::HashMap};
 
 use massa_models::{
     prehash::{Map, Set},
     Address, BlockId, Slot, WrappedBlock,
 };
-use parking_lot::RwLock;
 
 /// Container for all blocks and different indexes.
 /// Note: The structure can evolve and store more indexes.

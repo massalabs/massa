@@ -5,15 +5,12 @@ use massa_consensus_exports::{
     settings::ConsensusWorkerChannels,
     ConsensusConfig,
 };
-use massa_graph::{error::GraphError, BlockGraph, BlockGraphExport};
-use massa_models::address::AddressState;
-use massa_models::api::{LedgerInfo, RollsInfo};
-use massa_models::prehash::{BuildMap, Map, Set};
+use massa_graph::{BlockGraph, BlockGraphExport};
+use massa_models::prehash::Set;
+use massa_models::stats::ConsensusStats;
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
-use massa_models::{stats::ConsensusStats, OperationId};
 use massa_models::{Address, BlockId, Slot};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::{cmp::max, collections::HashSet, collections::VecDeque};
 use tokio::time::{sleep, sleep_until, Sleep};
@@ -50,8 +47,6 @@ pub struct ConsensusWorker {
     launch_time: MassaTime,
     /// endorsed slots cache
     endorsed_slots: HashSet<Slot>,
-    /// storage instance
-    storage: Storage,
 }
 
 impl ConsensusWorker {
@@ -70,7 +65,6 @@ impl ConsensusWorker {
         channels: ConsensusWorkerChannels,
         block_db: BlockGraph,
         clock_compensation: i64,
-        storage: Storage,
     ) -> Result<ConsensusWorker> {
         let now = MassaTime::compensated_now(clock_compensation)?;
         let previous_slot = get_latest_block_slot_at_timestamp(
@@ -122,9 +116,7 @@ impl ConsensusWorker {
         }
 
         // desync detection timespan
-        let stats_desync_detection_timespan = cfg
-            .t0
-            .checked_mul(cfg.periods_per_cycle * (cfg.pos_lookback_cycles + 1))?;
+        let stats_desync_detection_timespan = cfg.t0.checked_mul(cfg.periods_per_cycle * 2)?;
 
         // notify execution module of current blockclique and final blocks
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
@@ -161,7 +153,6 @@ impl ConsensusWorker {
             cfg,
             launch_time: MassaTime::compensated_now(clock_compensation)?,
             endorsed_slots: HashSet::new(),
-            storage,
         })
     }
 
@@ -406,22 +397,6 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
-            ConsensusCommand::GetAddressesInfo {
-                addresses,
-                response_tx,
-            } => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_addresses_info",
-                    { "addresses": addresses }
-                );
-                if response_tx
-                    .send(self.get_addresses_info(&addresses)?)
-                    .is_err()
-                {
-                    warn!("consensus: could not send GetAddressesInfo response");
-                }
-                Ok(())
-            }
             ConsensusCommand::GetStats(response_tx) => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_stats",
@@ -497,52 +472,6 @@ impl ConsensusWorker {
         })
     }
 
-    /// all you wanna know about an address
-    /// Used in response to a API request
-    fn get_addresses_info(&self, addresses: &Set<Address>) -> Result<Map<Address, AddressState>> {
-        let thread_count = self.cfg.thread_count;
-        let mut addresses_by_thread = vec![Set::<Address>::default(); thread_count as usize];
-        for addr in addresses.iter() {
-            addresses_by_thread[addr.get_thread(thread_count) as usize].insert(*addr);
-        }
-        let mut states = Map::default();
-        for thread in 0..thread_count {
-            if addresses_by_thread[thread as usize].is_empty() {
-                continue;
-            }
-
-            for addr in addresses_by_thread[thread as usize].iter() {
-                states.insert(
-                    *addr,
-                    AddressState {
-                        rolls: RollsInfo {
-                            final_rolls: Default::default(),     // TODO update with new PoS,
-                            active_rolls: Default::default(),    // TODO update with new PoS
-                            candidate_rolls: Default::default(), // TODO get from execution module
-                        },
-                        ledger_info: LedgerInfo {
-                            locked_balance: Default::default(), // TODO get from exec module
-                            candidate_ledger_info: Default::default(), // TODO get from execution module
-                            final_ledger_info: Default::default(),     // TODO get from exec module
-                        },
-
-                        production_stats: Default::default(), /* TODO repair this  let prod_stats = self.pos.get_stakers_production_stats(addresses);self.pos.get_stakers_production_stats(addresses);
-                                                              prod_stats
-                                                                  .iter()
-                                                                  .map(|cycle_stats| AddressCycleProductionStats {
-                                                                      cycle: cycle_stats.cycle,
-                                                                      is_final: cycle_stats.is_final,
-                                                                      ok_count: cycle_stats.ok_nok_counts.get(addr).unwrap_or(&(0, 0)).0,
-                                                                      nok_count: cycle_stats.ok_nok_counts.get(addr).unwrap_or(&(0, 0)).1,
-                                                                  })
-                                                                  .collect(),*/
-                    },
-                );
-            }
-        }
-        Ok(states)
-    }
-
     /// Manages received protocol events.
     ///
     /// # Arguments
@@ -601,7 +530,7 @@ impl ConsensusWorker {
     /// 12. add stale blocks to stats
     async fn block_db_changed(&mut self) -> Result<()> {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
-        println!("TEST6");
+
         // Propagate new blocks
         for (block_id, storage) in self.block_db.get_blocks_to_propagate().into_iter() {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {

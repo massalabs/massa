@@ -2,12 +2,10 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
-    ledger_models::{LedgerChangeDeserializer, LedgerChangeSerializer},
     prehash::{Map, Set},
-    rolls::{RollUpdateDeserializer, RollUpdateSerializer},
     wrapped::{WrappedDeserializer, WrappedSerializer},
-    AddressDeserializer, Block, BlockDeserializer, BlockId, EndorsementId, Operation,
-    OperationDeserializer, OperationId, WrappedBlock, WrappedEndorsement, WrappedOperation,
+    Block, BlockDeserializer, BlockId, Operation, OperationDeserializer, WrappedBlock,
+    WrappedOperation,
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,

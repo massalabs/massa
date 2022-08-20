@@ -10,20 +10,15 @@ use crate::{
 use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    active_block::ActiveBlock,
-    api::{BlockGraphStatus, EndorsementInfo},
-    clique::Clique,
-    wrapped::WrappedContent,
-    WrappedBlock, WrappedEndorsement, WrappedOperation,
+    active_block::ActiveBlock, api::BlockGraphStatus, clique::Clique, wrapped::WrappedContent,
+    WrappedBlock,
 };
 use massa_models::{
     prehash::{BuildMap, Map, Set},
     WrappedHeader,
 };
 use massa_models::{
-    Address, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, EndorsementId,
-    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
-    OperationSearchResultStatus, Slot,
+    Address, Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot,
 };
 use massa_pos_exports::SelectorController;
 use massa_signature::PublicKey;
@@ -31,7 +26,6 @@ use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, BTreeSet, HashMap, VecDeque};
 use std::mem;
-use std::{collections::HashSet, usize};
 use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
@@ -459,7 +453,7 @@ impl BlockGraph {
             };
 
             // claim parent refs
-            for (b_id, block_status) in res_graph.block_statuses.iter_mut() {
+            for (_b_id, block_status) in res_graph.block_statuses.iter_mut() {
                 if let BlockStatus::Active {
                     a_block,
                     storage: block_storage,
@@ -1163,7 +1157,7 @@ impl BlockGraph {
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
-        if let Some(BlockStatus::Active { a_block, storage }) = self.block_statuses.get(&block_id) {
+        if let Some(BlockStatus::Active { storage, .. }) = self.block_statuses.get(&block_id) {
             massa_trace!("consensus.block_graph.process.is_active", {
                 "block_id": block_id
             });

@@ -116,7 +116,7 @@ impl EndorsementPool {
                 > self.config.max_endorsements_pool_size_per_thread
             {
                 // won't panic because len was checked above
-                let (key, endo_id) = self.endorsements_sorted[thread as usize]
+                let (_key, endo_id) = self.endorsements_sorted[thread as usize]
                     .pop_last()
                     .unwrap();
                 if !added.remove(&endo_id) {

@@ -15,14 +15,16 @@ use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
 use massa_final_state::{ExecutedOps, FinalState, StateChanges};
 use massa_ledger_exports::LedgerChanges;
+use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     Address, Amount, BlockId, OperationId, Slot,
 };
-use massa_pos_exports::{PoSChanges, SelectorController};
+use massa_pos_exports::PoSChanges;
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -127,7 +129,6 @@ impl ExecutionContext {
     pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
-        selector: Box<dyn SelectorController>,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(final_state.clone(), active_history.clone()),
@@ -138,7 +139,6 @@ impl ExecutionContext {
             speculative_roll_state: SpeculativeRollState::new(
                 final_state.clone(),
                 active_history.clone(),
-                selector,
             ),
             speculative_executed_ops: SpeculativeExecutedOps::new(final_state, active_history),
             max_gas: Default::default(),
@@ -230,7 +230,6 @@ impl ExecutionContext {
         call_stack: Vec<ExecutionStackElement>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
-        selector: Box<dyn SelectorController>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -255,7 +254,7 @@ impl ExecutionContext {
             stack: call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, active_history, selector)
+            ..ExecutionContext::new(final_state, active_history)
         }
     }
 
@@ -294,7 +293,6 @@ impl ExecutionContext {
         opt_block_id: Option<BlockId>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
-        selector: Box<dyn SelectorController>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -316,7 +314,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_state, active_history, selector)
+            ..ExecutionContext::new(final_state, active_history)
         }
     }
 
@@ -629,9 +627,18 @@ impl ExecutionContext {
         &mut self,
         seller_addr: &Address,
         roll_count: u64,
+        periods_per_cycle: u64,
+        thread_count: u8,
+        roll_price: Amount,
     ) -> Result<(), ExecutionError> {
-        self.speculative_roll_state
-            .try_sell_rolls(seller_addr, self.slot, roll_count)
+        self.speculative_roll_state.try_sell_rolls(
+            seller_addr,
+            self.slot,
+            roll_count,
+            periods_per_cycle,
+            thread_count,
+            roll_price,
+        )
     }
 
     /// Update production statistics of an address.
@@ -655,7 +662,7 @@ impl ExecutionContext {
     /// # Arguments
     /// * `slot`: assiciated slot of the deferred credits to be executed
     /// * `credits`: deferred to be executed
-    pub fn execute_deferred_credits(&mut self, slot: Slot) {
+    pub fn execute_deferred_credits(&mut self, slot: &Slot) {
         let credits = self.speculative_roll_state.get_deferred_credits(slot);
         for (addr, amount) in credits {
             if let Err(e) = self.transfer_sequential_coins(None, Some(addr), amount, false) {
@@ -674,20 +681,31 @@ impl ExecutionContext {
     ///
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self) -> ExecutionOutput {
+    pub fn settle_slot(
+        &mut self,
+        periods_per_cycle: u64,
+        thread_count: u8,
+        roll_price: Amount,
+    ) -> ExecutionOutput {
+        let slot = self.slot;
+
         // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages = self.speculative_async_pool.settle_slot(self.slot);
+        let deleted_messages = self.speculative_async_pool.settle_slot(&slot);
         for (_msg_id, msg) in deleted_messages {
             self.cancel_async_message(&msg);
         }
 
         // execute the deferred credites comming from roll sells
-        self.execute_deferred_credits(self.slot);
+        self.execute_deferred_credits(&slot);
 
         // if the current slot is last in cycle check the production stats and act accordingly
-        if self.slot.last_of_a_cycle() {
-            self.speculative_roll_state
-                .settle_production_stats(self.slot);
+        if self.slot.is_last_of_cycle(periods_per_cycle, thread_count) {
+            self.speculative_roll_state.settle_production_stats(
+                &slot,
+                periods_per_cycle,
+                thread_count,
+                roll_price,
+            );
         }
 
         // generate the execution output
@@ -698,7 +716,7 @@ impl ExecutionContext {
             executed_ops: self.speculative_executed_ops.take(),
         };
         ExecutionOutput {
-            slot: self.slot,
+            slot,
             block_id: std::mem::take(&mut self.opt_block_id),
             state_changes,
             events: std::mem::take(&mut self.events),
@@ -775,5 +793,29 @@ impl ExecutionContext {
     pub fn insert_executed_op(&mut self, op_id: OperationId, op_valid_until_slot: Slot) {
         self.speculative_executed_ops
             .insert_executed_op(op_id, op_valid_until_slot)
+    }
+
+    /// gets the cycle infos for an address
+    pub fn get_address_cycle_infos(
+        &self,
+        address: &Address,
+        periods_per_cycle: u64,
+    ) -> Vec<ExecutionAddressCycleInfo> {
+        self.speculative_roll_state
+            .get_address_cycle_infos(address, periods_per_cycle, self.slot)
+    }
+
+    /// Get future deferred credits of an address
+    pub fn get_address_future_deferred_credits(
+        &self,
+        address: &Address,
+        thread_count: u8,
+    ) -> BTreeMap<Slot, Amount> {
+        let min_slot = self
+            .slot
+            .get_next_slot(thread_count)
+            .expect("unexpected slot overflow in context.get_addresses_deferred_credits");
+        self.speculative_roll_state
+            .get_address_deferred_credits(address, min_slot)
     }
 }

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedOperation};
+use massa_models::{BlockId, EndorsementId, OperationId, Slot};
 use massa_storage::Storage;
 
 /// Trait defining a pool controller

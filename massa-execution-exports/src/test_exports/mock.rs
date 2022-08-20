@@ -119,7 +119,7 @@ impl ExecutionController for MockExecutionController {
         Vec::default()
     }
 
-    fn get_final_and_active_sequential_balance(
+    fn get_final_and_candidate_sequential_balances(
         &self,
         _addresses: Vec<Address>,
     ) -> Vec<(Option<Amount>, Option<Amount>)> {

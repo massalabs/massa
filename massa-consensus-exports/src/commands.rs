@@ -1,12 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Contains definitions of commands used by the controller
-use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
+use massa_graph::{BlockGraphExport, BootstrapableGraph};
 use massa_models::api::BlockGraphStatus;
-use massa_models::prehash::{Map, Set};
-use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
-use massa_models::{Address, BlockId, OperationSearchResult, Slot, WrappedEndorsement};
+use massa_models::{BlockId, Slot};
 use massa_storage::Storage;
 use tokio::sync::oneshot;
 
@@ -31,13 +29,6 @@ pub enum ConsensusCommand {
     },
     /// Returns the bootstrap state
     GetBootstrapState(oneshot::Sender<BootstrapableGraph>),
-    /// Returns info for a set of addresses (rolls and balance)
-    GetAddressesInfo {
-        /// wanted addresses
-        addresses: Set<Address>,
-        /// response channel
-        response_tx: oneshot::Sender<Map<Address, AddressState>>,
-    },
     /// get current stats on consensus
     GetStats(oneshot::Sender<ConsensusStats>),
     /// Get a block at a given slot in a blockclique

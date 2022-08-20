@@ -1641,7 +1641,6 @@ name = "massa_api"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "futures 0.3.23",
  "itertools",
  "jsonrpc-core",
  "jsonrpc-derive",
@@ -1708,7 +1707,6 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_network_exports",
- "massa_pos_exports",
  "massa_serialization",
  "massa_signature",
  "massa_time",
@@ -2051,7 +2049,6 @@ dependencies = [
  "displaydoc",
  "massa_models",
  "massa_storage",
- "num",
  "serde 1.0.143",
  "thiserror",
 ]

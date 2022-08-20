@@ -97,12 +97,6 @@ pub const MAX_DATA_ASYNC_MESSAGE: u64 = 1_000_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1
-pub const POS_LOOKBACK_CYCLES: u64 = 2;
-/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
-pub const POS_LOCK_CYCLES: u64 = 1;
-/// PoS sell cycles: when some rolls are sold, we only credit the coins back to their owner after waiting `pos_sell_cycles`
-pub const POS_SELL_CYCLES: u64 = 3;
 /// PoS saved cycles: number of cycles saved in `PoSFinalState`
 pub const POS_SAVED_CYCLES: u64 = 4;
 /// Maximum size batch of data in a part of the ledger

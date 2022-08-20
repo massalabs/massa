@@ -5,21 +5,21 @@
 
 use anyhow::{bail, Result};
 use massa_models::{api::IndexedSlot, Address, Slot};
-
 use massa_pos_exports::{CycleInfo, PosResult, Selection, SelectorController, SelectorManager};
+use std::sync::mpsc;
 use tracing::{info, warn};
 
-use crate::{Command, DrawCachePtr, InputDataPtr};
+use crate::{Command, DrawCachePtr};
 
 #[derive(Clone)]
 /// implementation of the selector controller
 pub struct SelectorControllerImpl {
     /// todo: use a config structure
     pub(crate) periods_per_cycle: u64,
-    /// Store in cache the computed selections for each cycle.
+    /// Cache storing the computed selections for each cycle.
     pub(crate) cache: DrawCachePtr,
-    /// Continuously
-    pub(crate) input_data: InputDataPtr,
+    /// Input channel
+    pub(crate) input_mpsc: mpsc::Sender<Command>,
     /// thread count
     pub(crate) thread_count: u8,
 }
@@ -30,12 +30,15 @@ impl SelectorController for SelectorControllerImpl {
     /// # Arguments
     /// * `cycle_info`: give or regive a cycle info for a background
     ///                 computation of the draws.
-    fn feed_cycle(&self, cycle_info: CycleInfo) {
-        self.input_data
-            .1
-            .lock()
-            .push_back(Command::CycleInfo(cycle_info));
-        self.input_data.0.notify_one();
+    fn feed_cycle(&self, cycle_info: CycleInfo) -> Result<()> {
+        if self
+            .input_mpsc
+            .send(Command::CycleInfo(cycle_info))
+            .is_err()
+        {
+            bail!("could not feed cycle into selctor: channel down");
+        }
+        Ok(())
     }
 
     /// Get [Selection] computed for a slot:
@@ -57,8 +60,7 @@ impl SelectorController for SelectorControllerImpl {
     /// # Arguments
     /// * `slot`: target slot of the selection
     fn get_producer(&self, slot: Slot) -> Result<Address> {
-        let selection = self.get_selection(slot)?;
-        Ok(selection.producer)
+        Ok(self.get_selection(slot)?.producer)
     }
 
     /// Return a list of slots where `address` has been choosen to produce a
@@ -107,26 +109,28 @@ pub struct SelectorManagerImpl {
     /// handle used to join the worker thread
     pub(crate) thread_handle: Option<std::thread::JoinHandle<PosResult<()>>>,
     /// Input data pointer (used to stop the selector thread)
-    pub(crate) input_data: InputDataPtr,
+    pub(crate) input_mpsc: mpsc::Sender<Command>,
 }
 
 impl SelectorManager for SelectorManagerImpl {
     /// stops the worker
     fn stop(&mut self) {
         info!("stopping selector worker...");
-        {
-            self.input_data.1.lock().push_front(Command::Stop);
-            self.input_data.0.notify_one();
-        }
+        let _ = self.input_mpsc.send(Command::Stop);
+
         // join the selector thread
         if let Some(join_handle) = self.thread_handle.take() {
-            if let Err(err) = join_handle
-                .join()
-                .expect("selector thread panicked on try to join")
-            {
-                warn!("{}", err);
+            match join_handle.join() {
+                Ok(Err(err)) => {
+                    warn!("Error while stopping selector: {}", err);
+                }
+                Err(err) => {
+                    warn!("Panic while stopping selector: {:?}", err)
+                }
+                Ok(Ok(_)) => {
+                    info!("selector worker stopped successfully");
+                }
             }
         }
-        info!("selector worker stopped");
     }
 }

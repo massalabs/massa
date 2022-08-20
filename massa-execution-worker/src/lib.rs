@@ -72,6 +72,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(is_sorted)]
+#![feature(map_try_insert)]
 
 mod active_history;
 mod context;

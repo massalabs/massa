@@ -5,7 +5,7 @@ use massa_logging::massa_trace;
 
 use massa_models::{
     prehash::{Map, Set},
-    Slot, WrappedBlock,
+    Slot,
 };
 use massa_models::{
     BlockId, EndorsementId, OperationId, WrappedEndorsement, WrappedHeader, WrappedOperation,

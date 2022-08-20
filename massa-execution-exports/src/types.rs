@@ -2,9 +2,39 @@
 
 //! This file exports useful types used to interact with the execution worker
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
-use massa_models::{Address, Amount, BlockId, Slot};
+use massa_models::{address::ExecutionAddressCycleInfo, Address, Amount, BlockId, Slot};
+
+/// Execution info about an address
+#[derive(Clone, Debug)]
+pub struct ExecutionAddressInfo {
+    /// final parallel balance of the address
+    pub final_parallel_balance: Amount,
+    /// final sequential balance of the address
+    pub final_sequential_balance: Amount,
+    /// final number of rolls the address has
+    pub final_roll_count: u64,
+    /// final datastore keys of the address
+    pub final_datastore_keys: BTreeSet<Vec<u8>>,
+
+    /// candidate parallel balance of the address
+    pub candidate_parallel_balance: Amount,
+    /// candidate sequential balance of the address
+    pub candidate_sequential_balance: Amount,
+    /// candidate number of rolls the address has
+    pub candidate_roll_count: u64,
+    /// candidate datastore keys of the address
+    pub candidate_datastore_keys: BTreeSet<Vec<u8>>,
+
+    /// future deferred credits
+    pub future_deferred_credits: BTreeMap<Slot, Amount>,
+
+    /// cycle infos
+    pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
+}
 
 /// structure describing the output of a single execution
 #[derive(Debug, Clone)]

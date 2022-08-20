@@ -3,16 +3,15 @@
 use crate::error::ApiError;
 use crate::settings::APISettings;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
-use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
     ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_graph::{DiscardReason, ExportBlockStatus};
+use massa_graph::DiscardReason;
 use massa_models::api::{
     BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
-    ReadOnlyBytecodeExecution, ReadOnlyCall,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, SlotAmount,
 };
 use massa_models::constants::default::{
     MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
@@ -20,9 +19,7 @@ use massa_models::constants::default::{
 use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
-use massa_models::{
-    Amount, Block, ModelsError, OperationSearchResult, WrappedEndorsement, WrappedOperation,
-};
+use massa_models::{timeslots, Block, ModelsError, WrappedEndorsement, WrappedOperation};
 use massa_pos_exports::SelectorController;
 use massa_serialization::{DeserializeError, Deserializer};
 
@@ -37,7 +34,7 @@ use massa_models::{
     execution::ExecuteReadOnlyResponse,
     node::NodeId,
     output_event::SCOutputEvent,
-    prehash::{BuildMap, Map, Set},
+    prehash::{Map, Set},
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     Address, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
@@ -46,8 +43,6 @@ use massa_pool_exports::PoolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use std::collections::{BTreeSet, HashSet};
-use std::convert::identity;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -343,7 +338,7 @@ impl Endpoints for API<Public> {
             .unwrap_or_else(|| Slot::new(0, 0))
             .get_cycle(cfg.periods_per_cycle);
             let mut staker_vec = execution_controller
-                .get_cycle_rolls(curr_cycle)
+                .get_cycle_active_rolls(curr_cycle)
                 .into_iter()
                 .collect::<Vec<(Address, u64)>>();
             staker_vec.sort_by_key(|(_, rolls)| *rolls);
@@ -381,6 +376,7 @@ impl Endpoints for API<Public> {
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
         let api_cfg = self.0.api_settings.clone();
+        let consensus_command_sender = self.0.consensus_command_sender.clone();
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
@@ -394,9 +390,7 @@ impl Endpoints for API<Public> {
                     .unique()
                     .cloned()
                     .collect();
-                let involved_block_statuses = self
-                    .0
-                    .consensus_command_sender
+                let involved_block_statuses = consensus_command_sender
                     .get_block_statuses(&involved_blocks)
                     .await?;
                 let block_statuses: Map<BlockId, BlockGraphStatus> = involved_blocks
@@ -464,6 +458,7 @@ impl Endpoints for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
 
+        let consensus_command_sender = self.0.consensus_command_sender.clone();
         let api_cfg = self.0.api_settings.clone();
         let closure = async move || {
             if eds.len() as u64 > api_cfg.max_arguments {
@@ -478,9 +473,7 @@ impl Endpoints for API<Public> {
                     .unique()
                     .cloned()
                     .collect();
-                let involved_block_statuses = self
-                    .0
-                    .consensus_command_sender
+                let involved_block_statuses = consensus_command_sender
                     .get_block_statuses(&involved_blocks)
                     .await?;
                 let block_statuses: Map<BlockId, BlockGraphStatus> = involved_blocks
@@ -538,11 +531,11 @@ impl Endpoints for API<Public> {
                 .next()
                 .expect("expected get_block_statuses to return one element");
 
-            let is_final = (graph_status == BlockGraphStatus::Final);
-            let is_in_blockclique = (graph_status == BlockGraphStatus::ActiveInBlockclique);
-            let is_candidate = (graph_status == BlockGraphStatus::ActiveInBlockclique
-                || graph_status == BlockGraphStatus::ActiveInAlternativeCliques);
-            let is_discarded = (graph_status == BlockGraphStatus::Discarded);
+            let is_final = graph_status == BlockGraphStatus::Final;
+            let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
+            let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
+                || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
+            let is_discarded = graph_status == BlockGraphStatus::Discarded;
 
             Ok(BlockInfo {
                 id,
@@ -699,14 +692,34 @@ impl Endpoints for API<Public> {
                 .collect()
         };
 
-        // get execution data (balances, rolls, datastore keys) for (final, active) states
-        let final_active_execution_info = self
-            .0
-            .execution_controller
-            .get_final_active_address_infos(&addresses);
+        // get execution info
+        let execution_infos = self.0.execution_controller.get_addresses_infos(&addresses);
 
-        // get draws and active roll info from selector
-        let selection_info = self.0.selector_controller.get_address_infos(&addresses);
+        // get future draws from selector
+        let selection_draws = {
+            let cur_slot = timeslots::get_current_latest_block_slot(
+                self.0.consensus_config.thread_count,
+                self.0.consensus_config.t0,
+                self.0.consensus_config.genesis_timestamp,
+                self.0.compensation_millis,
+            )
+            .expect("could not get latest current slot")
+            .unwrap_or_else(|| Slot::new(0, 0));
+            let slot_end = Slot::new(
+                cur_slot
+                    .period
+                    .saturating_add(self.0.api_settings.draw_lookahead_period_count),
+                cur_slot.thread,
+            );
+            addresses
+                .iter()
+                .map(|addr| {
+                    self.0
+                        .selector_controller
+                        .get_address_selections(addr, cur_slot, slot_end)
+                })
+                .collect::<Vec<_>>()
+        };
 
         // compile results
         let mut res = Vec::with_capacity(addresses.len());
@@ -715,16 +728,16 @@ impl Endpoints for API<Public> {
             created_blocks.into_iter(),
             created_operations.into_iter(),
             created_endorsements.into_iter(),
-            final_active_execution_info.into_iter(),
-            selection_info.into_iter()
+            execution_infos.into_iter(),
+            selection_draws.into_iter(),
         );
         for (
             address,
             created_blocks,
             created_operations,
             created_endorsements,
-            (final_execution_info, candidate_execution_info),
-            selection_info,
+            execution_infos,
+            (next_block_draws, next_endorsement_draws),
         ) in iterator
         {
             res.push(AddressInfo {
@@ -732,19 +745,42 @@ impl Endpoints for API<Public> {
                 address,
                 thread: address.get_thread(self.0.consensus_config.thread_count),
 
-                // execution info
-                final_execution_info,
-                candidate_execution_info,
+                // final execution info
+                final_parallel_balance: execution_infos.final_parallel_balance,
+                final_sequential_balance: execution_infos.final_sequential_balance,
+                final_roll_count: execution_infos.final_roll_count,
+                final_datastore_keys: execution_infos
+                    .final_datastore_keys
+                    .into_iter()
+                    .collect::<Vec<_>>(),
+
+                // candidate execution info
+                candidate_parallel_balance: execution_infos.candidate_parallel_balance,
+                candidate_sequential_balance: execution_infos.candidate_sequential_balance,
+                candidate_roll_count: execution_infos.candidate_roll_count,
+                candidate_datastore_keys: execution_infos
+                    .candidate_datastore_keys
+                    .into_iter()
+                    .collect::<Vec<_>>(),
+
+                // deferred credits
+                deferred_credits: execution_infos
+                    .future_deferred_credits
+                    .into_iter()
+                    .map(|(slot, amount)| SlotAmount { slot, amount })
+                    .collect::<Vec<_>>(),
 
                 // selector info
-                cycle_info: xx, // TODO vec[AddressCycleInfo { cycle: u64, complete: bool, active_rolls: u64, produced_blocks: u64, missed_blocks: u64, block_draws: vec![Slot], endorsement_draws: vec![IndexedSlot] }]
-                final_deferred_credits: yy, // TODO vec![ { slot, amount } ]
-                candidate_deferred_credits: yy, // TODO vec![ { slot, amount } ]
+                next_block_draws,
+                next_endorsement_draws,
 
                 // created objects
-                created_blocks,
-                created_endorsements,
-                created_operations,
+                created_blocks: created_blocks.into_iter().collect::<Vec<_>>(),
+                created_endorsements: created_endorsements.into_iter().collect::<Vec<_>>(),
+                created_operations: created_operations.into_iter().collect::<Vec<_>>(),
+
+                // cycle infos
+                cycle_infos: execution_infos.cycle_infos,
             });
         }
 

@@ -1,21 +1,11 @@
 use crate::export_active_block::{
     ExportActiveBlock, ExportActiveBlockDeserializer, ExportActiveBlockSerializer,
 };
-use massa_hash::HashDeserializer;
-use massa_models::{
-    clique::{Clique, CliqueDeserializer, CliqueSerializer},
-    prehash::{Map, Set},
-    BlockId,
-};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
 };
+use nom::error::{ContextError, ParseError};
 use nom::{error::context, multi::length_count, sequence::tuple, IResult, Parser};
-use nom::{
-    error::{ContextError, ParseError},
-    multi::count,
-};
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
 

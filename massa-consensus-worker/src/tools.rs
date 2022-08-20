@@ -82,7 +82,6 @@ pub async fn start_consensus_controller(
             },
             block_db,
             clock_compensation,
-            storage,
         )
         .await?
         .run_loop()
