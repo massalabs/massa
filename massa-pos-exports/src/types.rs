@@ -65,12 +65,26 @@ impl DeferredCredits {
                         current_credits
                             .entry(*address)
                             .and_modify(|current_amount| {
-                                current_amount.checked_add(*new_amount);
+                                *current_amount = current_amount.saturating_add(*new_amount);
                             })
                             .or_insert(*new_amount);
                     }
                 })
                 .or_insert(new_credits);
+        }
+    }
+
+    /// Remove zero credits
+    pub fn remove_zeros(&mut self) {
+        let mut delete_slots = Vec::new();
+        for (slot, credits) in &mut self.0 {
+            credits.retain(|_addr, amount| !amount.is_zero());
+            if credits.is_empty() {
+                delete_slots.push(*slot);
+            }
+        }
+        for slot in delete_slots {
+            self.0.remove(&slot);
         }
     }
 }
@@ -381,7 +395,7 @@ impl ProductionStats {
     }
 
     /// Increment a production stat struct with another
-    pub fn chain(&mut self, stats: &ProductionStats) {
+    pub fn extend(&mut self, stats: &ProductionStats) {
         self.block_success_count = self
             .block_success_count
             .saturating_add(stats.block_success_count);
@@ -422,7 +436,7 @@ impl PoSChanges {
             self.production_stats
                 .entry(other_addr)
                 .or_insert_with(|| ProductionStats::default())
-                .chain(&other_stats);
+                .extend(&other_stats);
         }
 
         // extend deferred credits

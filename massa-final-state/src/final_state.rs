@@ -94,7 +94,7 @@ impl FinalState {
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
         self.pos_state
-            .apply_changes(changes.roll_state_changes.clone(), self.slot);
+            .settle_slot(changes.roll_state_changes.clone(), self.slot);
         self.executed_ops.extend(changes.executed_ops.clone());
         self.executed_ops.prune(self.slot);
 

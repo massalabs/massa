@@ -25,9 +25,6 @@ pub enum PosError {
     EmptyContainerInconsistency,
     /// CannotComputeSeed: could not seed RNG with computed seed
     CannotComputeSeed,
-    /** Invalid number of initial rolls, {0} found and we expect a number >=
-    loop to the loopback_cycle number {1} */
-    InvalidInitialRolls(u64, usize),
     /// serde error
     SerdeError(#[from] serde_json::Error),
     /// Io error

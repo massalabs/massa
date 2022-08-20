@@ -30,7 +30,7 @@ impl PoSFinalState {
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     ///
-    pub fn apply_changes(&mut self, changes: PoSChanges, slot: Slot) {
+    pub fn settle_slot(&mut self, changes: PoSChanges, slot: Slot) {
         // compute the current cycle from the given slot
         let cycle = slot.get_cycle(PERIODS_PER_CYCLE);
 
@@ -56,22 +56,32 @@ impl PoSFinalState {
             });
         }
 
+        let current = self
+            .cycle_history
+            .back_mut()
+            .expect("expected a non-empty cycle history");
+
         // extend seed_bits with changes.seed_bits
-        // extend roll_counts with changes.roll_changes and remove entries for which Amount = 0
-        // extend production_stats with changes.production_stats
-        let current = self.cycle_history.back_mut().unwrap();
         current.rng_seed.extend(changes.seed_bits);
+
+        // extend roll counts
         current.roll_counts.extend(changes.roll_changes);
         current.roll_counts.retain(|_, &mut count| count != 0);
-        current.production_stats.extend(changes.production_stats);
+
+        // extend production stats
+        for (addr, stats) in changes.production_stats {
+            current
+                .production_stats
+                .entry(addr)
+                .and_modify(|cur| cur.extend(&stats))
+                .or_insert(stats);
+        }
 
         // extent deferred_credits with changes.deferred_credits
-        // remove executed credits from the map
+        // remove zero-valued credits
         self.deferred_credits
             .nested_extend(changes.deferred_credits);
-        self.deferred_credits
-            .0
-            .retain(|&credit_slot, _| credit_slot >= slot);
+        self.deferred_credits.remove_zeros();
 
         // feed the cycle if it is complete
         // if slot S was the last of cycle C:

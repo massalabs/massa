@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-#![feature(ip)]
 #![doc = include_str!("../../README.md")]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
@@ -11,7 +10,6 @@ use dialoguer::Password;
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
-use massa_cipher::{decrypt, encrypt};
 use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusConfig, ConsensusEventReceiver,
     ConsensusManager,
@@ -25,20 +23,16 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
-use massa_models::{
-    constants::{
-        default::{
-            MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE,
-            MAX_PARAMETERS_SIZE,
-        },
-        BLOCK_REWARD, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
-        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
-        MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK,
-        MAX_OPERATIONS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, ROLL_PRICE, T0,
-        THREAD_COUNT, VERSION,
+use massa_models::constants::{
+    default::{
+        GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE,
+        MAX_PARAMETERS_SIZE,
     },
-    prehash::Map,
-    Address,
+    BLOCK_REWARD, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
+    MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK,
+    MAX_OPERATIONS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, ROLL_PRICE, T0,
+    THREAD_COUNT, VERSION,
 };
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
@@ -48,7 +42,6 @@ use massa_pos_exports::{SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
-use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
@@ -228,7 +221,12 @@ async fn launch(
     //TODO: Add initial roll path
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
         max_draw_cache: SETTINGS.selector.max_draw_cache,
-        ..SelectorConfig::default()
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        genesis_key: GENESIS_TIMESTAMP,
+        initial_rolls_path: SETTINGS.selector.initial_rolls_path,
+        initial_draw_seed: INITIAL_DRAW_SEED,
     });
 
     // give the controller to final state in order for it to feed the cycles
@@ -271,11 +269,7 @@ async fn launch(
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
     };
-    let pool_controller = start_pool(
-        pool_config,
-        shared_storage.clone_without_refs(),
-        execution_controller.clone(),
-    );
+    let pool_controller = start_pool(pool_config, &shared_storage, execution_controller.clone());
     let pool_manager: Box<dyn PoolController> = Box::new(pool_controller.clone());
 
     // init consensus configuration

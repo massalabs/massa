@@ -379,7 +379,7 @@ impl SpeculativeRollState {
             for (addr, stats) in &self.added_changes.production_stats {
                 accumulated_stats
                     .entry(*addr)
-                    .and_modify(|cur| cur.chain(stats))
+                    .and_modify(|cur| cur.extend(stats))
                     .or_insert_with(|| stats.clone());
             }
         }
@@ -399,7 +399,7 @@ impl SpeculativeRollState {
                 {
                     accumulated_stats
                         .entry(*addr)
-                        .and_modify(|cur| cur.chain(stats))
+                        .and_modify(|cur| cur.extend(stats))
                         .or_insert_with(|| stats.clone());
                 }
             }
@@ -415,7 +415,7 @@ impl SpeculativeRollState {
             for (addr, stats) in final_stats {
                 accumulated_stats
                     .entry(*addr)
-                    .and_modify(|cur| cur.chain(stats))
+                    .and_modify(|cur| cur.extend(stats))
                     .or_insert_with(|| stats.clone());
             }
             (accumulated_stats, !global_overflow)

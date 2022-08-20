@@ -1,12 +1,10 @@
+use crate::worker::SelectorThread;
 use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Slot};
 use massa_pos_exports::{CycleInfo, PosError::*, PosResult, Selection};
 use rand::{distributions::Uniform, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
-
 use std::collections::HashMap;
-
-use crate::worker::SelectorThread;
 
 struct DrawParameters {
     seed: Vec<u8>,
@@ -37,7 +35,7 @@ impl SelectorThread {
         })
     }
 
-    /// Compute a seed from the initial rools.
+    /// Compute a seed from the initial rolls.
     fn get_params_from_initials(&mut self, cycle_info: &CycleInfo) -> PosResult<DrawParameters> {
         let init_rolls = match self.initial_rolls.get(cycle_info.cycle as usize) {
             Some(init_rolls) => init_rolls,
@@ -88,7 +86,7 @@ impl SelectorThread {
     ) -> HashMap<Slot, Selection> {
         // perform draws
         let distribution = Uniform::new(0, cumulated_func_max);
-        let mut draws = HashMap::with_capacity(self.cfg.blocks_in_cycle);
+        let mut draws = HashMap::new();
         let mut cycle_first_period = cycle_info.cycle * self.cfg.periods_per_cycle;
         let cycle_last_period = (cycle_info.cycle + 1) * self.cfg.periods_per_cycle - 1;
         if cycle_first_period == 0 {
