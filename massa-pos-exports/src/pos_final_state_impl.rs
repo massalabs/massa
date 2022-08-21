@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Amount, Slot};
 
-use crate::{CycleInfo, PoSChanges, PoSFinalState, PosError, ProductionStats, SelectorController};
+use crate::{
+    CycleInfo, PoSChanges, PoSFinalState, PosError, PosResult, ProductionStats, SelectorController,
+};
 
 impl PoSFinalState {
     /// create a new PoSFinalState
@@ -12,9 +14,12 @@ impl PoSFinalState {
         initial_rolls_path: &PathBuf,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
-        let initial_rolls = serde_json::from_str::<Map<Address, u64>>(&std::fs::read_to_string(
-            initial_rolls_path,
-        )?)?;
+        let initial_rolls = serde_json::from_str::<Map<Address, u64>>(
+            &std::fs::read_to_string(initial_rolls_path).map_err(|err| {
+                PosError::RollsFileLoadingError(format!("error while deserializing: {}", err))
+            })?,
+        )
+        .map_err(|err| PosError::RollsFileLoadingError(format!("error opening file: {}", err)))?;
 
         // Seeds used as the initial seeds for negative cycles (-2 and -1 respecrively)
         let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
@@ -31,7 +36,10 @@ impl PoSFinalState {
 
     /// Used to give the selector controller to `PoSFinalState` when it has been created
     /// Also sends the current draw inputs (initial or bootstrapped) to the selector
-    pub fn give_selector_controller(&mut self, selector: Box<dyn SelectorController>) {
+    pub fn give_selector_controller(
+        &mut self,
+        selector: Box<dyn SelectorController>,
+    ) -> PosResult<()> {
         self.selector = Some(selector);
 
         // if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
@@ -44,7 +52,7 @@ impl PoSFinalState {
         // feed cycles 0, 1 to selector if necessary
         if !skip_initial_cycles {
             for draw_cycle in 0u64..=1 {
-                self.feed_selector(draw_cycle);
+                self.feed_selector(draw_cycle)?;
             }
         }
 
@@ -53,12 +61,13 @@ impl PoSFinalState {
             if !hist_item.complete {
                 break;
             }
-            let draw_cycle = hist_item
-                .cycle
-                .checked_add(2)
-                .expect("unexpected cycle overflow in give_selector_controller");
-            self.feed_selector(draw_cycle);
+            let draw_cycle = hist_item.cycle.checked_add(2).ok_or_else(|| {
+                PosError::OverflowError("cycle overflow in give_selector_controller".into())
+            })?;
+            self.feed_selector(draw_cycle)?;
         }
+
+        Ok(())
     }
 
     /// Technical specification of apply_changes:
@@ -85,7 +94,7 @@ impl PoSFinalState {
         slot: Slot,
         periods_per_cycle: u64,
         thread_count: u8,
-    ) {
+    ) -> PosResult<()> {
         // compute the current cycle from the given slot
         let cycle = slot.get_cycle(periods_per_cycle);
 
@@ -117,7 +126,7 @@ impl PoSFinalState {
             let current = self
                 .cycle_history
                 .back_mut()
-                .expect("expected a non-empty cycle history");
+                .expect("cycle history should be non-empty"); // because if was filled above
 
             // extend seed_bits with changes.seed_bits
             current.rng_seed.extend(changes.seed_bits);
@@ -150,26 +159,26 @@ impl PoSFinalState {
         // notify the PoSDrawer about the newly ready draw data
         // to draw cycle + 2, we use the rng data from cycle - 1 and the seed from cycle
         if cycle_completed {
-            self.feed_selector(
-                cycle
-                    .checked_add(2)
-                    .expect("unexpected cycle overflow when feeding selector"),
-            );
+            self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
+                PosError::OverflowError("cycle overflow when feeding selector".into())
+            })?)
+        } else {
+            Ok(())
         }
     }
 
     /// Feeds the selector targeting a given draw cycle
-    fn feed_selector(&self, draw_cycle: u64) {
+    fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
         // get roll lookback
         let lookback_rolls = match draw_cycle.checked_sub(3) {
             // looking back in history
             Some(c) => {
                 let index = self
                     .get_cycle_index(c)
-                    .expect("roll lookback cycle was not available when feeding selector");
+                    .ok_or_else(|| PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
                 if !cycle_info.complete {
-                    panic!("roll lookback cycle is not complete");
+                    return Err(PosError::CycleUnfinalised(c));
                 }
                 cycle_info.roll_counts.clone()
             }
@@ -183,10 +192,10 @@ impl PoSFinalState {
             Some(c) => {
                 let index = self
                     .get_cycle_index(c)
-                    .expect("seed lookback cycle was not available when feeding selector");
+                    .ok_or_else(|| PosError::CycleUnavailable(c))?;
                 let cycle_info = &self.cycle_history[index];
                 if !cycle_info.complete {
-                    panic!("seed lookback cycle is not complete");
+                    return Err(PosError::CycleUnfinalised(c));
                 }
                 Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
             }
@@ -198,8 +207,9 @@ impl PoSFinalState {
         self.selector
             .as_ref()
             .expect("critical: SelectorController is missing from PoSFinalState")
-            .feed_cycle(draw_cycle, lookback_rolls, lookback_seed)
-            .expect("critical: could not feed complete cycle too SelectorController: channel down");
+            .feed_cycle(draw_cycle, lookback_rolls, lookback_seed);
+
+        Ok(())
     }
 
     /// Retrieves the amount of rolls a given address has at the latest cycle

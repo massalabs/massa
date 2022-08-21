@@ -234,7 +234,8 @@ async fn launch(
     // give the controller to final state in order for it to feed the cycles
     final_state
         .write()
-        .give_selector_controller(selector_controller.clone());
+        .give_selector_controller(selector_controller.clone())
+        .expect("could give selector controller to final state"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
 
     // launch execution module
     let execution_config = ExecutionConfig {

@@ -8,25 +8,16 @@ pub type PosResult<T, E = PosError> = core::result::Result<T, E>;
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum PosError {
-    /// Generic error: {0}
-    GenericError(String),
-    /// EmptyCycleState: empty states on try to compute C+2 draws for cycle {0}
-    EmptyCycleState(u64),
-    /** CycleUnavailable: trying to get PoS draw rolls/seed for cycle {0}
-    which is unavailable */
+    /// Container inconsistency: {0}
+    ContainerInconsistency(String),
+    /// Invalid roll distribution: {0}
+    InvalidRollDistribution(String),
+    /// Overflow error: {0}
+    OverflowError(String),
+    /// CycleUnavailable: PoS cycle {0} is needed but is absent from cache
     CycleUnavailable(u64),
-    /** CycleUnfinalised: trying to get PoS draw rolls/seed for cycle {0}
-    which is not yet finalized */
+    /// CycleUnfinalised: PoS cycle {0} is needed but is not complete yet
     CycleUnfinalised(u64),
-    /** InitCycleUnavailable: trying to get PoS initial draw rolls/seed for
-    negative cycle, which is unavailable */
-    InitCycleUnavailable,
-    /// EmptyContainerInconsistency: draw cumulative distribution function is empty
-    EmptyContainerInconsistency,
-    /// CannotComputeSeed: could not seed RNG with computed seed
-    CannotComputeSeed,
-    /// serde error
-    SerdeError(#[from] serde_json::Error),
-    /// Io error
-    IoError(#[from] std::io::Error),
+    /// Error while loading initial rolls file: {0}
+    RollsFileLoadingError(String),
 }

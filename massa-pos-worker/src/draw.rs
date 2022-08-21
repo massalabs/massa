@@ -1,7 +1,7 @@
 use crate::{worker::SelectorThread, CycleDraws};
 use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Slot};
-use massa_pos_exports::{PosResult, Selection};
+use massa_pos_exports::{PosError, PosResult, Selection};
 use rand::{distributions::Distribution, SeedableRng};
 use rand_distr::WeightedAliasIndex;
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -38,15 +38,23 @@ impl SelectorThread {
         let (addresses, roll_counts): (Vec<_>, Vec<_>) = lookback_rolls.into_iter().unzip();
 
         // prepare distribution
-        let dist = WeightedAliasIndex::new(roll_counts)
-            .expect("nobody has rolls, this is a critical error");
+        let dist = WeightedAliasIndex::new(roll_counts).map_err(|err| {
+            PosError::InvalidRollDistribution(format!(
+                "could not initialize weighted roll distribution: {}",
+                err
+            ))
+        })?;
 
         // perform cycle draws
-        let mut cur_slot = Slot::new_first_of_cycle(cycle, self.cfg.periods_per_cycle)
-            .expect("unexpected start slot overflow in perform_draws");
+        let mut cur_slot =
+            Slot::new_first_of_cycle(cycle, self.cfg.periods_per_cycle).map_err(|err| {
+                PosError::OverflowError(format!("start slot overflow in perform_draws: {}", err))
+            })?;
         let last_slot =
             Slot::new_last_of_cycle(cycle, self.cfg.periods_per_cycle, self.cfg.thread_count)
-                .expect("unexpected end slot overflow in perform_draws");
+                .map_err(|err| {
+                    PosError::OverflowError(format!("end slot overflow in perform_draws: {}", err))
+                })?;
         let mut cycle_draws = CycleDraws {
             cycle,
             draws: HashMap::with_capacity(
@@ -82,19 +90,28 @@ impl SelectorThread {
             }
             cur_slot = cur_slot
                 .get_next_slot(self.cfg.thread_count)
-                .expect("unexpected slot overflow in perform_draws");
+                .map_err(|err| {
+                    PosError::OverflowError(format!(
+                        "iteration slot overflow in perform_draws: {}",
+                        err
+                    ))
+                })?;
         }
 
         {
             // write-lock the cache as shortly as possible
             let mut cache = self.cache.write();
 
-            // add draws to cache
+            // check cache continuity
             if let Some(last_cycle) = cache.0.back() {
                 if last_cycle.cycle.checked_add(1) != Some(cycle) {
-                    panic!("discontinuity in selector cycles");
+                    return Err(PosError::ContainerInconsistency(
+                        "discontinuity in cycle draws history".into(),
+                    ));
                 }
             }
+
+            // add cycle draws to cache
             cache.0.push_back(cycle_draws);
 
             // truncate cache to keep only the desired number of elements

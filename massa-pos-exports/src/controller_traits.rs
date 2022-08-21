@@ -19,12 +19,7 @@ pub trait SelectorController: Send + Sync {
     /// * `cycle`: cycle number to be drawn
     /// * `lookback_rolls`: lookback rolls used for the draw (cycle - 3)
     /// * `lookback_seed`: lookback seed hash for the draw (cycle - 2)
-    fn feed_cycle(
-        &self,
-        cycle: u64,
-        lookback_rolls: Map<Address, u64>,
-        lookback_seed: Hash,
-    ) -> Result<()>;
+    fn feed_cycle(&self, cycle: u64, lookback_rolls: Map<Address, u64>, lookback_seed: Hash);
 
     /// Get [Selection] computed for a slot:
     /// # Arguments

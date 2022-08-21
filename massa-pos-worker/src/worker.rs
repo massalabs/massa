@@ -65,7 +65,7 @@ impl SelectorThread {
                 }
             };
 
-            self.perform_draws(cycle, lookback_rolls, lookback_seed)?;
+            self.perform_draws(cycle, lookback_rolls, lookback_seed)?; // TODO on draw error, signal upstream that we need a re-bootstrap
 
             // Wait to be notified of new input
             self.input_data.0.wait(&mut self.input_data.1.lock());

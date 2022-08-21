@@ -69,9 +69,14 @@ impl FinalState {
         })
     }
 
-    /// Give the selector controller to `PoSFinalState`
-    pub fn give_selector_controller(&mut self, selector: Box<dyn SelectorController>) {
-        self.pos_state.give_selector_controller(selector);
+    /// Give the selector controller to `PoSFinalState` and inform the selector of the current states
+    pub fn give_selector_controller(
+        &mut self,
+        selector: Box<dyn SelectorController>,
+    ) -> Result<(), FinalStateError> {
+        self.pos_state
+            .give_selector_controller(selector)
+            .map_err(|err| FinalStateError::PosError(err.to_string()))
     }
 
     /// Applies changes to the execution state at a given slot, and settles that slot forever.
@@ -96,12 +101,14 @@ impl FinalState {
             .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
-        self.pos_state.settle_slot(
-            changes.roll_state_changes.clone(),
-            self.slot,
-            self.config.periods_per_cycle,
-            self.config.thread_count,
-        );
+        self.pos_state
+            .settle_slot(
+                changes.roll_state_changes.clone(),
+                self.slot,
+                self.config.periods_per_cycle,
+                self.config.thread_count,
+            )
+            .expect("could not settle slot in final state PoS"); //TODO do not panic here: it might just mean that the lookback cycle is not available
         self.executed_ops.extend(changes.executed_ops.clone());
         self.executed_ops.prune(self.slot);
 
