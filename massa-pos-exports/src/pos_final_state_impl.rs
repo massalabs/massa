@@ -34,12 +34,14 @@ impl PoSFinalState {
         })
     }
 
-    /// Used to give the selector controller to `PoSFinalState` when it has been created
-    /// Also sends the current draw inputs (initial or bootstrapped) to the selector
+    /// Used to give the selector controller to `PoSFinalState` when it has been created.
+    /// Also sends the current draw inputs (initial or bootstrapped) to the selector.
+    /// Waits for the initial draws to be performed.
     pub fn give_selector_controller(
         &mut self,
         selector: Box<dyn SelectorController>,
     ) -> PosResult<()> {
+        // set selector
         self.selector = Some(selector);
 
         // if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
@@ -49,10 +51,13 @@ impl PoSFinalState {
             .map(|c_info| c_info.cycle > 0)
             .unwrap_or(false);
 
+        let mut max_cycle = None;
+
         // feed cycles 0, 1 to selector if necessary
         if !skip_initial_cycles {
             for draw_cycle in 0u64..=1 {
                 self.feed_selector(draw_cycle)?;
+                max_cycle = Some(draw_cycle);
             }
         }
 
@@ -65,8 +70,16 @@ impl PoSFinalState {
                 PosError::OverflowError("cycle overflow in give_selector_controller".into())
             })?;
             self.feed_selector(draw_cycle)?;
+            max_cycle = Some(draw_cycle);
         }
 
+        // wait for all fed cycles to be drawn
+        if let Some(wait_cycle) = max_cycle {
+            self.selector
+                .as_mut()
+                .unwrap() // cannot fail: defined at the beginning of the function
+                .wait_for_draws(wait_cycle)?;
+        }
         Ok(())
     }
 

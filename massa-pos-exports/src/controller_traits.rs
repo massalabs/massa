@@ -3,6 +3,7 @@
 //! This module exports generic traits representing interfaces for interacting
 //! with the PoS selector worker.
 
+use crate::PosResult;
 use crate::Selection;
 use anyhow::Result;
 use massa_hash::Hash;
@@ -13,6 +14,11 @@ use massa_models::Slot;
 
 /// interface that communicates with the selector worker thread
 pub trait SelectorController: Send + Sync {
+    /// Raits for draws to reach at least a given cycle number.
+    /// Returns the latest cycle number reached (can be higher than `cycle`).
+    /// Errors can occur if the thread stopped.
+    fn wait_for_draws(&mut self, cycle: u64) -> PosResult<u64>;
+
     /// Feed cycle to the selector
     ///
     /// # Arguments

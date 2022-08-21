@@ -6,7 +6,7 @@ pub type PosResult<T, E = PosError> = core::result::Result<T, E>;
 
 /// pos error
 #[non_exhaustive]
-#[derive(Display, Error, Debug)]
+#[derive(Display, Error, Debug, Clone)]
 pub enum PosError {
     /// Container inconsistency: {0}
     ContainerInconsistency(String),

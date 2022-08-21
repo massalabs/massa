@@ -9,7 +9,7 @@ mod worker;
 
 use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Slot};
-use massa_pos_exports::Selection;
+use massa_pos_exports::{PosResult, Selection};
 
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{
@@ -39,7 +39,7 @@ pub(crate) enum Command {
 /// - `Stop`: break the thread loop.
 pub(crate) type InputDataPtr = Arc<(Condvar, Mutex<VecDeque<Command>>)>;
 
-/// Draw cache
+/// Draw cache (lowest index = oldest)
 pub(crate) struct DrawCache(pub VecDeque<CycleDraws>);
 
 impl DrawCache {
@@ -78,6 +78,9 @@ pub(crate) struct CycleDraws {
 
 /// Structure of the shared pointer to the computed draws.
 pub(crate) type DrawCachePtr = Arc<RwLock<DrawCache>>;
+
+/// Gives the current status (last drawn cycle and error if the thread stopped)
+pub(crate) type StatusPtr = Arc<(Condvar, Mutex<PosResult<Option<u64>>>)>;
 
 /// Start thread selector
 pub use worker::start_selector_worker;

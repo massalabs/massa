@@ -3,7 +3,7 @@
 //! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
 
-use crate::{Command, DrawCachePtr, InputDataPtr};
+use crate::{Command, DrawCachePtr, InputDataPtr, StatusPtr};
 use anyhow::{bail, Result};
 use massa_hash::Hash;
 use massa_models::{api::IndexedSlot, prehash::Map, Address, Slot};
@@ -15,15 +15,40 @@ use tracing::{info, warn};
 pub struct SelectorControllerImpl {
     /// todo: use a config structure
     pub(crate) periods_per_cycle: u64,
-    /// Cache storing the computed selections for each cycle.
-    pub(crate) cache: DrawCachePtr, //TODO remove btreemap, make access constant-time
-    /// Sync-able equivalent of std::mpsc for command sending
-    pub(crate) input_data: InputDataPtr,
     /// thread count
     pub(crate) thread_count: u8,
+    /// Cache storing the computed selections for each cycle.
+    pub(crate) cache: DrawCachePtr,
+    /// Sync-able equivalent of std::mpsc for command sending
+    pub(crate) input_data: InputDataPtr,
+    /// An output state that can be monitored to monitor the last produced cycle, or any errors
+    pub(crate) status: StatusPtr,
 }
 
 impl SelectorController for SelectorControllerImpl {
+    /// Raits for draws to reach at least a given cycle number.
+    /// Returns the latest cycle number reached (can be higher than `cycle`).
+    /// Errors can occur if the thread stopped.
+    fn wait_for_draws(&mut self, cycle: u64) -> PosResult<u64> {
+        let (cvar, lock) = &*self.status;
+        let mut status = lock.lock();
+        loop {
+            match &*status {
+                // nothing drawn yet
+                Ok(None) => {}
+                // error during a draw
+                Err(err) => return Err(err.clone()),
+                // proper draw
+                Ok(Some(c)) => {
+                    if *c >= cycle {
+                        return Ok(*c);
+                    }
+                }
+            }
+            cvar.wait(&mut status);
+        }
+    }
+
     /// Feed cycle to the selector
     ///
     /// # Arguments
@@ -31,19 +56,24 @@ impl SelectorController for SelectorControllerImpl {
     /// * `lookback_rolls`: lookback rolls used for the draw (cycle - 3)
     /// * `lookback_seed`: lookback seed hash for the draw (cycle - 2)
     fn feed_cycle(&self, cycle: u64, lookback_rolls: Map<Address, u64>, lookback_seed: Hash) {
-        self.input_data.1.lock().push_back(Command::DrawInput {
+        let (cvar, lock) = &*self.input_data;
+        let mut data = lock.lock();
+        data.push_back(Command::DrawInput {
             cycle,
             lookback_rolls,
             lookback_seed,
         });
-        self.input_data.0.notify_one();
+        cvar.notify_one();
     }
 
     /// Get [Selection] computed for a slot:
     /// # Arguments
     /// * `slot`: target slot of the selection
+    ///
+    /// Blocks until the draws are available if they are in the future.
     fn get_selection(&self, slot: Slot) -> Result<Selection> {
         let cycle = slot.get_cycle(self.periods_per_cycle);
+
         match self
             .cache
             .read()
@@ -58,8 +88,20 @@ impl SelectorController for SelectorControllerImpl {
     /// Get [Address] of the selected block producer for a given slot
     /// # Arguments
     /// * `slot`: target slot of the selection
+    ///
+    /// Blocks until the draws are available if they are in the future.
     fn get_producer(&self, slot: Slot) -> Result<Address> {
-        Ok(self.get_selection(slot)?.producer)
+        let cycle = slot.get_cycle(self.periods_per_cycle);
+
+        match self
+            .cache
+            .read()
+            .get(cycle)
+            .and_then(|selections| selections.draws.get(&slot))
+        {
+            Some(selection) => Ok(selection.producer),
+            None => bail!("error: selection not found for slot {}", slot),
+        }
     }
 
     /// Return a list of slots where `address` has been choosen to produce a
