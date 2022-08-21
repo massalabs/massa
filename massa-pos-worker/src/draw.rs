@@ -2,10 +2,8 @@ use crate::{worker::SelectorThread, CycleDraws};
 use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Slot};
 use massa_pos_exports::{PosResult, Selection};
-use rand::{
-    distributions::{Distribution, WeightedIndex},
-    SeedableRng,
-};
+use rand::{distributions::Distribution, SeedableRng};
+use rand_distr::WeightedAliasIndex;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::collections::HashMap;
 
@@ -40,8 +38,8 @@ impl SelectorThread {
         let (addresses, roll_counts): (Vec<_>, Vec<_>) = lookback_rolls.into_iter().unzip();
 
         // prepare distribution
-        let dist =
-            WeightedIndex::new(&roll_counts).expect("nobody has rolls, this is a critical error");
+        let dist = WeightedAliasIndex::new(roll_counts)
+            .expect("nobody has rolls, this is a critical error");
 
         // perform cycle draws
         let mut cur_slot = Slot::new_first_of_cycle(cycle, self.cfg.periods_per_cycle)
