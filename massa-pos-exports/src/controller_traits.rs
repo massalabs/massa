@@ -3,10 +3,11 @@
 //! This module exports generic traits representing interfaces for interacting
 //! with the PoS selector worker.
 
-use crate::CycleInfo;
 use crate::Selection;
 use anyhow::Result;
+use massa_hash::Hash;
 use massa_models::api::IndexedSlot;
+use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::Slot;
 
@@ -15,9 +16,15 @@ pub trait SelectorController: Send + Sync {
     /// Feed cycle to the selector
     ///
     /// # Arguments
-    /// * `cycle_info`: give or regive a cycle info for a background
-    ///                 computation of the draws.
-    fn feed_cycle(&self, cycle_info: CycleInfo) -> Result<()>;
+    /// * `cycle`: cycle number to be drawn
+    /// * `lookback_rolls`: lookback rolls used for the draw (cycle - 3)
+    /// * `lookback_seed`: lookback seed hash for the draw (cycle - 2)
+    fn feed_cycle(
+        &self,
+        cycle: u64,
+        lookback_rolls: Map<Address, u64>,
+        lookback_seed: Hash,
+    ) -> Result<()>;
 
     /// Get [Selection] computed for a slot:
     /// # Arguments

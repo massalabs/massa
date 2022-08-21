@@ -1,4 +1,4 @@
-use massa_signature::KeyPair;
+use massa_models::Address;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -13,8 +13,8 @@ pub struct SelectorConfig {
     pub max_draw_cache: usize,
     /// Number of periods per cycle
     pub periods_per_cycle: u64,
-    /// `KeyPair` to sign genesis blocks.
-    pub genesis_key: KeyPair,
+    /// genesis address to force draw genesis creators
+    pub genesis_address: Address,
     /// path to initial rolls
     pub initial_rolls_path: PathBuf,
     /// initial seed

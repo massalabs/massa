@@ -1,15 +1,64 @@
-use massa_models::{
-    constants::{default::POS_SAVED_CYCLES, PERIODS_PER_CYCLE},
-    prehash::Map,
-    Address, Amount, Slot, THREAD_COUNT,
-};
+use std::path::PathBuf;
 
-use crate::{CycleInfo, PoSChanges, PoSFinalState, ProductionStats, SelectorController};
+use massa_hash::Hash;
+use massa_models::{prehash::Map, Address, Amount, Slot};
+
+use crate::{CycleInfo, PoSChanges, PoSFinalState, PosError, ProductionStats, SelectorController};
 
 impl PoSFinalState {
+    /// create a new PoSFinalState
+    pub fn new(
+        initial_seed_string: &String,
+        initial_rolls_path: &PathBuf,
+    ) -> Result<Self, PosError> {
+        // load get initial rolls from file
+        let initial_rolls = serde_json::from_str::<Map<Address, u64>>(&std::fs::read_to_string(
+            initial_rolls_path,
+        )?)?;
+
+        // Seeds used as the initial seeds for negative cycles (-2 and -1 respecrively)
+        let init_seed = Hash::compute_from(initial_seed_string.as_bytes());
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        Ok(Self {
+            cycle_history: Default::default(),
+            deferred_credits: Default::default(),
+            selector: None,
+            initial_rolls,
+            initial_seeds,
+        })
+    }
+
     /// Used to give the selector controller to `PoSFinalState` when it has been created
+    /// Also sends the current draw inputs (initial or bootstrapped) to the selector
     pub fn give_selector_controller(&mut self, selector: Box<dyn SelectorController>) {
         self.selector = Some(selector);
+
+        // if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
+        let skip_initial_cycles = self
+            .cycle_history
+            .front()
+            .map(|c_info| c_info.cycle > 0)
+            .unwrap_or(false);
+
+        // feed cycles 0, 1 to selector if necessary
+        if !skip_initial_cycles {
+            for draw_cycle in 0u64..=1 {
+                self.feed_selector(draw_cycle);
+            }
+        }
+
+        // feed cycles available from history
+        for hist_item in &self.cycle_history {
+            if !hist_item.complete {
+                break;
+            }
+            let draw_cycle = hist_item
+                .cycle
+                .checked_add(2)
+                .expect("unexpected cycle overflow in give_selector_controller");
+            self.feed_selector(draw_cycle);
+        }
     }
 
     /// Technical specification of apply_changes:
@@ -30,9 +79,15 @@ impl PoSFinalState {
     ///     set complete=true for cycle C in the history
     ///     compute the seed hash and notifies the PoSDrawer for cycle C+3
     ///
-    pub fn settle_slot(&mut self, changes: PoSChanges, slot: Slot) {
+    pub fn settle_slot(
+        &mut self,
+        changes: PoSChanges,
+        slot: Slot,
+        periods_per_cycle: u64,
+        thread_count: u8,
+    ) {
         // compute the current cycle from the given slot
-        let cycle = slot.get_cycle(PERIODS_PER_CYCLE);
+        let cycle = slot.get_cycle(periods_per_cycle);
 
         // if cycle C is absent from self.cycle_history:
         // push a new empty CycleInfo at the back of self.cycle_history and set its cycle = C
@@ -45,7 +100,7 @@ impl PoSFinalState {
                     ..Default::default()
                 });
                 // add 1 for the current cycle and 1 for bootstrap safety
-                while self.cycle_history.len() as u64 > POS_SAVED_CYCLES + 2 {
+                while self.cycle_history.len() as u64 > 6 {
                     self.cycle_history.pop_front();
                 }
             }
@@ -56,25 +111,33 @@ impl PoSFinalState {
             });
         }
 
-        let current = self
-            .cycle_history
-            .back_mut()
-            .expect("expected a non-empty cycle history");
+        // update cycle data
+        let cycle_completed: bool;
+        {
+            let current = self
+                .cycle_history
+                .back_mut()
+                .expect("expected a non-empty cycle history");
 
-        // extend seed_bits with changes.seed_bits
-        current.rng_seed.extend(changes.seed_bits);
+            // extend seed_bits with changes.seed_bits
+            current.rng_seed.extend(changes.seed_bits);
 
-        // extend roll counts
-        current.roll_counts.extend(changes.roll_changes);
-        current.roll_counts.retain(|_, &mut count| count != 0);
+            // extend roll counts
+            current.roll_counts.extend(changes.roll_changes);
+            current.roll_counts.retain(|_, &mut count| count != 0);
 
-        // extend production stats
-        for (addr, stats) in changes.production_stats {
-            current
-                .production_stats
-                .entry(addr)
-                .and_modify(|cur| cur.extend(&stats))
-                .or_insert(stats);
+            // extend production stats
+            for (addr, stats) in changes.production_stats {
+                current
+                    .production_stats
+                    .entry(addr)
+                    .and_modify(|cur| cur.extend(&stats))
+                    .or_insert(stats);
+            }
+
+            // check for completion
+            current.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
+            cycle_completed = current.complete;
         }
 
         // extent deferred_credits with changes.deferred_credits
@@ -84,19 +147,59 @@ impl PoSFinalState {
         self.deferred_credits.remove_zeros();
 
         // feed the cycle if it is complete
-        // if slot S was the last of cycle C:
-        // set complete=true for cycle C in the history
-        // notify the PoSDrawer for cycle C+3
-        if slot.is_last_of_cycle(PERIODS_PER_CYCLE, THREAD_COUNT) {
-            current.complete = true;
-            self.selector
-                .as_ref()
-                .expect("critical: SelectorController is missing from PoSFinalState")
-                .feed_cycle(current.clone())
-                .expect(
-                    "critical: could not feed complete cycle too SelectorController: channel down",
-                );
+        // notify the PoSDrawer about the newly ready draw data
+        // to draw cycle + 2, we use the rng data from cycle - 1 and the seed from cycle
+        if cycle_completed {
+            self.feed_selector(
+                cycle
+                    .checked_add(2)
+                    .expect("unexpected cycle overflow when feeding selector"),
+            );
         }
+    }
+
+    /// Feeds the selector targeting a given draw cycle
+    fn feed_selector(&self, draw_cycle: u64) {
+        // get roll lookback
+        let lookback_rolls = match draw_cycle.checked_sub(3) {
+            // looking back in history
+            Some(c) => {
+                let index = self
+                    .get_cycle_index(c)
+                    .expect("roll lookback cycle was not available when feeding selector");
+                let cycle_info = &self.cycle_history[index];
+                if !cycle_info.complete {
+                    panic!("roll lookback cycle is not complete");
+                }
+                cycle_info.roll_counts.clone()
+            }
+            // looking back to negative cycles
+            None => self.initial_rolls.clone(),
+        };
+
+        // get seed lookback
+        let lookback_seed = match draw_cycle.checked_sub(2) {
+            // looking back in history
+            Some(c) => {
+                let index = self
+                    .get_cycle_index(c)
+                    .expect("seed lookback cycle was not available when feeding selector");
+                let cycle_info = &self.cycle_history[index];
+                if !cycle_info.complete {
+                    panic!("seed lookback cycle is not complete");
+                }
+                Hash::compute_from(&cycle_info.rng_seed.clone().into_vec())
+            }
+            // looking back to negative cycles
+            None => self.initial_seeds[draw_cycle as usize].clone(),
+        };
+
+        // feed selector
+        self.selector
+            .as_ref()
+            .expect("critical: SelectorController is missing from PoSFinalState")
+            .feed_cycle(draw_cycle, lookback_rolls, lookback_seed)
+            .expect("critical: could not feed complete cycle too SelectorController: channel down");
     }
 
     /// Retrieves the amount of rolls a given address has at the latest cycle

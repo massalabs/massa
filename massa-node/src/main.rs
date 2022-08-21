@@ -25,15 +25,15 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::constants::{
     default::{
-        GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE,
-        MAX_PARAMETERS_SIZE,
+        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE, MAX_PARAMETERS_SIZE,
     },
-    BLOCK_REWARD, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ADVERTISE_LENGTH,
-    MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
-    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK,
-    MAX_OPERATIONS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, ROLL_PRICE, T0,
-    THREAD_COUNT, VERSION,
+    BLOCK_REWARD, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP,
+    INITIAL_DRAW_SEED, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS,
+    MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK,
+    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
+use massa_models::Address;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
 use massa_network_worker::start_network_controller;
 use massa_pool_exports::{PoolConfig, PoolController};
@@ -94,6 +94,9 @@ async fn launch(
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
         ledger_config: ledger_config.clone(),
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        initial_seed_string: INITIAL_DRAW_SEED.into(),
+        initial_rolls_path: SETTINGS.consensus.initial_rolls_path.clone(),
         async_pool_config,
     };
 
@@ -206,7 +209,7 @@ async fn launch(
     let (
         protocol_command_sender,
         protocol_event_receiver,
-        protocol_pool_event_receiver,
+        _protocol_pool_event_receiver,
         protocol_manager,
     ) = start_protocol_controller(
         SETTINGS.protocol.into(),
@@ -218,15 +221,14 @@ async fn launch(
     .expect("could not start protocol controller");
 
     // launch selector worker
-    //TODO: Add initial roll path
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
         max_draw_cache: SETTINGS.selector.max_draw_cache,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
-        genesis_key: GENESIS_TIMESTAMP,
-        initial_rolls_path: SETTINGS.selector.initial_rolls_path,
-        initial_draw_seed: INITIAL_DRAW_SEED,
+        genesis_address: Address::from_public_key(&GENESIS_KEY.get_public_key()),
+        initial_rolls_path: SETTINGS.consensus.initial_rolls_path.clone(),
+        initial_draw_seed: INITIAL_DRAW_SEED.into(),
     });
 
     // give the controller to final state in order for it to feed the cycles
@@ -254,7 +256,6 @@ async fn launch(
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
         final_state.clone(),
-        shared_storage.clone(),
         selector_controller.clone(),
     );
 

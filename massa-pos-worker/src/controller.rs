@@ -5,8 +5,9 @@
 
 use crate::{Command, DrawCachePtr, InputDataPtr};
 use anyhow::{bail, Result};
-use massa_models::{api::IndexedSlot, Address, Slot};
-use massa_pos_exports::{CycleInfo, PosResult, Selection, SelectorController, SelectorManager};
+use massa_hash::Hash;
+use massa_models::{api::IndexedSlot, prehash::Map, Address, Slot};
+use massa_pos_exports::{PosResult, Selection, SelectorController, SelectorManager};
 use tracing::{info, warn};
 
 #[derive(Clone)]
@@ -15,7 +16,7 @@ pub struct SelectorControllerImpl {
     /// todo: use a config structure
     pub(crate) periods_per_cycle: u64,
     /// Cache storing the computed selections for each cycle.
-    pub(crate) cache: DrawCachePtr,
+    pub(crate) cache: DrawCachePtr, //TODO remove btreemap, make access constant-time
     /// Sync-able equivalent of std::mpsc for command sending
     pub(crate) input_data: InputDataPtr,
     /// thread count
@@ -26,13 +27,20 @@ impl SelectorController for SelectorControllerImpl {
     /// Feed cycle to the selector
     ///
     /// # Arguments
-    /// * `cycle_info`: give or regive a cycle info for a background
-    ///                 computation of the draws.
-    fn feed_cycle(&self, cycle_info: CycleInfo) -> Result<()> {
-        self.input_data
-            .1
-            .lock()
-            .push_back(Command::CycleInfo(cycle_info));
+    /// * `cycle`: cycle number to be drawn
+    /// * `lookback_rolls`: lookback rolls used for the draw (cycle - 3)
+    /// * `lookback_seed`: lookback seed hash for the draw (cycle - 2)
+    fn feed_cycle(
+        &self,
+        cycle: u64,
+        lookback_rolls: Map<Address, u64>,
+        lookback_seed: Hash,
+    ) -> Result<()> {
+        self.input_data.1.lock().push_back(Command::DrawInput {
+            cycle,
+            lookback_rolls,
+            lookback_seed,
+        });
         self.input_data.0.notify_one();
         Ok(())
     }
@@ -45,8 +53,8 @@ impl SelectorController for SelectorControllerImpl {
         match self
             .cache
             .read()
-            .get(&cycle)
-            .and_then(|selections| selections.get(&slot))
+            .get(cycle)
+            .and_then(|selections| selections.draws.get(&slot))
         {
             Some(selection) => Ok(selection.clone()),
             None => bail!("error: selection not found for slot {}", slot),
@@ -74,8 +82,8 @@ impl SelectorController for SelectorControllerImpl {
         let mut slot_endorsers = vec![];
         while slot < end {
             if let Some(selection) = cache
-                .get(&slot.get_cycle(self.periods_per_cycle))
-                .and_then(|selections| selections.get(&slot))
+                .get(slot.get_cycle(self.periods_per_cycle))
+                .and_then(|selections| selections.draws.get(&slot))
             {
                 if selection.producer == *address {
                     slot_producers.push(slot);

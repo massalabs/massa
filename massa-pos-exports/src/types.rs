@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use bitvec::prelude::*;
+use massa_hash::Hash;
 use massa_models::{
     api::IndexedSlot,
     constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
@@ -40,7 +41,6 @@ pub struct SelectorAddressInfo {
 }
 
 /// Final state of PoS
-#[derive(Default)]
 pub struct PoSFinalState {
     /// contiguous cycle history. Back = newest.
     pub cycle_history: VecDeque<CycleInfo>,
@@ -48,6 +48,10 @@ pub struct PoSFinalState {
     pub deferred_credits: DeferredCredits,
     /// selector controller to feed the cycle when completed
     pub selector: Option<Box<dyn SelectorController>>,
+    /// initial rolls, used for negative cycle lookback
+    pub initial_rolls: Map<Address, u64>,
+    /// initial seeds, used for negative cycle lookback (cycles -2, -1 in that order)
+    pub initial_seeds: Vec<Hash>,
 }
 
 #[derive(Debug, Default, Clone)]

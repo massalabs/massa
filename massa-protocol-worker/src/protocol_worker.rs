@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::checked_operations::CheckedOperations;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
@@ -30,6 +30,8 @@ use tokio::{
     time::{sleep, sleep_until, Instant, Sleep},
 };
 use tracing::{debug, error, info, warn};
+
+// TODO connect protocol to pool so that it sends ops and endorsements
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
 /// - generate keypair

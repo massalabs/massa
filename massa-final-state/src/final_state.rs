@@ -42,14 +42,17 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
     ) -> Result<Self, FinalStateError> {
+        // create the pos state
+        let pos_state = PoSFinalState::new(&config.initial_seed_string, &config.initial_rolls_path)
+            .map_err(|err| {
+                FinalStateError::PosError(format!("PoS final state init error: {}", err))
+            })?;
+
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
 
         // create the async pool
         let async_pool = AsyncPool::new(config.async_pool_config.clone());
-
-        // create the pos state
-        let pos_state = PoSFinalState::default();
 
         // create a default executed ops
         let executed_ops = ExecutedOps::default();
@@ -93,8 +96,12 @@ impl FinalState {
             .apply_changes(changes.ledger_changes.clone(), self.slot);
         self.async_pool
             .apply_changes_unchecked(&changes.async_pool_changes);
-        self.pos_state
-            .settle_slot(changes.roll_state_changes.clone(), self.slot);
+        self.pos_state.settle_slot(
+            changes.roll_state_changes.clone(),
+            self.slot,
+            self.config.periods_per_cycle,
+            self.config.thread_count,
+        );
         self.executed_ops.extend(changes.executed_ops.clone());
         self.executed_ops.prune(self.slot);
 

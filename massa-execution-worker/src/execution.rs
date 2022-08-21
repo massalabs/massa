@@ -1023,6 +1023,9 @@ impl ExecutionState {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError> {
+        // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
+        // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
+
         // set the execution slot to be the one after the latest executed active slot
         let slot = self
             .active_cursor

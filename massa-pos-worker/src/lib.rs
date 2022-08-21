@@ -7,20 +7,25 @@ mod controller;
 mod draw;
 mod worker;
 
-use massa_models::Slot;
-use massa_pos_exports::{CycleInfo, Selection};
+use massa_hash::Hash;
+use massa_models::{prehash::Map, Address, Slot};
+use massa_pos_exports::Selection;
 
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{HashMap, VecDeque},
     sync::Arc,
 };
 
 /// Enumeration of internal commands sent to the selector thread as input
 /// datas. `CycleInfo`, Look at [InputDataPtr]
 pub(crate) enum Command {
-    /// CycleInfo inserted in the queue
-    CycleInfo(CycleInfo),
+    /// Input requirements for the draw
+    DrawInput {
+        cycle: u64,
+        lookback_rolls: Map<Address, u64>,
+        lookback_seed: Hash,
+    },
     /// Stop the thread (usually sent by the manager and pushed at the top
     /// of the command queue)
     Stop,
@@ -34,8 +39,45 @@ pub(crate) enum Command {
 /// - `Stop`: break the thread loop.
 pub(crate) type InputDataPtr = Arc<(Condvar, Mutex<VecDeque<Command>>)>;
 
+/// Draw cache
+pub(crate) struct DrawCache(pub VecDeque<CycleDraws>);
+
+impl DrawCache {
+    /// get the index of a cycle in the cache
+    pub fn get_cycle_index(&self, cycle: u64) -> Option<usize> {
+        let first_cycle = match self.0.front() {
+            Some(c) => c.cycle,
+            None => return None, // history empty
+        };
+        if cycle < first_cycle {
+            return None; // in the past
+        }
+        let index: usize = match (cycle - first_cycle).try_into() {
+            Ok(idx) => idx,
+            Err(_) => return None, // usize overflow
+        };
+        if index >= self.0.len() {
+            return None; // in the future
+        }
+        Some(index)
+    }
+
+    /// get a reference to the draws of a given cycle
+    pub fn get(&self, cycle: u64) -> Option<&CycleDraws> {
+        self.get_cycle_index(cycle).and_then(|idx| self.0.get(idx))
+    }
+}
+
+/// Draws for a cycle, used in selector cache
+pub(crate) struct CycleDraws {
+    /// cycle number
+    pub cycle: u64,
+    /// cache of draws
+    pub draws: HashMap<Slot, Selection>,
+}
+
 /// Structure of the shared pointer to the computed draws.
-pub(crate) type DrawCachePtr = Arc<RwLock<BTreeMap<u64, HashMap<Slot, Selection>>>>;
+pub(crate) type DrawCachePtr = Arc<RwLock<DrawCache>>;
 
 /// Start thread selector
 pub use worker::start_selector_worker;
