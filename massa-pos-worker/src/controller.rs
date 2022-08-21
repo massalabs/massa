@@ -26,7 +26,7 @@ pub struct SelectorControllerImpl {
 }
 
 impl SelectorController for SelectorControllerImpl {
-    /// Raits for draws to reach at least a given cycle number.
+    /// Waits for draws to reach at least a given cycle number.
     /// Returns the latest cycle number reached (can be higher than `cycle`).
     /// Errors can occur if the thread stopped.
     fn wait_for_draws(&mut self, cycle: u64) -> PosResult<u64> {
@@ -49,21 +49,36 @@ impl SelectorController for SelectorControllerImpl {
         }
     }
 
+    /// Checks the current status of the selector.
+    /// Returns the last selected slot (if any) , or an error if the selector ahd a problem.
+    fn check_status(&self) -> PosResult<Option<u64>> {
+        self.status.1.lock().clone()
+    }
+
     /// Feed cycle to the selector
     ///
     /// # Arguments
     /// * `cycle`: cycle number to be drawn
     /// * `lookback_rolls`: lookback rolls used for the draw (cycle - 3)
     /// * `lookback_seed`: lookback seed hash for the draw (cycle - 2)
-    fn feed_cycle(&self, cycle: u64, lookback_rolls: Map<Address, u64>, lookback_seed: Hash) {
-        let (cvar, lock) = &*self.input_data;
-        let mut data = lock.lock();
-        data.push_back(Command::DrawInput {
-            cycle,
-            lookback_rolls,
-            lookback_seed,
-        });
-        cvar.notify_one();
+    fn feed_cycle(
+        &self,
+        cycle: u64,
+        lookback_rolls: Map<Address, u64>,
+        lookback_seed: Hash,
+    ) -> PosResult<()> {
+        {
+            let (cvar, lock) = &*self.input_data;
+            let mut data = lock.lock();
+            data.push_back(Command::DrawInput {
+                cycle,
+                lookback_rolls,
+                lookback_seed,
+            });
+            cvar.notify_one();
+        }
+        self.check_status()?;
+        Ok(())
     }
 
     /// Get [Selection] computed for a slot:
@@ -72,8 +87,9 @@ impl SelectorController for SelectorControllerImpl {
     ///
     /// Blocks until the draws are available if they are in the future.
     fn get_selection(&self, slot: Slot) -> Result<Selection> {
-        let cycle = slot.get_cycle(self.periods_per_cycle);
+        self.check_status()?;
 
+        let cycle = slot.get_cycle(self.periods_per_cycle);
         match self
             .cache
             .read()
@@ -91,8 +107,9 @@ impl SelectorController for SelectorControllerImpl {
     ///
     /// Blocks until the draws are available if they are in the future.
     fn get_producer(&self, slot: Slot) -> Result<Address> {
-        let cycle = slot.get_cycle(self.periods_per_cycle);
+        self.check_status()?;
 
+        let cycle = slot.get_cycle(self.periods_per_cycle);
         match self
             .cache
             .read()

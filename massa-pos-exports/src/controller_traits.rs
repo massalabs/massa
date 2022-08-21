@@ -14,10 +14,14 @@ use massa_models::Slot;
 
 /// interface that communicates with the selector worker thread
 pub trait SelectorController: Send + Sync {
-    /// Raits for draws to reach at least a given cycle number.
+    /// Waits for draws to reach at least a given cycle number.
     /// Returns the latest cycle number reached (can be higher than `cycle`).
     /// Errors can occur if the thread stopped.
     fn wait_for_draws(&mut self, cycle: u64) -> PosResult<u64>;
+
+    /// Checks the current status of the selector.
+    /// Returns the last selected slot (if any) , or an error if the selector ahd a problem.
+    fn check_status(&self) -> PosResult<Option<u64>>;
 
     /// Feed cycle to the selector
     ///
@@ -25,7 +29,12 @@ pub trait SelectorController: Send + Sync {
     /// * `cycle`: cycle number to be drawn
     /// * `lookback_rolls`: lookback rolls used for the draw (cycle - 3)
     /// * `lookback_seed`: lookback seed hash for the draw (cycle - 2)
-    fn feed_cycle(&self, cycle: u64, lookback_rolls: Map<Address, u64>, lookback_seed: Hash);
+    fn feed_cycle(
+        &self,
+        cycle: u64,
+        lookback_rolls: Map<Address, u64>,
+        lookback_seed: Hash,
+    ) -> PosResult<()>;
 
     /// Get [Selection] computed for a slot:
     /// # Arguments

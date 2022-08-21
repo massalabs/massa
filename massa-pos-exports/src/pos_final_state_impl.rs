@@ -220,9 +220,7 @@ impl PoSFinalState {
         self.selector
             .as_ref()
             .expect("critical: SelectorController is missing from PoSFinalState")
-            .feed_cycle(draw_cycle, lookback_rolls, lookback_seed);
-
-        Ok(())
+            .feed_cycle(draw_cycle, lookback_rolls, lookback_seed)
     }
 
     /// Retrieves the amount of rolls a given address has at the latest cycle
