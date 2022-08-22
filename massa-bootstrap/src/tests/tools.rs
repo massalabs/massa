@@ -6,7 +6,7 @@ use bitvec::vec::BitVec;
 use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::{ExecutedOps, FinalState};
+use massa_final_state::{ExecutedOps, FinalState, StateChanges};
 use massa_graph::export_active_block::ExportActiveBlockSerializer;
 use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
@@ -26,7 +26,7 @@ use massa_models::{
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
-use massa_pos_exports::{CycleInfo, DeferredCredits, PoSFinalState, ProductionStats};
+use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{KeyPair, PublicKey, Signature};
 use massa_time::MassaTime;
@@ -118,11 +118,8 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 }
 
 /// generates a random PoS final state
-fn get_random_pos_state() -> PoSFinalState {
-    let mut rng = rand::thread_rng();
+fn get_random_pos_state(r_limit: u64) -> PoSFinalState {
     let mut cycle_history = VecDeque::new();
-    let r_limit: u64 = rng.gen_range(20..30);
-    println!("R_LIMIT = {}", r_limit);
     for i in 0u64..r_limit {
         let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
         cycle_history.push_back(CycleInfo {
@@ -141,30 +138,57 @@ fn get_random_pos_state() -> PoSFinalState {
     }
 }
 
+/// generates random PoS changes
+fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
+    let deferred_credits = get_random_deferred_credits(r_limit);
+    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit);
+    PoSChanges {
+        seed_bits,
+        roll_changes: roll_counts.into_iter().collect(),
+        production_stats,
+        deferred_credits,
+    }
+}
+
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
     let mut rng = rand::thread_rng();
+    let r_limit: u64 = rng.gen_range(25..50);
+    println!("RAND_LIMIT = {}", r_limit);
 
     let mut sorted_ledger = HashMap::new();
     let mut messages = BTreeMap::new();
-    for _ in 0usize..rng.gen_range(3..10) {
+    for _ in 0..r_limit {
         let message = get_random_message();
         messages.insert(message.compute_id(), message);
     }
-    for _ in 0usize..rng.gen_range(5..10) {
+    for _ in 0..r_limit {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
     let slot = Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count));
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
+    let mut changes_history = VecDeque::new();
+    for i in 0u64..(r_limit * 3) {
+        changes_history.push_back((
+            Slot {
+                period: i,
+                thread: 0,
+            },
+            StateChanges {
+                roll_state_changes: get_random_pos_changes(r_limit),
+                ..Default::default()
+            },
+        ));
+    }
     create_final_state(
         Default::default(),
         slot,
         Box::new(final_ledger),
         async_pool,
-        VecDeque::new(),
-        get_random_pos_state(),
+        changes_history,
+        get_random_pos_state(r_limit),
         ExecutedOps::default(),
     )
 }
