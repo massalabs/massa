@@ -30,7 +30,7 @@ pub enum ModelsError {
     PeriodOverflowError,
     /// amount parse error
     AmountParseError(String),
-    /// address par error
+    /// address parsing error
     AddressParseError,
     /// checked operation error
     CheckedOperationError(String),

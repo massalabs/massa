@@ -59,7 +59,7 @@ pub async fn start_consensus_controller(
     let block_db = BlockGraph::new(
         GraphConfig::from(&cfg),
         boot_graph,
-        storage,
+        storage.clone_without_refs(),
         channels.selector_controller.clone(),
     )
     .await?;

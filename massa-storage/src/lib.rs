@@ -8,6 +8,7 @@
 
 #![warn(missing_docs)]
 #![feature(hash_drain_filter)]
+#![feature(map_try_insert)]
 
 mod block_indexes;
 mod endorsement_indexes;
@@ -15,14 +16,13 @@ mod operation_indexes;
 
 use block_indexes::BlockIndexes;
 use endorsement_indexes::EndorsementIndexes;
-use massa_logging::massa_trace;
 use massa_models::prehash::{BuildMap, Map, PreHashed, Set};
 use massa_models::wrapped::Id;
 use massa_models::{
     BlockId, EndorsementId, OperationId, WrappedBlock, WrappedEndorsement, WrappedOperation,
 };
 use operation_indexes::OperationIndexes;
-use parking_lot::{RwLock, RwLockWriteGuard};
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::{collections::hash_map, sync::Arc};
@@ -248,12 +248,8 @@ impl Storage {
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
             let mut blocks = self.blocks.write();
-            let mut ops = self.operations.write();
-            let mut endorsements = self.endorsements.write();
-            for id in orphaned_ids {
-                ops.unlink_operations_from_block(&id);
-                endorsements.unlink_endorsements_from_block(&id);
-                blocks.remove(&id);
+            for b_id in orphaned_ids {
+                blocks.remove(&b_id);
             }
         }
     }
@@ -261,25 +257,9 @@ impl Storage {
     /// Store a block
     /// Note that this also claims a local reference to the block
     pub fn store_block(&mut self, block: WrappedBlock) {
-        massa_trace!("storage.storage.store_block", { "block_id": block.id });
         let id = block.id;
         let mut blocks = self.blocks.write();
         let mut owners = self.block_owners.write();
-        // insert block
-        self.operations
-            .write()
-            .link_operations_with_block(&id, &block.content.operations.iter().cloned().collect());
-        self.endorsements.write().link_endorsements_with_block(
-            &id,
-            &block
-                .content
-                .header
-                .content
-                .endorsements
-                .iter()
-                .map(|e| e.id)
-                .collect(),
-        );
         blocks.insert(block);
         // update local reference counters
         Storage::internal_claim_refs(
@@ -287,12 +267,6 @@ impl Storage {
             &mut owners,
             &mut self.local_used_blocks,
         );
-    }
-
-    /// Get a (mutable) reference to a stored block.
-    pub fn retrieve_block(&self, block_id: &BlockId) -> Option<Arc<RwLock<WrappedBlock>>> {
-        massa_trace!("storage.storage.retrieve_block", { "block_id": block_id });
-        self.blocks.read().blocks.get(block_id).map(Arc::clone)
     }
 
     /// Claim operation references.
@@ -355,7 +329,9 @@ impl Storage {
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
             let mut ops = self.operations.write();
-            ops.batch_remove(orphaned_ids.into_iter().collect());
+            for id in orphaned_ids {
+                ops.remove(&id);
+            }
         }
     }
 
@@ -368,67 +344,25 @@ impl Storage {
         let mut op_store = self.operations.write();
         let mut owners = self.operation_owners.write();
         let ids: Set<OperationId> = operations.iter().map(|op| op.id).collect();
-        op_store.batch_insert(operations);
+        for op in operations {
+            op_store.insert(op);
+        }
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_ops);
     }
 
-    /// Return a set of operation ids that are found in storage.
-    pub fn find_operations(&self, operation_ids: Set<OperationId>) -> Set<OperationId> {
-        let operations = self.operations.read();
-        operation_ids
-            .into_iter()
-            .filter(|id| operations.operations.contains_key(id))
-            .collect()
+    /// Gets a read reference to the operations index
+    pub fn read_operations(&self) -> RwLockReadGuard<OperationIndexes> {
+        self.operations.read()
     }
 
-    /// Get a clone of the potentially stored operation.
-    pub fn retrieve_operation(&self, operation_id: &OperationId) -> Option<WrappedOperation> {
-        massa_trace!("storage.storage.retrieve_operation", {
-            "operation_id": operation_id
-        });
-        self.operations.read().operations.get(operation_id).cloned()
+    /// Gets a read reference to the endorsements index
+    pub fn read_endorsements(&self) -> RwLockReadGuard<EndorsementIndexes> {
+        self.endorsements.read()
     }
 
-    /// Get a clone of the potentially stored operation.
-    pub fn retrieve_endorsement(
-        &self,
-        endorsement_id: &EndorsementId,
-    ) -> Option<WrappedEndorsement> {
-        massa_trace!("storage.storage.retrieve_endorsement", {
-            "endorsement_id": endorsement_id
-        });
-        self.endorsements
-            .read()
-            .endorsements
-            .get(endorsement_id)
-            .cloned()
-    }
-
-    /// Run a closure over a reference to a potentially stored operation.
-    pub fn with_operation<F, V>(&self, operation_id: &OperationId, f: F) -> V
-    where
-        F: FnOnce(&Option<&WrappedOperation>) -> V,
-    {
-        massa_trace!("storage.storage.with_operation", {
-            "operation_id": operation_id
-        });
-        f(&self.operations.read().operations.get(operation_id))
-    }
-
-    /// Run a closure over a list of references to potentially stored serialized operations.
-    pub fn with_operations<F, V>(&self, operation_ids: &[OperationId], f: F) -> V
-    where
-        F: FnOnce(&[Option<&WrappedOperation>]) -> V,
-    {
-        massa_trace!("storage.storage.with_operations", {
-            "operation_ids": operation_ids
-        });
-        let operations = self.operations.read();
-        let results: Vec<Option<&WrappedOperation>> = operation_ids
-            .iter()
-            .map(|id| operations.operations.get(id))
-            .collect();
-        f(&results)
+    /// Gets a read reference to the blocks index
+    pub fn read_blocks(&self) -> RwLockReadGuard<BlockIndexes> {
+        self.blocks.read()
     }
 
     /// Claim endorsement references.
@@ -491,7 +425,9 @@ impl Storage {
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
             let mut endos = self.endorsements.write();
-            endos.batch_remove(orphaned_ids);
+            for id in orphaned_ids {
+                endos.remove(&id);
+            }
         }
     }
 
@@ -504,83 +440,10 @@ impl Storage {
         let mut endo_store = self.endorsements.write();
         let mut owners = self.endorsement_owners.write();
         let ids: Set<EndorsementId> = endorsements.iter().map(|op| op.id).collect();
-        endo_store.batch_insert(endorsements);
+        for endorsement in endorsements {
+            endo_store.insert(endorsement);
+        }
         Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_endorsements);
-    }
-
-    /// Run a closure over a list of references to potentially stored endorsements.
-    pub fn with_endorsements<F, V>(&self, endorsement_ids: &[EndorsementId], f: F) -> V
-    where
-        F: FnOnce(&[Option<&WrappedEndorsement>]) -> V,
-    {
-        let endorsements = self.endorsements.read();
-        let results: Vec<Option<&WrappedEndorsement>> = endorsement_ids
-            .iter()
-            .map(|id| endorsements.endorsements.get(id))
-            .collect();
-        f(&results)
-    }
-
-    /// Get the operation indexes to fetch operations by indexes
-    pub fn get_operation_indexes(&self) -> &Arc<RwLock<OperationIndexes>> {
-        &self.operations
-    }
-
-    /// Get the endorsement indexes to fetch endorsements by indexes
-    pub fn get_endorsement_indexes(&self) -> &Arc<RwLock<EndorsementIndexes>> {
-        &self.endorsements
-    }
-
-    /// Get the block indexes to fetch blocks by indexes
-    pub fn get_block_indexes(&self) -> &Arc<RwLock<BlockIndexes>> {
-        &self.blocks
-    }
-
-    /// Get all local operations
-    pub fn get_operations_by_ids(&self, ids: &Set<OperationId>) -> Vec<WrappedOperation> {
-        let operations = self.operations.read();
-        self.local_used_ops
-            .iter()
-            .filter(|id| ids.contains(id))
-            .map(|id| {
-                operations
-                    .operations
-                    .get(id)
-                    .expect("unexpected not found operation in storage")
-            })
-            .cloned()
-            .collect()
-    }
-
-    /// Return found endorsements by ids
-    pub fn get_endorsements_by_ids(&self, ids: &Set<EndorsementId>) -> Vec<WrappedEndorsement> {
-        let endorsements = self.endorsements.read();
-        self.local_used_endorsements
-            .iter()
-            .filter(|id| ids.contains(id))
-            .map(|id| {
-                endorsements
-                    .endorsements
-                    .get(id)
-                    .expect("unexpected not found endorsement in storage")
-            })
-            .cloned()
-            .collect()
-    }
-
-    /// Return the local endorsement ids
-    pub fn get_local_endorsement_ids(&self) -> Set<EndorsementId> {
-        self.local_used_endorsements.clone()
-    }
-
-    /// Get local operation set len
-    pub fn local_operation_len(&self) -> usize {
-        self.local_used_ops.len()
-    }
-
-    /// Get local endorsement set len
-    pub fn local_endorsement_len(&self) -> usize {
-        self.local_used_endorsements.len()
     }
 }
 

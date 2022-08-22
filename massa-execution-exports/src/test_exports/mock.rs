@@ -119,7 +119,7 @@ impl ExecutionController for MockExecutionController {
         Vec::default()
     }
 
-    fn get_final_and_active_sequential_balance(
+    fn get_final_and_candidate_sequential_balances(
         &self,
         _addresses: Vec<Address>,
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
@@ -151,10 +151,6 @@ impl ExecutionController for MockExecutionController {
             .send(MockExecutionControllerMessage::ExecuteReadonlyRequest { req, response_tx })
             .unwrap();
         response_rx.recv().unwrap()
-    }
-
-    fn get_cycle_rolls(&self, _cycle: u64) -> Map<Address, u64> {
-        Map::default()
     }
 
     fn unexecuted_ops_among(&self, _ops: &Set<OperationId>, _thread: u8) -> Set<OperationId> {

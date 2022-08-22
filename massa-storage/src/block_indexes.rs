@@ -1,21 +1,24 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::hash_map, collections::HashMap};
 
 use massa_models::{
     prehash::{Map, Set},
-    Address, BlockId, Slot, WrappedBlock,
+    Address, BlockId, EndorsementId, OperationId, Slot, WrappedBlock,
 };
-use parking_lot::RwLock;
 
 /// Container for all blocks and different indexes.
 /// Note: The structure can evolve and store more indexes.
 #[derive(Default)]
 pub struct BlockIndexes {
     /// Blocks structure container
-    pub(crate) blocks: Map<BlockId, Arc<RwLock<WrappedBlock>>>,
+    blocks: Map<BlockId, WrappedBlock>,
     /// Structure mapping creators with the created blocks
     index_by_creator: Map<Address, Set<BlockId>>,
     /// Structure mapping slot with their block id
     index_by_slot: HashMap<Slot, Set<BlockId>>,
+    /// Structure mapping operation id with ids of blocks they are contained in
+    index_by_op: Map<OperationId, Set<BlockId>>,
+    /// Structure mapping endorsement id with ids of blocks they are contained in
+    index_by_endorsement: Map<EndorsementId, Set<BlockId>>,
 }
 
 impl BlockIndexes {
@@ -23,34 +26,96 @@ impl BlockIndexes {
     /// Arguments:
     /// - block: the block to insert
     pub(crate) fn insert(&mut self, block: WrappedBlock) {
-        let id = block.id;
-        let creator = block.creator_address;
-        self.index_by_creator.entry(creator).or_default().insert(id);
-        self.index_by_slot
-            .entry(block.content.header.content.slot)
-            .or_default()
-            .insert(block.id);
-        self.blocks
-            .entry(id)
-            .or_insert(Arc::new(RwLock::new(block)));
+        if let Ok(b) = self.blocks.try_insert(block.id, block) {
+            // update creator index
+            self.index_by_creator
+                .entry(b.creator_address)
+                .or_default()
+                .insert(b.id);
+
+            // update slot index
+            self.index_by_slot
+                .entry(b.content.header.content.slot)
+                .or_default()
+                .insert(b.id);
+
+            // update index_by_op
+            for op in &b.content.operations {
+                self.index_by_op.entry(*op).or_default().insert(b.id);
+            }
+
+            // update index_by_endorsement
+            for ed in &b.content.header.content.endorsements {
+                self.index_by_endorsement
+                    .entry(ed.id)
+                    .or_default()
+                    .insert(b.id);
+            }
+        }
     }
 
-    /// Remove a block, remove from the indexes and made some clean-up in indexes if necessary.
+    /// Remove a block, remove from the indexes and do some clean-up in indexes if necessary.
     /// Arguments:
     /// - block_id: the block id to remove
-    pub(crate) fn remove(&mut self, block_id: &BlockId) {
-        let block = self
-            .blocks
-            .remove(block_id)
-            .expect("removing absent object from storage");
-        let creator = block.read().creator_address;
-        let slot = block.read().content.header.content.slot;
-        let entry = self.index_by_creator.entry(creator).or_default();
-        entry.remove(block_id);
-        if entry.is_empty() {
-            self.index_by_creator.remove(&creator);
+    pub(crate) fn remove(&mut self, block_id: &BlockId) -> Option<WrappedBlock> {
+        if let Some(b) = self.blocks.remove(block_id) {
+            // update creator index
+            if let hash_map::Entry::Occupied(mut occ) =
+                self.index_by_creator.entry(b.creator_address)
+            {
+                occ.get_mut().remove(&b.id);
+                if occ.get().is_empty() {
+                    occ.remove();
+                }
+            }
+
+            // update slot index
+            if let hash_map::Entry::Occupied(mut occ) =
+                self.index_by_slot.entry(b.content.header.content.slot)
+            {
+                occ.get_mut().remove(&b.id);
+                if occ.get().is_empty() {
+                    occ.remove();
+                }
+            }
+
+            // update index_by_op
+            for op in &b.content.operations {
+                if let hash_map::Entry::Occupied(mut occ) = self.index_by_op.entry(*op) {
+                    occ.get_mut().remove(&b.id);
+                    if occ.get().is_empty() {
+                        occ.remove();
+                    }
+                }
+            }
+
+            // update index_by_endorsement
+            for ed in &b.content.header.content.endorsements {
+                if let hash_map::Entry::Occupied(mut occ) = self.index_by_endorsement.entry(ed.id) {
+                    occ.get_mut().remove(&b.id);
+                    if occ.get().is_empty() {
+                        occ.remove();
+                    }
+                }
+            }
+            return Some(b);
         }
-        self.index_by_slot.remove(&slot);
+        None
+    }
+
+    /// Get a block reference by its ID
+    /// Arguments:
+    /// - id: ID of the block to retrieve
+    ///
+    /// Returns:
+    /// - a reference to the block, or None if not found
+    pub fn get(&self, id: &BlockId) -> Option<&WrappedBlock> {
+        self.blocks.get(id)
+    }
+
+    /// Checks whether a block exists in global storage.
+    pub fn contains(&self, id: &BlockId) -> bool {
+        self.blocks.contains_key(id)
     }
 
     /// Get the block ids created by an address.
@@ -58,21 +123,38 @@ impl BlockIndexes {
     /// - address: the address to get the blocks created by
     ///
     /// Returns:
-    /// - the block ids created by the address
-    pub fn get_blocks_created_by(&self, address: &Address) -> Vec<BlockId> {
-        match self.index_by_creator.get(address) {
-            Some(blocks) => blocks.iter().cloned().collect(),
-            None => Vec::new(),
-        }
+    /// - a reference to the block ids created by the address
+    pub fn get_blocks_created_by(&self, address: &Address) -> Option<&Set<BlockId>> {
+        self.index_by_creator.get(address)
     }
 
-    /// Get the block id of the block at a slot.
+    /// Get the block ids of the blocks at a given slot.
     /// Arguments:
     /// - slot: the slot to get the block id of
     ///
     /// Returns:
-    /// - the block id of the block at the slot if exists, None otherwise
-    pub fn get_blocks_by_slot(&self, slot: Slot) -> Option<&Set<BlockId>> {
-        self.index_by_slot.get(&slot)
+    /// - the block ids of the blocks at the slot if any, None otherwise
+    pub fn get_blocks_by_slot(&self, slot: &Slot) -> Option<&Set<BlockId>> {
+        self.index_by_slot.get(slot)
+    }
+
+    /// Get the block ids of the blocks containing a given operation.
+    /// Arguments:
+    /// - id: the ID of the operation
+    ///
+    /// Returns:
+    /// - the block ids containing the operation if any, None otherwise
+    pub fn get_blocks_by_operation(&self, id: &OperationId) -> Option<&Set<BlockId>> {
+        self.index_by_op.get(id)
+    }
+
+    /// Get the block ids of the blocks containing a given endorsement.
+    /// Arguments:
+    /// - id: the ID of the endorsement
+    ///
+    /// Returns:
+    /// - the block ids containing the endorsement if any, None otherwise
+    pub fn get_blocks_by_endorsement(&self, id: &EndorsementId) -> Option<&Set<BlockId>> {
+        self.index_by_endorsement.get(id)
     }
 }

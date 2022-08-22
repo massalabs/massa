@@ -1,10 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
-use crate::{
-    constants::SLOT_KEY_SIZE,
-    node_configuration::{PERIODS_PER_CYCLE, THREAD_COUNT},
-};
 use massa_hash::Hash;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -164,12 +161,29 @@ impl Slot {
         Slot { period, thread }
     }
 
-    /// last slot of the given cycle
-    pub fn new_last_of_cycle(cycle: u64) -> Slot {
-        Slot {
-            period: ((cycle + 1) * PERIODS_PER_CYCLE) - 1,
-            thread: THREAD_COUNT - 1,
-        }
+    /// create the last slot of a given cycle
+    pub fn new_last_of_cycle(
+        cycle: u64,
+        periods_per_cycle: u64,
+        thread_count: u8,
+    ) -> Result<Slot, ModelsError> {
+        let period = cycle
+            .checked_mul(periods_per_cycle)
+            .ok_or(ModelsError::PeriodOverflowError)?
+            .checked_add(periods_per_cycle - 1)
+            .ok_or(ModelsError::PeriodOverflowError)?;
+        Ok(Slot {
+            period,
+            thread: thread_count - 1,
+        })
+    }
+
+    /// create the first slot of a given cycle
+    pub fn new_first_of_cycle(cycle: u64, periods_per_cycle: u64) -> Result<Slot, ModelsError> {
+        let period = cycle
+            .checked_mul(periods_per_cycle)
+            .ok_or(ModelsError::PeriodOverflowError)?;
+        Ok(Slot { period, thread: 0 })
     }
 
     /// returns the minimal slot
@@ -199,9 +213,14 @@ impl Slot {
     }
 
     /// check if the slot is last in the cycle
-    pub fn last_of_a_cycle(&self) -> bool {
-        self.period % PERIODS_PER_CYCLE == (PERIODS_PER_CYCLE - 1)
-            && self.thread == (THREAD_COUNT - 1)
+    pub fn is_last_of_cycle(&self, periods_per_cycle: u64, thread_count: u8) -> bool {
+        self.period % periods_per_cycle == (periods_per_cycle - 1)
+            && self.thread == (thread_count - 1)
+    }
+
+    /// check if the slot is first in the cycle
+    pub fn is_first_of_cycle(&self, periods_per_cycle: u64) -> bool {
+        self.period % periods_per_cycle == 0 && self.thread == 0
     }
 
     /// Returns a fixed-size sortable binary key

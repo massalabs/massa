@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedOperation};
+use massa_models::{BlockId, EndorsementId, OperationId, Slot};
 use massa_storage::Storage;
 
 /// Trait defining a pool controller
@@ -24,15 +24,17 @@ pub trait PoolController: Send + Sync {
         target_slot: &Slot,
     ) -> (Vec<Option<EndorsementId>>, Storage);
 
-    /// Return a tuple with respectivelly the operation count and the endorsement
-    /// count.
-    fn get_stats(&self) -> (usize, usize);
+    /// Get the number of endorsements in the pool
+    fn get_endorsement_count(&self) -> usize;
 
-    /// Get a list of operations by ids contained in the pool.
-    fn get_operations_by_ids(&self, ids: &Set<OperationId>) -> Vec<WrappedOperation>;
+    /// Get the number of operations in the pool
+    fn get_operation_count(&self) -> usize;
 
-    /// Get the set of endorsement's ids contained in the pool.
-    fn get_endorsement_ids(&self) -> Set<EndorsementId>;
+    /// Check if the pool contains a list of endorsements. Returns one boolean per item.
+    fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool>;
+
+    /// Check if the pool contains a list of operations. Returns one boolean per item.
+    fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn PoolController>`.

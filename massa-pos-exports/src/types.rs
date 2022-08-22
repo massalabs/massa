@@ -3,7 +3,9 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use bitvec::prelude::*;
+use massa_hash::Hash;
 use massa_models::{
+    api::IndexedSlot,
     constants::{POS_MISS_RATE_DEACTIVATION_THRESHOLD, THREAD_COUNT},
     prehash::Map,
     Address, AddressDeserializer, Amount, AmountDeserializer, AmountSerializer, BitVecDeserializer,
@@ -27,15 +29,29 @@ use std::ops::Bound::{Excluded, Included, Unbounded};
 
 use crate::SelectorController;
 
-/// Final state of PoS
+/// Selector info about an address
 #[derive(Default)]
+pub struct SelectorAddressInfo {
+    /// Number of active rolls
+    pub active_rolls: u64,
+    /// Next block draws
+    pub next_block_draws: Vec<Slot>,
+    /// Next endorsement draws
+    pub next_endorsement_draws: Vec<IndexedSlot>,
+}
+
+/// Final state of PoS
 pub struct PoSFinalState {
-    /// contiguous cycle history. Front = newest.
+    /// contiguous cycle history. Back = newest.
     pub cycle_history: VecDeque<CycleInfo>,
     /// coins to be credited at the end of the slot
     pub deferred_credits: DeferredCredits,
     /// selector controller to feed the cycle when completed
     pub selector: Option<Box<dyn SelectorController>>,
+    /// initial rolls, used for negative cycle lookback
+    pub initial_rolls: Map<Address, u64>,
+    /// initial seeds, used for negative cycle lookback (cycles -2, -1 in that order)
+    pub initial_seeds: Vec<Hash>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -53,12 +69,26 @@ impl DeferredCredits {
                         current_credits
                             .entry(*address)
                             .and_modify(|current_amount| {
-                                current_amount.checked_add(*new_amount);
+                                *current_amount = current_amount.saturating_add(*new_amount);
                             })
                             .or_insert(*new_amount);
                     }
                 })
                 .or_insert(new_credits);
+        }
+    }
+
+    /// Remove zero credits
+    pub fn remove_zeros(&mut self) {
+        let mut delete_slots = Vec::new();
+        for (slot, credits) in &mut self.0 {
+            credits.retain(|_addr, amount| !amount.is_zero());
+            if credits.is_empty() {
+                delete_slots.push(*slot);
+            }
+        }
+        for slot in delete_slots {
+            self.0.remove(&slot);
         }
     }
 }
@@ -369,7 +399,7 @@ impl ProductionStats {
     }
 
     /// Increment a production stat struct with another
-    pub fn chain(&mut self, stats: &ProductionStats) {
+    pub fn extend(&mut self, stats: &ProductionStats) {
         self.block_success_count = self
             .block_success_count
             .saturating_add(stats.block_success_count);
@@ -410,7 +440,7 @@ impl PoSChanges {
             self.production_stats
                 .entry(other_addr)
                 .or_insert_with(|| ProductionStats::default())
-                .chain(&other_stats);
+                .extend(&other_stats);
         }
 
         // extend deferred credits

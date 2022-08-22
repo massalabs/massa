@@ -204,7 +204,7 @@ checksum = "1bc2832c24239b0141d5674bb9174f9d68a8b5b3f2753311927c172ca46f7e9c"
 dependencies = [
  "funty",
  "radium",
- "serde 1.0.143",
+ "serde 1.0.144",
  "tap",
  "wyz",
 ]
@@ -261,9 +261,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.10.0"
+version = "3.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37ccbd214614c6783386c1af30caf03192f17891059cecc394b4fb119e363de3"
+checksum = "c1ad822118d20d2c234f427000d5acc36eabe1e29a348c89b63dd60b13f28e5d"
 
 [[package]]
 name = "bytecheck"
@@ -394,7 +394,7 @@ dependencies = [
  "lazy_static",
  "nom 5.1.2",
  "rust-ini",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde-hjson",
  "serde_json",
  "toml",
@@ -471,9 +471,9 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59a6001667ab124aebae2a495118e11d30984c3a653e99d86d58971708cf5e4b"
+checksum = "1079fb8528d9f9c888b1e8aa651e6e079ade467323d58f75faf1d30b1808f540"
 dependencies = [
  "libc",
 ]
@@ -805,16 +805,16 @@ dependencies = [
  "curve25519-dalek",
  "ed25519",
  "rand 0.7.3",
- "serde 1.0.143",
+ "serde 1.0.144",
  "sha2 0.9.9",
  "zeroize",
 ]
 
 [[package]]
 name = "either"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
+checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 
 [[package]]
 name = "encode_unicode"
@@ -849,7 +849,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5a56d54c8dd9b3ad34752ed197a4eb2a6601bc010808eb097a04a58ae4c43e1"
 dependencies = [
  "enum-map-derive",
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -890,7 +890,7 @@ version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "003000e712ad0f95857bd4d2ef8d1890069e06554101697d12050668b2f6f020"
 dependencies = [
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -1256,7 +1256,7 @@ checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
 dependencies = [
  "autocfg",
  "hashbrown 0.12.3",
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -1323,7 +1323,7 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-pubsub",
  "log",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "tokio",
  "url",
@@ -1339,7 +1339,7 @@ dependencies = [
  "futures-executor",
  "futures-util",
  "log",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_derive",
  "serde_json",
 ]
@@ -1394,7 +1394,7 @@ dependencies = [
  "log",
  "parking_lot 0.11.2",
  "rand 0.7.3",
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -1461,6 +1461,12 @@ dependencies = [
  "cfg-if 1.0.0",
  "winapi",
 ]
+
+[[package]]
+name = "libm"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "292a948cd991e376cf75541fe5b97a1081d713c618b4f1b9500f8844e49eb565"
 
 [[package]]
 name = "librocksdb-sys"
@@ -1561,7 +1567,7 @@ dependencies = [
  "massa_wallet",
  "paw",
  "rev_lines",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "structopt",
  "strum",
@@ -1582,7 +1588,6 @@ dependencies = [
  "massa_api",
  "massa_async_pool",
  "massa_bootstrap",
- "massa_cipher",
  "massa_consensus_exports",
  "massa_consensus_worker",
  "massa_execution_exports",
@@ -1608,7 +1613,7 @@ dependencies = [
  "massa_wallet",
  "parking_lot 0.12.1",
  "paw",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "structopt",
  "tokio",
@@ -1627,7 +1632,7 @@ dependencies = [
  "cornetto",
  "lazy_static",
  "loupe",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "serial_test 0.8.0",
  "wasmer",
@@ -1641,7 +1646,7 @@ name = "massa_api"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "futures 0.3.23",
+ "itertools",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
@@ -1658,7 +1663,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "massa_wallet",
- "serde 1.0.143",
+ "serde 1.0.144",
  "thiserror",
  "tokio",
  "tracing",
@@ -1681,7 +1686,7 @@ dependencies = [
  "num",
  "pretty_assertions",
  "rand 0.8.5",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "serial_test 0.9.0",
  "thiserror",
@@ -1707,7 +1712,6 @@ dependencies = [
  "massa_logging",
  "massa_models",
  "massa_network_exports",
- "massa_pos_exports",
  "massa_pos_worker",
  "massa_serialization",
  "massa_signature",
@@ -1716,7 +1720,7 @@ dependencies = [
  "num_enum",
  "parking_lot 0.12.1",
  "rand 0.8.5",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "serial_test 0.9.0",
  "thiserror",
@@ -1734,7 +1738,7 @@ dependencies = [
  "pbkdf2",
  "rand 0.8.5",
  "rand_core 0.6.3",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "serde_qs",
  "thiserror",
@@ -1757,7 +1761,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "num",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "tempfile",
  "thiserror",
@@ -1854,7 +1858,7 @@ dependencies = [
  "massa_time",
  "nom 7.1.1",
  "num",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "thiserror",
  "tracing",
@@ -1877,7 +1881,7 @@ dependencies = [
  "massa_time",
  "massa_wallet",
  "parking_lot 0.12.1",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "tracing",
 ]
@@ -1913,7 +1917,7 @@ dependencies = [
  "massa_storage",
  "nom 7.1.1",
  "num",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "serial_test 0.9.0",
  "thiserror",
@@ -1929,7 +1933,7 @@ dependencies = [
  "displaydoc",
  "massa_serialization",
  "nom 7.1.1",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "serial_test 0.9.0",
  "thiserror",
@@ -1945,7 +1949,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "nom 7.1.1",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "tempfile",
  "thiserror",
@@ -1993,7 +1997,7 @@ dependencies = [
  "num",
  "num_enum",
  "rust_decimal",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serial_test 0.9.0",
  "thiserror",
 ]
@@ -2010,7 +2014,7 @@ dependencies = [
  "massa_signature",
  "massa_time",
  "nom 7.1.1",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "tempfile",
  "thiserror",
@@ -2036,7 +2040,7 @@ dependencies = [
  "nom 7.1.1",
  "num_enum",
  "rand 0.8.5",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "serial_test 0.9.0",
  "tempfile",
@@ -2051,8 +2055,7 @@ dependencies = [
  "displaydoc",
  "massa_models",
  "massa_storage",
- "num",
- "serde 1.0.143",
+ "serde 1.0.144",
  "thiserror",
 ]
 
@@ -2090,7 +2093,7 @@ dependencies = [
  "massa_time",
  "nom 7.1.1",
  "num",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "thiserror",
  "tokio",
@@ -2101,7 +2104,6 @@ dependencies = [
 name = "massa_pos_worker"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bitvec",
  "massa_final_state",
  "massa_hash",
@@ -2111,8 +2113,9 @@ dependencies = [
  "massa_time",
  "parking_lot 0.12.1",
  "rand 0.8.5",
+ "rand_distr",
  "rand_xoshiro",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "tracing",
 ]
@@ -2128,8 +2131,9 @@ dependencies = [
  "massa_models",
  "massa_network_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "thiserror",
  "tokio",
@@ -2164,7 +2168,7 @@ dependencies = [
  "jsonrpc-core-client",
  "massa_models",
  "massa_signature",
- "serde 1.0.143",
+ "serde 1.0.144",
  "tokio",
 ]
 
@@ -2189,7 +2193,7 @@ dependencies = [
  "massa_serialization",
  "nom 7.1.1",
  "rand 0.7.3",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "serial_test 0.9.0",
  "thiserror",
@@ -2213,7 +2217,7 @@ dependencies = [
  "displaydoc",
  "massa_serialization",
  "nom 7.1.1",
- "serde 1.0.143",
+ "serde 1.0.144",
  "thiserror",
  "time",
 ]
@@ -2227,7 +2231,7 @@ dependencies = [
  "massa_hash",
  "massa_models",
  "massa_signature",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_json",
  "serde_qs",
  "thiserror",
@@ -2369,7 +2373,7 @@ dependencies = [
  "autocfg",
  "num-integer",
  "num-traits 0.2.15",
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -2379,7 +2383,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ae39348c8bc5fbd7f40c727a9925f03517afd2ab27d46702108b6a7e5414c19"
 dependencies = [
  "num-traits 0.2.15",
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -2413,7 +2417,7 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "num-traits 0.2.15",
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -2432,6 +2436,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
@@ -2876,6 +2881,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_distr"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
+dependencies = [
+ "num-traits 0.2.15",
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "rand_hc"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3050,7 +3065,7 @@ checksum = "ee9164faf726e4f3ece4978b25ca877ddc6802fa77f38cdccb32c7f805ecd70c"
 dependencies = [
  "arrayvec 0.7.2",
  "num-traits 0.2.15",
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -3110,9 +3125,9 @@ checksum = "1c107b6f4780854c8b126e228ea8869f4d7b71260f962fefb57b996b8959ba6b"
 
 [[package]]
 name = "security-framework"
-version = "2.6.1"
+version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dc14f172faf8a0194a3aded622712b0de276821addc574fa54fc0a1167e10dc"
+checksum = "2bc1bb97804af6631813c55739f771071e0f2ed33ee20b68c86ec505d906356c"
 dependencies = [
  "bitflags",
  "core-foundation",
@@ -3145,9 +3160,9 @@ checksum = "9dad3f759919b92c3068c696c15c3d17238234498bbdcc80f2c469606f948ac8"
 
 [[package]]
 name = "serde"
-version = "1.0.143"
+version = "1.0.144"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53e8e5d5b70924f74ff5c6d64d9a5acd91422117c60f48c4e07855238a254553"
+checksum = "0f747710de3dcd43b88c9168773254e809d8ddbdf9653b84e2554ab219f17860"
 dependencies = [
  "serde_derive",
 ]
@@ -3170,14 +3185,14 @@ version = "0.11.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfc50e8183eeeb6178dcb167ae34a8051d63535023ae38b5d8d12beae193d37b"
 dependencies = [
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.143"
+version = "1.0.144"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3d8e8de557aee63c26b85b947f5e59b690d0454c753f3adeb5cd7835ab88391"
+checksum = "94ed3a816fb1d101812f83e789f888322c34e291f894f19590dc310963e87a00"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3192,7 +3207,7 @@ checksum = "38dd04e3c8279e75b31ef29dbdceebfe5ad89f4d0937213c53f7d49d01b3d5a7"
 dependencies = [
  "itoa",
  "ryu",
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -3202,7 +3217,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8cac3f1e2ca2fe333923a1ae72caca910b98ed0630bb35ef6f8c8517d6e81afa"
 dependencies = [
  "percent-encoding 2.1.0",
- "serde 1.0.143",
+ "serde 1.0.144",
  "thiserror",
 ]
 
@@ -3520,7 +3535,7 @@ dependencies = [
  "itoa",
  "libc",
  "num_threads",
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -3612,7 +3627,7 @@ version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d82e1a7758622a465f8cee077614c73484dac5b836c02ff6a40d5d1010324d7"
 dependencies = [
- "serde 1.0.143",
+ "serde 1.0.144",
 ]
 
 [[package]]
@@ -3938,7 +3953,7 @@ dependencies = [
  "enumset",
  "loupe",
  "rkyv",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_bytes",
  "smallvec",
  "target-lexicon",
@@ -4011,7 +4026,7 @@ dependencies = [
  "memmap2",
  "more-asserts",
  "rustc-demangle",
- "serde 1.0.143",
+ "serde 1.0.144",
  "serde_bytes",
  "target-lexicon",
  "thiserror",
@@ -4035,7 +4050,7 @@ dependencies = [
  "loupe",
  "object 0.28.4",
  "rkyv",
- "serde 1.0.143",
+ "serde 1.0.144",
  "tempfile",
  "tracing",
  "wasmer-artifact",
@@ -4119,7 +4134,7 @@ dependencies = [
  "loupe",
  "more-asserts",
  "rkyv",
- "serde 1.0.143",
+ "serde 1.0.144",
  "thiserror",
 ]
 
@@ -4144,7 +4159,7 @@ dependencies = [
  "region",
  "rkyv",
  "scopeguard",
- "serde 1.0.143",
+ "serde 1.0.144",
  "thiserror",
  "wasmer-artifact",
  "wasmer-types",

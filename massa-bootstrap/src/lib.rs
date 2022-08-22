@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! Bootstrap crate
 //!
 //! At start up, if now is after genesis timestamp,

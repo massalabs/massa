@@ -101,7 +101,7 @@ impl SpeculativeAsyncPool {
     ///
     /// # Returns
     /// the list of deleted `(message_id, message)`, used for reimbursement
-    pub fn settle_slot(&mut self, slot: Slot) -> Vec<(AsyncMessageId, AsyncMessage)> {
+    pub fn settle_slot(&mut self, slot: &Slot) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let deleted_messages = self.async_pool.settle_slot(slot, &mut self.emitted);
         for (msg_id, msg) in std::mem::take(&mut self.emitted) {
             self.settled_changes.push_add(msg_id, msg);

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, prehash::Set, OperationId};
+use massa_models::{constants::CHANNEL_SIZE, node::NodeId, OperationId};
 use massa_models::{BlockId, WrappedEndorsement, WrappedHeader, WrappedOperation};
 use massa_network_exports::{
     AskForBlocksInfo, BlockInfoReply, NetworkCommand, NetworkCommandSender, NetworkEvent,

@@ -16,7 +16,7 @@ use massa_models::{
 use massa_sdk::Client;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_wallet::{Wallet, WalletError};
+use massa_wallet::Wallet;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::Write as _;
@@ -689,7 +689,7 @@ impl Command {
                             {
                                 match addresses_info.get(0) {
                                     Some(info) => {
-                                        if info.ledger_info.candidate_ledger_info.balance < total {
+                                        if info.candidate_sequential_balance < total {
                                             client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
@@ -732,8 +732,8 @@ impl Command {
                     if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
                         match addresses_info.get(0) {
                             Some(info) => {
-                                if info.ledger_info.candidate_ledger_info.balance < fee
-                                    || roll_count > info.rolls.candidate_rolls
+                                if info.candidate_sequential_balance < fee
+                                    || roll_count > info.candidate_roll_count
                                 {
                                     client_warning!("this operation may be rejected due to insufficient balance or roll count");
                                 }
@@ -764,25 +764,16 @@ impl Command {
                 let fee = parameters[3].parse::<Amount>()?;
 
                 if !json {
-                    match amount.checked_add(fee) {
-                        Some(total) => {
-                            if let Ok(addresses_info) =
-                                client.public.get_addresses(vec![addr]).await
-                            {
-                                match addresses_info.get(0) {
-                                    Some(info) => {
-                                        if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insufficient balance");
-                                        }
-                                    }
-                                    None => {
-                                        client_warning!(format!("address {} not found", addr))
-                                    }
+                    if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
+                        match addresses_info.get(0) {
+                            Some(info) => {
+                                if info.candidate_sequential_balance < fee {
+                                    client_warning!("this operation may be rejected due to insufficient balance");
                                 }
                             }
-                        }
-                        None => {
-                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                            None => {
+                                client_warning!(format!("address {} not found", addr))
+                            }
                         }
                     }
                 }
@@ -840,7 +831,6 @@ impl Command {
                 if !json {
                     match gas_price
                         .checked_mul_u64(max_gas)
-                        .and_then(|x| x.checked_add(coins))
                         .and_then(|x| x.checked_add(fee))
                     {
                         Some(total) => {
@@ -849,7 +839,7 @@ impl Command {
                             {
                                 match addresses_info.get(0) {
                                     Some(info) => {
-                                        if info.ledger_info.candidate_ledger_info.balance < total {
+                                        if info.candidate_sequential_balance < total {
                                             client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
@@ -913,10 +903,7 @@ impl Command {
                             {
                                 match addresses_info.get(0) {
                                     Some(info) => {
-                                        if info.ledger_info.candidate_ledger_info.balance < total
-                                            || info.candidate_balance_info.unwrap_or_default()
-                                                < coins
-                                        {
+                                        if info.candidate_sequential_balance < total {
                                             client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }

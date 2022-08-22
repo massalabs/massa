@@ -6,35 +6,45 @@ use massa_models::{
 };
 use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 
 pub struct EndorsementPool {
     /// config
-    pub config: PoolConfig,
+    config: PoolConfig,
 
-    /// endorsement hashmap indexed by target slot and target block ID for fast access (slot, index, block_id)
-    pub endorsements: HashMap<(Slot, u32, BlockId), EndorsementId>,
+    /// endorsements indexed by slot, index and block ID
+    endorsements_indexed: HashMap<(Slot, u32, BlockId), EndorsementId>,
 
     /// endorsements sorted by increasing target slot for pruning
-    /// indexed by thread, then BTreeSet<(target_slot, index, target_block)>
-    pub endorsements_sorted: Vec<BTreeSet<(Slot, u32, BlockId)>>,
+    /// indexed by thread, then BTreeMap<(target_slot, index, target_block), endorsement_id>
+    endorsements_sorted: Vec<BTreeMap<(Slot, u32, BlockId), EndorsementId>>,
 
     /// storage
-    pub storage: Storage,
+    storage: Storage,
 
     /// last consensus final periods, per thread
-    pub last_cs_final_periods: Vec<u64>,
+    last_cs_final_periods: Vec<u64>,
 }
 
 impl EndorsementPool {
-    pub fn init(config: PoolConfig, storage: Storage) -> Self {
+    pub fn init(config: PoolConfig, storage: &Storage) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
-            endorsements: Default::default(),
+            endorsements_indexed: Default::default(),
             endorsements_sorted: Default::default(),
             config,
-            storage,
+            storage: storage.clone_without_refs(),
         }
+    }
+
+    /// Get the number of stored elements
+    pub fn len(&self) -> usize {
+        self.storage.get_endorsement_refs().len()
+    }
+
+    /// Checks whether an element is stored in the pool.
+    pub fn contains(&self, id: &EndorsementId) -> bool {
+        self.storage.get_endorsement_refs().contains(id)
     }
 
     /// notify of new final CS periods
@@ -45,16 +55,15 @@ impl EndorsementPool {
         // remove old endorsements
         let mut removed: Set<EndorsementId> = Default::default();
         for thread in 0..self.config.thread_count {
-            while let Some((target_slot, target_block, index)) =
-                self.endorsements_sorted[thread as usize].first().copied()
+            while let Some((&(target_slot, index, block_id), &endo_id)) =
+                self.endorsements_sorted[thread as usize].first_key_value()
             {
                 if target_slot.period < self.last_cs_final_periods[thread as usize] {
                     self.endorsements_sorted[thread as usize].pop_first();
-                    let e_id = self
-                        .endorsements
-                        .remove(&(target_slot, target_block, index))
-                        .expect("endorsement pool index inconsistency");
-                    removed.insert(e_id);
+                    self.endorsements_indexed
+                        .remove(&(target_slot, index, block_id))
+                        .expect("endorsement should be in endorsements_indexed at this point");
+                    removed.insert(endo_id);
                 }
             }
         }
@@ -73,40 +82,33 @@ impl EndorsementPool {
         let mut removed = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
 
         // add items to pool
-        endorsement_storage.with_endorsements(&items, |endo_refs| {
-            endo_refs
-                .iter()
-                .zip(items.iter())
-                .for_each(|(endo_ref, _id)| {
-                    let endo = endo_ref.expect(
-                        "attempting to add endorsement to pool, but it is absent from storage",
-                    );
+        {
+            let endo_store = endorsement_storage.read_endorsements();
+            for endo_id in items {
+                let endo = endo_store
+                    .get(&endo_id)
+                    .expect("attempting to add endorsement to pool, but it is absent from storage");
 
-                    if endo.content.slot.period
-                        < self.last_cs_final_periods[endo.content.slot.thread as usize]
-                    {
-                        // endorsement expired: ignore
-                        return;
-                    }
+                if endo.content.slot.period
+                    < self.last_cs_final_periods[endo.content.slot.thread as usize]
+                {
+                    // endorsement expired: ignore
+                    continue;
+                }
 
-                    let key = (
-                        endo.content.slot,
-                        endo.content.index,
-                        endo.content.endorsed_block,
-                    );
-                    match self.endorsements.entry(key) {
-                        std::collections::hash_map::Entry::Occupied(_) => {
-                            // we already have an endorsement for this slot: ignore
-                            return;
-                        }
-                        std::collections::hash_map::Entry::Vacant(vac) => {
-                            vac.insert(endo.id);
-                        }
-                    }
-                    self.endorsements_sorted[endo.content.slot.thread as usize].insert(key);
+                // insert
+                let key = (
+                    endo.content.slot,
+                    endo.content.index,
+                    endo.content.endorsed_block,
+                );
+                // note that we don't want equivalent endorsements (slot, index, block etc...) to overwrite each other
+                if self.endorsements_indexed.try_insert(key, endo.id).is_ok() {
+                    self.endorsements_sorted[endo.content.slot.thread as usize].insert(key,endo.id).expect("endorsement is expected to be absent from endorsements_sorted at this point");
                     added.insert(endo.id);
-                });
-        });
+                }
+            }
+        }
 
         // prune excess endorsements
         for thread in 0..self.config.thread_count {
@@ -114,13 +116,9 @@ impl EndorsementPool {
                 > self.config.max_endorsements_pool_size_per_thread
             {
                 // won't panic because len was checked above
-                let key = self.endorsements_sorted[thread as usize]
+                let (_key, endo_id) = self.endorsements_sorted[thread as usize]
                     .pop_last()
                     .unwrap();
-                let endo_id = self
-                    .endorsements
-                    .remove(&key)
-                    .expect("endorsement pool index inconsistency on pos-insert pruning");
                 if !added.remove(&endo_id) {
                     removed.insert(endo_id);
                 }
@@ -150,7 +148,7 @@ impl EndorsementPool {
         // gather endorsements
         for index in 0..self.config.max_block_endorsement_count {
             endo_ids.push(
-                self.endorsements
+                self.endorsements_indexed
                     .get(&(*target_slot, index, *target_block))
                     .copied(),
             );
