@@ -77,15 +77,15 @@ impl AsyncPool {
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
     pub fn settle_slot(
         &mut self,
-        slot: Slot,
+        slot: &Slot,
         new_messages: &mut Vec<(AsyncMessageId, AsyncMessage)>,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
         let mut eliminated: Vec<_> = self
             .messages
-            .drain_filter(|_k, v| slot >= v.validity_end)
-            .chain(new_messages.drain_filter(|(_k, v)| slot >= v.validity_end))
+            .drain_filter(|_k, v| *slot >= v.validity_end)
+            .chain(new_messages.drain_filter(|(_k, v)| *slot >= v.validity_end))
             .collect();
 
         // Insert new messages into the pool

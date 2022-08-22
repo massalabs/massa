@@ -5,24 +5,24 @@ use massa_models::{
     prehash::{BuildMap, Map, Set},
     Address, Amount, OperationId, Slot,
 };
-use massa_pool_exports::{PoolConfig, PoolOperationCursor};
+use massa_pool_exports::PoolConfig;
 use massa_storage::Storage;
-use std::{
-    collections::{btree_map, BTreeMap, BTreeSet},
-    ops::RangeInclusive,
-};
+use std::collections::BTreeSet;
 
-use crate::types::{build_cursor, OperationInfo};
+use crate::types::{OperationInfo, PoolOperationCursor};
 
 pub struct OperationPool {
     /// config
     config: PoolConfig,
 
+    /// operations map
+    operations: Map<OperationId, OperationInfo>,
+
     /// operations sorted by decreasing quality, per thread
-    sorted_ops_per_thread: Vec<BTreeMap<PoolOperationCursor, OperationInfo>>,
+    sorted_ops_per_thread: Vec<BTreeSet<PoolOperationCursor>>,
 
     /// operations sorted by increasing expiration slot
-    ops_per_expiration: BTreeSet<(Slot, PoolOperationCursor)>,
+    ops_per_expiration: BTreeSet<(Slot, OperationId)>,
 
     /// storage instance
     pub(crate) storage: Storage,
@@ -37,17 +37,28 @@ pub struct OperationPool {
 impl OperationPool {
     pub fn init(
         config: PoolConfig,
-        storage: Storage,
+        storage: &Storage,
         execution_controller: Box<dyn ExecutionController>,
     ) -> Self {
         OperationPool {
+            operations: Default::default(),
             sorted_ops_per_thread: vec![Default::default(); config.thread_count as usize],
             ops_per_expiration: Default::default(),
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             config,
-            storage,
+            storage: storage.clone_without_refs(),
             execution_controller,
         }
+    }
+
+    /// Get the number of stored elements
+    pub fn len(&self) -> usize {
+        self.operations.len()
+    }
+
+    /// Checks whether an element is stored in the pool.
+    pub fn contains(&self, id: &OperationId) -> bool {
+        self.operations.contains_key(id)
     }
 
     /// notify of new final slot
@@ -57,15 +68,19 @@ impl OperationPool {
 
         // prune old ops
         let mut removed_ops: Set<_> = Default::default();
-        while let Some((expire_slot, key)) = self.ops_per_expiration.first().copied() {
+        while let Some((expire_slot, op_id)) = self.ops_per_expiration.first().copied() {
             if expire_slot.period > self.last_cs_final_periods[expire_slot.thread as usize] {
                 break;
             }
             self.ops_per_expiration.pop_first();
-            let info = self.sorted_ops_per_thread[expire_slot.thread as usize]
-                .remove(&key)
-                .expect("expected op presence in sorted list");
-            removed_ops.insert(info.id);
+            let op_info = self
+                .operations
+                .remove(&op_id)
+                .expect("expected op presence in operations list");
+            if !self.sorted_ops_per_thread[expire_slot.thread as usize].remove(&op_info.cursor) {
+                panic!("expected op presence in sorted list")
+            }
+            removed_ops.insert(op_id);
         }
 
         // notify storage that pool has lost references to removed_ops
@@ -73,13 +88,11 @@ impl OperationPool {
     }
 
     /// Checks if an operation is relevant according to its thread and period validity range
-    fn is_operation_relevant(
-        &self,
-        thread: u8,
-        period_validity_range: &RangeInclusive<u64>,
-    ) -> bool {
+    fn is_operation_relevant(&self, op_info: &OperationInfo) -> bool {
         // too old
-        if *period_validity_range.end() <= self.last_cs_final_periods[thread as usize] {
+        if *op_info.validity_period_range.end()
+            <= self.last_cs_final_periods[op_info.thread as usize]
+        {
             return false;
         }
 
@@ -101,40 +114,47 @@ impl OperationPool {
         let mut removed = Set::with_capacity_and_hasher(items.len(), BuildMap::default());
 
         // add items to pool
-        ops_storage.with_operations(&items, |op_refs| {
-            op_refs.iter().zip(items.iter()).for_each(|(op_ref, id)| {
-                let op = op_ref
-                    .expect("attempting to add operation to pool, but it is absent from storage");
-                let op_validity = op.get_validity_range(self.config.operation_validity_periods);
-                if !self.is_operation_relevant(op.thread, &op_validity) {
-                    return;
+        {
+            let ops = ops_storage.read_operations();
+            for op_id in items {
+                let op_info = OperationInfo::from_op(
+                    ops.get(&op_id).expect(
+                        "attempting to add operation to pool, but it is absent from storage",
+                    ),
+                    self.config.operation_validity_periods,
+                    self.config.roll_price,
+                );
+                if !self.is_operation_relevant(&op_info) {
+                    continue;
                 }
-                let key = build_cursor(op);
-                // thread index won't panic because it was checked at op production or deserialization
-                match self.sorted_ops_per_thread[op.thread as usize].entry(key) {
-                    btree_map::Entry::Occupied(_) => {}
-                    btree_map::Entry::Vacant(vac) => {
-                        self.ops_per_expiration
-                            .insert((Slot::new(*op_validity.end(), op.thread), key));
-                        vac.insert(OperationInfo::from_op(
-                            op,
-                            self.config.operation_validity_periods,
-                            self.config.roll_price,
-                        ));
-                        added.insert(*id);
+                if let Ok(op_info) = self.operations.try_insert(op_info.id, op_info) {
+                    if !self.sorted_ops_per_thread[op_info.thread as usize].insert(op_info.cursor) {
+                        panic!("sorted ops should not contain the op at this point");
                     }
+                    if !self.ops_per_expiration.insert((
+                        Slot::new(*op_info.validity_period_range.end(), op_info.thread),
+                        op_info.id,
+                    )) {
+                        panic!("expiration indexed ops should not contain the op at this point");
+                    }
+                    added.insert(op_info.id);
                 }
-            });
-        });
+            }
+        }
 
         // prune excess operations
-
         self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
             while ops.len() > self.config.max_operation_pool_size_per_thread {
                 // the unrap below won't panic because the loop condition tests for non-emptines of self.operations
-                let (key, op_info) = ops.pop_last().unwrap();
+                let cursor = ops.pop_last().unwrap();
+                let op_info = self
+                    .operations
+                    .remove(&cursor.get_id())
+                    .expect("the operation should be in self.operations at this point");
                 let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
-                self.ops_per_expiration.remove(&(end_slot, key));
+                if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
+                    panic!("the operation should be in self.ops_per_expiration at this point");
+                }
                 if !added.remove(&op_info.id) {
                     removed.insert(op_info.id);
                 }
@@ -165,7 +185,12 @@ impl OperationPool {
         let mut sequential_balance_cache: Map<Address, Amount> = Default::default();
 
         // iterate over pool operations in the right thread, from best to worst
-        for (_cursor, op_info) in self.sorted_ops_per_thread[slot.thread as usize].iter() {
+        for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
+            let op_info = self
+                .operations
+                .get(&cursor.get_id())
+                .expect("the operation should be in self.operations at this point");
+
             // exclude ops for which the block slot is outside of their validity range
             if !op_info.validity_period_range.contains(&slot.period) {
                 continue;
@@ -196,9 +221,10 @@ impl OperationPool {
                 .entry(op_info.creator_address)
                 .or_insert_with(|| {
                     self.execution_controller
-                        .get_final_and_active_sequential_balance(vec![op_info.creator_address])[0]
-                        .1
-                        .unwrap_or_default()
+                        .get_final_and_candidate_sequential_balances(&vec![op_info.creator_address])
+                        [0]
+                    .1
+                    .unwrap_or_default()
                 });
             if *creator_seq_balance < op_info.max_sequential_spending {
                 continue;

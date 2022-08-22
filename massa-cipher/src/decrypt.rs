@@ -5,7 +5,7 @@
 //! Read `lib.rs` module documentation for more information.
 
 use aes_gcm::aead::Aead;
-use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce};
+use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use pbkdf2::{
     password_hash::{PasswordHasher, SaltString},
     Pbkdf2,

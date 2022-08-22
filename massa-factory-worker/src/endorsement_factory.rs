@@ -22,7 +22,6 @@ pub(crate) struct EndorsementFactoryWorker {
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
     factory_receiver: mpsc::Receiver<()>,
-    endorsement_serializer: EndorsementSerializer,
     half_t0: MassaTime,
 }
 
@@ -47,7 +46,6 @@ impl EndorsementFactoryWorker {
                     wallet,
                     channels,
                     factory_receiver,
-                    endorsement_serializer: EndorsementSerializer::new(),
                 };
                 this.run();
             })
@@ -131,17 +129,18 @@ impl EndorsementFactoryWorker {
         };
 
         // get creators if they are managed by our wallet
-        let producers_indices: Vec<(KeyPair, usize)> = Vec::new();
+        let mut producers_indices: Vec<(KeyPair, usize)> = Vec::new();
         {
             let wallet = self.wallet.read().expect("could not lock wallet");
             for (index, producer_addr) in producer_addrs.into_iter().enumerate() {
                 // check if the block producer address is handled by the wallet
                 let producer_keypair = match wallet.find_associated_keypair(&producer_addr) {
                     // the selected block producer is managed locally => continue to attempt endorsement production
-                    Some(kp) => (kp, index),
+                    Some(kp) => kp.clone(),
                     // the selected block producer is not managed locally => continue
                     None => continue,
                 };
+                producers_indices.push((producer_keypair, index));
             }
         }
 
@@ -178,7 +177,7 @@ impl EndorsementFactoryWorker {
                     index: index as u32,
                     endorsed_block,
                 },
-                EndorsementSerializer::new(),
+                EndorsementSerializer::new(), // TODO reuse self.endorsement_serializer
                 &keypair,
             )
             .expect("could not create endorsement");

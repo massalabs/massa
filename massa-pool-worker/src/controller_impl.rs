@@ -1,4 +1,4 @@
-use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedOperation};
+use massa_models::{BlockId, EndorsementId, OperationId, Slot};
 use massa_pool_exports::{PoolConfig, PoolController};
 use massa_storage::Storage;
 use std::sync::{Arc, RwLock};
@@ -66,37 +66,37 @@ impl PoolController for PoolControllerImpl {
         Box::new(self.clone())
     }
 
-    /// Get respectivelly the number of operations and endorsements currently in pool
-    fn get_stats(&self) -> (usize, usize) {
-        (
-            self.operation_pool
-                .read()
-                .expect("could not r-lock operation pool")
-                .storage
-                .local_operation_len(),
-            self.endorsement_pool
-                .read()
-                .expect("could not r-lock endorsement pool")
-                .storage
-                .local_endorsement_len(),
-        )
+    /// Get the number of endorsements in the pool
+    fn get_endorsement_count(&self) -> usize {
+        self.endorsement_pool
+            .read()
+            .expect("could not r-lock endorsement pool")
+            .len()
     }
 
-    /// Get the operation pool storage
-    fn get_operations_by_ids(&self, ids: &Set<OperationId>) -> Vec<WrappedOperation> {
+    /// Get the number of operations in the pool
+    fn get_operation_count(&self) -> usize {
         self.operation_pool
             .read()
             .expect("could not r-lock operation pool")
-            .storage
-            .get_operations_by_ids(ids)
+            .len()
     }
 
-    /// Get the endorsement pool storage
-    fn get_endorsement_ids(&self) -> Set<EndorsementId> {
-        self.endorsement_pool
+    /// Check if the pool contains a list of endorsements. Returns one boolean per item.
+    fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool> {
+        let lck = self
+            .endorsement_pool
             .read()
-            .expect("could not r-lock operation pool")
-            .storage
-            .get_local_endorsement_ids()
+            .expect("could not r-lock endorsement pool");
+        endorsements.iter().map(|id| lck.contains(id)).collect()
+    }
+
+    /// Check if the pool contains a list of operations. Returns one boolean per item.
+    fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
+        let lck = self
+            .operation_pool
+            .read()
+            .expect("could not r-lock operation pool");
+        operations.iter().map(|id| lck.contains(id)).collect()
     }
 }

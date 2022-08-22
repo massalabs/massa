@@ -40,14 +40,10 @@ pub struct ConsensusStats {
     pub end_timespan: MassaTime,
     /// number of final blocks
     pub final_block_count: u64,
-    /// number of final operations
-    pub final_operation_count: u64,
     /// number of stale blocks in memory
     pub stale_block_count: u64,
     ///  number of actives cliques
     pub clique_count: u64,
-    /// total number of stakers
-    pub staker_count: u64,
 }
 
 impl std::fmt::Display for ConsensusStats {
@@ -65,9 +61,7 @@ impl std::fmt::Display for ConsensusStats {
         )?;
         writeln!(f, "\tFinal block count: {}", self.final_block_count)?;
         writeln!(f, "\tStale block count: {}", self.stale_block_count)?;
-        writeln!(f, "\tFinal operation count: {}", self.final_operation_count)?;
         writeln!(f, "\tClique count: {}", self.clique_count)?;
-        writeln!(f, "\tStaker count: {}", self.staker_count)?;
         Ok(())
     }
 }

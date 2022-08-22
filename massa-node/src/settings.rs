@@ -6,8 +6,7 @@ use std::path::PathBuf;
 use enum_map::EnumMap;
 use massa_api::APISettings;
 use massa_consensus_exports::ConsensusSettings;
-use massa_models::constants::{build_massa_settings, OPERATION_VALIDITY_PERIODS, THREAD_COUNT};
-use massa_pool_exports::PoolConfig;
+use massa_models::constants::build_massa_settings;
 use massa_protocol_exports::ProtocolSettings;
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
@@ -35,6 +34,7 @@ pub struct ExecutionSettings {
 #[derive(Clone, Debug, Deserialize)]
 pub struct SelectionSettings {
     pub max_draw_cache: usize,
+    pub initial_rolls_path: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize)]

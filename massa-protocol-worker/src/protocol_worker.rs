@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::checked_operations::CheckedOperations;
 use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
@@ -30,6 +30,8 @@ use tokio::{
     time::{sleep, sleep_until, Instant, Sleep},
 };
 use tracing::{debug, error, info, warn};
+
+// TODO connect protocol to pool so that it sends ops and endorsements
 
 /// start a new `ProtocolController` from a `ProtocolConfig`
 /// - generate keypair
@@ -298,7 +300,6 @@ impl ProtocolWorker {
 
                 // listen to incoming commands
                 Some(cmd) = self.controller_command_rx.recv() => {
-                    massa_trace!("protocol.protocol_worker.run_loop.protocol_command_rx", { "cmd": cmd });
                     self.process_command(cmd, &mut block_ask_timer).await?;
                 }
 
@@ -336,11 +337,9 @@ impl ProtocolWorker {
         cmd: ProtocolCommand,
         timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.protocol_worker.process_command.begin", {
-            "cmd": cmd
-        });
         match cmd {
-            ProtocolCommand::IntegratedBlock { block_id } => {
+            ProtocolCommand::IntegratedBlock { block_id, storage } => {
+                // TODO properly manage storage
                 massa_trace!(
                     "protocol.protocol_worker.process_command.integrated_block.begin",
                     { "block_id": block_id }

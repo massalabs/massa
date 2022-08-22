@@ -5,7 +5,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedOperation};
+use massa_models::{BlockId, EndorsementId, OperationId, Slot};
 use massa_storage::Storage;
 
 use crate::PoolController;
@@ -42,16 +42,28 @@ pub enum MockPoolControllerMessage {
         response_tx: mpsc::Sender<(Vec<OperationId>, Storage)>,
     },
     /// Get endorsement ids
-    GetEndorsementIds {
+    GetEndorsementCount {
         /// Response channel
-        response_tx: mpsc::Sender<Set<EndorsementId>>,
+        response_tx: mpsc::Sender<usize>,
     },
     /// Get operations by ids
-    GetOperationsByIds {
-        /// Ids to fetch
-        ids: Set<OperationId>,
+    GetOperationCount {
         /// Response channel
-        response_tx: mpsc::Sender<Vec<WrappedOperation>>,
+        response_tx: mpsc::Sender<usize>,
+    },
+    /// Contains endorsements
+    ContainsEndorsements {
+        /// ids to search
+        ids: Vec<EndorsementId>,
+        /// Response channel
+        response_tx: mpsc::Sender<Vec<bool>>,
+    },
+    /// Contains endorsements
+    ContainsOperations {
+        /// ids to search
+        ids: Vec<OperationId>,
+        /// Response channel
+        response_tx: mpsc::Sender<Vec<bool>>,
     },
     /// Get stats of the pool
     GetStats {
@@ -134,35 +146,48 @@ impl PoolController for MockPoolController {
         response_rx.recv().unwrap()
     }
 
-    fn get_endorsement_ids(&self) -> Set<EndorsementId> {
+    fn get_endorsement_count(&self) -> usize {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
             .unwrap()
-            .send(MockPoolControllerMessage::GetEndorsementIds { response_tx })
+            .send(MockPoolControllerMessage::GetEndorsementCount { response_tx })
             .unwrap();
         response_rx.recv().unwrap()
     }
 
-    fn get_operations_by_ids(&self, ids: &Set<OperationId>) -> Vec<WrappedOperation> {
+    fn get_operation_count(&self) -> usize {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
             .unwrap()
-            .send(MockPoolControllerMessage::GetOperationsByIds {
-                ids: ids.clone(),
+            .send(MockPoolControllerMessage::GetOperationCount { response_tx })
+            .unwrap();
+        response_rx.recv().unwrap()
+    }
+
+    fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool> {
+        let (response_tx, response_rx) = mpsc::channel();
+        self.0
+            .lock()
+            .unwrap()
+            .send(MockPoolControllerMessage::ContainsEndorsements {
+                ids: endorsements.to_vec(),
                 response_tx,
             })
             .unwrap();
         response_rx.recv().unwrap()
     }
 
-    fn get_stats(&self) -> (usize, usize) {
+    fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
             .unwrap()
-            .send(MockPoolControllerMessage::GetStats { response_tx })
+            .send(MockPoolControllerMessage::ContainsOperations {
+                ids: operations.to_vec(),
+                response_tx,
+            })
             .unwrap();
         response_rx.recv().unwrap()
     }

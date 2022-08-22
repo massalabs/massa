@@ -1,11 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::constants::ADDRESS_SIZE_BYTES;
 use crate::prehash::PreHashed;
 use crate::ModelsError;
-use crate::{
-    api::{LedgerInfo, RollsInfo},
-    constants::ADDRESS_SIZE_BYTES,
-};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -286,9 +283,9 @@ impl Deserializer<Address> for AddressDeserializer {
     }
 }
 
-/// Production stats for a given address during a given cycle
+/// Info for a given address on a given cycle
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AddressCycleProductionStats {
+pub struct ExecutionAddressCycleInfo {
     /// cycle number
     pub cycle: u64,
     /// true if that cycle is final
@@ -297,16 +294,6 @@ pub struct AddressCycleProductionStats {
     pub ok_count: u64,
     /// `ok_count` blocks were missed by this address during that cycle
     pub nok_count: u64,
-}
-
-/// Address state as know by consensus
-/// Used to answer to API
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AddressState {
-    /// Parallel balance information
-    pub ledger_info: LedgerInfo,
-    /// Rolls information
-    pub rolls: RollsInfo,
-    /// stats for still in memory cycles
-    pub production_stats: Vec<AddressCycleProductionStats>,
+    /// number of active rolls the address had at that cycle (if still available)
+    pub active_rolls: Option<u64>,
 }

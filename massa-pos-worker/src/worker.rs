@@ -1,22 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::collections::BTreeMap;
-use std::collections::VecDeque;
-use std::thread::JoinHandle;
-
-use massa_hash::Hash;
-use massa_models::prehash::Map;
-use massa_models::Address;
-use massa_pos_exports::CycleInfo;
-use massa_pos_exports::PosError::InvalidInitialRolls;
+use crate::controller::SelectorControllerImpl;
+use crate::controller::SelectorManagerImpl;
+use crate::CycleDraws;
+use crate::DrawCache;
+use crate::RwLockCondvar;
+use crate::{Command, DrawCachePtr, InputDataPtr};
+use massa_pos_exports::PosError;
 use massa_pos_exports::PosResult;
 use massa_pos_exports::SelectorConfig;
 use massa_pos_exports::SelectorController;
 use massa_pos_exports::SelectorManager;
-
-use crate::controller::SelectorControllerImpl;
-use crate::controller::SelectorManagerImpl;
-use crate::{Command, DrawCachePtr, InputDataPtr};
+use parking_lot::RwLock;
+use std::collections::VecDeque;
+use std::sync::Arc;
+use std::thread::JoinHandle;
 
 /// Structure gathering all elements needed by the selector thread
 #[allow(dead_code)]
@@ -27,66 +25,114 @@ pub(crate) struct SelectorThread {
     pub(crate) cache: DrawCachePtr,
     /// Configuration
     pub(crate) cfg: SelectorConfig,
-    /// Initial rolls from initial rolls file
-    pub(crate) initial_rolls: Vec<Map<Address, u64>>,
-    /// Initial seeds: they are lightweight, we always keep them
-    /// the seed for cycle -N is obtained by hashing N times the value
-    /// `ConsensusConfig.initial_draw_seed` the seeds are indexed from -1 to -N
-    pub(crate) initial_seeds: Vec<Vec<u8>>,
-    /// Computed cycle rolls cumulative distribution to keep in memory,
-    /// Map<Cycle, CumulativeDistrib>
-    pub(crate) cycle_states: BTreeMap<u64, Vec<(u64, Address)>>,
 }
 
 impl SelectorThread {
     /// Creates the `SelectorThread` structure to gather all data and references
     /// needed by the selector worker thread.
-    ///
-    /// # Arguments
-    /// * `input_data`: a copy of the input data interface to get incoming requests from
-    pub(crate) fn init(
+    pub(crate) fn spawn(
         input_data: InputDataPtr,
         cache: DrawCachePtr,
-        initial_rolls: Vec<Map<Address, u64>>,
         cfg: SelectorConfig,
-        bootstrap_cycles: VecDeque<CycleInfo>,
-    ) -> PosResult<JoinHandle<PosResult<()>>> {
-        let mut this = Self {
-            input_data,
-            cache,
-            initial_seeds: generate_initial_seeds(&cfg),
-            cfg,
-            cycle_states: Default::default(),
-            initial_rolls,
-        };
+    ) -> JoinHandle<PosResult<()>> {
+        std::thread::spawn(|| {
+            let this = Self {
+                input_data,
+                cache,
+                cfg,
+            };
+            this.run()
+        })
+    }
 
-        for cycle_info in bootstrap_cycles {
-            if cycle_info.complete {
-                this.draws(cycle_info)?;
+    /// process the result of a draw
+    fn process_draws_result(
+        &self,
+        cycle: u64,
+        draws_result: PosResult<CycleDraws>,
+    ) -> PosResult<()> {
+        // write-lock the cache
+        let (cache_cv, cache_lock) = &*self.cache;
+        let mut cache_guard = cache_lock.write();
+
+        // check cache validity and continuity
+        let cache = cache_guard.as_mut().map_err(|err| err.clone())?;
+        if let Some(last_cycle) = cache.0.back() {
+            if last_cycle.cycle.checked_add(1) != Some(cycle) {
+                return Err(PosError::ContainerInconsistency(
+                    "discontinuity in cycle draws history".into(),
+                ));
             }
         }
 
-        Ok(std::thread::spawn(move || this.run()))
+        // add draw results to cache, or extract error
+        let out_result = match draws_result {
+            Ok(cycle_draws) => {
+                // add to draws
+                cache.0.push_back(cycle_draws);
+
+                // truncate cache to keep only the desired number of elements
+                while cache.0.len() > self.cfg.max_draw_cache {
+                    cache.0.pop_front();
+                }
+
+                // no error
+                Ok(())
+            }
+            // draw error
+            Err(err) => Err(err),
+        };
+
+        // drop the writable reference to the cache
+        std::mem::drop(cache);
+
+        // if there was an error, save a clone of the error to the cache
+        if let Err(err) = &out_result {
+            *cache_guard = Err(err.clone());
+        }
+
+        // notify all waiters
+        cache_cv.notify_all();
+
+        out_result
     }
 
     /// Thread loop.
     ///
     /// While a `Stop` command isn't sent, pop `input_data` and compute
     /// draws for future cycle.
-    fn run(mut self) -> PosResult<()> {
+    fn run(self) -> PosResult<()> {
         loop {
-            let cycle_info = {
-                let mut data = self.input_data.1.lock();
-                loop {
-                    match data.pop_front() {
-                        Some(Command::CycleInfo(cycle_info)) => break cycle_info,
-                        Some(Command::Stop) => return Ok(()),
-                        None => self.input_data.0.wait(&mut data),
+            // get input command
+            let (cycle, lookback_rolls, lookback_seed) = {
+                let (cvar, lock) = &*self.input_data;
+                let mut data = lock.lock();
+                match data.pop_front() {
+                    Some(Command::DrawInput {
+                        cycle,
+                        lookback_rolls,
+                        lookback_seed,
+                    }) => (cycle, lookback_rolls, lookback_seed),
+                    Some(Command::Stop) => break,
+                    None => {
+                        // spurious wakeup: wait to be notified of new input
+                        cvar.wait(&mut data);
+                        continue;
                     }
                 }
             };
-            self.draws(cycle_info)?;
+
+            // perform draws
+            let draws_result = self.perform_draws(cycle, lookback_rolls, lookback_seed);
+
+            // add result to cache and notify waiters
+            self.process_draws_result(cycle, draws_result)?;
+
+            // Wait to be notified of new input
+            let (cvar, lock) = &*self.input_data;
+            cvar.wait(&mut lock.lock());
         }
+        Ok(())
     }
 }
 
@@ -101,10 +147,14 @@ impl SelectorThread {
 /// * `selector_controller`: allows sending requests and notifications to the worker
 pub fn start_selector_worker(
     selector_config: SelectorConfig,
-    cycles: VecDeque<CycleInfo>,
 ) -> PosResult<(Box<dyn SelectorManager>, Box<dyn SelectorController>)> {
     let input_data = InputDataPtr::default();
-    let cache = DrawCachePtr::default();
+    let cache = Arc::new((
+        RwLockCondvar::default(),
+        RwLock::new(Ok(DrawCache(VecDeque::with_capacity(
+            selector_config.max_draw_cache.saturating_add(1),
+        )))),
+    ));
     let controller = SelectorControllerImpl {
         input_data: input_data.clone(),
         cache: cache.clone(),
@@ -113,47 +163,11 @@ pub fn start_selector_worker(
     };
 
     // launch the selector thread
-    let thread_handle = SelectorThread::init(
-        input_data.clone(),
-        cache,
-        get_initial_rolls(&selector_config).unwrap(),
-        selector_config,
-        cycles,
-    )?;
+    let thread_handle = SelectorThread::spawn(input_data.clone(), cache, selector_config);
+
     let manager = SelectorManagerImpl {
         thread_handle: Some(thread_handle),
         input_data,
     };
     Ok((Box::new(manager), Box::new(controller)))
-}
-
-/// Generates N seeds. The seeds should be used as the initial seeds between
-/// cycle 0 and cycle N.
-///
-/// N is `cfg.lookback_cycles` and must be >= 2
-fn generate_initial_seeds(cfg: &SelectorConfig) -> Vec<Vec<u8>> {
-    let mut cur_seed = cfg.initial_draw_seed.as_bytes().to_vec();
-    let mut initial_seeds = vec![];
-    for _ in 0..=cfg.lookback_cycles {
-        cur_seed = Hash::compute_from(&cur_seed).to_bytes().to_vec();
-        initial_seeds.push(cur_seed.clone());
-    }
-    initial_seeds
-}
-
-/// Read initial rolls file. Return a vector containing the initial rolls for
-/// the cycle < `cfg.loopback_cycle`
-///
-/// File path is `cfg.initial_rolls_path`
-fn get_initial_rolls(cfg: &SelectorConfig) -> PosResult<Vec<Map<Address, u64>>> {
-    let rolls_per_cycle = serde_json::from_str::<Vec<Map<Address, u64>>>(
-        &std::fs::read_to_string(&cfg.initial_rolls_path)?,
-    )?;
-    if rolls_per_cycle.len() < cfg.lookback_cycles as usize {
-        return Err(InvalidInitialRolls(
-            cfg.lookback_cycles,
-            rolls_per_cycle.len(),
-        ));
-    }
-    Ok(rolls_per_cycle)
 }

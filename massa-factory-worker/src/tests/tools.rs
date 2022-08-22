@@ -10,7 +10,7 @@ use massa_factory_exports::{
 };
 use massa_models::{
     constants::ENDORSEMENT_COUNT, prehash::Map, test_exports::get_next_slot_instant, Address,
-    BlockId, Slot, WrappedOperation, WrappedEndorsement,
+    BlockId, Slot, WrappedEndorsement, WrappedOperation,
 };
 use massa_pool_exports::test_exports::{MockPoolController, MockPoolControllerMessage};
 use massa_pos_exports::{
@@ -43,7 +43,7 @@ impl TestFactory {
     /// Initialize a new factory and all mocks with default data
     /// Arguments:
     /// - `keypair`: this keypair will be the one added to the wallet that will be used to produce all blocks
-    /// 
+    ///
     /// Returns
     /// - `TestFactory`: the structure that will be used to manage the tests
     pub fn new(default_keypair: &KeyPair) -> TestFactory {
@@ -96,7 +96,7 @@ impl TestFactory {
 
     /// This functions wait until it's time to create the next block to be sync with the factory.
     /// It will answers to all the asks of the factory with mocks and data you provide as parameters.
-    /// 
+    ///
     /// Arguments:
     /// - `operations`: Optional list of operations to include in the block
     /// - `endorsements`: Optional list of endorsements to include in the block
@@ -111,10 +111,7 @@ impl TestFactory {
             self.factory_config.thread_count,
             self.factory_config.t0,
         );
-        sleep(next_slot_instant
-            .checked_sub(now)
-            .unwrap()
-            .to_duration());
+        sleep(next_slot_instant.checked_sub(now).unwrap().to_duration());
         let producer_address = Address::from_public_key(&self.keypair.get_public_key());
         loop {
             match self
@@ -205,6 +202,7 @@ impl TestFactory {
             ConsensusCommand::SendBlock {
                 block_id,
                 block_storage,
+                slot: _,
                 response_tx,
             } => {
                 response_tx.send(()).unwrap();

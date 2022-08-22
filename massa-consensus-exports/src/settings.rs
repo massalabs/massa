@@ -153,10 +153,6 @@ pub struct ConsensusConfig {
     pub operation_validity_periods: u64,
     /// cycle duration in periods
     pub periods_per_cycle: u64,
-    /// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle `N - pos_lookback_cycles - 1`
-    pub pos_lookback_cycles: u64,
-    /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
-    pub pos_lock_cycles: u64,
     /// number of cached draw cycles for PoS
     pub pos_draw_cached_cycles: usize,
     /// number of cycle misses (strictly) above which stakers are deactivated
@@ -237,8 +233,6 @@ impl Clone for ConsensusConfig {
             max_block_size: self.max_block_size,
             operation_validity_periods: self.operation_validity_periods,
             periods_per_cycle: self.periods_per_cycle,
-            pos_lookback_cycles: self.pos_lookback_cycles,
-            pos_lock_cycles: self.pos_lock_cycles,
             pos_draw_cached_cycles: self.pos_draw_cached_cycles,
             pos_miss_rate_deactivation_threshold: self.pos_miss_rate_deactivation_threshold,
             ledger_path: self.ledger_path.clone(),
@@ -350,8 +344,6 @@ impl From<&ConsensusSettings> for ConsensusConfig {
             max_block_size: MAX_BLOCK_SIZE,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-            pos_lock_cycles: POS_LOCK_CYCLES,
             pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
             pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
             ledger_path: settings.ledger_path.clone(),
@@ -403,8 +395,6 @@ impl From<ConsensusSettings> for ConsensusConfig {
             max_block_size: MAX_BLOCK_SIZE,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-            pos_lock_cycles: POS_LOCK_CYCLES,
             pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
             pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
             ledger_path: settings.ledger_path,
@@ -547,8 +537,6 @@ impl Default for ConsensusConfig {
             max_block_size: MAX_BLOCK_SIZE,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-            pos_lock_cycles: POS_LOCK_CYCLES,
             pos_draw_cached_cycles: POS_DRAW_CACHED_CYCLE,
             pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
             ledger_path: path_buf,

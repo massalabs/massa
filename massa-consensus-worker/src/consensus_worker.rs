@@ -6,11 +6,9 @@ use massa_consensus_exports::{
     ConsensusConfig,
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
-use massa_models::address::AddressState;
-use massa_models::api::{LedgerInfo, RollsInfo};
-use massa_models::prehash::{BuildMap, Map, Set};
+use massa_models::prehash::Set;
+use massa_models::stats::ConsensusStats;
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
-use massa_models::{stats::ConsensusStats, OperationId};
 use massa_models::{Address, BlockId, Slot};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
 use massa_time::MassaTime;
@@ -36,9 +34,9 @@ pub struct ConsensusWorker {
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
-    /// stats `(block -> tx_count, creator)`
-    final_block_stats: VecDeque<(MassaTime, u64, Address)>,
-    /// No idea what this is used for. My guess is one timestamp per stale block
+    /// Final block stats `(time, creator)`
+    final_block_stats: VecDeque<(MassaTime, Address)>,
+    /// Stale block timestamps
     stale_block_stats: VecDeque<MassaTime>,
     /// the time span considered for stats
     stats_history_timespan: MassaTime,
@@ -113,15 +111,12 @@ impl ConsensusWorker {
                     cfg.genesis_timestamp,
                     Slot::new(0, thread),
                 )?,
-                0,
                 genesis_addr,
             ))
         }
 
         // desync detection timespan
-        let stats_desync_detection_timespan = cfg
-            .t0
-            .checked_mul(cfg.periods_per_cycle * (cfg.pos_lookback_cycles + 1))?;
+        let stats_desync_detection_timespan = cfg.t0.checked_mul(cfg.periods_per_cycle * 2)?;
 
         // notify execution module of current blockclique and final blocks
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
@@ -366,20 +361,18 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
-            // return full block and status with specified hash
-            ConsensusCommand::GetBlockStatus {
-                block_id,
-                response_tx,
-            } => {
+            // gets the graph status of a batch of blocks
+            ConsensusCommand::GetBlockStatuses { ids, response_tx } => {
                 massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_block_status",
+                    "consensus.consensus_worker.process_consensus_command.get_block_statuses",
                     {}
                 );
-                if response_tx
-                    .send(self.block_db.get_export_block_status(&block_id)?)
-                    .is_err()
-                {
-                    warn!("consensus: could not send GetBlock Status answer");
+                let res: Vec<_> = ids
+                    .iter()
+                    .map(|id| self.block_db.get_block_status(id))
+                    .collect();
+                if response_tx.send(res).is_err() {
+                    warn!("consensus: could not send get_block_statuses answer");
                 }
                 Ok(())
             }
@@ -404,55 +397,6 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
-            ConsensusCommand::GetAddressesInfo {
-                addresses,
-                response_tx,
-            } => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_addresses_info",
-                    { "addresses": addresses }
-                );
-                if response_tx
-                    .send(self.get_addresses_info(&addresses)?)
-                    .is_err()
-                {
-                    warn!("consensus: could not send GetAddressesInfo response");
-                }
-                Ok(())
-            }
-            ConsensusCommand::GetRecentOperations {
-                address,
-                response_tx,
-            } => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_operations_involving_address",
-                    { "address": address }
-                );
-
-                if response_tx
-                    .send(self.block_db.get_operations_involving_address(&address)?)
-                    .is_err()
-                {
-                    warn!("consensus: could not send GetRecentOPerations response");
-                }
-                Ok(())
-            }
-            ConsensusCommand::GetOperations {
-                operation_ids,
-                response_tx,
-            } => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_operations",
-                    { "operation_ids": operation_ids }
-                );
-                if response_tx
-                    .send(self.block_db.get_operations(operation_ids)?)
-                    .is_err()
-                {
-                    warn!("consensus: could not send get operations response");
-                }
-                Ok(())
-            }
             ConsensusCommand::GetStats(response_tx) => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_stats",
@@ -461,18 +405,6 @@ impl ConsensusWorker {
                 let res = self.get_stats()?;
                 if response_tx.send(res).is_err() {
                     warn!("consensus: could not send get_stats response");
-                }
-                Ok(())
-            }
-            ConsensusCommand::GetBlockIdsByCreator {
-                address,
-                response_tx,
-            } => {
-                if response_tx
-                    .send(self.block_db.get_block_ids_by_creator(&address))
-                    .is_err()
-                {
-                    warn!("consensus: could not send get block ids by creator response");
                 }
                 Ok(())
             }
@@ -486,94 +418,26 @@ impl ConsensusWorker {
                 Ok(())
             }
             ConsensusCommand::GetBlockcliqueBlockAtSlot { slot, response_tx } => {
-                let block_indexes = self.block_db.storage.get_block_indexes().read();
-                let blocks = block_indexes.get_blocks_by_slot(slot);
-                let block = if let Some(stored_blocks) = blocks {
-                    self.block_db
-                        .get_blockclique()
-                        .intersection(stored_blocks)
-                        .next()
-                        .cloned()
-                } else {
-                    None
-                };
-                if response_tx.send(block).is_err() {
+                let res = self.block_db.get_blockclique_block_at_slot(&slot);
+                if response_tx.send(res).is_err() {
                     warn!("consensus: could not send get block clique block at slot response");
                 }
                 Ok(())
             }
             ConsensusCommand::SendBlock {
                 block_id,
+                slot,
                 block_storage,
                 response_tx,
             } => {
-                self.block_db.storage.extend(block_storage);
-                let block_ref =
-                    self.block_db
-                        .storage
-                        .retrieve_block(&block_id)
-                        .ok_or_else(|| {
-                            ConsensusError::MissingBlock(format!(
-                                "missing block when processing ConsensusCommand::SendBlock: {}",
-                                block_id
-                            ))
-                        })?;
-                let (slot, operation_ids, endorsement_ids) = {
-                    let block = block_ref.read();
-                    let slot = block.content.header.content.slot;
-                    let operation_ids = block
-                        .content
-                        .operations
-                        .clone()
-                        .into_iter()
-                        .enumerate()
-                        .map(|(idx, op_id)| (op_id, idx))
-                        .collect();
-                    let endorsement_ids = block
-                        .content
-                        .header
-                        .content
-                        .endorsements
-                        .iter()
-                        .map(|end| (end.id, end.content.index))
-                        .collect();
-                    (slot, operation_ids, endorsement_ids)
-                };
-                self.block_db.incoming_block(
-                    block_id,
-                    slot,
-                    operation_ids,
-                    endorsement_ids,
-                    self.previous_slot,
-                    self.block_db.storage.clone_without_refs(),
-                )?;
+                self.block_db
+                    .incoming_block(block_id, slot, self.previous_slot, block_storage)?;
+
                 if response_tx.send(()).is_err() {
                     warn!("consensus: could not send get block clique block at slot response");
                 }
                 Ok(())
             }
-            ConsensusCommand::GetEndorsementsByAddress {
-                address,
-                response_tx,
-            } => response_tx
-                .send(self.block_db.get_endorsement_by_address(address)?)
-                .map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send get endorsement by address response: {:?}",
-                        err
-                    ))
-                }),
-            ConsensusCommand::GetEndorsementsById {
-                endorsements,
-                response_tx,
-            } => response_tx
-                .send(self.block_db.get_endorsement_by_id(endorsements)?)
-                .map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send get endorsement by id response: {:?}",
-                        err
-                    ))
-                }),
         }
     }
 
@@ -591,13 +455,8 @@ impl ConsensusWorker {
         let final_block_count = self
             .final_block_stats
             .iter()
-            .filter(|(t, _, _)| *t >= timespan_start && *t < timespan_end)
+            .filter(|(t, _)| *t >= timespan_start && *t < timespan_end)
             .count() as u64;
-        let final_operation_count = self
-            .final_block_stats
-            .iter()
-            .filter(|(t, _, _)| *t >= timespan_start && *t < timespan_end)
-            .fold(0u64, |acc, (_, tx_n, _)| acc + tx_n);
         let stale_block_count = self
             .stale_block_stats
             .iter()
@@ -606,59 +465,11 @@ impl ConsensusWorker {
         let clique_count = self.block_db.get_clique_count() as u64;
         Ok(ConsensusStats {
             final_block_count,
-            final_operation_count,
             stale_block_count,
             clique_count,
             start_timespan: timespan_start,
             end_timespan: timespan_end,
-            staker_count: 0, // TODO get staker counts back
         })
-    }
-
-    /// all you wanna know about an address
-    /// Used in response to a API request
-    fn get_addresses_info(&self, addresses: &Set<Address>) -> Result<Map<Address, AddressState>> {
-        let thread_count = self.cfg.thread_count;
-        let mut addresses_by_thread = vec![Set::<Address>::default(); thread_count as usize];
-        for addr in addresses.iter() {
-            addresses_by_thread[addr.get_thread(thread_count) as usize].insert(*addr);
-        }
-        let mut states = Map::default();
-        for thread in 0..thread_count {
-            if addresses_by_thread[thread as usize].is_empty() {
-                continue;
-            }
-
-            for addr in addresses_by_thread[thread as usize].iter() {
-                states.insert(
-                    *addr,
-                    AddressState {
-                        rolls: RollsInfo {
-                            final_rolls: Default::default(),     // TODO update with new PoS,
-                            active_rolls: Default::default(),    // TODO update with new PoS
-                            candidate_rolls: Default::default(), // TODO get from execution module
-                        },
-                        ledger_info: LedgerInfo {
-                            locked_balance: Default::default(), // TODO get from exec module
-                            candidate_ledger_info: Default::default(), // TODO get from execution module
-                            final_ledger_info: Default::default(),     // TODO get from exec module
-                        },
-
-                        production_stats: Default::default(), /* TODO repair this  let prod_stats = self.pos.get_stakers_production_stats(addresses);self.pos.get_stakers_production_stats(addresses);
-                                                              prod_stats
-                                                                  .iter()
-                                                                  .map(|cycle_stats| AddressCycleProductionStats {
-                                                                      cycle: cycle_stats.cycle,
-                                                                      is_final: cycle_stats.is_final,
-                                                                      ok_count: cycle_stats.ok_nok_counts.get(addr).unwrap_or(&(0, 0)).0,
-                                                                      nok_count: cycle_stats.ok_nok_counts.get(addr).unwrap_or(&(0, 0)).1,
-                                                                  })
-                                                                  .collect(),*/
-                    },
-                );
-            }
-        }
-        Ok(states)
     }
 
     /// Manages received protocol events.
@@ -668,28 +479,18 @@ impl ConsensusWorker {
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<()> {
         match event {
             ProtocolEvent::ReceivedBlock {
-                block,
+                block_id,
                 slot,
-                operation_set,
-                endorsement_ids,
+                storage,
             } => {
                 massa_trace!(
                     "consensus.consensus_worker.process_protocol_event.received_block",
-                    { "block_id": block.id }
+                    { "block_id": block_id }
                 );
-                let block_id = block.id;
 
-                // Store block in shared storage.
-                self.block_db.storage.store_block(block);
+                self.block_db
+                    .incoming_block(block_id, slot, self.previous_slot, storage)?;
 
-                self.block_db.incoming_block(
-                    block_id,
-                    slot,
-                    operation_set,
-                    endorsement_ids,
-                    self.previous_slot,
-                    self.block_db.storage.clone_without_refs(),
-                )?;
                 self.block_db_changed().await?;
             }
             ProtocolEvent::ReceivedBlockHeader { block_id, header } => {
@@ -706,7 +507,7 @@ impl ConsensusWorker {
     fn prune_stats(&mut self) -> Result<()> {
         let start_time = MassaTime::compensated_now(self.clock_compensation)?
             .saturating_sub(self.stats_history_timespan);
-        self.final_block_stats.retain(|(t, _, _)| t >= &start_time);
+        self.final_block_stats.retain(|(t, _)| t >= &start_time);
         self.stale_block_stats.retain(|t| t >= &start_time);
         Ok(())
     }
@@ -729,15 +530,15 @@ impl ConsensusWorker {
     /// 12. add stale blocks to stats
     async fn block_db_changed(&mut self) -> Result<()> {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
-        println!("TEST6");
+
         // Propagate new blocks
-        for (block_id, _) in self.block_db.get_blocks_to_propagate().into_iter() {
+        for (block_id, storage) in self.block_db.get_blocks_to_propagate().into_iter() {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
                 "block_id": block_id
             });
             self.channels
                 .protocol_command_sender
-                .integrated_block(block_id)
+                .integrated_block(block_id, storage)
                 .await?;
         }
 
@@ -784,26 +585,12 @@ impl ConsensusWorker {
             .update_blockclique_status(final_blocks, blockclique);
 
         // Process new final blocks
-        let mut new_final_ops: Map<OperationId, (u64, u8)> = Map::default();
-        let mut new_final_blocks =
-            Map::with_capacity_and_hasher(new_final_block_ids.len(), BuildMap::default());
         let timestamp = MassaTime::compensated_now(self.clock_compensation)?;
         for b_id in new_final_block_ids.into_iter() {
-            if let Some((a_block, _)) = self.block_db.get_active_block(&b_id) {
-                // List new final ops
-                new_final_ops.extend(a_block.operation_set.iter().map(|(id, _)| {
-                    // TODO: Discuss this get
-                    let op = self.block_db.storage.retrieve_operation(id).unwrap();
-                    (*id, (op.content.expire_period, a_block.slot.thread))
-                }));
-                // List final block
-                new_final_blocks.insert(b_id, a_block);
+            if let Some((a_block, _block_store)) = self.block_db.get_active_block(&b_id) {
                 // add to stats
-                self.final_block_stats.push_back((
-                    timestamp,
-                    a_block.operation_set.len() as u64,
-                    a_block.creator_address,
-                ));
+                self.final_block_stats
+                    .push_back((timestamp, a_block.creator_address));
             }
         }
 

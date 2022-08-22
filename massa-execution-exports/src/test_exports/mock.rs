@@ -2,7 +2,10 @@
 
 //! This file defines utilities to mock the crate for testing purposes
 
-use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
+use crate::{
+    ExecutionAddressInfo, ExecutionController, ExecutionError, ExecutionOutput,
+    ReadOnlyExecutionRequest,
+};
 use massa_ledger_exports::LedgerEntry;
 use massa_models::{
     api::EventFilter,
@@ -112,16 +115,9 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn get_final_and_active_parallel_balance(
+    fn get_final_and_candidate_sequential_balances(
         &self,
-        _address: Vec<Address>,
-    ) -> Vec<(Option<Amount>, Option<Amount>)> {
-        Vec::default()
-    }
-
-    fn get_final_and_active_sequential_balance(
-        &self,
-        _addresses: Vec<Address>,
+        _addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
         Vec::default()
     }
@@ -133,11 +129,12 @@ impl ExecutionController for MockExecutionController {
         Vec::default()
     }
 
-    fn get_final_and_active_datastore_keys(
-        &self,
-        _addr: &Address,
-    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
-        (BTreeSet::default(), BTreeSet::default())
+    fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo> {
+        Vec::default()
+    }
+
+    fn get_cycle_active_rolls(&self, cycle: u64) -> Map<Address, u64> {
+        Map::default()
     }
 
     fn execute_readonly_request(
@@ -151,10 +148,6 @@ impl ExecutionController for MockExecutionController {
             .send(MockExecutionControllerMessage::ExecuteReadonlyRequest { req, response_tx })
             .unwrap();
         response_rx.recv().unwrap()
-    }
-
-    fn get_cycle_rolls(&self, _cycle: u64) -> Map<Address, u64> {
-        Map::default()
     }
 
     fn unexecuted_ops_among(&self, _ops: &Set<OperationId>, _thread: u8) -> Set<OperationId> {

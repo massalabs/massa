@@ -195,24 +195,19 @@ impl NodeWorker {
                                             )?;
                                             let wrapped_operation_serializer =
                                                 WrappedSerializer::new();
-                                            let ops: Vec<OperationId> =
-                                                operation_ids.into_iter().collect();
-                                            storage.with_operations(&ops, |operations| {
-                                                for operation in operations {
-                                                    match operation {
-                                                        Some(operation) => {
-                                                            wrapped_operation_serializer
-                                                                .serialize(*operation, &mut res)?;
-                                                        }
-                                                        None => {
-                                                            return Err(
-                                                                NetworkError::MissingOperation,
-                                                            )
-                                                        }
+
+                                            let op_store = storage.read_operations();
+                                            for operation_id in &operation_ids {
+                                                match op_store.get(operation_id) {
+                                                    Some(operation) => {
+                                                        wrapped_operation_serializer
+                                                            .serialize(operation, &mut res)?;
+                                                    }
+                                                    None => {
+                                                        return Err(NetworkError::MissingOperation)
                                                     }
                                                 }
-                                                Ok(())
-                                            })?;
+                                            }
                                         }
                                         ReplyForBlocksInfo::NotFound => {
                                             u32_serializer.serialize(
@@ -230,12 +225,15 @@ impl NodeWorker {
                                 let mut res: Vec<u8> = Vec::new();
                                 u32_serializer
                                     .serialize(&u32::from(MessageTypeId::BlockHeader), &mut res)?;
-                                let block = storage
-                                    .retrieve_block(&block_id)
-                                    .ok_or(NetworkError::MissingBlock)?;
-                                let stored_block = block.read();
-                                WrappedSerializer::new()
-                                    .serialize(&stored_block.content.header, &mut res)?;
+                                WrappedSerializer::new().serialize(
+                                    &storage
+                                        .read_blocks()
+                                        .get(&block_id)
+                                        .ok_or(NetworkError::MissingBlock)?
+                                        .content
+                                        .header,
+                                    &mut res,
+                                )?;
                                 res
                             }
                             ToSend::Operations(operation_ids) => {
@@ -253,19 +251,18 @@ impl NodeWorker {
                                     &mut res,
                                 )?;
                                 let wrapped_operation_serializer = WrappedSerializer::new();
-                                storage.with_operations(&operation_ids, |operations| {
-                                    for operation in operations {
-                                        match operation {
+                                {
+                                    let op_read = storage.read_operations();
+                                    for op_id in operation_ids {
+                                        match op_read.get(&op_id) {
                                             Some(operation) => {
                                                 wrapped_operation_serializer
-                                                    .serialize(*operation, &mut res)?;
+                                                    .serialize(operation, &mut res)?;
                                             }
                                             None => return Err(NetworkError::MissingOperation),
                                         }
                                     }
-                                    Ok(())
-                                })?;
-
+                                }
                                 res
                             }
                         };

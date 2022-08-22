@@ -14,10 +14,7 @@ fn basic_creation() {
     let keypair = KeyPair::generate();
     let mut test_factory = TestFactory::new(&keypair);
     let (block_id, storage) = test_factory.get_next_created_block(None, None);
-    assert_eq!(
-        block_id,
-        storage.retrieve_block(&block_id).unwrap().read().id
-    );
+    assert_eq!(block_id, storage.read_blocks().get(&block_id).unwrap().id);
 }
 
 /// Creates a block with a roll buy operation in it.
@@ -35,9 +32,9 @@ fn basic_creation_with_operation() {
     let operation = Operation::new_wrapped(content, OperationSerializer::new(), &keypair).unwrap();
     let (block_id, storage) = test_factory.get_next_created_block(Some(vec![operation]), None);
 
-    let block = storage.retrieve_block(&block_id).unwrap();
-    for op_id in block.read().content.operations.iter() {
-        storage.retrieve_operation(&op_id).unwrap();
+    let block = storage.read_blocks().get(&block_id).unwrap().clone();
+    for op_id in block.content.operations.iter() {
+        storage.read_operations().get(&op_id).unwrap();
     }
-    assert_eq!(block.read().content.operations.len(), 1);
+    assert_eq!(block.content.operations.len(), 1);
 }
