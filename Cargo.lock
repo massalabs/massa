@@ -2103,7 +2103,6 @@ dependencies = [
 name = "massa_pos_worker"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bitvec",
  "massa_final_state",
  "massa_hash",

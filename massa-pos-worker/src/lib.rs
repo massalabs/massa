@@ -11,7 +11,7 @@ use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Slot};
 use massa_pos_exports::{PosResult, Selection};
 
-use parking_lot::{Condvar, Mutex, RwLock};
+use parking_lot::{Condvar, Mutex, RwLock, RwLockReadGuard};
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -76,11 +76,30 @@ pub(crate) struct CycleDraws {
     pub draws: HashMap<Slot, Selection>,
 }
 
-/// Structure of the shared pointer to the computed draws.
-pub(crate) type DrawCachePtr = Arc<RwLock<DrawCache>>;
-
-/// Gives the current status (last drawn cycle and error if the thread stopped)
-pub(crate) type StatusPtr = Arc<(Condvar, Mutex<PosResult<Option<u64>>>)>;
+/// Structure of the shared pointer to the computed draws, or error if the draw system failed.
+pub(crate) type DrawCachePtr = Arc<(RwLockCondvar, RwLock<PosResult<DrawCache>>)>;
 
 /// Start thread selector
 pub use worker::start_selector_worker;
+
+// an RwLock condvar
+#[derive(Default)]
+struct RwLockCondvar {
+    mutex: Mutex<()>,
+    condvar: Condvar,
+}
+
+impl RwLockCondvar {
+    fn wait<T>(&self, rwlock_read_guard: &mut RwLockReadGuard<T>) {
+        let mutex_guard = self.mutex.lock();
+
+        RwLockReadGuard::unlocked(rwlock_read_guard, || {
+            let mut mutex_guard = mutex_guard;
+            self.condvar.wait(&mut mutex_guard);
+        });
+    }
+
+    fn notify_all(&self) {
+        self.condvar.notify_all();
+    }
+}

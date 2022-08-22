@@ -5,7 +5,6 @@
 
 use crate::PosResult;
 use crate::Selection;
-use anyhow::Result;
 use massa_hash::Hash;
 use massa_models::api::IndexedSlot;
 use massa_models::prehash::Map;
@@ -17,11 +16,7 @@ pub trait SelectorController: Send + Sync {
     /// Waits for draws to reach at least a given cycle number.
     /// Returns the latest cycle number reached (can be higher than `cycle`).
     /// Errors can occur if the thread stopped.
-    fn wait_for_draws(&mut self, cycle: u64) -> PosResult<u64>;
-
-    /// Checks the current status of the selector.
-    /// Returns the last selected slot (if any) , or an error if the selector ahd a problem.
-    fn check_status(&self) -> PosResult<Option<u64>>;
+    fn wait_for_draws(&self, cycle: u64) -> PosResult<u64>;
 
     /// Feed cycle to the selector
     ///
@@ -39,7 +34,7 @@ pub trait SelectorController: Send + Sync {
     /// Get [Selection] computed for a slot:
     /// # Arguments
     /// * `slot`: target slot of the selection
-    fn get_selection(&self, slot: Slot) -> Result<Selection>;
+    fn get_selection(&self, slot: Slot) -> PosResult<Selection>;
 
     /// Return a list of slots where `address` has been choosen to produce a
     /// block and a list where he is choosen for the endorsements.
@@ -49,12 +44,12 @@ pub trait SelectorController: Send + Sync {
         address: &Address,
         start: Slot,
         end: Slot,
-    ) -> (Vec<Slot>, Vec<IndexedSlot>);
+    ) -> PosResult<(Vec<Slot>, Vec<IndexedSlot>)>;
 
     /// Get [Address] of the selected block producer for a given slot
     /// # Arguments
     /// * `slot`: target slot of the selection
-    fn get_producer(&self, slot: Slot) -> Result<Address>;
+    fn get_producer(&self, slot: Slot) -> PosResult<Address>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn SelectorController>`.

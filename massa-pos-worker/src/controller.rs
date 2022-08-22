@@ -3,11 +3,10 @@
 //! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
 
-use crate::{Command, DrawCachePtr, InputDataPtr, StatusPtr};
-use anyhow::{bail, Result};
+use crate::{Command, DrawCachePtr, InputDataPtr};
 use massa_hash::Hash;
 use massa_models::{api::IndexedSlot, prehash::Map, Address, Slot};
-use massa_pos_exports::{PosResult, Selection, SelectorController, SelectorManager};
+use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
 use tracing::{info, warn};
 
 #[derive(Clone)]
@@ -21,38 +20,28 @@ pub struct SelectorControllerImpl {
     pub(crate) cache: DrawCachePtr,
     /// Sync-able equivalent of std::mpsc for command sending
     pub(crate) input_data: InputDataPtr,
-    /// An output state that can be monitored to monitor the last produced cycle, or any errors
-    pub(crate) status: StatusPtr,
 }
 
 impl SelectorController for SelectorControllerImpl {
     /// Waits for draws to reach at least a given cycle number.
     /// Returns the latest cycle number reached (can be higher than `cycle`).
     /// Errors can occur if the thread stopped.
-    fn wait_for_draws(&mut self, cycle: u64) -> PosResult<u64> {
-        let (cvar, lock) = &*self.status;
-        let mut status = lock.lock();
+    fn wait_for_draws(&self, cycle: u64) -> PosResult<u64> {
+        let (cache_cv, cache_lock) = &*self.cache;
+        let mut cache_guard = cache_lock.read();
         loop {
-            match &*status {
-                // nothing drawn yet
-                Ok(None) => {}
-                // error during a draw
-                Err(err) => return Err(err.clone()),
-                // proper draw
-                Ok(Some(c)) => {
-                    if *c >= cycle {
-                        return Ok(*c);
+            match &*cache_guard {
+                Ok(draws) => {
+                    if let Some(c) = draws.0.back().map(|cd| cd.cycle) {
+                        if c >= cycle {
+                            return Ok(c);
+                        }
                     }
                 }
+                Err(err) => return Err(err.clone()),
             }
-            cvar.wait(&mut status);
+            cache_cv.wait(&mut cache_guard);
         }
-    }
-
-    /// Checks the current status of the selector.
-    /// Returns the last selected slot (if any) , or an error if the selector ahd a problem.
-    fn check_status(&self) -> PosResult<Option<u64>> {
-        self.status.1.lock().clone()
     }
 
     /// Feed cycle to the selector
@@ -68,6 +57,12 @@ impl SelectorController for SelectorControllerImpl {
         lookback_seed: Hash,
     ) -> PosResult<()> {
         {
+            // check status
+            let (_cache_cv, cache_lock) = &*self.cache;
+            cache_lock.read().as_ref().map_err(|err| err.clone())?;
+        }
+        {
+            // send command
             let (cvar, lock) = &*self.input_data;
             let mut data = lock.lock();
             data.push_back(Command::DrawInput {
@@ -77,7 +72,6 @@ impl SelectorController for SelectorControllerImpl {
             });
             cvar.notify_one();
         }
-        self.check_status()?;
         Ok(())
     }
 
@@ -86,19 +80,15 @@ impl SelectorController for SelectorControllerImpl {
     /// * `slot`: target slot of the selection
     ///
     /// Blocks until the draws are available if they are in the future.
-    fn get_selection(&self, slot: Slot) -> Result<Selection> {
-        self.check_status()?;
-
+    fn get_selection(&self, slot: Slot) -> PosResult<Selection> {
         let cycle = slot.get_cycle(self.periods_per_cycle);
-        match self
-            .cache
-            .read()
+        let (_cache_cv, cache_lock) = &*self.cache;
+        let cache_guard = cache_lock.read();
+        let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
+        cache
             .get(cycle)
-            .and_then(|selections| selections.draws.get(&slot))
-        {
-            Some(selection) => Ok(selection.clone()),
-            None => bail!("error: selection not found for slot {}", slot),
-        }
+            .and_then(|selections| selections.draws.get(&slot).cloned())
+            .ok_or_else(|| PosError::CycleUnavailable(cycle))
     }
 
     /// Get [Address] of the selected block producer for a given slot
@@ -106,19 +96,15 @@ impl SelectorController for SelectorControllerImpl {
     /// * `slot`: target slot of the selection
     ///
     /// Blocks until the draws are available if they are in the future.
-    fn get_producer(&self, slot: Slot) -> Result<Address> {
-        self.check_status()?;
-
+    fn get_producer(&self, slot: Slot) -> PosResult<Address> {
         let cycle = slot.get_cycle(self.periods_per_cycle);
-        match self
-            .cache
-            .read()
+        let (_cache_cv, cache_lock) = &*self.cache;
+        let cache_guard = cache_lock.read();
+        let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
+        cache
             .get(cycle)
-            .and_then(|selections| selections.draws.get(&slot))
-        {
-            Some(selection) => Ok(selection.producer),
-            None => bail!("error: selection not found for slot {}", slot),
-        }
+            .and_then(|selections| selections.draws.get(&slot).map(|s| s.producer))
+            .ok_or_else(|| PosError::CycleUnavailable(cycle))
     }
 
     /// Return a list of slots where `address` has been choosen to produce a
@@ -129,8 +115,10 @@ impl SelectorController for SelectorControllerImpl {
         address: &Address,
         mut slot: Slot, /* starting slot */
         end: Slot,
-    ) -> (Vec<Slot>, Vec<IndexedSlot>) {
-        let cache = self.cache.read();
+    ) -> PosResult<(Vec<Slot>, Vec<IndexedSlot>)> {
+        let (_cache_cv, cache_lock) = &*self.cache;
+        let cache_guard = cache_lock.read();
+        let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
         let mut slot_producers = vec![];
         let mut slot_endorsers = vec![];
         while slot < end {
@@ -150,7 +138,7 @@ impl SelectorController for SelectorControllerImpl {
                 _ => break,
             };
         }
-        (slot_producers, slot_endorsers)
+        Ok((slot_producers, slot_endorsers))
     }
 
     /// Returns a boxed clone of self.

@@ -717,6 +717,7 @@ impl Endpoints for API<Public> {
                     self.0
                         .selector_controller
                         .get_address_selections(addr, cur_slot, slot_end)
+                        .unwrap_or_default()
                 })
                 .collect::<Vec<_>>()
         };

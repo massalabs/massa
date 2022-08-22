@@ -24,11 +24,11 @@ impl SelectorThread {
     ///
     /// Otherwise, the draws return an empty success.
     pub(crate) fn perform_draws(
-        &mut self,
+        &self,
         cycle: u64,
         lookback_rolls: Map<Address, u64>,
         lookback_seed: Hash,
-    ) -> PosResult<()> {
+    ) -> PosResult<CycleDraws> {
         // get seeded RNG
         let mut rng = Xoshiro256PlusPlus::from_seed(*lookback_seed.to_bytes());
 
@@ -98,28 +98,6 @@ impl SelectorThread {
                 })?;
         }
 
-        {
-            // write-lock the cache as shortly as possible
-            let mut cache = self.cache.write();
-
-            // check cache continuity
-            if let Some(last_cycle) = cache.0.back() {
-                if last_cycle.cycle.checked_add(1) != Some(cycle) {
-                    return Err(PosError::ContainerInconsistency(
-                        "discontinuity in cycle draws history".into(),
-                    ));
-                }
-            }
-
-            // add cycle draws to cache
-            cache.0.push_back(cycle_draws);
-
-            // truncate cache to keep only the desired number of elements
-            while cache.0.len() > self.cfg.max_draw_cache {
-                cache.0.pop_front();
-            }
-        }
-
-        Ok(())
+        Ok(cycle_draws)
     }
 }
