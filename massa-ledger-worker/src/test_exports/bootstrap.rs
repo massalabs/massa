@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry};
-use massa_models::Address;
+use massa_models::{constants::default_testing::ADDRESS_SIZE_BYTES, Address};
 use std::collections::HashMap;
 use tempfile::TempDir;
 
@@ -14,7 +14,12 @@ pub fn create_final_ledger(
     config: LedgerConfig,
 ) -> FinalLedger {
     let temp_dir = TempDir::new().unwrap();
-    let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
+    let mut db = LedgerDB::new(
+        temp_dir.path().to_path_buf(),
+        32,
+        100000,
+        ADDRESS_SIZE_BYTES,
+    );
     db.set_initial_ledger(initial_ledger.unwrap_or_default());
     FinalLedger {
         _config: config,

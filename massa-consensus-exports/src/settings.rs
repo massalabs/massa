@@ -196,6 +196,8 @@ pub struct ConsensusConfig {
     pub disable_block_creation: bool,
     /// Max gas per block for the execution configuration
     pub max_gas_per_block: u64,
+    /// channel size
+    pub channel_size: usize,
 }
 
 #[cfg(feature = "testing")]
@@ -253,6 +255,7 @@ impl Clone for ConsensusConfig {
             max_item_return_count: self.max_item_return_count,
             disable_block_creation: self.disable_block_creation,
             max_gas_per_block: self.max_gas_per_block,
+            channel_size: self.channel_size,
         }
     }
 }
@@ -364,6 +367,7 @@ impl From<&ConsensusSettings> for ConsensusConfig {
             max_item_return_count: settings.max_item_return_count,
             disable_block_creation: settings.disable_block_creation,
             max_gas_per_block: MAX_GAS_PER_BLOCK,
+            channel_size: CHANNEL_SIZE,
         }
     }
 }
@@ -415,6 +419,7 @@ impl From<ConsensusSettings> for ConsensusConfig {
             max_item_return_count: settings.max_item_return_count,
             disable_block_creation: settings.disable_block_creation,
             max_gas_per_block: MAX_GAS_PER_BLOCK,
+            channel_size: CHANNEL_SIZE,
         }
     }
 }
@@ -557,6 +562,7 @@ impl Default for ConsensusConfig {
             max_item_return_count: MAX_ITEM_RETURN_COUNT,
             disable_block_creation: DISABLE_BLOCK_CREATION,
             max_gas_per_block: MAX_GAS_PER_BLOCK,
+            channel_size: CHANNEL_SIZE,
         }
     }
 }

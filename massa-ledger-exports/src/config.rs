@@ -11,4 +11,10 @@ pub struct LedgerConfig {
     pub initial_sce_ledger_path: PathBuf,
     /// disk ledger db directory
     pub disk_ledger_path: PathBuf,
+    /// max key length
+    pub max_key_length: u8,
+    /// max ledger part size
+    pub max_ledger_part_size: u64,
+    /// address bytes size
+    pub address_bytes_size: usize,
 }

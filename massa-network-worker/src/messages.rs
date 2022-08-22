@@ -516,10 +516,9 @@ impl Deserializer<Message> for MessageDeserializer {
 mod tests {
     use super::*;
     use massa_models::constants::default_testing::{
-        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
         ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-        MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
-        THREAD_COUNT,
+        MAX_DATASTORE_VALUE_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
+        MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_PARAMETERS_SIZE, THREAD_COUNT,
     };
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;

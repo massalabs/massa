@@ -809,12 +809,12 @@ impl PeerInfoDatabase {
         sorted_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_alive), p.last_failure));
         let mut sorted_ips: Vec<IpAddr> = sorted_peers
             .into_iter()
-            .take(MAX_ADVERTISE_LENGTH as usize)
+            .take(self.network_settings.max_peer_advertise_length as usize)
             .map(|p| p.ip)
             .collect();
         if let Some(our_ip) = self.network_settings.routable_ip {
             sorted_ips.insert(0, our_ip.to_canonical());
-            sorted_ips.truncate(MAX_ADVERTISE_LENGTH as usize);
+            sorted_ips.truncate(self.network_settings.max_peer_advertise_length as usize);
         }
         sorted_ips
     }
