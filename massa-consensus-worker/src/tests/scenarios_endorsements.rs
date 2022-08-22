@@ -29,7 +29,6 @@ async fn test_endorsement_check() {
         genesis_timestamp: MassaTime::now().unwrap().saturating_add(300.into()),
         operation_validity_periods: 100,
         periods_per_cycle: 2,
-        pos_lock_cycles: 1,
         roll_price: Amount::from_str("1000").unwrap(),
         t0: 500.into(),
         ..ConsensusConfig::default_with_paths()

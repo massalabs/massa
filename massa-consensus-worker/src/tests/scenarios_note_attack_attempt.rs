@@ -36,10 +36,14 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         MockProtocolController::new();
     let selector_config = SelectorConfig {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
-        ..Default::default()
+        thread_count: 2,
+        periods_per_cycle: 100,
+        genesis_address: Address::from_public_key(staking_keys[0].get_public_key()),
+        endorsement_count: 0,
+        max_draw_cache: 10,
+        initial_draw_seed: "".to_string(),
     };
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let pool_controller = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     // launch consensus controller
@@ -98,10 +102,14 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     let pool_controller = MockPoolController::new();
     let selector_config = SelectorConfig {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
-        ..Default::default()
+        thread_count: 2,
+        periods_per_cycle: 100,
+        genesis_address: Address::from_public_key(staking_keys[0].get_public_key()),
+        endorsement_count: 0,
+        max_draw_cache: 10,
+        initial_draw_seed: "".to_string(),
     };
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     let storage: Storage = Default::default();
     // launch consensus controller

@@ -4,6 +4,7 @@ use massa_models::{constants::CHANNEL_SIZE, BlockId, WrappedBlock, WrappedHeader
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
@@ -45,14 +46,13 @@ impl MockProtocolController {
     }
 
     /// Note: if you care about the operation set, use another method.
-    pub async fn receive_block(&mut self, block: WrappedBlock) {
+    pub async fn receive_block(&mut self, block_id: BlockId, slot: Slot, storage: Storage) {
         let slot = block.content.header.content.slot;
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
-                block,
+                block_id,
                 slot,
-                operation_set: Default::default(),
-                endorsement_ids: Default::default(),
+                storage,
             })
             .await
             .expect("could not send protocol event");
