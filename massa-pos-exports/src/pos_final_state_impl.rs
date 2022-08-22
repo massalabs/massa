@@ -45,7 +45,7 @@ impl PoSFinalState {
         self.selector = Some(selector);
 
         // if cycle_history starts at a cycle that is strictly higher than 0, do not feed cycles 0, 1 to selector
-        let skip_initial_cycles = self
+        let history_starts_late = self
             .cycle_history
             .front()
             .map(|c_info| c_info.cycle > 0)
@@ -54,7 +54,7 @@ impl PoSFinalState {
         let mut max_cycle = None;
 
         // feed cycles 0, 1 to selector if necessary
-        if !skip_initial_cycles {
+        if !history_starts_late {
             for draw_cycle in 0u64..=1 {
                 self.feed_selector(draw_cycle)?;
                 max_cycle = Some(draw_cycle);
@@ -62,9 +62,14 @@ impl PoSFinalState {
         }
 
         // feed cycles available from history
-        for hist_item in &self.cycle_history {
+        for (idx, hist_item) in self.cycle_history.iter().enumerate() {
             if !hist_item.complete {
                 break;
+            }
+            if history_starts_late && idx == 0 {
+                // If the history starts late, the first RNG seed cannot be used to draw
+                // because the roll distribution which should be provided by the previous element is absent.
+                continue;
             }
             let draw_cycle = hist_item.cycle.checked_add(2).ok_or_else(|| {
                 PosError::OverflowError("cycle overflow in give_selector_controller".into())
