@@ -91,18 +91,8 @@ fn test_bootstrapable_graph_serialized() {
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
-    let bootstrapable_graph_deserializer = BootstrapableGraphDeserializer::new(
-        2,
-        8,
-        MAX_BOOTSTRAP_BLOCKS,
-        MAX_BOOTSTRAP_CLIQUES,
-        100,
-        MAX_BOOTSTRAP_DEPS,
-        MAX_BOOTSTRAP_POS_ENTRIES,
-        MAX_OPERATIONS_PER_BLOCK,
-        MAX_LEDGER_CHANGES_PER_SLOT,
-        MAX_PRODUCTION_EVENTS_PER_BLOCK,
-    );
+    let bootstrapable_graph_deserializer =
+        BootstrapableGraphDeserializer::new(2, 8, 10000, 10000, 10000, 10000, 10000);
     let mut bytes = Vec::new();
 
     bootstrapable_graph_serializer

@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
+use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::settings::APISettings;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
@@ -12,9 +12,6 @@ use massa_graph::DiscardReason;
 use massa_models::api::{
     BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, SlotAmount,
-};
-use massa_models::constants::default::{
-    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
 };
 use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
@@ -50,7 +47,7 @@ impl API<Public> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         execution_controller: Box<dyn ExecutionController>,
-        api_settings: APISettings,
+        api_settings: APIConfig,
         selector_controller: Box<dyn SelectorController>,
         consensus_settings: ConsensusConfig,
         pool_command_sender: Box<dyn PoolController>,
@@ -802,9 +799,9 @@ impl Endpoints for API<Public> {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
             let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
-                MAX_DATASTORE_VALUE_LENGTH,
-                MAX_FUNCTION_NAME_LENGTH,
-                MAX_PARAMETERS_SIZE,
+                api_cfg.max_datastore_value_length,
+                api_cfg.max_function_name_length,
+                api_cfg.max_parameter_size,
             ));
             let verified_ops = ops
                 .into_iter()

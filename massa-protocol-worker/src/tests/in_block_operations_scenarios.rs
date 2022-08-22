@@ -2,7 +2,6 @@
 
 use super::tools::protocol_test;
 use massa_hash::Hash;
-use massa_models::constants::THREAD_COUNT;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
     Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockSerializer, Slot,
@@ -41,12 +40,12 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             let mut keypair = KeyPair::generate();
             let mut address = Address::from_public_key(&keypair.get_public_key());
-            let mut thread = address.get_thread(THREAD_COUNT);
+            let mut thread = address.get_thread(2);
 
             while thread != 0 {
                 keypair = KeyPair::generate();
                 address = Address::from_public_key(&keypair.get_public_key());
-                thread = address.get_thread(THREAD_COUNT);
+                thread = address.get_thread(2);
             }
 
             let slot_a = Slot::new(1, 0);

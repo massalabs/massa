@@ -3,7 +3,6 @@
 use enum_map::EnumMap;
 use itertools::Itertools;
 use massa_logging::massa_trace;
-use massa_models::constants::MAX_ADVERTISE_LENGTH;
 use massa_network_exports::settings::PeerTypeConnectionConfig;
 use massa_network_exports::ConnectionCount;
 use massa_network_exports::NetworkConfig;
@@ -111,7 +110,7 @@ pub(crate) fn cleanup_peers(
                 }
                 true
             })
-            .take(MAX_ADVERTISE_LENGTH as usize)
+            .take(cfg.max_peer_advertise_length as usize)
             .map(|ip| PeerInfo::new(ip, true))
             .collect()
     } else {

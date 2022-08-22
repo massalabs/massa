@@ -4,7 +4,6 @@
 use std::path::PathBuf;
 
 use enum_map::EnumMap;
-use massa_api::APISettings;
 use massa_consensus_exports::ConsensusSettings;
 use massa_models::constants::build_massa_settings;
 use massa_protocol_exports::ProtocolSettings;
@@ -103,6 +102,15 @@ pub struct PoolSettings {
     pub max_operation_future_validity_start_periods: u64,
     pub max_endorsement_count: u64,
     pub max_item_return_count: usize,
+}
+
+/// API configuration, read from a file configuration
+#[derive(Debug, Deserialize, Clone)]
+pub struct APISettings {
+    pub draw_lookahead_period_count: u64,
+    pub bind_private: SocketAddr,
+    pub bind_public: SocketAddr,
+    pub max_arguments: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]

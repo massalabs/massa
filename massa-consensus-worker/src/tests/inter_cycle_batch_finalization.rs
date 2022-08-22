@@ -118,24 +118,34 @@ async fn test_inter_cycle_batch_finalization() {
                     0,
                 )],
             );
-            protocol_controller.receive_block(b2_block.clone()).await;
+            let b2_block_id = b2_block.id;
+            let b2_block_slot = b2_block.content.header.content.slot;
+            storage.store_block(b2_block);
+            protocol_controller
+                .receive_block(b2_block_id, b2_block_slot, storage.clone())
+                .await;
 
             // create and send B3
             tokio::time::sleep(t0.to_duration()).await;
             let b3_block = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(3, 0),
-                &vec![b2_block.id],
+                &vec![b2_block_id],
                 &staking_key,
                 vec![],
                 vec![create_endorsement(
                     &staking_key,
                     Slot::new(2, 0),
-                    b2_block.id,
+                    b2_block_id,
                     0,
                 )],
             );
-            protocol_controller.receive_block(b3_block.clone()).await;
+            let b3_block_id = b3_block.id;
+            let b3_block_slot = b3_block.content.header.content.slot;
+            storage.store_block(b3_block);
+            protocol_controller
+                .receive_block(b3_block_id, b3_block_slot, storage.clone())
+                .await;
 
             // create and send B4
             tokio::time::sleep(t0.to_duration()).await;
@@ -144,27 +154,37 @@ async fn test_inter_cycle_batch_finalization() {
             let b4_block = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(4, 0),
-                &vec![b3_block.id],
+                &vec![b3_block_id],
                 &staking_key,
                 vec![roll_sell],
                 vec![create_endorsement(
                     &staking_key,
                     Slot::new(3, 0),
-                    b3_block.id,
+                    b3_block_id,
                     0,
                 )],
             );
-            protocol_controller.receive_block(b4_block.clone()).await;
+            let b4_block_id = b4_block.id;
+            let b4_block_slot = b4_block.content.header.content.slot;
+            storage.store_block(b4_block);
+            protocol_controller
+                .receive_block(b4_block_id, b4_block_slot, storage.clone())
+                .await;
 
             // wait for the slot after B4
             tokio::time::sleep(t0.saturating_mul(5).to_duration()).await;
 
             // send B1
-            protocol_controller.receive_block(b1_block.clone()).await;
+            let b1_block_id = b1_block.id;
+            let b1_block_slot = b1_block.content.header.content.slot;
+            storage.store_block(b1_block);
+            protocol_controller
+                .receive_block(b1_block_id, b1_block_slot, storage.clone())
+                .await;
 
             // wait for the propagation of B1, B2, B3 and B4 (unordered)
             let mut to_propagate: HashSet<_> =
-                vec![b1_block.id, b2_block.id, b3_block.id, b4_block.id]
+                vec![b1_block_id, b2_block_id, b3_block_id, b4_block_id]
                     .into_iter()
                     .collect();
             for _ in 0u8..4 {

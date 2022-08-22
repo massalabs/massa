@@ -7,6 +7,7 @@ use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::Slot;
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use serial_test::serial;
 
 #[tokio::test]
@@ -64,6 +65,7 @@ async fn test_consensus_does_not_ask_for_block() {
         future_block_processing_max_periods: 50,
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
+    let mut storage = Storage::default();
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -86,12 +88,15 @@ async fn test_consensus_does_not_ask_for_block() {
                 &staking_keys[0],
             );
             let header = t0s1.content.header.clone();
-
+            let id = t0s1.id;
             // Send the actual block.
-            protocol_controller.receive_block(t0s1.clone()).await;
+            storage.store_block(t0s1);
+            protocol_controller
+                .receive_block(header.id, header.content.slot, storage.clone())
+                .await;
 
             // block t0s1 is propagated
-            let hash_list = vec![t0s1.id];
+            let hash_list = vec![id];
             validate_propagate_block_in_list(
                 &mut protocol_controller,
                 &hash_list,
@@ -103,7 +108,7 @@ async fn test_consensus_does_not_ask_for_block() {
             protocol_controller.receive_header(header).await;
 
             // Consensus should not ask for the block, so the time-out should be hit.
-            validate_does_not_ask_for_block(&mut protocol_controller, &t0s1.id, 10).await;
+            validate_does_not_ask_for_block(&mut protocol_controller, &id, 10).await;
             (
                 protocol_controller,
                 consensus_command_sender,

@@ -330,7 +330,7 @@ async fn test_interleaving_block_creation_with_reception() {
 
     tools::consensus_without_pool_with_storage_test(
         cfg.clone(),
-        async move |storage,
+        async move |mut storage,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver,
@@ -367,10 +367,14 @@ async fn test_interleaving_block_creation_with_reception() {
                     let (header, id) = protocol_controller
                         .wait_command(cfg.t0.saturating_add(300.into()), |cmd| match cmd {
                             ProtocolCommand::IntegratedBlock { block_id, storage } => {
-                                let block = storage.read_blocks().get(&block_id).expect(&format!(
-                                    "Block id : {} not found in storage",
-                                    block_id
-                                ));
+                                let block = storage
+                                    .read_blocks()
+                                    .get(&block_id)
+                                    .expect(&format!(
+                                        "Block id : {} not found in storage",
+                                        block_id
+                                    ))
+                                    .clone();
                                 if block.content.header.content.slot == cur_slot {
                                     Some((block.content.header.clone(), block_id))
                                 } else {
@@ -392,9 +396,12 @@ async fn test_interleaving_block_creation_with_reception() {
                         &keypair_2,
                         vec![],
                     );
+                    storage.store_block(block.clone());
                     tools::propagate_block(
                         &mut protocol_controller,
-                        block.clone(),
+                        block.id,
+                        block.content.header.content.slot,
+                        storage.clone(),
                         true,
                         cfg.t0.to_millis() + 300,
                     )

@@ -36,11 +36,11 @@ use std::thread::JoinHandle;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
+mod config;
 mod error;
 mod private;
 mod public;
-mod settings;
-pub use settings::APISettings;
+pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {
@@ -57,7 +57,7 @@ pub struct Public {
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings
-    pub api_settings: APISettings,
+    pub api_settings: APIConfig,
     /// network setting
     pub network_settings: NetworkConfig,
     /// node version (TODO remove, can be retrieved via an endpoint)
@@ -81,7 +81,7 @@ pub struct Private {
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings
-    pub api_settings: &'static APISettings,
+    pub api_settings: APIConfig,
     /// stop channel
     pub stop_node_channel: mpsc::Sender<()>,
     /// User wallet

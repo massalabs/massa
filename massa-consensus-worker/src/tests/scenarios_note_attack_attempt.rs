@@ -12,7 +12,7 @@ use massa_consensus_exports::settings::ConsensusChannels;
 use massa_consensus_exports::ConsensusConfig;
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
-use massa_models::{BlockId, Slot};
+use massa_models::{Address, BlockId, Slot};
 use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
@@ -29,7 +29,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
-    let storage: Storage = Default::default();
+    let mut storage: Storage = Default::default();
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
@@ -38,7 +38,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         thread_count: 2,
         periods_per_cycle: 100,
-        genesis_address: Address::from_public_key(staking_keys[0].get_public_key()),
+        genesis_address: Address::from_public_key(&staking_keys[0].get_public_key()),
         endorsement_count: 0,
         max_draw_cache: 10,
         initial_draw_seed: "".to_string(),
@@ -58,7 +58,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
                 selector_controller,
             },
             None,
-            storage,
+            storage.clone(),
             0,
         )
         .await
@@ -81,9 +81,13 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         parents.clone(),
         &staking_keys[0],
     );
-    protocol_controller.receive_block(block.clone()).await;
+    let block_id = block.id;
+    let slot = block.content.header.content.slot;
+    protocol_controller
+        .receive_block(block_id, slot, storage.clone())
+        .await;
 
-    validate_notify_block_attack_attempt(&mut protocol_controller, block.id, 1000).await;
+    validate_notify_block_attack_attempt(&mut protocol_controller, block_id, 1000).await;
 }
 
 #[tokio::test]
@@ -104,7 +108,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         initial_rolls_path: cfg.initial_rolls_path.clone(),
         thread_count: 2,
         periods_per_cycle: 100,
-        genesis_address: Address::from_public_key(staking_keys[0].get_public_key()),
+        genesis_address: Address::from_public_key(&staking_keys[0].get_public_key()),
         endorsement_count: 0,
         max_draw_cache: 10,
         initial_draw_seed: "".to_string(),

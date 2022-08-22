@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{constants::CHANNEL_SIZE, BlockId, WrappedBlock, WrappedHeader};
+use massa_models::{constants::CHANNEL_SIZE, BlockId, Slot, WrappedBlock, WrappedHeader};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
@@ -47,7 +47,6 @@ impl MockProtocolController {
 
     /// Note: if you care about the operation set, use another method.
     pub async fn receive_block(&mut self, block_id: BlockId, slot: Slot, storage: Storage) {
-        let slot = block.content.header.content.slot;
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
                 block_id,

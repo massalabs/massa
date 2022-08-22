@@ -7,7 +7,7 @@ extern crate massa_logging;
 use crate::settings::SETTINGS;
 
 use dialoguer::Password;
-use massa_api::{Private, Public, RpcServer, StopHandle, API};
+use massa_api::{Private, Public, RpcServer, StopHandle, API, APIConfig};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 use massa_consensus_exports::{
@@ -327,12 +327,21 @@ async fn launch(
     .await
     .unwrap();
 
+    let api_config: APIConfig = APIConfig {
+        bind_private: SETTINGS.api.bind_private,
+        bind_public: SETTINGS.api.bind_public,
+        draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
+        max_arguments: SETTINGS.api.max_arguments,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_parameter_size: MAX_PARAMETERS_SIZE,
+    };
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         execution_controller.clone(),
-        &SETTINGS.api,
+        api_config.clone(),
         consensus_config.clone(),
         node_wallet,
     );
@@ -342,7 +351,7 @@ async fn launch(
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
         execution_controller.clone(),
-        SETTINGS.api,
+        api_config.clone(),
         selector_controller.clone(),
         consensus_config,
         pool_manager.clone(),

@@ -1,8 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::sync::{
-    mpsc::{self, Receiver},
-    Arc, Mutex,
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{
+        mpsc::{self, Receiver},
+        Arc, Mutex,
+    },
 };
 
 use massa_hash::Hash;
@@ -33,6 +36,11 @@ pub enum MockSelectorControllerMessage {
         end: Slot,
         /// Receiver to send the result to
         response_tx: mpsc::Sender<PosResult<(Vec<Slot>, Vec<IndexedSlot>)>>,
+    },
+    /// Get the entire selection of PoS. used for testing only
+    GetEntireSelection {
+        /// response channel
+        response_tx: mpsc::Sender<VecDeque<(u64, HashMap<Slot, Selection>)>>,
     },
     /// Get the producer for a block at a specific slot
     GetProducer {
@@ -95,6 +103,21 @@ impl SelectorController for MockSelectorController {
             })
             .unwrap();
         Ok(())
+    }
+
+    /// Get every [Selection]
+    ///
+    /// Only used for testing
+    ///
+    /// TODO: limit usage
+    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
+        let (response_tx, response_rx) = mpsc::channel();
+        self.0
+            .lock()
+            .unwrap()
+            .send(MockSelectorControllerMessage::GetEntireSelection { response_tx })
+            .unwrap();
+        response_rx.recv().unwrap()
     }
 
     fn wait_for_draws(&self, cycle: u64) -> PosResult<u64> {

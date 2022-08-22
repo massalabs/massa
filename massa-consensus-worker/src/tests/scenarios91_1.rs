@@ -8,6 +8,7 @@ use massa_consensus_exports::ConsensusConfig;
 use massa_hash::Hash;
 use massa_models::{BlockId, Slot};
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 
@@ -31,6 +32,7 @@ async fn test_ti() {
             .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
+    let mut storage = Storage::default();
 
     // to avoid timing pb for block in the future
 
@@ -90,7 +92,14 @@ async fn test_ti() {
                 &staking_keys[0],
             );
 
-            protocol_controller.receive_block(fork_block.clone()).await;
+            storage.store_block(fork_block.clone());
+            protocol_controller
+                .receive_block(
+                    fork_block.id,
+                    fork_block.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
             validate_propagate_block(&mut protocol_controller, fork_block.id, 1000).await;
             // two clique with valid_hasht0s1 and valid_hasht1s1 in one and fork_block_hash, valid_hasht1s1 in the other
             // test the first clique hasn't changed.
@@ -141,7 +150,10 @@ async fn test_ti() {
                 vec![fork_block.id, valid_hasht1s1],
                 &staking_keys[0],
             );
-            protocol_controller.receive_block(block.clone()).await;
+            storage.store_block(block.clone());
+            protocol_controller
+                .receive_block(block.id, block.content.header.content.slot, storage.clone())
+                .await;
             assert!(!validate_notpropagate_block(&mut protocol_controller, block.id, 1000,).await);
             // verify that the clique has been pruned.
             let block_graph = consensus_command_sender

@@ -25,7 +25,7 @@ where
         MockProtocolController::new();
 
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
-    let pool_controller = start_pool(*cfg, storage.clone(), execution_controller);
+    let pool_controller = start_pool(*cfg, &storage, execution_controller);
 
     let (_protocol_controller, _pool_controller, storage) =
         test(protocol_controller, Box::new(pool_controller), storage).await;

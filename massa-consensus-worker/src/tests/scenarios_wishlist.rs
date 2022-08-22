@@ -7,6 +7,7 @@ use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::Slot;
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use serial_test::serial;
 use std::collections::HashSet;
 use std::iter::FromIterator;
@@ -76,6 +77,8 @@ async fn test_wishlist_delta_remove() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
+    let mut storage = Storage::default();
+
     consensus_without_pool_test(
         cfg.clone(),
         async move |mut protocol_controller,
@@ -110,7 +113,10 @@ async fn test_wishlist_delta_remove() {
             )
             .await;
 
-            protocol_controller.receive_block(t0s1.clone()).await;
+            storage.store_block(t0s1.clone());
+            protocol_controller
+                .receive_block(t0s1.id, t0s1.content.header.content.slot, storage.clone())
+                .await;
             let expected_new = HashSet::from_iter(vec![].into_iter());
             let expected_remove = HashSet::from_iter(vec![t0s1.id].into_iter());
             validate_wishlist(

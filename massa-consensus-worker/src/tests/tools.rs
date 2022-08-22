@@ -265,11 +265,16 @@ pub async fn create_and_test_block(
 ) -> BlockId {
     let block = create_block(cfg, slot, best_parents, creator);
     let block_id = block.id;
+    let slot = block.content.header.content.slot;
+    let mut storage = Storage::default();
     if trace {
         info!("create block:{}", block.id);
     }
 
-    protocol_controller.receive_block(block).await;
+    storage.store_block(block);
+    protocol_controller
+        .receive_block(block_id, slot, storage.clone())
+        .await;
     if valid {
         // Assert that the block is propagated.
         validate_propagate_block(protocol_controller, block_id, 2000).await;
@@ -282,12 +287,16 @@ pub async fn create_and_test_block(
 
 pub async fn propagate_block(
     protocol_controller: &mut MockProtocolController,
-    block: WrappedBlock,
+    block_id: BlockId,
+    slot: Slot,
+    storage: Storage,
     valid: bool,
     timeout_ms: u64,
 ) -> BlockId {
-    let block_hash = block.id;
-    protocol_controller.receive_block(block).await;
+    let block_hash = block_id;
+    protocol_controller
+        .receive_block(block_id, slot, storage)
+        .await;
     if valid {
         // see if the block is propagated.
         validate_propagate_block(protocol_controller, block_hash, timeout_ms).await;

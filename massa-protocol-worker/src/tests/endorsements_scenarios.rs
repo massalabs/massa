@@ -3,7 +3,6 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test;
-use massa_models::constants::THREAD_COUNT;
 use massa_models::prehash::Map;
 use massa_models::{Address, Slot};
 use massa_network_exports::NetworkCommand;
@@ -294,7 +293,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.0);
-            let thread = address.get_thread(THREAD_COUNT);
+            let thread = address.get_thread(2);
 
             let endorsement = tools::create_endorsement();
             let endorsement_id = endorsement.id;
@@ -373,7 +372,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.0);
-            let thread = address.get_thread(THREAD_COUNT);
+            let thread = address.get_thread(2);
 
             let endorsement = tools::create_endorsement();
             let endorsement_id = endorsement.id;
@@ -451,7 +450,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.0);
-            let thread = address.get_thread(THREAD_COUNT);
+            let thread = address.get_thread(2);
 
             let endorsement = tools::create_endorsement();
             let endorsement_id = endorsement.id;

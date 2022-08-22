@@ -51,6 +51,7 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
     initial.insert(get_random_address(), Amount::from_str("129").unwrap());
     initial.insert(get_random_address(), Amount::from_str("878").unwrap());
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&initial);
+    let file = get_initial_rolls();
     let ledger = FinalLedger::new(ledger_config.clone()).expect("could not init final ledger");
     let async_pool_config = AsyncPoolConfig { max_length: 100 };
     let cfg = FinalStateConfig {
@@ -58,6 +59,9 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir
         async_pool_config,
         final_history_length: FINAL_HISTORY_LENGTH,
         thread_count: THREAD_COUNT,
+        initial_rolls_path: file.path().to_path_buf(),
+        initial_seed_string: "".to_string(),
+        periods_per_cycle: 10,
     };
     Ok((
         Arc::new(RwLock::new(FinalState::new(cfg, Box::new(ledger)).unwrap())),
@@ -73,12 +77,10 @@ fn test_execution_shutdown() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (mut manager, _) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state,
-        Default::default(),
         selector_controller,
     );
     manager.stop();
@@ -91,12 +93,10 @@ fn test_sending_command() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state,
-        Default::default(),
         selector_controller,
     );
     controller.update_blockclique_status(Default::default(), Default::default());
@@ -110,12 +110,10 @@ fn test_sending_read_only_execution_command() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (mut manager, controller) = start_execution_worker(
         ExecutionConfig::default(),
         sample_state,
-        Default::default(),
         selector_controller,
     );
     controller
@@ -155,10 +153,9 @@ fn test_nested_call_gas_usage() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, storage.clone(), selector_controller);
+        start_execution_worker(exec_cfg, sample_state, selector_controller);
     // get random keypair
     let (_, keypair) = get_random_address_full();
     // load bytecode you can check the source code of the
@@ -264,10 +261,9 @@ fn send_and_receive_async_message() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, storage.clone(), selector_controller);
+        start_execution_worker(exec_cfg, sample_state, selector_controller);
     // get random keypair
     let (_, keypair) = get_random_address_full();
     // load send_message bytecode you can check the source code of the
@@ -319,10 +315,9 @@ fn generate_events() {
     let mut selector_config = SelectorConfig::default();
     let initial_rolls_file = get_initial_rolls();
     selector_config.initial_rolls_path = initial_rolls_file.path().to_path_buf();
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, storage.clone(), selector_controller);
+        start_execution_worker(exec_cfg, sample_state, selector_controller);
 
     let (sender_address, keypair) = get_random_address_full();
     let event_test_data = include_bytes!("./wasm/event_test.wasm");

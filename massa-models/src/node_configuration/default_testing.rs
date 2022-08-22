@@ -143,6 +143,12 @@ pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 pub const SLOT_KEY_SIZE: usize = 9;
 /// thread count
 pub const THREAD_COUNT: u8 = 2;
+/// 
+pub const MAX_DATASTORE_VALUE_LENGTH: u64 = u64::MAX;
+/// Maximum length function name in call sc
+pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
+/// Maximum size of parameters in call sc
+pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 /// period length in milliseconds, sometimes overridden in `config.rs` or `setting.rs`
 pub const T0: MassaTime = MassaTime::from(32000);
 

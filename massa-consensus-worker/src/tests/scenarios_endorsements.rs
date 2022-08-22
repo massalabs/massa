@@ -4,6 +4,7 @@ use massa_models::{
     wrapped::WrappedContent, Amount, BlockId, Endorsement, EndorsementSerializer, Slot,
 };
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
@@ -43,6 +44,7 @@ async fn test_endorsement_check() {
         generate_default_roll_counts_file(vec![keypair_1.clone(), keypair_2.clone()]);
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
+    let mut storage = Storage::default();
     consensus_without_pool_test(
         cfg.clone(),
         async move |mut protocol_controller,
@@ -104,7 +106,16 @@ async fn test_endorsement_check() {
             .unwrap();
             b10.content.header.content.endorsements = vec![ed];
 
-            propagate_block(&mut protocol_controller, b10, false, 500).await;
+            storage.store_block(b10.clone());
+            propagate_block(
+                &mut protocol_controller,
+                b10.id,
+                b10.content.header.content.slot,
+                storage.clone(),
+                false,
+                500,
+            )
+            .await;
 
             // create an otherwise valid endorsement at slot (1,1), include it in valid block(1,0), assert it is not propagated
             let content = Endorsement {
@@ -118,7 +129,16 @@ async fn test_endorsement_check() {
             let mut b10 = create_block(&cfg, Slot::new(1, 0), parents.clone(), &keypair_a);
             b10.content.header.content.endorsements = vec![ed];
 
-            propagate_block(&mut protocol_controller, b10, false, 500).await;
+            storage.store_block(b10.clone());
+            propagate_block(
+                &mut protocol_controller,
+                b10.id,
+                b10.content.header.content.slot,
+                storage.clone(),
+                false,
+                500,
+            )
+            .await;
 
             // create an otherwise valid endorsement with genesis 1 as endorsed block, include it in valid block(1,0), assert it is not propagated
             let content = Endorsement {
@@ -132,7 +152,16 @@ async fn test_endorsement_check() {
             let mut b10 = create_block(&cfg, Slot::new(1, 0), parents.clone(), &keypair_a);
             b10.content.header.content.endorsements = vec![ed];
 
-            propagate_block(&mut protocol_controller, b10, false, 500).await;
+            storage.store_block(b10.clone());
+            propagate_block(
+                &mut protocol_controller,
+                b10.id,
+                b10.content.header.content.slot,
+                storage.clone(),
+                false,
+                500,
+            )
+            .await;
 
             // create a valid endorsement, include it in valid block(1,1), assert it is propagated
             let content = Endorsement {
@@ -146,7 +175,16 @@ async fn test_endorsement_check() {
             let mut b10 = create_block(&cfg, Slot::new(1, 0), parents.clone(), &keypair_a);
             b10.content.header.content.endorsements = vec![ed];
 
-            propagate_block(&mut protocol_controller, b10, false, 500).await;
+            storage.store_block(b10.clone());
+            propagate_block(
+                &mut protocol_controller,
+                b10.id,
+                b10.content.header.content.slot,
+                storage.clone(),
+                false,
+                500,
+            )
+            .await;
 
             (
                 protocol_controller,
