@@ -21,7 +21,7 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::Set;
 use massa_models::{Address, BlockId, OperationId, OperationType, WrappedOperation};
 use massa_models::{Amount, Slot};
 use massa_pos_exports::SelectorController;
@@ -1199,7 +1199,7 @@ impl ExecutionState {
     /// by the selector. That correspond to the roll_counts in `cycle - 3`.
     ///
     /// By default it returns an empty map.
-    pub fn get_cycle_active_rolls(&self, cycle: u64) -> Map<Address, u64> {
+    pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
         let lookback_cycle = cycle.saturating_sub(3);
         let final_state = self.final_state.read();
         let lookback_cycle_index = match final_state.pos_state.get_cycle_index(lookback_cycle) {

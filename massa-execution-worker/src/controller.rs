@@ -11,12 +11,12 @@ use massa_execution_exports::{
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::Set;
 use massa_models::{Address, Amount, OperationId};
 use massa_models::{BlockId, Slot};
 use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tracing::info;
 
@@ -128,7 +128,7 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// Return the active rolls distribution for the given `cycle`
-    fn get_cycle_active_rolls(&self, cycle: u64) -> Map<Address, u64> {
+    fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
         self.execution_state.read().get_cycle_active_rolls(cycle)
     }
 

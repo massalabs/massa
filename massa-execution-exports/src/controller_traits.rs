@@ -8,7 +8,6 @@ use crate::ExecutionAddressInfo;
 use crate::ExecutionError;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
 use massa_models::prehash::Set;
 use massa_models::Address;
 use massa_models::Amount;
@@ -16,6 +15,7 @@ use massa_models::BlockId;
 use massa_models::OperationId;
 use massa_models::Slot;
 use massa_storage::Storage;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 /// interface that communicates with the execution worker thread
@@ -62,7 +62,7 @@ pub trait ExecutionController: Send + Sync {
     /// by the selector. That correspond to the roll_counts in `cycle - 3`.
     ///
     /// By default it returns an empty map.
-    fn get_cycle_active_rolls(&self, cycle: u64) -> Map<Address, u64>;
+    fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64>;
 
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///

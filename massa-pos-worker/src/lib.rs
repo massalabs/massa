@@ -8,12 +8,12 @@ mod draw;
 mod worker;
 
 use massa_hash::Hash;
-use massa_models::{prehash::Map, Address, Slot};
+use massa_models::{Address, Slot};
 use massa_pos_exports::{PosResult, Selection};
 
 use parking_lot::{Condvar, Mutex, RwLock, RwLockReadGuard};
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{BTreeMap, HashMap, VecDeque},
     sync::Arc,
 };
 
@@ -23,7 +23,7 @@ pub(crate) enum Command {
     /// Input requirements for the draw
     DrawInput {
         cycle: u64,
-        lookback_rolls: Map<Address, u64>,
+        lookback_rolls: BTreeMap<Address, u64>,
         lookback_seed: Hash,
     },
     /// Stop the thread (usually sent by the manager and pushed at the top

@@ -2,6 +2,7 @@
 
 use crate::controller::SelectorControllerImpl;
 use crate::controller::SelectorManagerImpl;
+use crate::draw::perform_draws;
 use crate::CycleDraws;
 use crate::DrawCache;
 use crate::RwLockCondvar;
@@ -123,14 +124,10 @@ impl SelectorThread {
             };
 
             // perform draws
-            let draws_result = self.perform_draws(cycle, lookback_rolls, lookback_seed);
+            let draws_result = perform_draws(&self.cfg, cycle, lookback_rolls, lookback_seed);
 
             // add result to cache and notify waiters
             self.process_draws_result(cycle, draws_result)?;
-
-            // Wait to be notified of new input
-            let (cvar, lock) = &*self.input_data;
-            cvar.wait(&mut lock.lock());
         }
         Ok(())
     }

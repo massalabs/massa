@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::BTreeMap, path::PathBuf};
 
 use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Amount, Slot};
@@ -14,7 +14,7 @@ impl PoSFinalState {
         initial_rolls_path: &PathBuf,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
-        let initial_rolls = serde_json::from_str::<Map<Address, u64>>(
+        let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
             &std::fs::read_to_string(initial_rolls_path).map_err(|err| {
                 PosError::RollsFileLoadingError(format!("error while deserializing: {}", err))
             })?,

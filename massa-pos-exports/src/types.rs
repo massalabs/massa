@@ -50,7 +50,7 @@ pub struct PoSFinalState {
     /// selector controller to feed the cycle when completed
     pub selector: Option<Box<dyn SelectorController>>,
     /// initial rolls, used for negative cycle lookback
-    pub initial_rolls: Map<Address, u64>,
+    pub initial_rolls: BTreeMap<Address, u64>,
     /// initial seeds, used for negative cycle lookback (cycles -2, -1 in that order)
     pub initial_seeds: Vec<Hash>,
 }
@@ -112,17 +112,17 @@ impl PoSFinalState {
                 .iter()
                 .position(|cycle| cycle.cycle == last_cycle)
             {
-                if index == 0 {
+                if index == self.cycle_history.len() {
                     return Ok((Vec::default(), cursor, Some(false)));
                 }
-                index.saturating_sub(1)
+                index.saturating_add(1)
             } else {
                 // if an outdated cycle is provided restart from the beginning
-                // get previous to last element to avoid the bootstrap safety cycle
-                self.cycle_history.len().saturating_sub(2)
+                // get second to first element to avoid the bootstrap safety cycle
+                1
             }
         } else {
-            self.cycle_history.len().saturating_sub(2)
+            1
         };
         let mut part = Vec::new();
         let mut last_cycle = None;
@@ -280,13 +280,13 @@ impl PoSFinalState {
                     )
                 });
         if rest.is_empty() {
-            if let Some(info) = self.cycle_history.front_mut() && info.cycle == cycle.0 {
+            if let Some(info) = self.cycle_history.back_mut() && info.cycle == cycle.0 {
                 info.complete = cycle.1;
                 info.roll_counts.extend(cycle.2);
                 info.rng_seed.extend(cycle.3);
                 info.production_stats.extend(stats_iter);
             } else {
-                self.cycle_history.push_front(CycleInfo {
+                self.cycle_history.push_back(CycleInfo {
                     cycle: cycle.0,
                     complete: cycle.1,
                     roll_counts: cycle.2.into_iter().collect(),
@@ -372,7 +372,7 @@ pub struct CycleInfo {
     /// whether the cycle is complete (all slots final)
     pub complete: bool,
     /// number of rolls each staking address has
-    pub roll_counts: Map<Address, u64>,
+    pub roll_counts: BTreeMap<Address, u64>,
     /// random seed bits of all slots in the cycle so far
     pub rng_seed: BitVec<u8>,
     /// Per-address production statistics

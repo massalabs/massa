@@ -3,6 +3,7 @@
 //! This module exports generic traits representing interfaces for interacting
 //! with the PoS selector worker.
 
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
@@ -10,7 +11,6 @@ use crate::PosResult;
 use crate::Selection;
 use massa_hash::Hash;
 use massa_models::api::IndexedSlot;
-use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::Slot;
 
@@ -30,7 +30,7 @@ pub trait SelectorController: Send + Sync {
     fn feed_cycle(
         &self,
         cycle: u64,
-        lookback_rolls: Map<Address, u64>,
+        lookback_rolls: BTreeMap<Address, u64>,
         lookback_seed: Hash,
     ) -> PosResult<()>;
 

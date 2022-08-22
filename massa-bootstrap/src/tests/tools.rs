@@ -73,9 +73,13 @@ fn get_random_ledger_entry() -> LedgerEntry {
 /// generates random PoS cycles info
 fn get_random_pos_cycles_info(
     r_limit: u64,
-) -> (Map<Address, u64>, Map<Address, ProductionStats>, BitVec<u8>) {
+) -> (
+    BTreeMap<Address, u64>,
+    Map<Address, ProductionStats>,
+    BitVec<u8>,
+) {
     let mut rng = rand::thread_rng();
-    let mut roll_counts = Map::default();
+    let mut roll_counts = BTreeMap::default();
     let mut production_stats = Map::default();
     let mut rng_seed: BitVec<u8> = BitVec::default();
 
@@ -121,7 +125,7 @@ fn get_random_pos_state() -> PoSFinalState {
     println!("R_LIMIT = {}", r_limit);
     for i in 0u64..r_limit {
         let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
-        cycle_history.push_front(CycleInfo {
+        cycle_history.push_back(CycleInfo {
             cycle: i,
             roll_counts,
             complete: true,

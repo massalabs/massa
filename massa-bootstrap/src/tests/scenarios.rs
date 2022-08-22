@@ -159,7 +159,7 @@ async fn test_bootstrap_server() {
     );
 
     // remove bootstrap safety cycle from final_state before comparisons
-    final_state.write().pos_state.cycle_history.pop_back();
+    final_state.write().pos_state.cycle_history.pop_front();
 
     // check final states
     assert_eq_final_state(&final_state.read(), &final_state_client.read());
@@ -180,13 +180,13 @@ async fn test_bootstrap_server() {
             ..Default::default()
         })
         .expect("could not start client selector controller");
-    final_state_client
-        .write()
-        .give_selector_controller(client_selector_controller.clone())
-        .unwrap();
     final_state
         .write()
         .give_selector_controller(server_selector_controller.clone())
+        .unwrap();
+    final_state_client
+        .write()
+        .give_selector_controller(client_selector_controller.clone())
         .unwrap();
 
     // check selection draw

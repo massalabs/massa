@@ -3,11 +3,11 @@
 //! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use crate::{Command, DrawCachePtr, InputDataPtr};
 use massa_hash::Hash;
-use massa_models::{api::IndexedSlot, prehash::Map, Address, Slot};
+use massa_models::{api::IndexedSlot, Address, Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
 use tracing::{info, warn};
 
@@ -55,7 +55,7 @@ impl SelectorController for SelectorControllerImpl {
     fn feed_cycle(
         &self,
         cycle: u64,
-        lookback_rolls: Map<Address, u64>,
+        lookback_rolls: BTreeMap<Address, u64>,
         lookback_seed: Hash,
     ) -> PosResult<()> {
         {
