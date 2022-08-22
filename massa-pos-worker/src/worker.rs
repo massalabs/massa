@@ -147,7 +147,7 @@ impl SelectorThread {
 /// * `selector_controller`: allows sending requests and notifications to the worker
 pub fn start_selector_worker(
     selector_config: SelectorConfig,
-) -> (Box<dyn SelectorManager>, Box<dyn SelectorController>) {
+) -> PosResult<(Box<dyn SelectorManager>, Box<dyn SelectorController>)> {
     let input_data = InputDataPtr::default();
     let cache = Arc::new((
         RwLockCondvar::default(),
@@ -169,5 +169,5 @@ pub fn start_selector_worker(
         thread_handle: Some(thread_handle),
         input_data,
     };
-    (Box::new(manager), Box::new(controller))
+    Ok((Box::new(manager), Box::new(controller)))
 }

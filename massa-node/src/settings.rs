@@ -34,6 +34,7 @@ pub struct ExecutionSettings {
 #[derive(Clone, Debug, Deserialize)]
 pub struct SelectionSettings {
     pub max_draw_cache: usize,
+    pub initial_rolls_path: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize)]

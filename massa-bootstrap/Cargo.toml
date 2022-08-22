@@ -42,6 +42,7 @@ massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
 massa_ledger_worker = { path = "../massa-ledger-worker", features = [
     "testing",
 ] }
+massa_pos_worker = { path = "../massa-pos-worker" }
 lazy_static = "1.4"
 
 

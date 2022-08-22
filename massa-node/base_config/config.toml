@@ -220,6 +220,8 @@
 [selector]
     # Maximum number of computed cycle's draws we keep in cache
     max_draw_cache = 10
+    # Path to the initial roll distribution
+    initial_rolls_path = "base_config/initial_rolls.json"
 
 [factory]
     # TODO: Document

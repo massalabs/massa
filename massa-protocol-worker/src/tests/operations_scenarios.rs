@@ -5,9 +5,9 @@
 use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::constants::THREAD_COUNT;
 use massa_models::prehash::Map;
-use massa_models::prehash::Set;
-use massa_models::{self, Address, Amount, OperationId, Slot};
-use massa_network_exports::NetworkCommand;
+use massa_models::{self, Address, Amount, Slot};
+use massa_models::{operation::OperationId, prehash::Set};
+use massa_network_exports::{BlockInfoReply, NetworkCommand};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
@@ -309,86 +309,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 #[tokio::test]
 #[serial]
 #[ignore]
-async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_block_integration(
-) {
-    let protocol_config = &tools::PROTOCOL_CONFIG;
-    protocol_test(
-        protocol_config,
-        async move |mut network_controller,
-                    protocol_event_receiver,
-                    mut protocol_command_sender,
-                    protocol_manager,
-                    protocol_pool_event_receiver| {
-            // Create 1 node.
-            let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
-
-            let address = Address::from_public_key(&nodes[0].id.0);
-            let thread = address.get_thread(THREAD_COUNT);
-
-            let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
-            let operation_id = operation.id;
-
-            let block = tools::create_block_with_operations(
-                &nodes[0].keypair,
-                Slot::new(1, thread),
-                vec![operation.clone()],
-            );
-            let block_id = block.id;
-
-            network_controller
-                .send_ask_for_block(nodes[0].id, vec![(block_id, Default::default())])
-                .await;
-
-            // Integrate the block,
-            // this should note the node as knowing about the endorsement.
-            protocol_command_sender
-                .integrated_block(block_id)
-                .await
-                .unwrap();
-
-            // TODO: rewrite
-
-            // Send the endorsement to protocol
-            // it should not propagate to the node that already knows about it
-            // because of the previously integrated block.
-            let mut ops: Set<OperationId> = Set::default();
-            ops.insert(operation_id);
-            protocol_command_sender
-                .propagate_operations(ops)
-                .await
-                .unwrap();
-
-            match network_controller
-                .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),
-                    _ => None,
-                })
-                .await
-            {
-                Some(NetworkCommand::SendOperations { node, operations }) => {
-                    assert!(operations.contains(&operation_id));
-                    assert_eq!(nodes[0].id, node);
-                    panic!("Unexpected propagated of operation.");
-                }
-                None => {}
-                Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
-            };
-
-            (
-                network_controller,
-                protocol_event_receiver,
-                protocol_command_sender,
-                protocol_manager,
-                protocol_pool_event_receiver,
-            )
-        },
-    )
-    .await;
-}
-
-#[tokio::test]
-#[serial]
-#[ignore]
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_get_block_results(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
@@ -475,7 +395,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
     protocol_test(
         protocol_config,
         async move |mut network_controller,
-                    mut protocol_event_receiver,
+                    protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
                     protocol_pool_event_receiver| {
@@ -494,24 +414,29 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 vec![operation.clone()],
             );
 
-            // Node 2 sends block, resulting in operations and endorsements noted in block info.
-            // TODO: rewrite with block info.
-
-            // Node 1 sends header, resulting in protocol using the block info to determine
+            // Node 2 sends block info with ops list, resulting in protocol using the info to determine
             // the node knows about the operations contained in the block.
             network_controller
-                .send_header(nodes[0].id, block.content.header.clone())
+                .send_block_info(
+                    nodes[1].id,
+                    vec![(
+                        block.id,
+                        BlockInfoReply::Info(vec![operation.id].into_iter().collect()),
+                    )],
+                )
                 .await;
 
-            // Wait for the event to be sure that the node is connected,
-            // and noted as knowing the block and its operations.
-            let _ = tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {
-                match evt {
-                    evt @ ProtocolEvent::ReceivedBlockHeader { .. } => Some(evt),
-                    _ => None,
-                }
-            })
-            .await;
+            // Node 1 sends block info with actual ops, resulting in protocol using the info to determine
+            // the node knows about the operations contained in the block.
+            network_controller
+                .send_block_info(
+                    nodes[0].id,
+                    vec![(
+                        block.id,
+                        BlockInfoReply::Operations(vec![operation].into_iter().collect()),
+                    )],
+                )
+                .await;
 
             // Send the operation to protocol
             // it should not propagate to the node that already knows about it
@@ -532,7 +457,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             {
                 Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                     panic!(
-                        "Unexpected propagated of operation to node {to_node} of {:?}.",
+                        "Unexpected propagation of operation to node {to_node} of {:?}.",
                         batch
                     );
                 }
@@ -555,7 +480,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 #[tokio::test]
 #[serial]
 #[ignore]
-async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header_wrong_root_hash(
+async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_wrong_root_hash_header(
 ) {
     let protocol_config = &tools::PROTOCOL_CONFIG;
     protocol_test(
@@ -669,15 +594,16 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             let thread = address.get_thread(THREAD_COUNT);
 
             // 2. Create a block coming from node creator_node, and including the operation.
-            let _block = tools::create_block_with_operations(
+            let block = tools::create_block_with_operations(
                 &creator_node.keypair,
                 Slot::new(1, thread),
                 vec![operation.clone()],
             );
 
             // 4. Send block to protocol.
-            // TODO: rewrite with block info.
-            //network_controller.send_block(creator_node.id, block).await;
+            network_controller
+                .send_header(creator_node.id, block.content.header.clone())
+                .await;
 
             // 5. Check that the operation included in the block is not propagated.
             match tools::wait_protocol_pool_event(

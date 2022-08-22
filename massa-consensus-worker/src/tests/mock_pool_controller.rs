@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{BlockId, EndorsementId, OperationId, Slot};
+use massa_models::{prehash::Set, BlockId, EndorsementId, OperationId, Slot, WrappedOperation};
 use massa_pool_exports::PoolController;
 use massa_storage::Storage;
 
@@ -31,6 +31,18 @@ impl PoolController for MockPoolController {
         target_block: &BlockId,
         target_slot: &Slot,
     ) -> (Vec<Option<EndorsementId>>, Storage) {
+        todo!("")
+    }
+
+    fn get_stats(&self) -> (usize, usize) {
+        todo!("")
+    }
+
+    fn get_endorsement_ids(&self) -> Set<EndorsementId> {
+        todo!("")
+    }
+
+    fn get_operations_by_ids(&self, _ids: &Set<OperationId>) -> Vec<WrappedOperation> {
         todo!("")
     }
 

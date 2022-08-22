@@ -229,7 +229,8 @@ async fn launch(
         genesis_address: Address::from_public_key(&GENESIS_KEY.get_public_key()),
         initial_rolls_path: SETTINGS.consensus.initial_rolls_path.clone(),
         initial_draw_seed: INITIAL_DRAW_SEED.into(),
-    });
+    })
+    .expect("could not start selector worker");
 
     // give the controller to final state in order for it to feed the cycles
     final_state
