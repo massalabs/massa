@@ -1,16 +1,34 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{HashMap, VecDeque},
+    path::PathBuf,
+};
 
-use massa_models::Slot;
+use massa_models::{
+    constants::{ENDORSEMENT_COUNT, PERIODS_PER_CYCLE},
+    Address, Slot, THREAD_COUNT,
+};
+use massa_signature::KeyPair;
 
-use crate::{PoSFinalState, Selection};
+use crate::{PoSFinalState, Selection, SelectorConfig};
+
+impl Default for SelectorConfig {
+    fn default() -> Self {
+        Self {
+            thread_count: THREAD_COUNT,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_draw_cache: 00,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            genesis_address: Address::from_public_key(&KeyPair::generate().get_public_key()),
+            initial_rolls_path: PathBuf::default(),
+            initial_draw_seed: String::default(),
+        }
+    }
+}
 
 /// Compare two PoS States
 pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
-    let mut s1_cleared = s1.cycle_history.clone();
-    // remove bootstrap safety cycle from s1
-    s1_cleared.pop_back();
     assert_eq!(
-        s1_cleared, s2.cycle_history,
+        s1.cycle_history, s2.cycle_history,
         "PoS cycle_history mismatching"
     );
     assert_eq!(
@@ -21,19 +39,9 @@ pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
 
 /// Compare two PoS Selections
 pub fn assert_eq_pos_selection(
-    s1: &BTreeMap<u64, HashMap<Slot, Selection>>,
-    s2: &BTreeMap<u64, HashMap<Slot, Selection>>,
+    s1: &VecDeque<(u64, HashMap<Slot, Selection>)>,
+    s2: &VecDeque<(u64, HashMap<Slot, Selection>)>,
 ) {
     assert_eq!(s1.len(), s2.len(), "PoS selections len do not match");
-    for (key, value) in s2 {
-        if let Some(s1_value) = s1.get(key) {
-            for (slot, b) in value {
-                let a = s1_value.get(slot).unwrap();
-                assert_eq!(a, b, "Selection mismatching for {:?}", slot);
-            }
-        } else {
-            panic!("missing key in first selection");
-        }
-    }
     assert_eq!(s1, s2, "PoS selections do not match");
 }

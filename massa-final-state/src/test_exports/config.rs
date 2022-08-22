@@ -2,6 +2,8 @@
 
 //! This file defines testing tools related to the configuration
 
+use std::path::PathBuf;
+
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_ledger_exports::LedgerConfig;
@@ -41,12 +43,16 @@ impl Default for FinalState {
 
 /// Default value of `FinalStateConfig` used for tests
 impl Default for FinalStateConfig {
-    fn default() -> Self {
+    fn default() -> FinalStateConfig {
+        // IMPORTANT TODO: update this default
         FinalStateConfig {
             ledger_config: LedgerConfig::default(),
             async_pool_config: AsyncPoolConfig::default(),
             final_history_length: 10,
             thread_count: 2,
+            periods_per_cycle: 100,
+            initial_rolls_path: PathBuf::new(),
+            initial_seed_string: "".to_string(),
         }
     }
 }
