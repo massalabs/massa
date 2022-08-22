@@ -31,14 +31,6 @@ pub(crate) enum Command {
     Stop,
 }
 
-/// Same structure pointer that will be used by the selector controller and his
-/// thread.
-///
-/// - `CycleInfo`: stores the new CycleInfo declared by massa (in the
-///     Execution module) and will be used to compute the draws in background.
-/// - `Stop`: break the thread loop.
-pub(crate) type InputDataPtr = Arc<(Condvar, Mutex<VecDeque<Command>>)>;
-
 /// Draw cache (lowest index = oldest)
 pub(crate) struct DrawCache(pub VecDeque<CycleDraws>);
 

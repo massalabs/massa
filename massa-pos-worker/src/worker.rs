@@ -6,7 +6,7 @@ use crate::draw::perform_draws;
 use crate::CycleDraws;
 use crate::DrawCache;
 use crate::RwLockCondvar;
-use crate::{Command, DrawCachePtr, InputDataPtr};
+use crate::{Command, DrawCachePtr};
 use massa_pos_exports::PosError;
 use massa_pos_exports::PosResult;
 use massa_pos_exports::SelectorConfig;
@@ -14,6 +14,8 @@ use massa_pos_exports::SelectorController;
 use massa_pos_exports::SelectorManager;
 use parking_lot::RwLock;
 use std::collections::VecDeque;
+use std::sync::mpsc::sync_channel;
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
@@ -21,7 +23,7 @@ use std::thread::JoinHandle;
 #[allow(dead_code)]
 pub(crate) struct SelectorThread {
     // A copy of the input data allowing access to incoming requests
-    pub(crate) input_data: InputDataPtr,
+    pub(crate) input_mpsc: Receiver<Command>,
     /// Cache of computed endorsements
     pub(crate) cache: DrawCachePtr,
     /// Configuration
@@ -32,13 +34,13 @@ impl SelectorThread {
     /// Creates the `SelectorThread` structure to gather all data and references
     /// needed by the selector worker thread.
     pub(crate) fn spawn(
-        input_data: InputDataPtr,
+        input_mpsc: Receiver<Command>,
         cache: DrawCachePtr,
         cfg: SelectorConfig,
     ) -> JoinHandle<PosResult<()>> {
         std::thread::spawn(|| {
             let this = Self {
-                input_data,
+                input_mpsc,
                 cache,
                 cfg,
             };
@@ -104,23 +106,15 @@ impl SelectorThread {
     /// draws for future cycle.
     fn run(self) -> PosResult<()> {
         loop {
-            // get input command
-            let (cycle, lookback_rolls, lookback_seed) = {
-                let (cvar, lock) = &*self.input_data;
-                let mut data = lock.lock();
-                match data.pop_front() {
-                    Some(Command::DrawInput {
-                        cycle,
-                        lookback_rolls,
-                        lookback_seed,
-                    }) => (cycle, lookback_rolls, lookback_seed),
-                    Some(Command::Stop) => break,
-                    None => {
-                        // spurious wakeup: wait to be notified of new input
-                        cvar.wait(&mut data);
-                        continue;
-                    }
-                }
+            let (cycle, lookback_rolls, lookback_seed) = match self.input_mpsc.recv() {
+                Err(_) => break,
+                Ok(Command::Stop) => break,
+
+                Ok(Command::DrawInput {
+                    cycle,
+                    lookback_rolls,
+                    lookback_seed,
+                }) => (cycle, lookback_rolls, lookback_seed),
             };
 
             // perform draws
@@ -145,7 +139,7 @@ impl SelectorThread {
 pub fn start_selector_worker(
     selector_config: SelectorConfig,
 ) -> PosResult<(Box<dyn SelectorManager>, Box<dyn SelectorController>)> {
-    let input_data = InputDataPtr::default();
+    let (input_sender, input_receiver) = sync_channel(selector_config.channel_size);
     let cache = Arc::new((
         RwLockCondvar::default(),
         RwLock::new(Ok(DrawCache(VecDeque::with_capacity(
@@ -153,18 +147,18 @@ pub fn start_selector_worker(
         )))),
     ));
     let controller = SelectorControllerImpl {
-        input_data: input_data.clone(),
+        input_mpsc: input_sender.clone(),
         cache: cache.clone(),
         periods_per_cycle: selector_config.periods_per_cycle,
         thread_count: selector_config.thread_count,
     };
 
     // launch the selector thread
-    let thread_handle = SelectorThread::spawn(input_data.clone(), cache, selector_config);
+    let thread_handle = SelectorThread::spawn(input_receiver, cache, selector_config);
 
     let manager = SelectorManagerImpl {
         thread_handle: Some(thread_handle),
-        input_data,
+        input_mpsc: input_sender,
     };
     Ok((Box::new(manager), Box::new(controller)))
 }
