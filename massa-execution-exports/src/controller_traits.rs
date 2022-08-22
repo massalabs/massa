@@ -4,9 +4,11 @@
 
 use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
+use crate::ExecutionAddressInfo;
 use crate::ExecutionError;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
 use massa_models::prehash::Set;
 use massa_models::Address;
 use massa_models::Amount;
@@ -14,8 +16,6 @@ use massa_models::BlockId;
 use massa_models::OperationId;
 use massa_models::Slot;
 use massa_storage::Storage;
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 /// interface that communicates with the execution worker thread
@@ -39,22 +39,13 @@ pub trait ExecutionController: Send + Sync {
     /// * operation id
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent>;
 
-    /// Get the final and active values of paralell balances.
-    ///
-    /// # Return value
-    /// * `(final_balance, active_balance)`
-    fn get_final_and_active_parallel_balance(
-        &self,
-        addresses: Vec<Address>,
-    ) -> Vec<(Option<Amount>, Option<Amount>)>;
-
     /// Get the final and active values of sequential balances.
     ///
     /// # Return value
     /// * `(final_balance, active_balance)`
-    fn get_final_and_active_sequential_balance(
+    fn get_final_and_candidate_sequential_balances(
         &self,
-        addresses: Vec<Address>,
+        addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)>;
 
     /// Get a copy of a single datastore entry with its final and active values
@@ -67,20 +58,11 @@ pub trait ExecutionController: Send + Sync {
         input: Vec<(Address, Vec<u8>)>,
     ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)>;
 
-    /// Get every datastore key of the given address.
-    ///
-    /// # Returns
-    /// A vector containing all the keys
-    fn get_final_and_active_datastore_keys(
-        &self,
-        addr: &Address,
-    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>);
-
     /// Returns for a given cycle the stakers taken into account
-    /// by the selector. That correspond to the roll_counts in `cycle - 1`.
+    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
     ///
     /// By default it returns an empty map.
-    fn get_cycle_rolls(&self, cycle: u64) -> BTreeMap<Address, u64>;
+    fn get_cycle_active_rolls(&self, cycle: u64) -> Map<Address, u64>;
 
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///
@@ -97,6 +79,9 @@ pub trait ExecutionController: Send + Sync {
 
     /// List which operations inside the provided list were not executed
     fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId>;
+
+    /// Gets infos about a batch of addresses
+    fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

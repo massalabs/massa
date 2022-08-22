@@ -1,11 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Contains definitions of commands used by the controller
-use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
-use massa_models::prehash::{Map, Set};
-use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
+use massa_graph::{BlockGraphExport, BootstrapableGraph};
+use massa_models::api::BlockGraphStatus;
 use massa_models::{clique::Clique, stats::ConsensusStats};
-use massa_models::{Address, BlockId, OperationSearchResult, Slot, WrappedEndorsement};
+use massa_models::{BlockId, Slot};
 use massa_storage::Storage;
 use tokio::sync::oneshot;
 
@@ -21,45 +20,17 @@ pub enum ConsensusCommand {
         /// response channel
         response_tx: oneshot::Sender<BlockGraphExport>,
     },
-    /// Returns through a channel full block and status with specified hash.
-    GetBlockStatus {
-        /// wanted block id
-        block_id: BlockId,
+    /// Returns through a channel the graph statuses of a batch of blocks
+    GetBlockStatuses {
+        /// wanted block IDs
+        ids: Vec<BlockId>,
         /// response channel
-        response_tx: oneshot::Sender<Option<ExportBlockStatus>>,
+        response_tx: oneshot::Sender<Vec<BlockGraphStatus>>,
     },
     /// Returns the bootstrap state
     GetBootstrapState(oneshot::Sender<BootstrapableGraph>),
-    /// Returns info for a set of addresses (rolls and balance)
-    GetAddressesInfo {
-        /// wanted addresses
-        addresses: Set<Address>,
-        /// response channel
-        response_tx: oneshot::Sender<Map<Address, AddressState>>,
-    },
-    /// Get some information on operation by involved addresses
-    GetRecentOperations {
-        /// wanted address
-        address: Address,
-        /// response channel
-        response_tx: oneshot::Sender<(Map<OperationId, OperationSearchResult>, Storage)>,
-    },
-    /// Get some information on operations by operation ids
-    GetOperations {
-        /// wanted ids
-        operation_ids: Set<OperationId>,
-        /// response channel
-        response_tx: oneshot::Sender<(Map<OperationId, OperationSearchResult>, Storage)>,
-    },
     /// get current stats on consensus
     GetStats(oneshot::Sender<ConsensusStats>),
-    /// Get block id and status by block creator address
-    GetBlockIdsByCreator {
-        /// wanted address
-        address: Address,
-        /// response channel
-        response_tx: oneshot::Sender<Map<BlockId, Status>>,
-    },
     /// Get a block at a given slot in a blockclique
     GetBlockcliqueBlockAtSlot {
         /// wanted slot
@@ -76,24 +47,12 @@ pub enum ConsensusCommand {
     SendBlock {
         /// block id
         block_id: BlockId,
+        /// block slot
+        slot: Slot,
         /// All the objects for the block
         block_storage: Storage,
         /// response channel
         response_tx: oneshot::Sender<()>,
-    },
-    /// Get Endorsements by involved addresses
-    GetEndorsementsByAddress {
-        /// wanted address
-        address: Address,
-        /// response channel
-        response_tx: oneshot::Sender<(Map<EndorsementId, WrappedEndorsement>, Storage)>,
-    },
-    /// get endorsements by id
-    GetEndorsementsById {
-        /// Wanted endorsement ids
-        endorsements: Set<EndorsementId>,
-        /// response channel
-        response_tx: oneshot::Sender<(Map<EndorsementId, EndorsementInfo>, Storage)>,
     },
     /// Get cliques
     GetCliques(oneshot::Sender<Vec<Clique>>),

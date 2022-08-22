@@ -74,7 +74,11 @@ fn get_random_ledger_entry() -> LedgerEntry {
 /// generates random PoS cycles info
 fn get_random_pos_cycles_info(
     r_limit: u64,
-) -> (BTreeMap<Address, u64>, Map<Address, ProductionStats>, BitVec<u8>) {
+) -> (
+    BTreeMap<Address, u64>,
+    Map<Address, ProductionStats>,
+    BitVec<u8>,
+) {
     let mut rng = rand::thread_rng();
     let mut roll_counts = BTreeMap::default();
     let mut production_stats = Map::default();

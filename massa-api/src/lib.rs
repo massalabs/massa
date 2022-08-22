@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! Json RPC API for a massa-node
 #![feature(async_closure)]
 #![warn(missing_docs)]

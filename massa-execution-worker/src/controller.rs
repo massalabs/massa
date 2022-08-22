@@ -6,8 +6,8 @@
 use crate::execution::ExecutionState;
 use crate::request_queue::{RequestQueue, RequestWithResponseSender};
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
-    ReadOnlyExecutionRequest,
+    ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
+    ExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
@@ -16,7 +16,7 @@ use massa_models::{Address, Amount, OperationId};
 use massa_models::{BlockId, Slot};
 use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::info;
 
@@ -95,70 +95,41 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_filtered_sc_output_event(filter)
     }
 
-    /// Get a balance final and active values
-    ///
-    /// # Return value
-    /// * `(final_balance, active_balance)`
-    fn get_final_and_active_parallel_balance(
-        &self,
-        addresses: Vec<Address>,
-    ) -> Vec<(Option<Amount>, Option<Amount>)> {
-        let lock = self.execution_state.read();
-        let mut result = Vec::with_capacity(addresses.len());
-        for addr in addresses {
-            result.push(lock.get_final_and_active_parallel_balance(&addr));
-        }
-        result
-    }
-
-    /// Get the final and active values of sequential balances.
-    ///
-    /// # Return value
-    /// * `(final_balance, active_balance)`
-    fn get_final_and_active_sequential_balance(
-        &self,
-        addresses: Vec<Address>,
-    ) -> Vec<(Option<Amount>, Option<Amount>)> {
-        let lock = self.execution_state.read();
-        let mut result = Vec::with_capacity(addresses.len());
-        for addr in addresses {
-            result.push(lock.get_final_and_active_sequential_balance(&addr));
-        }
-        result
-    }
-
     /// Get a copy of a single datastore entry with its final and active values
     ///
     /// # Return value
-    /// * `(final_data_entry, active_data_entry)`
+    /// * `Vec<(final_data_entry, active_data_entry)>`
     fn get_final_and_active_data_entry(
         &self,
         input: Vec<(Address, Vec<u8>)>,
     ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
         let lock = self.execution_state.read();
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(input.len());
         for (addr, key) in input {
             result.push(lock.get_final_and_active_data_entry(&addr, &key));
         }
         result
     }
 
-    /// Get every datastore key of the given address.
+    /// Get the final and candidate values of sequential balances.
     ///
-    /// # Returns
-    /// A vector containing all the keys
-    fn get_final_and_active_datastore_keys(
+    /// # Return value
+    /// * `(final_balance, candidate_balance)`
+    fn get_final_and_candidate_sequential_balances(
         &self,
-        addr: &Address,
-    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
-        self.execution_state
-            .read()
-            .get_final_and_active_datastore_keys(addr)
+        addresses: &[Address],
+    ) -> Vec<(Option<Amount>, Option<Amount>)> {
+        let lock = self.execution_state.read();
+        let mut result = Vec::with_capacity(addresses.len());
+        for addr in addresses {
+            result.push(lock.get_final_and_candidate_sequential_balance(addr));
+        }
+        result
     }
 
-    /// Return the final rolls distribution for the given `cycle`
-    fn get_cycle_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
-        self.execution_state.read().get_cycle_rolls(cycle)
+    /// Return the active rolls distribution for the given `cycle`
+    fn get_cycle_active_rolls(&self, cycle: u64) -> Map<Address, u64> {
+        self.execution_state.read().get_cycle_active_rolls(cycle)
     }
 
     /// Executes a read-only request
@@ -207,6 +178,35 @@ impl ExecutionController for ExecutionControllerImpl {
         self.execution_state
             .read()
             .unexecuted_ops_among(&ops, thread)
+    }
+
+    /// Gets infos about a batch of addresses
+    fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo> {
+        let mut res = Vec::with_capacity(addresses.len());
+        let exec_state = self.execution_state.read();
+        for addr in addresses {
+            let (final_datastore_keys, candidate_datastore_keys) =
+                exec_state.get_final_and_candidate_datastore_keys(addr);
+            let (final_parallel_balance, candidate_parallel_balance) =
+                exec_state.get_final_and_candidate_parallel_balance(addr);
+            let (final_sequential_balance, candidate_sequential_balance) =
+                exec_state.get_final_and_candidate_sequential_balance(addr);
+            let (final_roll_count, candidate_roll_count) =
+                exec_state.get_final_and_candidate_rolls(addr);
+            res.push(ExecutionAddressInfo {
+                final_datastore_keys,
+                candidate_datastore_keys,
+                final_parallel_balance: final_parallel_balance.unwrap_or_default(),
+                candidate_parallel_balance: candidate_parallel_balance.unwrap_or_default(),
+                final_sequential_balance: final_sequential_balance.unwrap_or_default(),
+                candidate_sequential_balance: candidate_sequential_balance.unwrap_or_default(),
+                final_roll_count,
+                candidate_roll_count,
+                future_deferred_credits: exec_state.get_address_future_deferred_credits(addr),
+                cycle_infos: exec_state.get_address_cycle_infos(addr),
+            });
+        }
+        res
     }
 
     /// Returns a boxed clone of self.

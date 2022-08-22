@@ -18,6 +18,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
@@ -61,10 +62,6 @@ pub(crate) struct ExecutionState {
     execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
     execution_interface: Box<dyn Interface>,
-    /// Shared storage across all modules
-    storage: Storage,
-    /// PoS selector
-    selector: Box<dyn SelectorController>,
 }
 
 impl ExecutionState {
@@ -73,16 +70,10 @@ impl ExecutionState {
     /// # Arguments
     /// * `config`: execution configuration
     /// * `final_state`: atomic access to the final state
-    /// * `storage`: Shared storage with data shared all across the modules
     ///
     /// # returns
     /// A new `ExecutionState`
-    pub fn new(
-        config: ExecutionConfig,
-        final_state: Arc<RwLock<FinalState>>,
-        storage: Storage,
-        selector: Box<dyn SelectorController>,
-    ) -> ExecutionState {
+    pub fn new(config: ExecutionConfig, final_state: Arc<RwLock<FinalState>>) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
         let last_final_slot = final_state.read().slot;
@@ -94,7 +85,6 @@ impl ExecutionState {
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             final_state.clone(),
             active_history.clone(),
-            selector.clone(),
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -116,8 +106,6 @@ impl ExecutionState {
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
-            storage,
-            selector,
         }
     }
 
@@ -298,7 +286,7 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             // ignore the operation if it was already executed
-            if context.is_op_executed(&operation_id, operation.thread) {
+            if context.is_op_executed(&operation_id) {
                 return Err(ExecutionError::InlcudeOperationError(
                     "operation was executed previously".to_string(),
                 ));
@@ -414,7 +402,13 @@ impl ExecutionState {
         }];
 
         // try to sell the rolls
-        if let Err(err) = context.try_sell_rolls(&seller_addr, *roll_count) {
+        if let Err(err) = context.try_sell_rolls(
+            &seller_addr,
+            *roll_count,
+            self.config.periods_per_cycle,
+            self.config.thread_count,
+            self.config.roll_price,
+        ) {
             return Err(ExecutionError::RollSellError(format!(
                 "{} failed to sell {} rolls: {}",
                 seller_addr, roll_count, err
@@ -826,6 +820,7 @@ impl ExecutionState {
     /// # Arguments
     /// * `slot`: slot to execute
     /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, aparents) if there is a block a that slot, otherwise None
+    /// * `selector`: Reference to the selector
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
@@ -833,6 +828,7 @@ impl ExecutionState {
         &self,
         slot: Slot,
         opt_block: Option<(BlockId, Storage)>,
+        selector: &Box<dyn SelectorController>,
     ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
@@ -840,7 +836,6 @@ impl ExecutionState {
             opt_block.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
             self.active_history.clone(),
-            self.selector.clone(),
         );
 
         // Get asynchronous messages to execute
@@ -861,24 +856,25 @@ impl ExecutionState {
         if let Some((block_id, block_store)) = opt_block {
             // Retrieve the block from storage
             let stored_block = block_store
-                .retrieve_block(&block_id)
+                .read_blocks()
+                .get(&block_id)
                 .expect("Missing block in storage.")
-                .read()
                 .clone();
 
             // gather all operations
-            let operations = block_store.with_operations(
-                &stored_block
+            let operations = {
+                let ops = block_store.read_operations();
+                stored_block
                     .content
                     .operations
                     .into_iter()
-                    .collect::<Vec<_>>(),
-                |ops| {
-                    ops.iter()
-                        .map(|opt_op| opt_op.expect("block operation absent from storage").clone())
-                        .collect::<Vec<_>>()
-                },
-            );
+                    .map(|op_id| {
+                        ops.get(&op_id)
+                            .expect("block operation absent from storage")
+                            .clone()
+                    })
+                    .collect::<Vec<_>>()
+            };
 
             // gather all available endorsement creators and target blocks
             let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =
@@ -890,17 +886,20 @@ impl ExecutionState {
                     .iter()
                     .map(|endo| (endo.creator_address, endo.content.endorsed_block))
                     .unzip();
+
             // deduce endorsement target block creators
-            let endorsement_target_creators = endorsement_targets
-                .into_iter()
-                .map(|b_id| {
-                    block_store
-                        .retrieve_block(&b_id)
-                        .expect("endorsed block absent from storage")
-                        .read()
-                        .creator_address
-                })
-                .collect::<Vec<_>>();
+            let endorsement_target_creators = {
+                let blocks = block_store.read_blocks();
+                endorsement_targets
+                    .into_iter()
+                    .map(|b_id| {
+                        blocks
+                            .get(&b_id)
+                            .expect("endorsed block absent from storage")
+                            .creator_address
+                    })
+                    .collect::<Vec<_>>()
+            };
 
             // Set remaining block gas
             let mut remaining_block_gas = self.config.max_gas_per_block;
@@ -995,18 +994,19 @@ impl ExecutionState {
                 )
             }
         } else {
-            // the slot is a miss
-
-            // Update speculative rolls state production stats
-            if let Ok(addr) = self.selector.get_producer(slot) {
-                context_guard!(self).update_production_stats(&addr, slot, None);
-            } else {
-                debug!("couldn't get the expected block producer for a missed slot");
-            }
+            // the slot is a miss, check who was supposed to be the creator and update production stats
+            let producer_addr = selector
+                .get_producer(slot)
+                .expect("couldn't get the expected block producer for a missed slot");
+            context_guard!(self).update_production_stats(&producer_addr, slot, None);
         }
 
         // Finish slot and return the execution output
-        context_guard!(self).settle_slot()
+        context_guard!(self).settle_slot(
+            self.config.periods_per_cycle,
+            self.config.thread_count,
+            self.config.roll_price,
+        )
     }
 
     /// Runs a read-only execution request.
@@ -1023,6 +1023,9 @@ impl ExecutionState {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError> {
+        // TODO ensure that speculative things are reset after every execution ends (incl. on error and readonly)
+        // otherwise, on prod stats accumulation etc... from the API we might be counting the remainder of this speculative execution
+
         // set the execution slot to be the one after the latest executed active slot
         let slot = self
             .active_cursor
@@ -1037,7 +1040,6 @@ impl ExecutionState {
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
-            self.selector.clone(),
         );
 
         // run the intepreter according to the target type
@@ -1076,11 +1078,15 @@ impl ExecutionState {
         }
 
         // return the execution output
-        Ok(context_guard!(self).settle_slot())
+        Ok(context_guard!(self).settle_slot(
+            self.config.periods_per_cycle,
+            self.config.thread_count,
+            self.config.roll_price,
+        ))
     }
 
-    /// Gets a parallel balance both at the latest final and active executed slots
-    pub fn get_final_and_active_parallel_balance(
+    /// Gets a parallel balance both at the latest final and candidate executed slots
+    pub fn get_final_and_candidate_parallel_balance(
         &self,
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
@@ -1096,8 +1102,8 @@ impl ExecutionState {
         )
     }
 
-    /// Gets a sequential balance both at the latest final and active executed slots
-    pub fn get_final_and_active_sequential_balance(
+    /// Gets a sequential balance both at the latest final and candidate executed slots
+    pub fn get_final_and_candidate_sequential_balance(
         &self,
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
@@ -1115,6 +1121,17 @@ impl ExecutionState {
                 HistorySearchResult::Absent => None,
             },
         )
+    }
+
+    /// Gets roll counts both at the latest final and active executed slots
+    pub fn get_final_and_candidate_rolls(&self, address: &Address) -> (u64, u64) {
+        let final_rolls = self.final_state.read().pos_state.get_rolls_for(address);
+        let active_rolls = self
+            .active_history
+            .read()
+            .fetch_roll_count(address)
+            .unwrap_or(final_rolls);
+        (final_rolls, active_rolls)
     }
 
     /// Gets a data entry both at the latest final and active executed slots
@@ -1139,7 +1156,7 @@ impl ExecutionState {
     }
 
     /// Get every final and active datastore key of the given address
-    pub fn get_final_and_active_datastore_keys(
+    pub fn get_final_and_candidate_datastore_keys(
         &self,
         addr: &Address,
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
@@ -1178,6 +1195,22 @@ impl ExecutionState {
         (final_keys, candidate_keys)
     }
 
+    /// Returns for a given cycle the stakers taken into account
+    /// by the selector. That correspond to the roll_counts in `cycle - 3`.
+    ///
+    /// By default it returns an empty map.
+    pub fn get_cycle_active_rolls(&self, cycle: u64) -> Map<Address, u64> {
+        let lookback_cycle = cycle.saturating_sub(3);
+        let final_state = self.final_state.read();
+        let lookback_cycle_index = match final_state.pos_state.get_cycle_index(lookback_cycle) {
+            Some(v) => v,
+            None => Default::default(),
+        };
+        final_state.pos_state.cycle_history[lookback_cycle_index]
+            .roll_counts
+            .clone()
+    }
+
     /// Gets execution events optionally filtered by:
     /// * start slot
     /// * end slot
@@ -1213,25 +1246,6 @@ impl ExecutionState {
         }
     }
 
-    /// Returns for a given cycle the stakers taken into account
-    /// by the selector. That correspond to the roll_counts in `cycle - 1`.
-    ///
-    /// By default it returns an empty map.
-    pub fn get_cycle_rolls(&self, mut cycle: u64) -> BTreeMap<Address, u64> {
-        let final_state = self.final_state.read();
-        cycle = match cycle.checked_sub(1) {
-            Some(c) => c,
-            _ => return BTreeMap::default(),
-        };
-        // TODO do not iterate here, go directly to the right element because they are sequentially ordered
-        for cycle_info in final_state.pos_state.cycle_history.iter() {
-            if cycle_info.cycle == cycle {
-                return cycle_info.roll_counts.clone();
-            }
-        }
-        BTreeMap::default()
-    }
-
     /// List which operations inside the provided list were not executed
     pub fn unexecuted_ops_among(&self, ops: &Set<OperationId>, thread: u8) -> Set<OperationId> {
         let mut ops = ops.clone();
@@ -1261,5 +1275,15 @@ impl ExecutionState {
         }
 
         ops
+    }
+
+    /// Gets the production stats for an address at all cycles
+    pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
+        context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
+    }
+
+    /// Get future deferred credits of an address
+    pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
+        context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
     }
 }

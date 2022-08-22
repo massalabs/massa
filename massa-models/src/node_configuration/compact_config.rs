@@ -21,10 +21,6 @@ pub struct CompactConfig {
     pub operation_validity_periods: u64,
     /// cycle duration in periods
     pub periods_per_cycle: u64,
-    /// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1
-    pub pos_lookback_cycles: u64,
-    /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
-    pub pos_lock_cycles: u64,
     /// Reward amount for a block creation
     pub block_reward: Amount,
     /// Price of a roll on the network
@@ -43,8 +39,6 @@ impl Default for CompactConfig {
             delta_f0: DELTA_F0,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-            pos_lock_cycles: POS_LOCK_CYCLES,
             block_reward: BLOCK_REWARD,
             roll_price: ROLL_PRICE,
             max_block_size: MAX_BLOCK_SIZE,
@@ -71,16 +65,6 @@ impl Display for CompactConfig {
             self.operation_validity_periods
         )?;
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
-        writeln!(
-            f,
-            "    Proof of stake look back cycles: {}",
-            self.pos_lookback_cycles
-        )?;
-        writeln!(
-            f,
-            "    Proof of stake lock cycles: {}",
-            self.pos_lock_cycles
-        )?;
         writeln!(f, "    Block reward: {}", self.block_reward)?;
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
         writeln!(f, "    Max block size (in bytes): {}", self.max_block_size)?;
