@@ -354,13 +354,14 @@ impl Endpoints for API<Public> {
         // get the operations and the list of blocks that contain them from storage
         let storage_info: Vec<(WrappedOperation, Set<BlockId>)> = {
             let read_ops = self.0.storage.read_operations();
+            let read_blocks = self.0.storage.read_blocks();
             ops.iter()
                 .filter_map(|id| {
                     read_ops.get(id).cloned().map(|op| {
                         (
                             op,
-                            read_ops
-                                .get_containing_blocks(id)
+                            read_blocks
+                                .get_blocks_by_operation(id)
                                 .cloned()
                                 .unwrap_or_default(),
                         )
@@ -437,13 +438,14 @@ impl Endpoints for API<Public> {
         // get the endorsements and the list of blocks that contain them from storage
         let storage_info: Vec<(WrappedEndorsement, Set<BlockId>)> = {
             let read_endos = self.0.storage.read_endorsements();
+            let read_blocks = self.0.storage.read_blocks();
             eds.iter()
                 .filter_map(|id| {
                     read_endos.get(id).cloned().map(|ed| {
                         (
                             ed,
-                            read_endos
-                                .get_containing_blocks(id)
+                            read_blocks
+                                .get_blocks_by_endorsement(id)
                                 .cloned()
                                 .unwrap_or_default(),
                         )

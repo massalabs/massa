@@ -248,23 +248,8 @@ impl Storage {
         // if there are orphaned objects, remove them from storage
         if !orphaned_ids.is_empty() {
             let mut blocks = self.blocks.write();
-            let mut ops = self.operations.write();
-            let mut endorsements = self.endorsements.write();
             for b_id in orphaned_ids {
-                if let Some(b) = blocks.remove(&b_id) {
-                    // unlink block from ops and endorsements
-                    ops.unlink_block(&b_id, &b.content.operations);
-                    endorsements.unlink_block(
-                        &b_id,
-                        &b.content
-                            .header
-                            .content
-                            .endorsements
-                            .iter()
-                            .map(|e| e.id)
-                            .collect(),
-                    );
-                }
+                blocks.remove(&b_id);
             }
         }
     }
@@ -273,28 +258,9 @@ impl Storage {
     /// Note that this also claims a local reference to the block
     pub fn store_block(&mut self, block: WrappedBlock) {
         let id = block.id;
-
         let mut blocks = self.blocks.write();
         let mut owners = self.block_owners.write();
-
-        // link block to operations
-        self.operations
-            .write()
-            .link_block(&id, &block.content.operations);
-        self.endorsements.write().link_block(
-            &id,
-            &block
-                .content
-                .header
-                .content
-                .endorsements
-                .iter()
-                .map(|e| e.id)
-                .collect(),
-        );
-
         blocks.insert(block);
-
         // update local reference counters
         Storage::internal_claim_refs(
             &vec![id].into_iter().collect(),

@@ -2,7 +2,7 @@ use std::{collections::hash_map, collections::HashMap};
 
 use massa_models::{
     prehash::{Map, Set},
-    Address, BlockId, Slot, WrappedBlock,
+    Address, BlockId, EndorsementId, OperationId, Slot, WrappedBlock,
 };
 
 /// Container for all blocks and different indexes.
@@ -15,6 +15,10 @@ pub struct BlockIndexes {
     index_by_creator: Map<Address, Set<BlockId>>,
     /// Structure mapping slot with their block id
     index_by_slot: HashMap<Slot, Set<BlockId>>,
+    /// Structure mapping operation id with ids of blocks they are contained in
+    index_by_op: Map<OperationId, Set<BlockId>>,
+    /// Structure mapping endorsement id with ids of blocks they are contained in
+    index_by_endorsement: Map<EndorsementId, Set<BlockId>>,
 }
 
 impl BlockIndexes {
@@ -34,6 +38,19 @@ impl BlockIndexes {
                 .entry(b.content.header.content.slot)
                 .or_default()
                 .insert(b.id);
+
+            // update index_by_op
+            for op in &b.content.operations {
+                self.index_by_op.entry(*op).or_default().insert(b.id);
+            }
+
+            // update index_by_endorsement
+            for ed in &b.content.header.content.endorsements {
+                self.index_by_endorsement
+                    .entry(ed.id)
+                    .or_default()
+                    .insert(b.id);
+            }
         }
     }
 
@@ -62,6 +79,25 @@ impl BlockIndexes {
                 }
             }
 
+            // update index_by_op
+            for op in &b.content.operations {
+                if let hash_map::Entry::Occupied(mut occ) = self.index_by_op.entry(*op) {
+                    occ.get_mut().remove(&b.id);
+                    if occ.get().is_empty() {
+                        occ.remove();
+                    }
+                }
+            }
+
+            // update index_by_endorsement
+            for ed in &b.content.header.content.endorsements {
+                if let hash_map::Entry::Occupied(mut occ) = self.index_by_endorsement.entry(ed.id) {
+                    occ.get_mut().remove(&b.id);
+                    if occ.get().is_empty() {
+                        occ.remove();
+                    }
+                }
+            }
             return Some(b);
         }
         None
@@ -92,13 +128,33 @@ impl BlockIndexes {
         self.index_by_creator.get(address)
     }
 
-    /// Get the block id of the block at a slot.
+    /// Get the block ids of the blocks at a given slot.
     /// Arguments:
     /// - slot: the slot to get the block id of
     ///
     /// Returns:
-    /// - the block id of the block at the slot if exists, None otherwise
+    /// - the block ids of the blocks at the slot if any, None otherwise
     pub fn get_blocks_by_slot(&self, slot: &Slot) -> Option<&Set<BlockId>> {
         self.index_by_slot.get(slot)
+    }
+
+    /// Get the block ids of the blocks containing a given operation.
+    /// Arguments:
+    /// - id: the ID of the operation
+    ///
+    /// Returns:
+    /// - the block ids containing the operation if any, None otherwise
+    pub fn get_blocks_by_operation(&self, id: &OperationId) -> Option<&Set<BlockId>> {
+        self.index_by_op.get(id)
+    }
+
+    /// Get the block ids of the blocks containing a given endorsement.
+    /// Arguments:
+    /// - id: the ID of the endorsement
+    ///
+    /// Returns:
+    /// - the block ids containing the endorsement if any, None otherwise
+    pub fn get_blocks_by_endorsement(&self, id: &EndorsementId) -> Option<&Set<BlockId>> {
+        self.index_by_endorsement.get(id)
     }
 }
