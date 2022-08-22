@@ -3,13 +3,16 @@
 //! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
 
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::BTreeMap;
 
 use crate::{Command, DrawCachePtr, InputDataPtr};
 use massa_hash::Hash;
 use massa_models::{api::IndexedSlot, Address, Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
 use tracing::{info, warn};
+
+#[cfg(feature = "testing")]
+use std::collections::{HashMap, VecDeque};
 
 #[derive(Clone)]
 /// implementation of the selector controller
@@ -93,22 +96,6 @@ impl SelectorController for SelectorControllerImpl {
             .ok_or_else(|| PosError::CycleUnavailable(cycle))
     }
 
-    /// Get every [Selection]
-    ///
-    /// Only used for testing
-    ///
-    /// TODO: limit usage
-    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
-        let (_, lock) = &*self.cache;
-        let cache_guard = lock.read();
-        let cache = cache_guard.as_ref().map_err(|err| err.clone()).unwrap();
-        cache
-            .0
-            .iter()
-            .map(|cycle_draws| (cycle_draws.cycle, cycle_draws.draws.clone()))
-            .collect()
-    }
-
     /// Get [Address] of the selected block producer for a given slot
     /// # Arguments
     /// * `slot`: target slot of the selection
@@ -164,6 +151,21 @@ impl SelectorController for SelectorControllerImpl {
     /// see `massa-pos-exports/controller_traits.rs`
     fn clone_box(&self) -> Box<dyn SelectorController> {
         Box::new(self.clone())
+    }
+
+    /// Get every [Selection]
+    ///
+    /// Only used in tests for post-bootstrap selection matching.
+    #[cfg(feature = "testing")]
+    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
+        let (_, lock) = &*self.cache;
+        let cache_guard = lock.read();
+        let cache = cache_guard.as_ref().map_err(|err| err.clone()).unwrap();
+        cache
+            .0
+            .iter()
+            .map(|cycle_draws| (cycle_draws.cycle, cycle_draws.draws.clone()))
+            .collect()
     }
 }
 

@@ -4,8 +4,6 @@
 //! with the PoS selector worker.
 
 use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::VecDeque;
 
 use crate::PosResult;
 use crate::Selection;
@@ -13,6 +11,9 @@ use massa_hash::Hash;
 use massa_models::api::IndexedSlot;
 use massa_models::Address;
 use massa_models::Slot;
+
+#[cfg(feature = "testing")]
+use std::collections::{HashMap, VecDeque};
 
 /// interface that communicates with the selector worker thread
 pub trait SelectorController: Send + Sync {
@@ -39,13 +40,6 @@ pub trait SelectorController: Send + Sync {
     /// * `slot`: target slot of the selection
     fn get_selection(&self, slot: Slot) -> PosResult<Selection>;
 
-    /// Get every [Selection]
-    ///
-    /// Only used for testing
-    ///
-    /// TODO: limit usage
-    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)>;
-
     /// Return a list of slots where `address` has been choosen to produce a
     /// block and a list where he is choosen for the endorsements.
     /// Look from the `start` slot to the `end` slot.
@@ -64,6 +58,12 @@ pub trait SelectorController: Send + Sync {
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn SelectorController>`.
     fn clone_box(&self) -> Box<dyn SelectorController>;
+
+    /// Get every [Selection]
+    ///
+    /// Only used in tests for post-bootstrap selection matching.
+    #[cfg(feature = "testing")]
+    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)>;
 }
 
 /// Allow cloning `Box<dyn SelectorController>`
