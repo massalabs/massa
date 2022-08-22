@@ -3,6 +3,9 @@
 //! This module exports generic traits representing interfaces for interacting
 //! with the PoS selector worker.
 
+use std::collections::HashMap;
+use std::collections::VecDeque;
+
 use crate::PosResult;
 use crate::Selection;
 use massa_hash::Hash;
@@ -35,6 +38,13 @@ pub trait SelectorController: Send + Sync {
     /// # Arguments
     /// * `slot`: target slot of the selection
     fn get_selection(&self, slot: Slot) -> PosResult<Selection>;
+
+    /// Get every [Selection]
+    ///
+    /// Only used for testing
+    ///
+    /// TODO: limit usage
+    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)>;
 
     /// Return a list of slots where `address` has been choosen to produce a
     /// block and a list where he is choosen for the endorsements.

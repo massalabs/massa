@@ -1260,16 +1260,6 @@ impl BlockGraph {
         let mut missing_deps = Set::<BlockId>::default();
         let creator_addr = header.creator_address;
 
-        // basic structural checks
-        if header.content.parents.len() != (self.cfg.thread_count as usize)
-            || header.content.slot.period == 0
-            || header.content.slot.thread >= self.cfg.thread_count
-        {
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                "Basic structural header checks failed".to_string(),
-            )));
-        }
-
         // check that is older than the latest final block in that thread
         // Note: this excludes genesis blocks
         if header.content.slot.period
@@ -1291,11 +1281,9 @@ impl BlockGraph {
 
         // check if it was the creator's turn to create this block
         // (step 1 in consensus/pos.md)
-        // note: do this AFTER TooMuchInTheFuture checks
-        //       to avoid doing too many draws to check blocks in the distant future
         let slot_draw_address = match self.selector_controller.get_producer(header.content.slot) {
             Ok(draw) => draw,
-            Err(_) => return Ok(HeaderCheckOutcome::WaitForSlot),
+            Err(_) => return Ok(HeaderCheckOutcome::WaitForSlot), // TODO properly handle PoS errors
         };
         if creator_addr != slot_draw_address {
             // it was not the creator's turn to create a block for this slot

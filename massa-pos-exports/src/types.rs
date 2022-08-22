@@ -41,6 +41,7 @@ pub struct SelectorAddressInfo {
 }
 
 /// Final state of PoS
+#[derive(Default)]
 pub struct PoSFinalState {
     /// contiguous cycle history. Back = newest.
     pub cycle_history: VecDeque<CycleInfo>,

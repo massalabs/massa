@@ -7,23 +7,22 @@ use massa_async_pool::test_exports::{create_async_pool, get_random_message};
 use massa_consensus_exports::commands::ConsensusCommand;
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{ExecutedOps, FinalState};
+use massa_graph::export_active_block::ExportActiveBlockSerializer;
 use massa_graph::{export_active_block::ExportActiveBlock, BootstrapableGraph};
 use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::constants::default::{
-    MAX_LEDGER_CHANGES_PER_SLOT, MAX_PRODUCTION_EVENTS_PER_BLOCK,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
 };
 use massa_models::constants::{
-    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_CHILDREN, MAX_BOOTSTRAP_CLIQUES, MAX_BOOTSTRAP_DEPS,
-    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_POS_ENTRIES, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
 };
 use massa_models::prehash::Map;
 use massa_models::wrapped::WrappedContent;
 use massa_models::{
-    clique::Clique, Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId,
-    Endorsement, Slot,
+    Address, Amount, Block, BlockHeader, BlockHeaderSerializer, BlockId, Endorsement, Slot,
 };
 use massa_models::{BlockSerializer, EndorsementSerializer};
 use massa_network_exports::{BootstrapPeers, NetworkCommand};
@@ -74,13 +73,9 @@ fn get_random_ledger_entry() -> LedgerEntry {
 /// generates random PoS cycles info
 fn get_random_pos_cycles_info(
     r_limit: u64,
-) -> (
-    BTreeMap<Address, u64>,
-    Map<Address, ProductionStats>,
-    BitVec<u8>,
-) {
+) -> (Map<Address, u64>, Map<Address, ProductionStats>, BitVec<u8>) {
     let mut rng = rand::thread_rng();
-    let mut roll_counts = BTreeMap::default();
+    let mut roll_counts = Map::default();
     let mut production_stats = Map::default();
     let mut rng_seed: BitVec<u8> = BitVec::default();
 
@@ -127,7 +122,7 @@ fn get_random_pos_state() -> PoSFinalState {
     for i in 0u64..r_limit {
         let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit);
         cycle_history.push_front(CycleInfo {
-            cycle: i as u64,
+            cycle: i,
             roll_counts,
             complete: true,
             rng_seed,
@@ -138,7 +133,7 @@ fn get_random_pos_state() -> PoSFinalState {
     PoSFinalState {
         cycle_history,
         deferred_credits,
-        selector: None,
+        ..Default::default()
     }
 }
 
@@ -255,53 +250,18 @@ where
 /// asserts that two `BootstrapableGraph` are equal
 pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
     assert_eq!(
-        v1.active_blocks.len(),
-        v2.active_blocks.len(),
+        v1.final_blocks.len(),
+        v2.final_blocks.len(),
         "length mismatch"
     );
-    println!("id = {:#?}", get_dummy_block_id("block1"));
-    println!(
-        "blocks1 = {:#?}",
-        v1.active_blocks.iter().map(|b| b.0).collect::<Vec<_>>()
-    );
-    println!(
-        "blocks2 = {:#?}",
-        v2.active_blocks.iter().map(|b| b.0).collect::<Vec<_>>()
-    );
-    for (id1, itm1) in v1.active_blocks.iter() {
-        let itm2 = v2.active_blocks.get(id1).unwrap();
-        assert_eq!(
-            itm1.block.serialized_data, itm2.block.serialized_data,
-            "block mismatch"
-        );
-
-        assert_eq!(itm1.children, itm2.children, "children mismatch");
-        assert_eq!(
-            itm1.dependencies, itm2.dependencies,
-            "dependencies mismatch"
-        );
-        assert_eq!(itm1.is_final, itm2.is_final, "is_final mismatch");
-        assert_eq!(itm1.parents, itm2.parents, "parents mismatch");
+    let serializer = ExportActiveBlockSerializer::new();
+    let mut data1: Vec<u8> = Vec::new();
+    let mut data2: Vec<u8> = Vec::new();
+    for (item1, item2) in v1.final_blocks.iter().zip(v2.final_blocks.iter()) {
+        serializer.serialize(item1, &mut data1).unwrap();
+        serializer.serialize(item2, &mut data2).unwrap();
     }
-    assert_eq!(v1.best_parents, v2.best_parents, "best parents mismatch");
-    assert_eq!(v1.gi_head, v2.gi_head, "gi_head mismatch");
-    assert_eq!(
-        v1.latest_final_blocks_periods, v2.latest_final_blocks_periods,
-        "latest_final_blocks_periods mismatch"
-    );
-    assert_eq!(
-        v1.max_cliques.len(),
-        v2.max_cliques.len(),
-        "max_cliques len mismatch"
-    );
-    for (itm1, itm2) in v1.max_cliques.iter().zip(v2.max_cliques.iter()) {
-        assert_eq!(itm1.block_ids, itm2.block_ids, "block_ids mistmatch");
-        assert_eq!(itm1.fitness, itm2.fitness, "fitness mistmatch");
-        assert_eq!(
-            itm1.is_blockclique, itm2.is_blockclique,
-            "is_blockclique mistmatch"
-        );
-    }
+    assert_eq!(data1, data2, "BootstrapableGraph mismatch")
 }
 
 pub fn get_boot_state() -> BootstrapableGraph {
@@ -348,56 +308,19 @@ pub fn get_boot_state() -> BootstrapableGraph {
     )
     .unwrap();
 
-    let block_id = block.id;
-
-    //TODO: We currently lost information. Need to use shared storage
+    // TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
         block,
-        block_id,
         parents: vec![
             (get_dummy_block_id("b1"), 4777),
             (get_dummy_block_id("b2"), 8870),
         ],
-        children: vec![
-            vec![
-                (get_dummy_block_id("b3"), 101),
-                (get_dummy_block_id("b4"), 455),
-            ]
-            .into_iter()
-            .collect(),
-            vec![(get_dummy_block_id("b3_2"), 889)]
-                .into_iter()
-                .collect(),
-        ],
-        dependencies: vec![get_dummy_block_id("b5"), get_dummy_block_id("b6")]
-            .into_iter()
-            .collect(),
         is_final: true,
+        operations: Default::default(),
     };
 
     let boot_graph = BootstrapableGraph {
-        active_blocks: vec![(block1.block_id, block1)].into_iter().collect(),
-        best_parents: vec![
-            (get_dummy_block_id("parent1"), 2),
-            (get_dummy_block_id("parent2"), 3),
-        ],
-        latest_final_blocks_periods: vec![
-            (get_dummy_block_id("parent1"), 10),
-            (get_dummy_block_id("parent2"), 10),
-        ],
-        gi_head: vec![
-            (get_dummy_block_id("parent1"), Default::default()),
-            (get_dummy_block_id("parent2"), Default::default()),
-        ]
-        .into_iter()
-        .collect(),
-        max_cliques: vec![Clique {
-            block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")]
-                .into_iter()
-                .collect(),
-            fitness: 123,
-            is_blockclique: true,
-        }],
+        final_blocks: vec![block1],
     };
 
     let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
@@ -405,13 +328,10 @@ pub fn get_boot_state() -> BootstrapableGraph {
         THREAD_COUNT,
         9,
         MAX_BOOTSTRAP_BLOCKS,
-        MAX_BOOTSTRAP_CLIQUES,
-        MAX_BOOTSTRAP_CHILDREN,
-        MAX_BOOTSTRAP_DEPS,
-        MAX_BOOTSTRAP_POS_ENTRIES,
+        MAX_DATASTORE_VALUE_LENGTH,
+        MAX_FUNCTION_NAME_LENGTH,
+        MAX_PARAMETERS_SIZE,
         MAX_OPERATIONS_PER_BLOCK,
-        MAX_LEDGER_CHANGES_PER_SLOT,
-        MAX_PRODUCTION_EVENTS_PER_BLOCK,
     );
 
     let mut bootstrapable_graph_serialized = Vec::new();

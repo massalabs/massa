@@ -43,6 +43,7 @@ massa_ledger_worker = { path = "../massa-ledger-worker", features = [
     "testing",
 ] }
 massa_pos_worker = { path = "../massa-pos-worker" }
+massa_pos_exports = { path = "../massa-pos-exports" }
 lazy_static = "1.4"
 
 

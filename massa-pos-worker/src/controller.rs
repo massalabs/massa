@@ -3,6 +3,8 @@
 //! This module implements a selector controller.
 //! See `massa-pos-exports/controller_traits.rs` for functional details.
 
+use std::collections::{HashMap, VecDeque};
+
 use crate::{Command, DrawCachePtr, InputDataPtr};
 use massa_hash::Hash;
 use massa_models::{api::IndexedSlot, prehash::Map, Address, Slot};
@@ -89,6 +91,22 @@ impl SelectorController for SelectorControllerImpl {
             .get(cycle)
             .and_then(|selections| selections.draws.get(&slot).cloned())
             .ok_or_else(|| PosError::CycleUnavailable(cycle))
+    }
+
+    /// Get every [Selection]
+    ///
+    /// Only used for testing
+    ///
+    /// TODO: limit usage
+    fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
+        let (_, lock) = &*self.cache;
+        let cache_guard = lock.read();
+        let cache = cache_guard.as_ref().map_err(|err| err.clone()).unwrap();
+        cache
+            .0
+            .iter()
+            .map(|cycle_draws| (cycle_draws.cycle, cycle_draws.draws.clone()))
+            .collect()
     }
 
     /// Get [Address] of the selected block producer for a given slot

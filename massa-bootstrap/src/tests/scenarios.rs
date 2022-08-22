@@ -158,37 +158,40 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
+    // remove bootstrap safety cycle from final_state before comparisons
+    final_state.write().pos_state.cycle_history.pop_back();
+
     // check final states
     assert_eq_final_state(&final_state.read(), &final_state_client.read());
 
     // start selector controllers
-    let mut server_cycles = final_state.read().pos_state.cycle_history.clone();
-    server_cycles.pop_back();
-    let client_cycles = final_state_client.read().pos_state.cycle_history.clone();
-    let (mut server_selector_manager, server_selector_controller) = start_selector_worker(
-        SelectorConfig {
+    let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
+    let (mut server_selector_manager, server_selector_controller) =
+        start_selector_worker(SelectorConfig {
             max_draw_cache: 10,
-            initial_rolls_path: PathBuf::from_str("../massa-node/base_config/initial_rolls.json")
-                .unwrap(),
+            initial_rolls_path: rolls_path.clone(),
             ..Default::default()
-        },
-        server_cycles,
-    )
-    .expect("could not start server selector controller");
-    let (mut client_selector_manager, client_selector_controller) = start_selector_worker(
-        SelectorConfig {
+        })
+        .expect("could not start server selector controller");
+    let (mut client_selector_manager, client_selector_controller) =
+        start_selector_worker(SelectorConfig {
             max_draw_cache: 10,
-            initial_rolls_path: PathBuf::from_str("../massa-node/base_config/initial_rolls.json")
-                .unwrap(),
+            initial_rolls_path: rolls_path,
             ..Default::default()
-        },
-        client_cycles,
-    )
-    .expect("could not start client selector controller");
+        })
+        .expect("could not start client selector controller");
+    final_state_client
+        .write()
+        .give_selector_controller(client_selector_controller.clone())
+        .unwrap();
+    final_state
+        .write()
+        .give_selector_controller(server_selector_controller.clone())
+        .unwrap();
 
     // check selection draw
-    let server_selection = server_selector_controller.get_every_selection();
-    let client_selection = client_selector_controller.get_every_selection();
+    let server_selection = server_selector_controller.get_entire_selection();
+    let client_selection = client_selector_controller.get_entire_selection();
     assert_eq_pos_selection(&server_selection, &client_selection);
 
     // check states
