@@ -223,6 +223,7 @@ async fn launch(
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
         max_draw_cache: SETTINGS.selector.max_draw_cache,
+        channel_size: SETTINGS.selector.channel_size,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
