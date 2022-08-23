@@ -82,7 +82,7 @@ async fn test_pool() {
                         .get_op_refs()
                         .iter()
                         .map(|id| {
-                            let operation = storage_ops.retrieve_operation(id).unwrap();
+                            let operation = storage_ops.read_operations().get(id).unwrap().clone();
                             (operation.id, operation.serialized_data)
                         })
                         .eq(thread_tx_lists[target_slot.thread as usize]
@@ -110,7 +110,7 @@ async fn test_pool() {
                         .get_op_refs()
                         .iter()
                         .map(|id| {
-                            let operation = storage_ops.retrieve_operation(id).unwrap();
+                            let operation = storage_ops.read_operations().get(id).unwrap().clone();
                             (operation.id, operation.serialized_data)
                         })
                         .eq(thread_tx_lists[target_slot.thread as usize]
@@ -213,7 +213,7 @@ async fn test_pool_with_execute_sc() {
                         .get_op_refs()
                         .iter()
                         .map(|id| {
-                            let operation = storage_ops.retrieve_operation(id).unwrap();
+                            let operation = storage_ops.read_operations().get(id).unwrap().clone();
                             (operation.id, operation.serialized_data)
                         })
                         .eq(thread_tx_lists[target_slot.thread as usize]
@@ -241,7 +241,7 @@ async fn test_pool_with_execute_sc() {
                         .get_op_refs()
                         .iter()
                         .map(|id| {
-                            let operation = storage_ops.retrieve_operation(id).unwrap();
+                            let operation = storage_ops.read_operations().get(id).unwrap().clone();
                             (operation.id, operation.serialized_data)
                         })
                         .eq(thread_tx_lists[target_slot.thread as usize]
@@ -489,41 +489,50 @@ async fn test_get_involved_operations() {
             );
 
             {
-                let indexes = storage.get_operation_indexes().read();
-                let res = indexes.get_operations_created_by(&address_a);
+                let indexes = storage.read_operations();
+                let res = indexes.get_operations_created_by(&address_a).unwrap();
                 assert_eq!(
-                    res.into_iter().collect::<Vec<OperationId>>(),
+                    res.into_iter().cloned().collect::<Vec<OperationId>>(),
                     vec![op1_id, op3_id]
                 );
 
-                let res = indexes.get_operations_created_by(&address_b);
+                let res = indexes.get_operations_created_by(&address_b).unwrap();
                 assert_eq!(
-                    res.into_iter().collect::<Vec<OperationId>>(),
+                    res.into_iter().cloned().collect::<Vec<OperationId>>(),
                     vec![op1_id, op2_id]
                 );
 
                 pool_controller.notify_final_cs_periods(&vec![1, 1]);
 
-                let res = indexes.get_operations_created_by(&address_a);
-                assert_eq!(res.into_iter().collect::<Vec<OperationId>>(), vec![op3_id]);
+                let res = indexes.get_operations_created_by(&address_a).unwrap();
+                assert_eq!(
+                    res.into_iter().cloned().collect::<Vec<OperationId>>(),
+                    vec![op3_id]
+                );
 
-                let res = indexes.get_operations_created_by(&address_b);
-                assert_eq!(res.into_iter().collect::<Vec<OperationId>>(), vec![op2_id]);
+                let res = indexes.get_operations_created_by(&address_b).unwrap();
+                assert_eq!(
+                    res.into_iter().cloned().collect::<Vec<OperationId>>(),
+                    vec![op2_id]
+                );
 
                 pool_controller.notify_final_cs_periods(&vec![2, 2]);
 
-                let res = indexes.get_operations_created_by(&address_a);
-                assert_eq!(res.into_iter().collect::<Vec<OperationId>>(), vec![op3_id]);
+                let res = indexes.get_operations_created_by(&address_a).unwrap();
+                assert_eq!(
+                    res.into_iter().cloned().collect::<Vec<OperationId>>(),
+                    vec![op3_id]
+                );
 
-                let res = indexes.get_operations_created_by(&address_b);
+                let res = indexes.get_operations_created_by(&address_b).unwrap();
                 assert!(res.is_empty());
 
                 pool_controller.notify_final_cs_periods(&vec![3, 3]);
 
-                let res = indexes.get_operations_created_by(&address_a);
+                let res = indexes.get_operations_created_by(&address_a).unwrap();
                 assert!(res.is_empty());
 
-                let res = indexes.get_operations_created_by(&address_b);
+                let res = indexes.get_operations_created_by(&address_b).unwrap();
                 assert!(res.is_empty());
             }
             (protocol_controller, pool_controller, storage)
@@ -605,10 +614,10 @@ async fn test_new_final_ops() {
             //     .await
             //     .unwrap();
             {
-                let indexes = storage.get_operation_indexes().read();
-                let res = indexes.get_operations_created_by(&address_a);
+                let indexes = storage.read_operations();
+                let res = indexes.get_operations_created_by(&address_a).unwrap();
                 assert_eq!(
-                    res.into_iter().collect::<HashSet<_>>(),
+                    res.into_iter().cloned().collect::<HashSet<_>>(),
                     ops[4..]
                         .to_vec()
                         .iter()

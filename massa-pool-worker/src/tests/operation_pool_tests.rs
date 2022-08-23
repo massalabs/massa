@@ -32,7 +32,7 @@ fn get_transaction(expire_period: u64, fee: u64) -> WrappedOperation {
 #[serial]
 fn test_pool() {
     let (execution_controller, execution_receiver) = MockExecutionController::new_with_receiver();
-    let mut pool = OperationPool::init(*POOL_CONFIG, Default::default(), execution_controller);
+    let mut pool = OperationPool::init(*POOL_CONFIG, &Default::default(), execution_controller);
     // generate (id, transactions, range of validity) by threads
     let mut thread_tx_lists = vec![Vec::new(); POOL_CONFIG.thread_count as usize];
     for i in 0..18 {
@@ -74,7 +74,15 @@ fn test_pool() {
             let (ids, storage) = pool.get_block_operations(&target_slot);
             assert!(ids
                 .iter()
-                .map(|id| (*id, storage.retrieve_operation(id).unwrap().serialized_data))
+                .map(|id| (
+                    *id,
+                    storage
+                        .read_operations()
+                        .get(id)
+                        .unwrap()
+                        .serialized_data
+                        .clone()
+                ))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
                     .filter(|(_, r)| r.contains(&target_slot.period))
@@ -99,7 +107,15 @@ fn test_pool() {
             let (ids, storage) = pool.get_block_operations(&target_slot);
             assert!(ids
                 .iter()
-                .map(|id| (*id, storage.retrieve_operation(id).unwrap().serialized_data))
+                .map(|id| (
+                    *id,
+                    storage
+                        .read_operations()
+                        .get(id)
+                        .unwrap()
+                        .serialized_data
+                        .clone()
+                ))
                 .eq(thread_tx_lists[target_slot.thread as usize]
                     .iter()
                     .filter(|(_, r)| r.contains(&target_slot.period))

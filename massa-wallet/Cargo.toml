@@ -11,9 +11,13 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_qs = "0.10"
 thiserror = "1.0"
+tempfile = "3.3"
 
 # custom modules
 massa_cipher = { path = "../massa-cipher" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_signature = { path = "../massa-signature" }
+
+[features]
+testing = []

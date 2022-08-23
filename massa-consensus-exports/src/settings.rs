@@ -196,6 +196,8 @@ pub struct ConsensusConfig {
     pub disable_block_creation: bool,
     /// Max gas per block for the execution configuration
     pub max_gas_per_block: u64,
+    /// channel size
+    pub channel_size: usize,
 }
 
 #[cfg(feature = "testing")]
@@ -253,6 +255,7 @@ impl Clone for ConsensusConfig {
             max_item_return_count: self.max_item_return_count,
             disable_block_creation: self.disable_block_creation,
             max_gas_per_block: self.max_gas_per_block,
+            channel_size: self.channel_size,
         }
     }
 }
@@ -364,6 +367,7 @@ impl From<&ConsensusSettings> for ConsensusConfig {
             max_item_return_count: settings.max_item_return_count,
             disable_block_creation: settings.disable_block_creation,
             max_gas_per_block: MAX_GAS_PER_BLOCK,
+            channel_size: CHANNEL_SIZE,
         }
     }
 }
@@ -415,6 +419,7 @@ impl From<ConsensusSettings> for ConsensusConfig {
             max_item_return_count: settings.max_item_return_count,
             disable_block_creation: settings.disable_block_creation,
             max_gas_per_block: MAX_GAS_PER_BLOCK,
+            channel_size: CHANNEL_SIZE,
         }
     }
 }
@@ -537,8 +542,6 @@ impl Default for ConsensusConfig {
             max_block_size: MAX_BLOCK_SIZE,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-            pos_lock_cycles: POS_LOCK_CYCLES,
             pos_draw_cached_cycles: POS_DRAW_CACHED_CYCLE,
             pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
             ledger_path: path_buf,
@@ -559,6 +562,7 @@ impl Default for ConsensusConfig {
             max_item_return_count: MAX_ITEM_RETURN_COUNT,
             disable_block_creation: DISABLE_BLOCK_CREATION,
             max_gas_per_block: MAX_GAS_PER_BLOCK,
+            channel_size: CHANNEL_SIZE,
         }
     }
 }

@@ -9,21 +9,8 @@ use crate::messages::{
 use async_speed_limit::clock::StandardClock;
 use async_speed_limit::{Limiter, Resource};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_models::constants::default::{
-    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-    MAX_LEDGER_CHANGES_COUNT, MAX_PARAMETERS_SIZE,
-};
-use massa_models::constants::{
-    ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_OPERATIONS_PER_BLOCK,
-    THREAD_COUNT,
-};
 use massa_models::Version;
-use massa_models::{
-    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, DeserializeMinBEInt, SerializeMinBEInt,
-    VersionSerializer,
-};
+use massa_models::{DeserializeMinBEInt, SerializeMinBEInt, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -38,6 +25,22 @@ pub struct BootstrapClientBinder {
     duplex: Resource<Duplex, StandardClock>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
+    endorsement_count: u32,
+    max_advertise_length: u32,
+    max_bootstrap_blocks: u32,
+    max_operations_per_block: u32,
+    thread_count: u8,
+    randomness_size_bytes: usize,
+    max_bootstrap_async_pool_changes: u64,
+    max_bootstrap_error_length: u32,
+    max_bootstrap_final_state_parts_size: u64,
+    max_datastore_entry_count: u64,
+    max_datastore_key_length: u8,
+    max_datastore_value_length: u64,
+    max_data_async_message: u64,
+    max_function_name_length: u16,
+    max_parameters_size: u32,
+    max_ledger_changes_count: u64,
 }
 
 impl BootstrapClientBinder {
@@ -51,6 +54,22 @@ impl BootstrapClientBinder {
         remote_pubkey: PublicKey,
         limit: f64,
         max_bootstrap_message_size: u32,
+        endorsement_count: u32,
+        max_advertise_length: u32,
+        max_bootstrap_blocks: u32,
+        max_operations_per_block: u32,
+        thread_count: u8,
+        randomness_size_bytes: usize,
+        max_bootstrap_async_pool_changes: u64,
+        max_bootstrap_error_length: u32,
+        max_bootstrap_final_state_parts_size: u64,
+        max_datastore_entry_count: u64,
+        max_datastore_key_length: u8,
+        max_datastore_value_length: u64,
+        max_data_async_message: u64,
+        max_function_name_length: u16,
+        max_parameters_size: u32,
+        max_ledger_changes_count: u64,
     ) -> Self {
         let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapClientBinder {
@@ -60,6 +79,22 @@ impl BootstrapClientBinder {
             duplex: <Limiter>::new(limit).limit(duplex),
             prev_message: None,
             version_serializer: VersionSerializer::new(),
+            endorsement_count,
+            max_advertise_length,
+            max_bootstrap_blocks,
+            max_operations_per_block,
+            thread_count,
+            randomness_size_bytes,
+            max_bootstrap_async_pool_changes,
+            max_bootstrap_error_length,
+            max_bootstrap_final_state_parts_size,
+            max_datastore_entry_count,
+            max_datastore_key_length,
+            max_datastore_value_length,
+            max_data_async_message,
+            max_function_name_length,
+            max_parameters_size,
+            max_ledger_changes_count,
         }
     }
 }
@@ -74,7 +109,7 @@ impl BootstrapClientBinder {
             self.version_serializer
                 .serialize(&version, &mut version_ser)?;
             let mut version_random_bytes =
-                vec![0u8; version_ser.len() + BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
+                vec![0u8; version_ser.len() + self.randomness_size_bytes];
             version_random_bytes[..version_ser.len()].clone_from_slice(&version_ser);
             StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version_ser.len()..]);
             self.duplex.write_all(&version_random_bytes).await?;
@@ -104,21 +139,21 @@ impl BootstrapClientBinder {
 
         // read message, check signature and check signature of the message sent just before then deserialize it
         let message_deserializer = BootstrapServerMessageDeserializer::new(
-            THREAD_COUNT,
-            ENDORSEMENT_COUNT,
-            MAX_ADVERTISE_LENGTH,
-            MAX_BOOTSTRAP_BLOCKS,
-            MAX_OPERATIONS_PER_BLOCK,
-            MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-            MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-            MAX_DATA_ASYNC_MESSAGE,
-            MAX_LEDGER_CHANGES_COUNT,
-            MAX_DATASTORE_KEY_LENGTH as u64,
-            MAX_DATASTORE_VALUE_LENGTH,
-            MAX_DATASTORE_ENTRY_COUNT,
-            MAX_FUNCTION_NAME_LENGTH,
-            MAX_PARAMETERS_SIZE,
-            MAX_BOOTSTRAP_ERROR_LENGTH,
+            self.thread_count,
+            self.endorsement_count,
+            self.max_advertise_length,
+            self.max_bootstrap_blocks,
+            self.max_operations_per_block,
+            self.max_bootstrap_final_state_parts_size,
+            self.max_bootstrap_async_pool_changes,
+            self.max_data_async_message,
+            self.max_ledger_changes_count,
+            self.max_datastore_key_length as u64,
+            self.max_datastore_value_length,
+            self.max_datastore_entry_count,
+            self.max_function_name_length,
+            self.max_parameters_size,
+            self.max_bootstrap_error_length,
         );
         let message = {
             if let Some(prev_message) = self.prev_message {

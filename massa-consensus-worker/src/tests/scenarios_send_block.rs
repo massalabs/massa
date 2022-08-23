@@ -7,6 +7,7 @@ use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::Slot;
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use serial_test::serial;
 
 #[tokio::test]
@@ -18,6 +19,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
         future_block_processing_max_periods: 50,
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
+    let mut storage = Storage::default();
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -43,11 +45,17 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
                 &creator,
             );
 
+            let t0s1_id = t0s1.id;
+            let t0s1_slot = t0s1.content.header.content.slot;
+            storage.store_block(t0s1);
+
             // Send the actual block.
-            protocol_controller.receive_block(t0s1.clone()).await;
+            protocol_controller
+                .receive_block(t0s1_id, t0s1_slot, storage.clone())
+                .await;
 
             // block t0s1 is propagated
-            let hash_list = vec![t0s1.id];
+            let hash_list = vec![t0s1_id];
             validate_propagate_block_in_list(
                 &mut protocol_controller,
                 &hash_list,
@@ -57,11 +65,11 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
             // Ask for the block to consensus.
             protocol_controller
-                .receive_get_active_blocks(vec![t0s1.id])
+                .receive_get_active_blocks(vec![t0s1_id])
                 .await;
 
             // Consensus should respond with results including the block.
-            validate_block_found(&mut protocol_controller, &t0s1.id, 100).await;
+            validate_block_found(&mut protocol_controller, &t0s1_id, 100).await;
             (
                 protocol_controller,
                 consensus_command_sender,

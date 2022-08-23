@@ -81,7 +81,10 @@ pub async fn validate_notpropagate_block(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id } => Some(block_id),
+            ProtocolCommand::IntegratedBlock {
+                block_id,
+                storage: _,
+            } => Some(block_id),
             _ => None,
         })
         .await;
@@ -99,7 +102,10 @@ pub async fn validate_notpropagate_block_in_list(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id } => Some(block_id),
+            ProtocolCommand::IntegratedBlock {
+                block_id,
+                storage: _,
+            } => Some(block_id),
             _ => None,
         })
         .await;
@@ -116,7 +122,10 @@ pub async fn validate_propagate_block_in_list(
 ) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id } => Some(block_id),
+            ProtocolCommand::IntegratedBlock {
+                block_id,
+                storage: _,
+            } => Some(block_id),
             _ => None,
         })
         .await;
@@ -199,7 +208,10 @@ pub async fn validate_propagate_block(
 ) {
     protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id } => {
+            ProtocolCommand::IntegratedBlock {
+                block_id,
+                storage: _,
+            } => {
                 if block_id == valid_hash {
                     return Some(());
                 }
@@ -253,11 +265,16 @@ pub async fn create_and_test_block(
 ) -> BlockId {
     let block = create_block(cfg, slot, best_parents, creator);
     let block_id = block.id;
+    let slot = block.content.header.content.slot;
+    let mut storage = Storage::default();
     if trace {
         info!("create block:{}", block.id);
     }
 
-    protocol_controller.receive_block(block).await;
+    storage.store_block(block);
+    protocol_controller
+        .receive_block(block_id, slot, storage.clone())
+        .await;
     if valid {
         // Assert that the block is propagated.
         validate_propagate_block(protocol_controller, block_id, 2000).await;
@@ -270,12 +287,16 @@ pub async fn create_and_test_block(
 
 pub async fn propagate_block(
     protocol_controller: &mut MockProtocolController,
-    block: WrappedBlock,
+    block_id: BlockId,
+    slot: Slot,
+    storage: Storage,
     valid: bool,
     timeout_ms: u64,
 ) -> BlockId {
-    let block_hash = block.id;
-    protocol_controller.receive_block(block).await;
+    let block_hash = block_id;
+    protocol_controller
+        .receive_block(block_id, slot, storage)
+        .await;
     if valid {
         // see if the block is propagated.
         validate_propagate_block(protocol_controller, block_hash, timeout_ms).await;
@@ -503,10 +524,8 @@ pub fn get_export_active_test_block(
 
     ExportActiveBlock {
         parents,
-        dependencies: Default::default(),
         block: block.clone(),
-        block_id: block.id,
-        children: vec![Default::default(), Default::default()],
+        operations: operations.clone(),
         is_final,
     }
 }
@@ -636,7 +655,7 @@ pub async fn consensus_pool_test<F, V>(
 {
     let mut storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
-        for (_, export_block) in &graph.active_blocks {
+        for export_block in &graph.final_blocks {
             storage.store_block(export_block.block.clone());
         }
     }
@@ -658,8 +677,7 @@ pub async fn consensus_pool_test<F, V>(
         ..Default::default()
     };
     // launch consensus controller
-    let (_selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+    let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
@@ -730,7 +748,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
 {
     let mut storage: Storage = Default::default();
     if let Some(ref graph) = boot_graph {
-        for (_, export_block) in &graph.active_blocks {
+        for export_block in &graph.final_blocks {
             storage.store_block(export_block.block.clone());
         }
     }
@@ -752,7 +770,7 @@ pub async fn consensus_pool_test_with_storage<F, V>(
         ..Default::default()
     };
     let (mut selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+        start_selector_worker(selector_config).unwrap();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -830,7 +848,7 @@ where
         ..Default::default()
     };
     let (mut selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+        start_selector_worker(selector_config).unwrap();
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
     let stop_sinks = Arc::new(Mutex::new(false));
@@ -924,7 +942,7 @@ where
         ..Default::default()
     };
     let (mut selector_manager, selector_controller) =
-        start_selector_worker(selector_config, VecDeque::new()).unwrap();
+        start_selector_worker(selector_config).unwrap();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(

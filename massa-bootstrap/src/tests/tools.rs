@@ -13,11 +13,13 @@ use massa_graph::{BootstrapableGraphDeserializer, BootstrapableGraphSerializer};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
-use massa_models::constants::default::{
-    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
-};
-use massa_models::constants::{
-    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT,
+use massa_models::constants::default_testing::{
+    BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT, MAX_ADVERTISE_LENGTH,
+    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE,
+    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
+    MAX_PARAMETERS_SIZE, THREAD_COUNT,
 };
 use massa_models::prehash::Map;
 use massa_models::wrapped::WrappedContent;
@@ -230,6 +232,22 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         per_ip_min_interval: 10000.into(),
         max_bytes_read_write: std::f64::INFINITY,
         max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_advertise_length: MAX_ADVERTISE_LENGTH,
+        max_bootstrap_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+        max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
+        max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
+        max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
+        max_operations_per_blocks: MAX_OPERATIONS_PER_BLOCK,
+        max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
+        max_parameters_size: MAX_PARAMETERS_SIZE,
     }
 }
 

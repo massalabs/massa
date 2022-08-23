@@ -64,7 +64,12 @@ impl FinalLedger {
             .collect();
 
         // create and initialize the disk ledger
-        let mut sorted_ledger = LedgerDB::new(config.disk_ledger_path.clone());
+        let mut sorted_ledger = LedgerDB::new(
+            config.disk_ledger_path.clone(),
+            config.max_key_length,
+            config.max_ledger_part_size,
+            config.address_bytes_size,
+        );
         sorted_ledger.set_initial_ledger(initial_ledger);
 
         // generate the final ledger

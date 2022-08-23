@@ -7,7 +7,7 @@ extern crate massa_logging;
 use crate::settings::SETTINGS;
 
 use dialoguer::Password;
-use massa_api::{Private, Public, RpcServer, StopHandle, API};
+use massa_api::{APIConfig, Private, Public, RpcServer, StopHandle, API};
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager};
 use massa_consensus_exports::{
@@ -23,15 +23,17 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
-use massa_models::constants::{
-    default::{
-        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_MESSAGE_SIZE, MAX_PARAMETERS_SIZE,
-    },
-    BLOCK_REWARD, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP,
-    INITIAL_DRAW_SEED, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ASYNC_GAS,
-    MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE,
-    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK,
-    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT, VERSION,
+use massa_models::constants::default::{
+    ADDRESS_SIZE_BYTES, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, ENDORSEMENT_COUNT,
+    END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
+    LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+    MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+    MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DATA_ASYNC_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE,
+    MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_MESSAGE_SIZE,
+    MAX_OPERATIONS_PER_BLOCK, MAX_PARAMETERS_SIZE, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
+    ROLL_PRICE, T0, THREAD_COUNT, VERSION,
 };
 use massa_models::Address;
 use massa_network_exports::{Establisher, NetworkConfig, NetworkManager};
@@ -86,6 +88,9 @@ async fn launch(
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
+        max_key_length: MAX_DATASTORE_KEY_LENGTH,
+        max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
+        address_bytes_size: ADDRESS_SIZE_BYTES,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
@@ -136,6 +141,22 @@ async fn launch(
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
         max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
         max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_advertise_length: MAX_ADVERTISE_LENGTH,
+        max_bootstrap_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+        max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
+        max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
+        max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_data_async_message: MAX_DATA_ASYNC_MESSAGE,
+        max_operations_per_blocks: MAX_OPERATIONS_PER_BLOCK,
+        max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_ledger_changes_count: MAX_LEDGER_CHANGES_COUNT,
+        max_parameters_size: MAX_PARAMETERS_SIZE,
     };
 
     // bootstrap
@@ -328,12 +349,21 @@ async fn launch(
     .await
     .unwrap();
 
+    let api_config: APIConfig = APIConfig {
+        bind_private: SETTINGS.api.bind_private,
+        bind_public: SETTINGS.api.bind_public,
+        draw_lookahead_period_count: SETTINGS.api.draw_lookahead_period_count,
+        max_arguments: SETTINGS.api.max_arguments,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_parameter_size: MAX_PARAMETERS_SIZE,
+    };
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         execution_controller.clone(),
-        &SETTINGS.api,
+        api_config.clone(),
         consensus_config.clone(),
         node_wallet,
     );
@@ -343,7 +373,7 @@ async fn launch(
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
         execution_controller.clone(),
-        SETTINGS.api,
+        api_config.clone(),
         selector_controller.clone(),
         consensus_config,
         pool_manager.clone(),

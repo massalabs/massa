@@ -3,8 +3,6 @@
 //! Module to interact with the disk ledger
 
 use massa_ledger_exports::*;
-use massa_models::constants::default::MAX_DATASTORE_KEY_LENGTH;
-use massa_models::constants::{ADDRESS_SIZE_BYTES, LEDGER_PART_SIZE_MESSAGE_BYTES};
 use massa_models::{
     Address, AmountSerializer, ModelsError, Slot, SlotSerializer, VecU8Deserializer,
     VecU8Serializer,
@@ -50,6 +48,9 @@ pub(crate) struct LedgerDB {
     db: DB,
     amount_serializer: AmountSerializer,
     slot_serializer: SlotSerializer,
+    max_datastore_key_length: u8,
+    ledger_part_size_message_bytes: u64,
+    address_bytes_size: usize,
     #[cfg(feature = "testing")]
     amount_deserializer: AmountDeserializer,
 }
@@ -89,7 +90,12 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(
+        path: PathBuf,
+        max_datastore_key_length: u8,
+        ledger_part_size_message_bytes: u64,
+        address_bytes_size: usize,
+    ) -> Self {
         #[cfg(feature = "testing")]
         use massa_models::Amount;
         let mut db_opts = Options::default();
@@ -110,6 +116,9 @@ impl LedgerDB {
             db,
             amount_serializer: AmountSerializer::new(),
             slot_serializer: SlotSerializer::new(),
+            max_datastore_key_length,
+            address_bytes_size,
+            ledger_part_size_message_bytes,
             #[cfg(feature = "testing")]
             amount_deserializer: AmountDeserializer::new(
                 Bound::Included(Amount::MIN),
@@ -270,7 +279,7 @@ impl LedgerDB {
                 IteratorMode::From(data_prefix!(addr), Direction::Forward),
             )
             .flatten()
-            .map(|(key, _)| key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec())
+            .map(|(key, _)| key.split_at(self.address_bytes_size + 1).1.to_vec())
             .collect()
     }
 
@@ -389,7 +398,7 @@ impl LedgerDB {
         // Iterates over the whole database
         for res in db_iterator {
             if let Ok((key, entry)) = res {
-                if (part.len() as u64) < (LEDGER_PART_SIZE_MESSAGE_BYTES) {
+                if (part.len() as u64) < (self.ledger_part_size_message_bytes) {
                     key_serializer.serialize(&key.to_vec(), &mut part)?;
                     ser.serialize(&entry.to_vec(), &mut part)?;
                     last_key = Some(key.to_vec());
@@ -414,7 +423,7 @@ impl LedgerDB {
         let handle = self.db.cf_handle(LEDGER_CF).expect(CF_ERROR);
         let vec_u8_deserializer =
             VecU8Deserializer::new(Bound::Included(0), Bound::Excluded(u64::MAX));
-        let key_deserializer = KeyDeserializer::new(MAX_DATASTORE_KEY_LENGTH as u64);
+        let key_deserializer = KeyDeserializer::new(self.max_datastore_key_length as u64);
         let mut last_key = Rc::new(None);
         let mut batch = WriteBatch::default();
 
@@ -504,7 +513,7 @@ impl LedgerDB {
             .flatten()
             .map(|(key, data)| {
                 (
-                    key.split_at(ADDRESS_SIZE_BYTES + 1).1.to_vec(),
+                    key.split_at(self.address_bytes_size + 1).1.to_vec(),
                     data.to_vec(),
                 )
             })
@@ -517,7 +526,9 @@ mod tests {
     use super::LedgerDB;
     use crate::ledger_db::LedgerSubEntry;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
-    use massa_models::{Address, Amount, AmountDeserializer};
+    use massa_models::{
+        constants::default_testing::ADDRESS_SIZE_BYTES, Address, Amount, AmountDeserializer,
+    };
     use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;
     use rocksdb::WriteBatch;
@@ -545,7 +556,12 @@ mod tests {
 
         // write data
         let temp_dir = TempDir::new().unwrap();
-        let mut db = LedgerDB::new(temp_dir.path().to_path_buf());
+        let mut db = LedgerDB::new(
+            temp_dir.path().to_path_buf(),
+            255,
+            1_000_000,
+            ADDRESS_SIZE_BYTES,
+        );
         let mut batch = WriteBatch::default();
         db.put_entry(&addr, entry, &mut batch);
         db.update_entry(&addr, entry_update, &mut batch);

@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::settings::APISettings;
 use crate::{Endpoints, Private, RpcServer, StopHandle, API};
 
 use jsonrpc_core::BoxFuture;
@@ -34,7 +34,7 @@ impl API<Private> {
         consensus_command_sender: ConsensusCommandSender,
         network_command_sender: NetworkCommandSender,
         execution_controller: Box<dyn ExecutionController>,
-        api_settings: &'static APISettings,
+        api_settings: APIConfig,
         consensus_settings: ConsensusConfig,
         node_wallet: Arc<RwLock<Wallet>>,
     ) -> (Self, mpsc::Receiver<()>) {

@@ -8,7 +8,6 @@ use massa_consensus_exports::{
     ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
 };
 use massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
-use massa_models::constants::CHANNEL_SIZE;
 use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
@@ -63,8 +62,8 @@ pub async fn start_consensus_controller(
         channels.selector_controller.clone(),
     )
     .await?;
-    let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
-    let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
+    let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(cfg.channel_size);
+    let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(cfg.channel_size);
     let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
     let cfg_copy = cfg.clone();
     let join_handle = tokio::spawn(async move {

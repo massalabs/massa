@@ -356,6 +356,22 @@ async fn connect_to_server(
         *pub_key,
         bootstrap_config.max_bytes_read_write,
         bootstrap_config.max_bootstrap_message_size,
+        bootstrap_config.endorsement_count,
+        bootstrap_config.max_advertise_length,
+        bootstrap_config.max_bootstrap_blocks_length,
+        bootstrap_config.max_operations_per_blocks,
+        bootstrap_config.thread_count,
+        bootstrap_config.randomness_size_bytes,
+        bootstrap_config.max_bootstrap_async_pool_changes,
+        bootstrap_config.max_bootstrap_error_length,
+        bootstrap_config.max_bootstrap_final_state_parts_size,
+        bootstrap_config.max_datastore_entry_count,
+        bootstrap_config.max_datastore_key_length,
+        bootstrap_config.max_datastore_value_length,
+        bootstrap_config.max_data_async_message,
+        bootstrap_config.max_function_name_length,
+        bootstrap_config.max_parameters_size,
+        bootstrap_config.max_ledger_changes_count,
     ))
 }
 

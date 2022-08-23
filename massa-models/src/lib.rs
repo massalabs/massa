@@ -83,3 +83,6 @@ pub use node_configuration::{CompactConfig, THREAD_COUNT};
 pub mod constants {
     pub use crate::node_configuration::*;
 }
+
+#[cfg(feature = "testing")]
+pub mod test_exports;
