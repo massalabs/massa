@@ -38,7 +38,7 @@ storage.store_operations(operations);
 // Here, all `operations` were stored inside the global shared object store and `storage` has acquired local references to all of them. Objects that were already stored beforehand are not overwritten, but a local reference is simply acquired. 
 ```
 
-### Claiming a local reference to an object that is alreay in the globally shared store
+### Claiming a local reference to an object that is already in the globally shared store
 
 Here we take the example of claiming a local reference to a set of operations that is already in the global shared object store.
 Note that the same applies to blocks and endorsements.
@@ -60,7 +60,7 @@ storage.drop_block_refs(&operation_ids);
 
 ### Listing locally owned objects
 
-To get a read-onlyreference to the set of locally owned operations for example, simply use:
+To get a read-only reference to the set of locally owned operations for example, simply use:
 ```rust
 let local_op_refs! &Set<OperationId> = storage.get_op_refs();
 ```
@@ -68,7 +68,7 @@ let local_op_refs! &Set<OperationId> = storage.get_op_refs();
 ### Merging, splitting off
 
 * `storage.extend(other)` consumes `other` and adds its locally owned object references to `storage`
-* `let new_storage = storage.split_off(&block_id_set, &operation_id_set, &endorsement_id_set);` efficiently transfers ownership of sets of local object references from `storage` to a new `new_storage` isntance. `storage` loses the transferred local references, and `new_storage` acquires them.
+* `let new_storage = storage.split_off(&block_id_set, &operation_id_set, &endorsement_id_set);` efficiently transfers ownership of sets of local object references from `storage` to a new `new_storage` instance. `storage` loses the transferred local references, and `new_storage` acquires them.
 
 ### Accessing objects in the global shared object store
 
@@ -109,7 +109,7 @@ Here are the available query criteria:
 
 Pools only reference operations and endorsements.
 
-The operation pool (resp. endorsement pool) has its own instance of `Storage` that owns local references to all the operations (resp. endorements) currently in the pool.
+The operation pool (resp. endorsement pool) has its own instance of `Storage` that owns local references to all the operations (resp. endorsements) currently in the pool.
 
 When sending a set of operations to the operation pool, simply use `PoolController::add_operations(storage)`. All the the operations that `storage: Storage` locally owns references to will be added to the operation pool.
 
@@ -155,7 +155,7 @@ When `Consensus` manages to add the block to the graph, it adds the references t
 
 When bootstrapping a client, we need to send every block's dependencies together with the block. This is why `ExportActiveBlock` contains a `pub operations: Vec<WrappedOperation>` field to carry the operations on serialization.
 
-When bootstrapping from a server, and downloading an `ExportActiveBlock`, the deserialized objects (block, operations, endorsemnets) all need to be added to a clean `Storage` instance specific to that block.
+When bootstrapping from a server, and downloading an `ExportActiveBlock`, the deserialized objects (block, operations, endorsements) all need to be added to a clean `Storage` instance specific to that block.
 When full graph is reconstructed, a pass is needed on every block to add its parents to its associated storage (if they are available).
 
 
