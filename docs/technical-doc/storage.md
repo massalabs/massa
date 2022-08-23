@@ -139,6 +139,8 @@ The block factory works according the following steps whenever an owned address 
 
 When sending a batch of operations from the API, they need to be deserialized and added to an instance of `storage:Storage` that is then sent to `Pool` using `PoolController::add_operations(storage.clone())` and to `Protocol` using `ProtocolCommandSender::propagate_operations(storage)` for propagation.
 
+When the `get_operations`, `get_endorsements`, `get_block` or `get_addresses` is called the API will look into the his reference of the storage to find all the operations, endorsements, blocks or all informations related to an address.
+
 ## Storage management in Consensus/Graph
 
 Consensus and Graph only manage blocks.
