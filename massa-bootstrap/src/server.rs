@@ -295,16 +295,27 @@ pub async fn send_final_state_stream(
                 .get_cycle_history_part(old_cycle)?;
             pos_cycle_data = cycle_data;
 
+            println!("cycle_completion: {:?}", cycle_completion);
+
             let (credits_data, new_last_credits_slot) = final_state_read
                 .pos_state
                 .get_deferred_credits_part(old_credits_slot)?;
             pos_credits_data = credits_data;
 
-            if let Some(slot) = old_slot && let Some(key) = &old_key && let Some(async_pool_id) = old_last_async_id && slot != final_state_read.slot {
+            if let Some(slot) = old_slot && slot != final_state_read.slot {
                 final_state_changes = final_state_read.get_state_changes_part(
                     slot,
-                    get_address_from_key(key).ok_or_else(|| BootstrapError::GeneralError("Malformed key in slot changes".to_string()))?,
-                    async_pool_id,
+                    old_key
+                        .clone()
+                        .map(|key| {
+                            get_address_from_key(&key).ok_or_else(|| {
+                                BootstrapError::GeneralError(
+                                    "Malformed key in slot changes".to_string(),
+                                )
+                            })
+                        })
+                        .transpose()?,
+                    old_last_async_id,
                     cycle_completion,
                 );
             } else {

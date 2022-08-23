@@ -112,7 +112,7 @@ impl PoSFinalState {
                 .iter()
                 .position(|cycle| cycle.cycle == last_cycle)
             {
-                if index == self.cycle_history.len() {
+                if index == self.cycle_history.len() - 1 {
                     return Ok((Vec::default(), cursor, Some(false)));
                 }
                 index.saturating_add(1)

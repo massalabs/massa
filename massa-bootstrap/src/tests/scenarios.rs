@@ -14,7 +14,7 @@ use crate::{
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_final_state::{test_exports::assert_eq_final_state, FinalState};
-use massa_models::Version;
+use massa_models::{Slot, Version};
 use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_pos_exports::{test_exports::assert_eq_pos_selection, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
@@ -22,7 +22,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tokio::sync::mpsc;
 
 lazy_static::lazy_static! {
@@ -58,14 +58,15 @@ async fn test_bootstrap_server() {
     .unwrap();
 
     let final_state_client = Arc::new(RwLock::new(FinalState::default()));
-    let final_state_client_thread = final_state_client.clone();
+    let final_state_client_clone = final_state_client.clone();
+    let final_state_clone = final_state.clone();
 
     // launch the get_state process
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
             bootstrap_config,
-            final_state_client_thread,
+            final_state_client_clone,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
             MassaTime::now().unwrap().saturating_sub(1000.into()),
@@ -143,10 +144,32 @@ async fn test_bootstrap_server() {
     let sent_graph = get_boot_state();
     response.send(sent_graph.clone()).unwrap();
 
+    // launch the modifier thread
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        for i in 0u64.. {
+            match rx.try_recv() {
+                Ok(_) | Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    break;
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    std::thread::sleep(Duration::from_millis(100));
+                    final_state_clone.write().slot = Slot {
+                        period: i,
+                        thread: 0,
+                    };
+                }
+            }
+        }
+    });
+
     // wait for get_state
     let bootstrap_res = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
+
+    // stop the modifier thread
+    tx.send(()).unwrap();
 
     // wait for bridge
     bridge.await.expect("bridge join failed");

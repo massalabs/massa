@@ -83,7 +83,7 @@ fn get_random_pos_cycles_info(
     let mut production_stats = Map::default();
     let mut rng_seed: BitVec<u8> = BitVec::default();
 
-    for i in 0u64..r_limit {
+    for i in 0u64..(r_limit / 2) {
         roll_counts.insert(get_random_address(), i);
         production_stats.insert(
             get_random_address(),
@@ -103,7 +103,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 
     for i in 0u64..r_limit {
         let mut credits = Map::default();
-        for j in 0u64..r_limit {
+        for j in 0u64..(r_limit / 2) {
             credits.insert(get_random_address(), Amount::from_raw(j));
         }
         deferred_credits.0.insert(
@@ -125,7 +125,7 @@ fn get_random_pos_state(r_limit: u64) -> PoSFinalState {
         cycle_history.push_back(CycleInfo {
             cycle: i,
             roll_counts,
-            complete: true,
+            complete: if i == r_limit - 1 { false } else { true },
             rng_seed,
             production_stats,
         });
@@ -166,11 +166,11 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalState {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    let slot = Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count));
+    let slot = Slot::new(0, rng.gen_range(0..thread_count));
     let final_ledger = create_final_ledger(Some(sorted_ledger), Default::default());
     let async_pool = create_async_pool(Default::default(), messages);
     let mut changes_history = VecDeque::new();
-    for i in 0u64..(r_limit * 3) {
+    for i in 0u64..r_limit {
         changes_history.push_back((
             Slot {
                 period: i,
