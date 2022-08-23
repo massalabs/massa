@@ -4,9 +4,9 @@
 
 ### General description
 
-This crate provides the `Storage` structure which give s access to a globally shared object store containing blocks, endorsements and operations.
+This crate provides the `Storage` structure which give access to a globally shared object store containing blocks, endorsements and operations.
 It also allows locally claiming references to a list of shared objects for a particular instance of `Storage`.
-When no instance of `Storage` owns a reference to a givan object anymore, that object is automatically dropped from the globally shared object store. 
+When no instance of `Storage` owns a reference to a given object anymore, that object is automatically dropped from the globally shared object store. 
 
 The `Storage` structure contains:
 * shared references to global maps containing objects like blocks, endorsements, operations and indices allowing to retrieve them by various criteria
@@ -51,18 +51,21 @@ let claimed: Set<OperationId> = storage.claim_operation_refs(&operation_ids);
 
 ### Dropping local references to objects
 
-To drop a local reference to an operation for example, use:
+When a `Storage` instance is dropped, all its local references are automatically dropped.
+
+To drop a specific local reference to an operation for example, use:
 ```rust
 let operation_ids: Set<OperationId> = XXXX;
 storage.drop_block_refs(&operation_ids);
 // Here, `storage` does not own any local references to operations listed `operation_ids` anymore. Operations that were not owned beforehand are ignored.
 ```
+When not a single `Storage` instance references a given object anymore, that object is removed from the global shared object store.
 
 ### Listing locally owned objects
 
 To get a read-only reference to the set of locally owned operations for example, simply use:
 ```rust
-let local_op_refs! &Set<OperationId> = storage.get_op_refs();
+let local_op_refs: &Set<OperationId> = storage.get_op_refs();
 ```
 
 ### Merging, splitting off
@@ -134,7 +137,7 @@ The block factory works according the following steps whenever an owned address 
 
 ## Storage management in the API
 
-When sending a batch of operations from the API, they need to be deserialized and added to an instance of `storage:Storage` that is then sent to `Pool` using `PoolController::add_endorsements(storage.clone())` and to `Protocol` using `ProtocolCommandSender::propagate_operations(storage)` for propagation.
+When sending a batch of operations from the API, they need to be deserialized and added to an instance of `storage:Storage` that is then sent to `Pool` using `PoolController::add_operations(storage.clone())` and to `Protocol` using `ProtocolCommandSender::propagate_operations(storage)` for propagation.
 
 When the `get_operations`, `get_endorsements`, `get_block` or `get_addresses` is called the API will look into the his reference of the storage to find all the operations, endorsements, blocks or all informations related to an address.
 
