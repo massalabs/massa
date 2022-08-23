@@ -3,7 +3,6 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test_with_storage;
-use massa_models::constants::THREAD_COUNT;
 use massa_models::{self, Address, Slot};
 use massa_network_exports::{AskForBlocksInfo, NetworkCommand, ReplyForBlocksInfo};
 use massa_protocol_exports::tests::tools;
@@ -38,7 +37,7 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.0);
-            let thread = address.get_thread(THREAD_COUNT);
+            let thread = address.get_thread(2);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
 

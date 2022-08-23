@@ -15,4 +15,4 @@ pub use controller_traits::PoolController;
 pub use error::PoolError;
 
 #[cfg(feature = "testing")]
-pub mod tests;
+pub mod test_exports;

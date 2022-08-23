@@ -34,15 +34,19 @@ impl PoolController for MockPoolController {
         todo!("")
     }
 
-    fn get_stats(&self) -> (usize, usize) {
+    fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool> {
         todo!("")
     }
 
-    fn get_endorsement_ids(&self) -> Set<EndorsementId> {
+    fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool> {
         todo!("")
     }
 
-    fn get_operations_by_ids(&self, _ids: &Set<OperationId>) -> Vec<WrappedOperation> {
+    fn get_endorsement_count(&self) -> usize {
+        todo!("")
+    }
+
+    fn get_operation_count(&self) -> usize {
         todo!("")
     }
 

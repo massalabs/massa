@@ -26,6 +26,7 @@ use massa_models::{Address, Block, BlockId, EndorsementId, Slot, Version};
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
+use massa_protocol_exports::ProtocolCommandSender;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_wallet::Wallet;
@@ -36,11 +37,11 @@ use std::thread::JoinHandle;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
+mod config;
 mod error;
 mod private;
 mod public;
-mod settings;
-pub use settings::APISettings;
+pub use config::APIConfig;
 
 /// Public API component
 pub struct Public {
@@ -52,12 +53,14 @@ pub struct Public {
     pub selector_controller: Box<dyn SelectorController>,
     /// link to the pool component
     pub pool_command_sender: Box<dyn PoolController>,
+    /// link to the protocol component
+    pub protocol_command_sender: ProtocolCommandSender,
     /// Massa storage
     pub storage: Storage,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings
-    pub api_settings: APISettings,
+    pub api_settings: APIConfig,
     /// network setting
     pub network_settings: NetworkConfig,
     /// node version (TODO remove, can be retrieved via an endpoint)
@@ -81,7 +84,7 @@ pub struct Private {
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
     /// API settings
-    pub api_settings: &'static APISettings,
+    pub api_settings: APIConfig,
     /// stop channel
     pub stop_node_channel: mpsc::Sender<()>,
     /// User wallet

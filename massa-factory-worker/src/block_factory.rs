@@ -105,8 +105,8 @@ impl BlockFactoryWorker {
     ///
     /// # Return value
     /// Returns `true` if the instant was reached, otherwise `false` if there was an interruption.
-    fn interruptible_wait_until(&self, duration: Instant) -> bool {
-        match self.factory_receiver.recv_deadline(duration) {
+    fn interruptible_wait_until(&self, deadline: Instant) -> bool {
+        match self.factory_receiver.recv_deadline(deadline) {
             // message received => quit main loop
             Ok(()) => false,
             // timeout => continue main loop
@@ -122,6 +122,7 @@ impl BlockFactoryWorker {
         let block_producer_addr = match self.channels.selector.get_producer(slot) {
             Ok(addr) => addr,
             Err(err) => {
+                println!("TEST IN");
                 warn!(
                     "block factory could not get selector draws for slot {}: {}",
                     slot, err
@@ -139,15 +140,13 @@ impl BlockFactoryWorker {
                 // the selected block producer is not managed locally => quit
                 None => return,
             };
-
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self
             .channels
             .consensus
             .get_best_parents()
             .expect("Couldn't get best parents"); // Vec<(parent_id, parent_period)>
-
-        // generate the local storage object
+                                                  // generate the local storage object
         let mut block_storage = self.channels.storage.clone_without_refs();
 
         // claim block parents in local storage

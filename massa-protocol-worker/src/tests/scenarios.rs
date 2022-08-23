@@ -11,6 +11,7 @@ use massa_protocol_exports::{
     tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
     BlocksResults, ProtocolEvent,
 };
+use massa_storage::Storage;
 use serial_test::serial;
 use std::collections::HashSet;
 
@@ -246,10 +247,12 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 .send_ask_for_block(node_b.id, vec![(ref_hash, Default::default())])
                 .await;
 
+            // TODO: Add block in storage
+            let storage = Storage::default();
             // 5. Propagate header.
-            let op_ids = ref_block.content.operations.clone();
+            let _op_ids = ref_block.content.operations.clone();
             protocol_command_sender
-                .integrated_block(ref_hash)
+                .integrated_block(ref_hash, storage)
                 .await
                 .expect("Failed to ask for block.");
 

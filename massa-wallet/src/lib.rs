@@ -161,3 +161,6 @@ impl std::fmt::Display for Wallet {
         Ok(())
     }
 }
+
+#[cfg(feature = "testing")]
+pub mod test_exports;

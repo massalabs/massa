@@ -6,6 +6,7 @@ use massa_consensus_exports::ConsensusConfig;
 use massa_hash::Hash;
 use massa_models::{BlockId, Slot};
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use serial_test::serial;
 
 #[tokio::test]
@@ -74,6 +75,7 @@ async fn test_block_not_processed_multiple_times() {
         future_block_processing_max_periods: 50,
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
+    let mut storage = Storage::default();
 
     tools::consensus_without_pool_test(
         cfg.clone(),
@@ -97,10 +99,25 @@ async fn test_block_not_processed_multiple_times() {
             let block_1 = block_factory.create_and_receive_block(true).await;
 
             // Send it again, it should not be propagated.
-            block_factory.receieve_block(false, block_1.clone()).await;
+            storage.store_block(block_1.clone());
+            block_factory
+                .receive_block(
+                    false,
+                    block_1.id,
+                    block_1.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
 
             // Send it again, it should not be propagated.
-            block_factory.receieve_block(false, block_1.clone()).await;
+            block_factory
+                .receive_block(
+                    false,
+                    block_1.id,
+                    block_1.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
 
             // Block was not discarded.
             let status = consensus_command_sender
@@ -183,6 +200,8 @@ async fn test_double_staking_does_not_propagate() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
+    let mut storage = Storage::default();
+
     tools::consensus_without_pool_test(
         cfg.clone(),
         async move |protocol_controller,
@@ -210,7 +229,15 @@ async fn test_double_staking_does_not_propagate() {
             let block = block_factory.sign_header(block_1.content.header.content);
 
             // Note: currently does propagate, see #190.
-            block_factory.receieve_block(true, block).await;
+            storage.store_block(block.clone());
+            block_factory
+                .receive_block(
+                    true,
+                    block.id,
+                    block.content.header.content.slot,
+                    storage.clone(),
+                )
+                .await;
 
             // Block was not discarded.
             let status = consensus_command_sender

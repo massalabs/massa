@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::constants::{CHANNEL_SIZE, MAX_DUPLEX_BUFFER_SIZE};
+use massa_models::constants::default_testing::{CHANNEL_SIZE, MAX_DUPLEX_BUFFER_SIZE};
 use massa_time::MassaTime;
 use std::io;
 use std::net::SocketAddr;

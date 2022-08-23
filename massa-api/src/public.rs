@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
+use crate::config::APIConfig;
 use crate::error::ApiError;
-use crate::settings::APISettings;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
@@ -13,14 +13,12 @@ use massa_models::api::{
     BlockGraphStatus, DatastoreEntryInput, DatastoreEntryOutput, OperationInput,
     ReadOnlyBytecodeExecution, ReadOnlyCall, SlotAmount,
 };
-use massa_models::constants::default::{
-    MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
-};
 use massa_models::execution::ReadOnlyResult;
 use massa_models::operation::OperationDeserializer;
 use massa_models::wrapped::WrappedDeserializer;
 use massa_models::{timeslots, Block, ModelsError, WrappedEndorsement, WrappedOperation};
 use massa_pos_exports::SelectorController;
+use massa_protocol_exports::ProtocolCommandSender;
 use massa_serialization::{DeserializeError, Deserializer};
 
 use itertools::{izip, Itertools};
@@ -50,10 +48,11 @@ impl API<Public> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         execution_controller: Box<dyn ExecutionController>,
-        api_settings: APISettings,
+        api_settings: APIConfig,
         selector_controller: Box<dyn SelectorController>,
         consensus_settings: ConsensusConfig,
         pool_command_sender: Box<dyn PoolController>,
+        protocol_command_sender: ProtocolCommandSender,
         network_settings: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
@@ -69,6 +68,7 @@ impl API<Public> {
             network_settings,
             version,
             network_command_sender,
+            protocol_command_sender,
             compensation_millis,
             node_id,
             execution_controller,
@@ -796,15 +796,16 @@ impl Endpoints for API<Public> {
         ops: Vec<OperationInput>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
+        let mut protocol_sender = self.0.protocol_command_sender.clone();
         let api_cfg = self.0.api_settings;
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
             let operation_deserializer = WrappedDeserializer::new(OperationDeserializer::new(
-                MAX_DATASTORE_VALUE_LENGTH,
-                MAX_FUNCTION_NAME_LENGTH,
-                MAX_PARAMETERS_SIZE,
+                api_cfg.max_datastore_value_length,
+                api_cfg.max_function_name_length,
+                api_cfg.max_parameter_size,
             ));
             let verified_ops = ops
                 .into_iter()
@@ -836,8 +837,11 @@ impl Endpoints for API<Public> {
                 .collect::<Result<Vec<WrappedOperation>, ApiError>>()?;
             let mut to_send = Storage::default();
             to_send.store_operations(verified_ops.clone());
-            let ids = verified_ops.iter().map(|op| op.id).collect();
+            let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
             cmd_sender.add_operations(to_send);
+            protocol_sender
+                .propagate_operations(ids.iter().cloned().collect())
+                .await?;
             Ok(ids)
         };
         Box::pin(closure())

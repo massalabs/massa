@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::constants::CHANNEL_SIZE;
 use massa_time::MassaTime;
 use std::io;
 use std::net::SocketAddr;
@@ -19,11 +18,10 @@ type AddrSender = (SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>);
 
 /// new mock establisher with interface
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
-    let (connection_listener_tx, connection_listener_rx) =
-        mpsc::channel::<AddrSender>(CHANNEL_SIZE);
+    let (connection_listener_tx, connection_listener_rx) = mpsc::channel::<AddrSender>(256);
 
     let (connection_connector_tx, connection_connector_rx) =
-        mpsc::channel::<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>(CHANNEL_SIZE);
+        mpsc::channel::<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>(256);
 
     (
         MockEstablisher {

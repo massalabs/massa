@@ -5,10 +5,11 @@
 
 use std::collections::BTreeMap;
 
-use crate::{Command, DrawCachePtr, InputDataPtr};
+use crate::{Command, DrawCachePtr};
 use massa_hash::Hash;
 use massa_models::{api::IndexedSlot, Address, Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
+use std::sync::mpsc::SyncSender;
 use tracing::{info, warn};
 
 #[cfg(feature = "testing")]
@@ -23,8 +24,8 @@ pub struct SelectorControllerImpl {
     pub(crate) thread_count: u8,
     /// Cache storing the computed selections for each cycle.
     pub(crate) cache: DrawCachePtr,
-    /// Sync-able equivalent of std::mpsc for command sending
-    pub(crate) input_data: InputDataPtr,
+    /// MPSC to send commands to the selector thread
+    pub(crate) input_mpsc: SyncSender<Command>,
 }
 
 impl SelectorController for SelectorControllerImpl {
@@ -61,22 +62,25 @@ impl SelectorController for SelectorControllerImpl {
         lookback_rolls: BTreeMap<Address, u64>,
         lookback_seed: Hash,
     ) -> PosResult<()> {
+        // check status
         {
-            // check status
             let (_cache_cv, cache_lock) = &*self.cache;
             cache_lock.read().as_ref().map_err(|err| err.clone())?;
         }
-        {
-            // send command
-            let (cvar, lock) = &*self.input_data;
-            let mut data = lock.lock();
-            data.push_back(Command::DrawInput {
+
+        // send command
+        self.input_mpsc
+            .send(Command::DrawInput {
                 cycle,
                 lookback_rolls,
                 lookback_seed,
-            });
-            cvar.notify_one();
-        }
+            })
+            .map_err(|_err| {
+                PosError::ChannelDown(
+                    "could not feed cycle to selector worker through channel".into(),
+                )
+            })?;
+
         Ok(())
     }
 
@@ -174,18 +178,15 @@ impl SelectorController for SelectorControllerImpl {
 pub struct SelectorManagerImpl {
     /// handle used to join the worker thread
     pub(crate) thread_handle: Option<std::thread::JoinHandle<PosResult<()>>>,
-    /// Input data pointer (used to stop the selector thread)
-    pub(crate) input_data: InputDataPtr,
+    /// Input data mpsc (used to stop the selector thread)
+    pub(crate) input_mpsc: SyncSender<Command>,
 }
 
 impl SelectorManager for SelectorManagerImpl {
     /// stops the worker
     fn stop(&mut self) {
         info!("stopping selector worker...");
-        {
-            self.input_data.1.lock().push_front(Command::Stop);
-            self.input_data.0.notify_one();
-        }
+        let _ = self.input_mpsc.send(Command::Stop);
         // join the selector thread
         if let Some(join_handle) = self.thread_handle.take() {
             if let Err(err) = join_handle

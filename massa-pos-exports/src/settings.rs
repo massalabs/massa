@@ -19,4 +19,6 @@ pub struct SelectorConfig {
     pub initial_rolls_path: PathBuf,
     /// initial seed
     pub initial_draw_seed: String,
+    /// communication channel length
+    pub channel_size: usize,
 }

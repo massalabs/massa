@@ -4,7 +4,7 @@ use std::{
 };
 
 use massa_models::{
-    constants::{ENDORSEMENT_COUNT, PERIODS_PER_CYCLE},
+    constants::default_testing::{CHANNEL_SIZE, ENDORSEMENT_COUNT, PERIODS_PER_CYCLE},
     Address, Slot, THREAD_COUNT,
 };
 use massa_signature::KeyPair;
@@ -21,6 +21,7 @@ impl Default for SelectorConfig {
             genesis_address: Address::from_public_key(&KeyPair::generate().get_public_key()),
             initial_rolls_path: PathBuf::default(),
             initial_draw_seed: String::default(),
+            channel_size: CHANNEL_SIZE,
         }
     }
 }

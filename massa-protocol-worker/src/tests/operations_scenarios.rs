@@ -3,7 +3,6 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::{protocol_test, protocol_test_with_storage};
-use massa_models::constants::THREAD_COUNT;
 use massa_models::prehash::Map;
 use massa_models::{self, Address, Amount, Slot};
 use massa_models::{operation::OperationId, prehash::Set};
@@ -323,7 +322,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.0);
-            let thread = address.get_thread(THREAD_COUNT);
+            let thread = address.get_thread(2);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
             let operation_id = operation.id;
@@ -403,7 +402,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.0);
-            let thread = address.get_thread(THREAD_COUNT);
+            let thread = address.get_thread(2);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
             let operation_id = operation.id;
@@ -494,7 +493,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
 
             let address = Address::from_public_key(&nodes[0].id.0);
-            let thread = address.get_thread(THREAD_COUNT);
+            let thread = address.get_thread(2);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].keypair, 1);
 
@@ -591,7 +590,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             let operation = tools::create_operation_with_expire_period(&creator_node.keypair, 1);
 
             let address = Address::from_public_key(&creator_node.id.0);
-            let thread = address.get_thread(THREAD_COUNT);
+            let thread = address.get_thread(2);
 
             // 2. Create a block coming from node creator_node, and including the operation.
             let block = tools::create_block_with_operations(

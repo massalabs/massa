@@ -6,6 +6,7 @@ use massa_consensus_exports::ConsensusConfig;
 use massa_hash::Hash;
 use massa_models::Slot;
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 
@@ -269,6 +270,7 @@ async fn test_double_staking() {
             .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
+    let mut storage = Storage::default();
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -342,7 +344,16 @@ async fn test_double_staking() {
                 vec![valid_hasht0, valid_hasht1],
                 &staking_keys[0],
             );
-            propagate_block(&mut protocol_controller, block_1.clone(), true, 150).await;
+            storage.store_block(block_1.clone());
+            propagate_block(
+                &mut protocol_controller,
+                block_1.id,
+                block_1.content.header.content.slot,
+                storage.clone(),
+                true,
+                150,
+            )
+            .await;
 
             let operation_merkle_root =
                 Hash::compute_from("so long and thanks for all the fish".as_bytes());
@@ -353,7 +364,16 @@ async fn test_double_staking() {
                 vec![valid_hasht0, valid_hasht1],
                 &staking_keys[0],
             );
-            propagate_block(&mut protocol_controller, block_2.clone(), true, 150).await;
+            storage.store_block(block_2.clone());
+            propagate_block(
+                &mut protocol_controller,
+                block_2.id,
+                block_2.content.header.content.slot,
+                storage.clone(),
+                true,
+                150,
+            )
+            .await;
 
             let graph = consensus_command_sender
                 .get_block_graph_status(None, None)

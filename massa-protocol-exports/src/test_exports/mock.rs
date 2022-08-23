@@ -1,9 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{constants::CHANNEL_SIZE, BlockId, WrappedBlock, WrappedHeader};
-use massa_protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
-};
+use crate::{ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
+use massa_models::{BlockId, Slot, WrappedHeader};
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
@@ -14,9 +13,8 @@ pub struct MockProtocolController {
 
 impl MockProtocolController {
     pub fn new() -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
-        let (protocol_command_tx, protocol_command_rx) =
-            mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
-        let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
+        let (protocol_command_tx, protocol_command_rx) = mpsc::channel::<ProtocolCommand>(256);
+        let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(256);
         (
             MockProtocolController {
                 protocol_event_tx,
@@ -45,14 +43,12 @@ impl MockProtocolController {
     }
 
     /// Note: if you care about the operation set, use another method.
-    pub async fn receive_block(&mut self, block: WrappedBlock) {
-        let slot = block.content.header.content.slot;
+    pub async fn receive_block(&mut self, block_id: BlockId, slot: Slot, storage: Storage) {
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
-                block,
+                block_id,
                 slot,
-                operation_set: Default::default(),
-                endorsement_ids: Default::default(),
+                storage,
             })
             .await
             .expect("could not send protocol event");

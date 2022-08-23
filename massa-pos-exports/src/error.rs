@@ -20,4 +20,6 @@ pub enum PosError {
     CycleUnfinalised(u64),
     /// Error while loading initial rolls file: {0}
     RollsFileLoadingError(String),
+    /// Communication channel was down: {0}
+    ChannelDown(String),
 }

@@ -25,10 +25,11 @@ massa_signature = { path = "../massa-signature" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
+massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_storage = { path = "../massa-storage" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-testing = ["massa_models/testing"]
+testing = ["massa_models/testing", "massa_protocol_exports/testing", "massa_pool_exports/testing"]
 sandbox = []

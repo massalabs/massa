@@ -1,6 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 /// This file defines testing tools related to the configuration
-use massa_models::{Address, Amount};
+use massa_models::{
+    constants::default_testing::{
+        ADDRESS_SIZE_BYTES, LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_DATASTORE_KEY_LENGTH,
+    },
+    Address, Amount,
+};
 use std::collections::BTreeMap;
 use std::io::Seek;
 use tempfile::{NamedTempFile, TempDir};
@@ -15,6 +20,9 @@ impl Default for LedgerConfig {
             // a NamedTempFile in addition)
             initial_sce_ledger_path: "".into(),
             disk_ledger_path: "".into(),
+            address_bytes_size: ADDRESS_SIZE_BYTES,
+            max_key_length: MAX_DATASTORE_KEY_LENGTH,
+            max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
         }
     }
 }
@@ -34,6 +42,9 @@ impl LedgerConfig {
             Self {
                 initial_sce_ledger_path: initial_ledger.path().to_path_buf(),
                 disk_ledger_path: disk_ledger.path().to_path_buf(),
+                address_bytes_size: ADDRESS_SIZE_BYTES,
+                max_key_length: MAX_DATASTORE_KEY_LENGTH,
+                max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
             },
             initial_ledger,
             disk_ledger,

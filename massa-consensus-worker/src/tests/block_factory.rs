@@ -4,17 +4,16 @@
 //! but at it was introduced quite late in the development process
 //! it has only be used in scenarios basic
 
-use super::{
-    mock_protocol_controller::MockProtocolController,
-    tools::{validate_notpropagate_block, validate_propagate_block},
-};
+use super::tools::{validate_notpropagate_block, validate_propagate_block};
 use massa_hash::Hash;
 use massa_models::{
     wrapped::{Id, WrappedContent},
     Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot, WrappedBlock,
     WrappedEndorsement, WrappedOperation,
 };
+use massa_protocol_exports::test_exports::MockProtocolController;
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 
 pub struct BlockFactory {
     pub best_parents: Vec<BlockId>,
@@ -74,13 +73,20 @@ impl BlockFactory {
         )
         .unwrap();
 
-        self.protocol_controller.receive_block(block.clone()).await;
+        let mut storage = Storage::default();
+        let id = block.id;
+        let slot = block.content.header.content.slot;
+        storage.store_block(block.clone());
+
+        self.protocol_controller
+            .receive_block(id, slot, storage)
+            .await;
         if valid {
             // Assert that the block is propagated.
-            validate_propagate_block(&mut self.protocol_controller, block.id, 2000).await;
+            validate_propagate_block(&mut self.protocol_controller, id, 2000).await;
         } else {
             // Assert that the the block is not propagated.
-            validate_notpropagate_block(&mut self.protocol_controller, block.id, 500).await;
+            validate_notpropagate_block(&mut self.protocol_controller, id, 500).await;
         }
         block
     }
@@ -106,15 +112,22 @@ impl BlockFactory {
         .unwrap()
     }
 
-    pub async fn receieve_block(&mut self, valid: bool, block: WrappedBlock) {
-        let hash = block.id;
-        self.protocol_controller.receive_block(block.clone()).await;
+    pub async fn receive_block(
+        &mut self,
+        valid: bool,
+        block_id: BlockId,
+        slot: Slot,
+        storage: Storage,
+    ) {
+        self.protocol_controller
+            .receive_block(block_id, slot, storage)
+            .await;
         if valid {
             // Assert that the block is propagated.
-            validate_propagate_block(&mut self.protocol_controller, hash, 2000).await;
+            validate_propagate_block(&mut self.protocol_controller, block_id, 2000).await;
         } else {
             // Assert that the the block is not propagated.
-            validate_notpropagate_block(&mut self.protocol_controller, hash, 500).await;
+            validate_notpropagate_block(&mut self.protocol_controller, block_id, 500).await;
         }
     }
 
