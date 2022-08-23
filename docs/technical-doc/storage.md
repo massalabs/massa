@@ -164,4 +164,4 @@ When full graph is reconstructed, a pass is needed on every block to add its par
 
 ## Storage management in Protocol
 
-TODO @adrien-zinger can you write this part ?
+TODO @adrien-zinger @gterzian can you write this part ?
