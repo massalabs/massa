@@ -63,8 +63,10 @@ impl SelectorController for SelectorControllerImpl {
         lookback_seed: Hash,
     ) -> PosResult<()> {
         // check status
-        let (_cache_cv, cache_lock) = &*self.cache;
-        cache_lock.read().as_ref().map_err(|err| err.clone())?;
+        {
+            let (_cache_cv, cache_lock) = &*self.cache;
+            cache_lock.read().as_ref().map_err(|err| err.clone())?;
+        }
 
         // send command
         self.input_mpsc
