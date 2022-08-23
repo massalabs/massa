@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{BTreeMap, HashMap, VecDeque},
     sync::{
         mpsc::{self, Receiver},
         Arc, Mutex,
@@ -9,7 +9,7 @@ use std::{
 };
 
 use massa_hash::Hash;
-use massa_models::{api::IndexedSlot, prehash::Map, Address, Slot};
+use massa_models::{api::IndexedSlot, Address, Slot};
 
 use crate::{PosResult, Selection, SelectorController};
 
@@ -21,7 +21,7 @@ pub enum MockSelectorControllerMessage {
         /// cycle
         cycle: u64,
         /// lookback rolls
-        lookback_rolls: Map<Address, u64>,
+        lookback_rolls: BTreeMap<Address, u64>,
         /// lookback seed
         lookback_seed: Hash,
     },
@@ -90,7 +90,7 @@ impl SelectorController for MockSelectorController {
     fn feed_cycle(
         &self,
         cycle: u64,
-        lookback_rolls: Map<Address, u64>,
+        lookback_rolls: BTreeMap<Address, u64>,
         lookback_seed: Hash,
     ) -> PosResult<()> {
         self.0

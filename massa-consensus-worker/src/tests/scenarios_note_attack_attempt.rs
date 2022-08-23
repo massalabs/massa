@@ -42,6 +42,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         endorsement_count: 0,
         max_draw_cache: 10,
         initial_draw_seed: "".to_string(),
+        channel_size: 256,
     };
     let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let pool_controller = MockPoolController::new();
@@ -112,6 +113,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         endorsement_count: 0,
         max_draw_cache: 10,
         initial_draw_seed: "".to_string(),
+        channel_size: 256,
     };
     let (_selector_manager, selector_controller) = start_selector_worker(selector_config).unwrap();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();

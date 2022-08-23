@@ -15,7 +15,7 @@ use massa_models::{
 };
 use massa_storage::Storage;
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap},
     sync::{
         mpsc::{self, Receiver},
         Arc, Mutex,
@@ -133,8 +133,8 @@ impl ExecutionController for MockExecutionController {
         Vec::default()
     }
 
-    fn get_cycle_active_rolls(&self, cycle: u64) -> Map<Address, u64> {
-        Map::default()
+    fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
+        BTreeMap::default()
     }
 
     fn execute_readonly_request(
