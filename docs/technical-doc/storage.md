@@ -134,7 +134,7 @@ The block factory works according the following steps whenever an owned address 
 
 ## Storage management in the API
 
-When sending a batch of operations from the API, they need to be deserialized and added to an instance of `Storage` that is then sent to `Pool` using `PoolController::add_endorsements(storage)`.
+When sending a batch of operations from the API, they need to be deserialized and added to an instance of `storage:Storage` that is then sent to `Pool` using `PoolController::add_endorsements(storage.clone())` and to `Protocol` using `ProtocolCommandSender::propagate_operations(storage)` for propagation.
 
 ## Storage management in Consensus/Graph
 
