@@ -151,6 +151,11 @@ Full blocks are sent to `Consensus` through `ConsensusCommandSender::send_block(
 
 When `Consensus` manages to add the block to the graph, it adds the references to the block's parents to the block's `Storage` instance, and calls `ProtocolCommandSender::integrated_block(block.id, block.storage.clone())` for `Protocol` to propagate the block.
 
+When bootstrapping a client, we need to send every block's dependencies together with the block. This is why `ExportActiveBlock` contains a `pub operations: Vec<WrappedOperation>` field to carry the operations on serialization.
+
+When bootstrapping from a server, and downloading an `ExportActiveBlock`, the deserialized objects (block, operations, endorsemnets) all need to be added to a clean `Storage` instance specific to that block.
+When full graph is reconstructed, a pass is needed on every block to add its parents to its associated storage (if they are available).
+
 
 ## Storage management in Protocol
 
