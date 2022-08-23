@@ -331,6 +331,7 @@ async fn launch(
         selector: selector_controller.clone(),
         consensus: consensus_command_sender.clone(),
         pool: pool_manager.clone(),
+        protocol: protocol_command_sender.clone(),
         storage: shared_storage.clone(),
     };
     let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
@@ -377,6 +378,7 @@ async fn launch(
         selector_controller.clone(),
         consensus_config,
         pool_manager.clone(),
+        protocol_command_sender.clone(),
         network_config,
         *VERSION,
         network_command_sender.clone(),

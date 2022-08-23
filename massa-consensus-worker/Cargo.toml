@@ -57,4 +57,5 @@ testing = [
     "massa_execution_exports/testing",
     "massa_models/testing",
     "massa_pool_exports/testing",
+    "massa_protocol_exports/testing",
 ]

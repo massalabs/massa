@@ -7,6 +7,7 @@ use massa_hash::MassaHashError;
 use massa_models::ModelsError;
 use massa_network_exports::NetworkError;
 use massa_pool_exports::PoolError;
+use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use massa_wallet::WalletError;
 use thiserror::Error;
@@ -30,6 +31,8 @@ pub enum ApiError {
     ExecutionError(#[from] ExecutionError),
     /// network error: {0}
     NetworkError(#[from] NetworkError),
+    /// protocol error: {0}
+    ProtocolError(#[from] ProtocolError),
     /// models error: {0}
     ModelsError(#[from] ModelsError),
     /// time error: {0}

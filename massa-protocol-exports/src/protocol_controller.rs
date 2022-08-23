@@ -172,7 +172,7 @@ impl ProtocolCommandSender {
     }
 
     /// propagate endorsements to connected node
-    pub async fn propagate_endorsements(
+    pub fn propagate_endorsements(
         &mut self,
         endorsements: Map<EndorsementId, WrappedEndorsement>,
     ) -> Result<(), ProtocolError> {
@@ -180,8 +180,7 @@ impl ProtocolCommandSender {
             "endorsements": endorsements
         });
         self.0
-            .send(ProtocolCommand::PropagateEndorsements(endorsements))
-            .await
+            .blocking_send(ProtocolCommand::PropagateEndorsements(endorsements))
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_endorsements command send error".into())
             })
