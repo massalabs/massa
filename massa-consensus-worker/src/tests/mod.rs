@@ -3,7 +3,6 @@
 mod block_factory;
 mod inter_cycle_batch_finalization;
 mod mock_pool_controller;
-mod mock_protocol_controller;
 mod scenario_block_creation;
 mod scenario_roll;
 mod scenarios106;

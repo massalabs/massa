@@ -43,5 +43,7 @@ sandbox = [ "massa_protocol_exports/sandbox" ]
 testing = [
     "massa_models/testing",
     "massa_execution_exports/testing",
+    "massa_pool_exports/testing",
+    "massa_protocol_exports/testing",
     "tempfile",
 ]

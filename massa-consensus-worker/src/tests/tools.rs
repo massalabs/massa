@@ -1,10 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::ptr_arg)] // this allow &Vec<..> as function argument type
 
-use super::{
-    mock_pool_controller::MockPoolController, mock_protocol_controller::MockProtocolController,
-};
+use super::mock_pool_controller::MockPoolController;
 use crate::start_consensus_controller;
+use massa_protocol_exports::test_exports::MockProtocolController;
 
 use massa_cipher::decrypt;
 use massa_consensus_exports::error::ConsensusResult;

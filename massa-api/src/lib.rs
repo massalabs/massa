@@ -26,6 +26,7 @@ use massa_models::{Address, Block, BlockId, EndorsementId, Slot, Version};
 use massa_network_exports::{NetworkCommandSender, NetworkConfig};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
+use massa_protocol_exports::ProtocolCommandSender;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_wallet::Wallet;
@@ -52,6 +53,8 @@ pub struct Public {
     pub selector_controller: Box<dyn SelectorController>,
     /// link to the pool component
     pub pool_command_sender: Box<dyn PoolController>,
+    /// link to the protocol component
+    pub protocol_command_sender: ProtocolCommandSender,
     /// Massa storage
     pub storage: Storage,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)

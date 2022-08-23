@@ -17,6 +17,7 @@ use massa_pos_exports::{
     test_exports::{MockSelectorController, MockSelectorControllerMessage},
     Selection,
 };
+use massa_protocol_exports::test_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -53,7 +54,8 @@ impl TestFactory {
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
         let mut storage = Storage::default();
         let mut factory_config = FactoryConfig::default();
-
+        let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
+            MockProtocolController::new();
         let producer_keypair = default_keypair;
         let producer_address = Address::from_public_key(&producer_keypair.get_public_key());
         let mut accounts = Map::default();
@@ -78,6 +80,7 @@ impl TestFactory {
                 selector: selector_controller.clone(),
                 consensus: consensus_command_sender,
                 pool: pool_controller.clone(),
+                protocol: protocol_command_sender.clone(),
                 storage: storage.clone_without_refs(),
             },
         );

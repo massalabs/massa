@@ -161,7 +161,6 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
             ends.insert(expected_endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ends)
-                .await
                 .unwrap();
 
             loop {
@@ -241,10 +240,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // it should propagate it to nodes that don't know about it
             let mut ops = Map::default();
             ops.insert(expected_endorsement_id, endorsement);
-            protocol_command_sender
-                .propagate_endorsements(ops)
-                .await
-                .unwrap();
+            protocol_command_sender.propagate_endorsements(ops).unwrap();
 
             loop {
                 match network_controller
@@ -321,10 +317,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // because of the previously received header.
             let mut ops = Map::default();
             ops.insert(endorsement_id, endorsement);
-            protocol_command_sender
-                .propagate_endorsements(ops)
-                .await
-                .unwrap();
+            protocol_command_sender.propagate_endorsements(ops).unwrap();
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
@@ -399,10 +392,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // because of the previously integrated block.
             let mut ops = Map::default();
             ops.insert(endorsement_id, endorsement);
-            protocol_command_sender
-                .propagate_endorsements(ops)
-                .await
-                .unwrap();
+            protocol_command_sender.propagate_endorsements(ops).unwrap();
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
@@ -485,10 +475,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // because of the previously received header.
             let mut ops = Map::default();
             ops.insert(endorsement_id, endorsement);
-            protocol_command_sender
-                .propagate_endorsements(ops)
-                .await
-                .unwrap();
+            protocol_command_sender.propagate_endorsements(ops).unwrap();
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {

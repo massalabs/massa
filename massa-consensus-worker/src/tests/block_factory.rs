@@ -4,16 +4,14 @@
 //! but at it was introduced quite late in the development process
 //! it has only be used in scenarios basic
 
-use super::{
-    mock_protocol_controller::MockProtocolController,
-    tools::{validate_notpropagate_block, validate_propagate_block},
-};
+use super::tools::{validate_notpropagate_block, validate_propagate_block};
 use massa_hash::Hash;
 use massa_models::{
     wrapped::{Id, WrappedContent},
     Block, BlockHeader, BlockHeaderSerializer, BlockId, BlockSerializer, Slot, WrappedBlock,
     WrappedEndorsement, WrappedOperation,
 };
+use massa_protocol_exports::test_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 

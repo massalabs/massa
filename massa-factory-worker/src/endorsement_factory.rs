@@ -193,10 +193,22 @@ impl EndorsementFactoryWorker {
 
         // store endorsements
         let mut endo_storage = self.channels.storage.clone_without_refs();
+        let endorsement_map_protocol = endorsements
+            .iter()
+            .map(|endo| (endo.id, endo.clone()))
+            .collect();
         endo_storage.store_endorsements(endorsements);
 
         // send endorsement to pool for listing and propagation
         self.channels.pool.add_endorsements(endo_storage);
+
+        if let Err(err) = self
+            .channels
+            .protocol
+            .propagate_endorsements(endorsement_map_protocol)
+        {
+            warn!("could not propagate endorsements to protocol: {}", err);
+        }
     }
 
     /// main run loop of the endorsement creator thread

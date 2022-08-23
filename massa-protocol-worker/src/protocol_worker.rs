@@ -338,7 +338,10 @@ impl ProtocolWorker {
         timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, storage } => {
+            ProtocolCommand::IntegratedBlock {
+                block_id,
+                storage: _,
+            } => {
                 // TODO properly manage storage
                 massa_trace!(
                     "protocol.protocol_worker.process_command.integrated_block.begin",

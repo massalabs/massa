@@ -1,11 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::collections::VecDeque;
-
+use super::mock_pool_controller::MockPoolController;
 use super::tools::*;
-use super::{
-    mock_pool_controller::MockPoolController, mock_protocol_controller::MockProtocolController,
-};
 use crate::start_consensus_controller;
 
 use massa_consensus_exports::settings::ConsensusChannels;
@@ -15,6 +11,7 @@ use massa_hash::Hash;
 use massa_models::{Address, BlockId, Slot};
 use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
+use massa_protocol_exports::test_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use serial_test::serial;
